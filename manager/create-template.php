@@ -92,6 +92,80 @@ while ($d = $dept_result->fetch_assoc()) {
 require_once '../includes/header.php';
 ?>
 
+<style>
+    @media (max-width: 768px) {
+        .d-flex.justify-content-between.align-items-center.mb-4 {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 15px;
+        }
+        .d-flex.justify-content-between.align-items-center.mb-4 a {
+            width: 100%;
+            text-align: center;
+        }
+        
+        /* Master Weight Split Stacking */
+        #weightSplitStatus {
+            margin-top: 10px;
+        }
+
+        /* Rating Scale Guide - Mobile Revamp */
+        .rating-scale-table thead {
+            display: none;
+        }
+        .rating-scale-table tr {
+            display: block;
+            border-bottom: 1px solid #eee;
+            padding: 15px 10px;
+        }
+        .rating-scale-table td {
+            display: block;
+            border: none;
+            padding: 4px 0;
+            text-align: center;
+        }
+        .rating-scale-table td:nth-child(1) .badge {
+            font-size: 1rem;
+            width: 100%;
+        }
+        .rating-scale-table td:nth-child(2) {
+            font-size: 1.1rem;
+            margin-top: 5px;
+        }
+        .rating-scale-table td:nth-child(3) {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Sections Header Mobile */
+        .card-header.d-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 10px;
+        }
+        .card-header.d-flex .btn {
+            width: 100%;
+        }
+
+        /* Footer buttons */
+        #templateForm .content-card.bg-light .d-flex {
+            flex-direction: column;
+            width: 100%;
+        }
+        #templateForm .content-card.bg-light .d-flex div:first-child {
+            width: 100%;
+            justify-content: center;
+        }
+        #templateForm .content-card.bg-light .btn-outline-secondary {
+            flex: 1;
+        }
+        #templateForm .btn-lg {
+            width: 100%;
+        }
+    }
+</style>
+
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-1"><i class="fas fa-magic text-primary me-2"></i>Create New Template</h4>
@@ -194,7 +268,7 @@ require_once '../includes/header.php';
         <h5 class="mb-0 text-secondary fw-bold"><i class="fas fa-star text-warning me-2"></i>Performance Rating Scale Guide</h5>
     </div>
     <div class="card-body p-0">
-        <table class="table mb-0">
+        <table class="table mb-0 rating-scale-table">
             <thead>
                 <tr>
                     <th style="width:120px;">Rating Scale</th>
@@ -610,5 +684,10 @@ document.addEventListener('DOMContentLoaded', function() {
     attachAutosaveListeners();
 });
 </script>
+
+<!-- Back to Top Button -->
+<button type="button" id="backToTop" onclick="scrollToTop()" title="Back to Top">
+    <i class="fas fa-chevron-up"></i>
+</button>
 
 <?php require_once '../includes/footer.php'; ?>

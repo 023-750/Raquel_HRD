@@ -501,8 +501,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
                     continue;
                 $school = trim($_POST['edu_school'][$i]);
                 $degree = trim($_POST['edu_degree'][$i] ?? '');
-                $pfrom = !empty($_POST['edu_from'][$i]) ? $_POST['edu_from'][$i] : null;
-                $pto = !empty($_POST['edu_to'][$i]) ? $_POST['edu_to'][$i] : null;
+                $pfrom = !empty($_POST['edu_from'][$i]) ? (strlen($_POST['edu_from'][$i]) == 4 ? $_POST['edu_from'][$i] . '-01-01' : $_POST['edu_from'][$i]) : null;
+                $pto = !empty($_POST['edu_to'][$i]) ? (strlen($_POST['edu_to'][$i]) == 4 ? $_POST['edu_to'][$i] . '-01-01' : $_POST['edu_to'][$i]) : null;
                 $units = trim($_POST['edu_units'][$i] ?? '');
                 $ygrad = trim($_POST['edu_year_grad'][$i] ?? '');
                 $honors = trim($_POST['edu_honors'][$i] ?? '');
@@ -518,8 +518,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
             foreach ($_POST['work_title'] as $i => $wt) {
                 if (empty(trim($wt)))
                     continue;
-                $wf = !empty($_POST['work_from'][$i]) ? $_POST['work_from'][$i] : null;
-                $wto = !empty($_POST['work_to'][$i]) ? $_POST['work_to'][$i] : null;
+                $wf = !empty($_POST['work_from'][$i]) ? (strlen($_POST['work_from'][$i]) == 4 ? $_POST['work_from'][$i] . '-01-01' : $_POST['work_from'][$i]) : null;
+                $wto = !empty($_POST['work_to'][$i]) ? (strlen($_POST['work_to'][$i]) == 4 ? $_POST['work_to'][$i] . '-01-01' : $_POST['work_to'][$i]) : null;
                 $wt = trim($wt);
                 $wc = trim($_POST['work_company'][$i] ?? '');
                 $ws = !empty($_POST['work_salary'][$i]) ? (float) $_POST['work_salary'][$i] : null;
@@ -537,8 +537,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
             foreach ($_POST['training_title'] as $i => $tt) {
                 if (empty(trim($tt)))
                     continue;
-                $tf = !empty($_POST['training_from'][$i]) ? $_POST['training_from'][$i] : null;
-                $tto = !empty($_POST['training_to'][$i]) ? $_POST['training_to'][$i] : null;
+                $tf = !empty($_POST['training_from'][$i]) ? (strlen($_POST['training_from'][$i]) == 4 ? $_POST['training_from'][$i] . '-01-01' : $_POST['training_from'][$i]) : null;
+                $tto = !empty($_POST['training_to'][$i]) ? (strlen($_POST['training_to'][$i]) == 4 ? $_POST['training_to'][$i] . '-01-01' : $_POST['training_to'][$i]) : null;
                 $tt = trim($tt);
                 $ttype = trim($_POST['training_type'][$i] ?? '');
                 $th = !empty($_POST['training_hours'][$i]) ? (float) $_POST['training_hours'][$i] : null;
@@ -555,8 +555,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
             foreach ($_POST['vol_org'] as $i => $vo) {
                 if (empty(trim($vo)))
                     continue;
-                $vf = !empty($_POST['vol_from'][$i]) ? $_POST['vol_from'][$i] : null;
-                $vto = !empty($_POST['vol_to'][$i]) ? $_POST['vol_to'][$i] : null;
+                $vf = !empty($_POST['vol_from'][$i]) ? (strlen($_POST['vol_from'][$i]) == 4 ? $_POST['vol_from'][$i] . '-01-01' : $_POST['vol_from'][$i]) : null;
+                $vto = !empty($_POST['vol_to'][$i]) ? (strlen($_POST['vol_to'][$i]) == 4 ? $_POST['vol_to'][$i] . '-01-01' : $_POST['vol_to'][$i]) : null;
                 $vo = trim($vo);
                 $va = trim($_POST['vol_address'][$i] ?? '');
                 $vh = !empty($_POST['vol_hours'][$i]) ? (float) $_POST['vol_hours'][$i] : null;
@@ -573,8 +573,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
             foreach ($_POST['elig_title'] as $i => $et) {
                 if (empty(trim($et)))
                     continue;
-                $ef = !empty($_POST['elig_from'][$i]) ? $_POST['elig_from'][$i] : null;
-                $eto = !empty($_POST['elig_to'][$i]) ? $_POST['elig_to'][$i] : null;
+                $ef = !empty($_POST['elig_from'][$i]) ? (strlen($_POST['elig_from'][$i]) == 4 ? $_POST['elig_from'][$i] . '-01-01' : $_POST['elig_from'][$i]) : null;
+                $eto = !empty($_POST['elig_to'][$i]) ? (strlen($_POST['elig_to'][$i]) == 4 ? $_POST['elig_to'][$i] . '-01-01' : $_POST['elig_to'][$i]) : null;
                 $en = trim($_POST['elig_number'][$i] ?? '');
                 $ed = !empty($_POST['elig_exam_date'][$i]) ? $_POST['elig_exam_date'][$i] : null;
                 $ep = trim($_POST['elig_exam_place'][$i] ?? '');
@@ -599,12 +599,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
 
         // Recognitions
         if (!empty($_POST['recognition_title'])) {
-            $rcstmt = $conn->prepare("INSERT INTO employee_recognitions (employee_id, recognition_title) VALUES (?,?)");
-            foreach ($_POST['recognition_title'] as $rc) {
+            $rcstmt = $conn->prepare("INSERT INTO employee_recognitions (employee_id, recognition_title, issued_by, date_awarded) VALUES (?,?,?,?)");
+            foreach ($_POST['recognition_title'] as $i => $rc) {
                 if (empty(trim($rc)))
                     continue;
-                $rc = trim($rc);
-                $rcstmt->bind_param("is", $new_id, $rc);
+                $rt = trim($rc);
+                $rib = trim($_POST['recognition_issued_by'][$i] ?? '');
+                $rd = !empty($_POST['recognition_date'][$i]) ? $_POST['recognition_date'][$i] : null;
+                $rcstmt->bind_param("isss", $new_id, $rt, $rib, $rd);
                 $rcstmt->execute();
             }
             $rcstmt->close();
@@ -826,6 +828,11 @@ document.addEventListener('DOMContentLoaded', () => {
     updateWizardUI(getCurrentStep());
 });
 </script>
+
+<!-- Back to Top Button -->
+<button type="button" id="backToTop" onclick="scrollToTop()" title="Back to Top">
+    <i class="fas fa-chevron-up"></i>
+</button>
 
 <?php require_once '../includes/footer.php'; ?>
 

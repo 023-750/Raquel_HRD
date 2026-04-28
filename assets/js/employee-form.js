@@ -26,6 +26,11 @@ function showStep(step) {
     const stepInput = document.getElementById('currentStepInput');
     if (stepInput) stepInput.value = step;
 
+    // Update URL without refreshing to persist step on reload
+    const url = new URL(window.location);
+    url.searchParams.set('step', step);
+    window.history.pushState({}, '', url);
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -71,11 +76,11 @@ function addEducationRow() {
     div.innerHTML = `
         <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
         <div class="row">
-            <div class="col-md-2 mb-2"><select class="form-select form-select-sm" name="edu_level[]"><option value="Elementary">Elementary</option><option value="Secondary">Secondary</option><option value="Vocational">Vocational</option><option value="College" selected>College</option><option value="Graduate Studies">Graduate</option></select></div>
+            <div class="col-md-2 mb-2"><select class="form-select form-select-sm" name="edu_level[]"><option value="Elementary">Elementary</option><option value="Secondary">Secondary / Junior High</option><option value="Senior High School">Senior High School</option><option value="Vocational">Vocational / Trade Course</option><option value="College" selected>College</option><option value="Graduate Studies">Graduate Studies</option></select></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_school[]" placeholder="School Name"></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_degree[]" placeholder="Degree/Course"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="edu_from[]"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="edu_to[]"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">From (Year)</label><input type="number" class="form-control form-control-sm" name="edu_from[]" min="1900" max="2099" placeholder="Year"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">To (Year)</label><input type="number" class="form-control form-control-sm" name="edu_to[]" min="1900" max="2099" placeholder="Year"></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_units[]" placeholder="Highest Level/Units"></div>
             <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="edu_year_grad[]" placeholder="Year Grad"></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_honors[]" placeholder="Honors"></div>
@@ -91,8 +96,8 @@ function addWorkRow() {
     div.innerHTML = `
         <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
         <div class="row">
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="work_from[]"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="work_to[]"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">Start (Year)</label><input type="number" class="form-control form-control-sm" name="work_from[]" min="1900" max="2099" placeholder="Year"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">End (Year)</label><input type="number" class="form-control form-control-sm" name="work_to[]" min="1900" max="2099" placeholder="Year"></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_title[]" placeholder="Job Title"></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_company[]" placeholder="Company"></div>
             <div class="col-md-2 mb-2"><input type="number" step="0.01" class="form-control form-control-sm" name="work_salary[]" placeholder="Salary"></div>
@@ -110,8 +115,8 @@ function addTrainingRow() {
     div.innerHTML = `
         <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
         <div class="row">
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="training_from[]"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="training_to[]"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">Start (Year)</label><input type="number" class="form-control form-control-sm" name="training_from[]" min="1900" max="2099" placeholder="Year"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">End (Year)</label><input type="number" class="form-control form-control-sm" name="training_to[]" min="1900" max="2099" placeholder="Year"></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="training_title[]" placeholder="Training Title"></div>
             <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="training_type[]" placeholder="Type"></div>
             <div class="col-md-1 mb-2"><input type="number" class="form-control form-control-sm" name="training_hours[]" placeholder="Hrs"></div>
@@ -128,8 +133,8 @@ function addVoluntaryRow() {
     div.innerHTML = `
         <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
         <div class="row">
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="vol_from[]"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="vol_to[]"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">Start (Year)</label><input type="number" class="form-control form-control-sm" name="vol_from[]" min="1900" max="2099" placeholder="Year"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">End (Year)</label><input type="number" class="form-control form-control-sm" name="vol_to[]" min="1900" max="2099" placeholder="Year"></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_org[]" placeholder="Organization"></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_address[]" placeholder="Address"></div>
             <div class="col-md-1 mb-2"><input type="number" class="form-control form-control-sm" name="vol_hours[]" placeholder="Hrs"></div>
@@ -147,8 +152,8 @@ function addEligibilityRow() {
         <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
         <div class="row">
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="elig_title[]" placeholder="License/Cert Title"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="elig_from[]"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="elig_to[]"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">Start (Year)</label><input type="number" class="form-control form-control-sm" name="elig_from[]" min="1900" max="2099" placeholder="Year"></div>
+            <div class="col-md-2 mb-2"><label class="small text-muted d-block">End (Year)</label><input type="number" class="form-control form-control-sm" name="elig_to[]" min="1900" max="2099" placeholder="Year"></div>
             <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="elig_number[]" placeholder="License No."></div>
             <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="elig_exam_date[]"></div>
             <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="elig_exam_place[]" placeholder="Place of Exam"></div>
@@ -156,7 +161,22 @@ function addEligibilityRow() {
     c.appendChild(div);
 }
 
-// Simple single-field row (skills, recognitions, memberships)
+// Recognition row
+function addRecognitionRow() {
+    const c = document.getElementById('recognitionsContainer');
+    const div = document.createElement('div');
+    div.className = 'repeater-row';
+    div.innerHTML = `
+        <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
+        <div class="row">
+            <div class="col-md-4 mb-2"><label class="small text-muted d-block">Award/Recognition Title</label><input type="text" class="form-control form-control-sm" name="recognition_title[]" placeholder="Title"></div>
+            <div class="col-md-5 mb-2"><label class="small text-muted d-block">Issued By / Organization</label><input type="text" class="form-control form-control-sm" name="recognition_issued_by[]" placeholder="Organization"></div>
+            <div class="col-md-3 mb-2"><label class="small text-muted d-block">Date Received</label><input type="date" class="form-control form-control-sm" name="recognition_date[]"></div>
+        </div>`;
+    c.appendChild(div);
+}
+
+// Simple single-field row (skills, memberships)
 function addSimpleRow(containerId, fieldName, placeholder) {
     const c = document.getElementById(containerId);
     const div = document.createElement('div');
@@ -349,11 +369,12 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // === AUTO-SAVE DRAFT FEATURE ===
-    const DRAFT_KEY = 'hris_add_employee_draft';
-    const addForm = document.getElementById('addEmployeeForm');
+    const isEdit = addForm.dataset.isEdit === 'true';
+    const employeeId = isEdit ? (new URLSearchParams(window.location.search)).get('id') : 'new';
+    const DRAFT_KEY = `hris_employee_draft_${employeeId}`;
 
-    // Only run if we are on the ADD page
-    if (addForm && addForm.dataset.isEdit === 'false') {
+    // Run for both Add and Edit pages
+    if (addForm) {
         let isSaving = false;
 
         const saveDraft = () => {
@@ -390,6 +411,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         addForm.addEventListener('input', debounceSave);
         addForm.addEventListener('change', debounceSave);
+
+        // Clear draft if success message is present in URL
+        if (urlParams.get('msg') && urlParams.get('msg').toLowerCase().includes('success')) {
+            localStorage.removeItem(DRAFT_KEY);
+        }
 
         // Resume draft logic
         const savedDraft = localStorage.getItem(DRAFT_KEY);

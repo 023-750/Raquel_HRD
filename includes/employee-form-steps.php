@@ -415,28 +415,40 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
                                 <option value="Elementary" <?php echo $edu['education_level'] === 'Elementary' ? 'selected' : ''; ?>>
                                     Elementary</option>
                                 <option value="Secondary" <?php echo $edu['education_level'] === 'Secondary' ? 'selected' : ''; ?>>
-                                    Secondary</option>
+                                    Secondary / Junior High</option>
+                                <option value="Senior High School" <?php echo $edu['education_level'] === 'Senior High School' ? 'selected' : ''; ?>>
+                                    Senior High School</option>
                                 <option value="Vocational" <?php echo $edu['education_level'] === 'Vocational' ? 'selected' : ''; ?>>
-                                    Vocational</option>
+                                    Vocational / Trade Course</option>
                                 <option value="College" <?php echo $edu['education_level'] === 'College' ? 'selected' : ''; ?>>College
                                 </option>
-                                <option value="Graduate Studies" <?php echo $edu['education_level'] === 'Graduate Studies' ? 'selected' : ''; ?>>Graduate</option>
+                                <option value="Graduate Studies" <?php echo $edu['education_level'] === 'Graduate Studies' ? 'selected' : ''; ?>>Graduate Studies</option>
                             </select></div>
                         <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_school[]"
                                 value="<?php echo e($edu['school_name']); ?>" placeholder="School Name"></div>
                         <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_degree[]"
                                 value="<?php echo e($edu['degree_course']); ?>" placeholder="Degree/Course"></div>
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="edu_from[]"
-                                value="<?php echo e($edu['period_from']); ?>"></div>
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="edu_to[]"
-                                value="<?php echo e($edu['period_to']); ?>"></div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">From (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="edu_from[]"
+                                value="<?php echo !empty($edu['period_from']) ? date('Y', strtotime($edu['period_from'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">To (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="edu_to[]"
+                                value="<?php echo !empty($edu['period_to']) ? date('Y', strtotime($edu['period_to'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
                         <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_units[]"
                                 value="<?php echo e($edu['highest_level_units']); ?>" placeholder="Highest Level/Units"></div>
                         <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm"
                                 name="edu_year_grad[]" value="<?php echo e($edu['year_graduated']); ?>" placeholder="Year Grad">
                         </div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_honors[]"
-                                value="<?php echo e($edu['honors_received']); ?>" placeholder="Honors"></div>
+                        <div class="col-md-12 mb-2">
+                            <label class="small text-muted d-block">Honors / Awards / Distinctions Received</label>
+                            <textarea class="form-control form-control-sm" name="edu_honors[]" rows="2" placeholder="List honors received (e.g., Cum Laude, Dean's List, etc.)"><?php echo e($edu['honors_received']); ?></textarea>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -458,10 +470,18 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
                     <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i
                             class="fas fa-times"></i></button>
                     <div class="row">
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="work_from[]"
-                                value="<?php echo e($w['date_from']); ?>"></div>
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="work_to[]"
-                                value="<?php echo e($w['date_to']); ?>"></div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">Start (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="work_from[]"
+                                value="<?php echo !empty($w['date_from']) ? date('Y', strtotime($w['date_from'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">End (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="work_to[]"
+                                value="<?php echo !empty($w['date_to']) ? date('Y', strtotime($w['date_to'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
                         <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_title[]"
                                 value="<?php echo e($w['job_title']); ?>" placeholder="Job Title"></div>
                         <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_company[]"
@@ -492,10 +512,18 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
                     <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i
                             class="fas fa-times"></i></button>
                     <div class="row">
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm"
-                                name="training_from[]" value="<?php echo e($t['date_from']); ?>"></div>
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="training_to[]"
-                                value="<?php echo e($t['date_to']); ?>"></div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">Start (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="training_from[]"
+                                value="<?php echo !empty($t['date_from']) ? date('Y', strtotime($t['date_from'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">End (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="training_to[]"
+                                value="<?php echo !empty($t['date_to']) ? date('Y', strtotime($t['date_to'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
                         <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm"
                                 name="training_title[]" value="<?php echo e($t['training_title']); ?>"
                                 placeholder="Training Title"></div>
@@ -526,10 +554,18 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
                     <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i
                             class="fas fa-times"></i></button>
                     <div class="row">
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="vol_from[]"
-                                value="<?php echo e($vol['date_from']); ?>"></div>
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="vol_to[]"
-                                value="<?php echo e($vol['date_to']); ?>"></div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">Start (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="vol_from[]"
+                                value="<?php echo !empty($vol['date_from']) ? date('Y', strtotime($vol['date_from'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">End (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="vol_to[]"
+                                value="<?php echo !empty($vol['date_to']) ? date('Y', strtotime($vol['date_to'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
                         <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_org[]"
                                 value="<?php echo e($vol['organization_name']); ?>" placeholder="Organization"></div>
                         <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_address[]"
@@ -560,10 +596,18 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
                     <div class="row">
                         <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="elig_title[]"
                                 value="<?php echo e($el['license_title']); ?>" placeholder="License/Cert Title"></div>
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="elig_from[]"
-                                value="<?php echo e($el['date_from']); ?>"></div>
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="elig_to[]"
-                                value="<?php echo e($el['date_to']); ?>"></div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">Start (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="elig_from[]"
+                                value="<?php echo !empty($el['date_from']) ? date('Y', strtotime($el['date_from'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="small text-muted d-block">End (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="elig_to[]"
+                                value="<?php echo !empty($el['date_to']) ? date('Y', strtotime($el['date_to'])) : ''; ?>" 
+                                min="1900" max="2099" placeholder="Year">
+                        </div>
                         <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="elig_number[]"
                                 value="<?php echo e($el['license_number']); ?>" placeholder="License No."></div>
                         <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm"
@@ -602,16 +646,29 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
     <div id="recognitionsContainer">
         <?php if ($isEdit && !empty($employeeRecognitions)): ?>
             <?php foreach ($employeeRecognitions as $rc): ?>
-                <div class="repeater-row"><button type="button" class="btn-remove-row"
-                        onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button><input type="text"
-                        class="form-control form-control-sm" name="recognition_title[]"
-                        value="<?php echo e($rc['recognition_title']); ?>"></div>
+                <div class="repeater-row">
+                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label class="small text-muted d-block">Award/Recognition Title</label>
+                            <input type="text" class="form-control form-control-sm" name="recognition_title[]" value="<?php echo e($rc['recognition_title']); ?>" placeholder="Title">
+                        </div>
+                        <div class="col-md-5 mb-2">
+                            <label class="small text-muted d-block">Issued By / Organization</label>
+                            <input type="text" class="form-control form-control-sm" name="recognition_issued_by[]" value="<?php echo e($rc['issued_by'] ?? ''); ?>" placeholder="Organization">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="small text-muted d-block">Date Received</label>
+                            <input type="date" class="form-control form-control-sm" name="recognition_date[]" value="<?php echo e($rc['date_awarded'] ?? ''); ?>">
+                        </div>
+                    </div>
+                </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-    <button type="button" class="btn-add-row mb-3"
-        onclick="addSimpleRow('recognitionsContainer','recognition_title','Award/Recognition')"><i
-            class="fas fa-plus me-1"></i> Add Recognition</button>
+    <button type="button" class="btn-add-row mb-3" onclick="addRecognitionRow()">
+        <i class="fas fa-plus me-1"></i> Add Award/Recognition
+    </button>
 
     <div class="form-section-title mt-3"><i class="fas fa-users-cog"></i> Membership in Organizations</div>
     <div id="membershipsContainer">
@@ -634,17 +691,58 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
 <!-- ====== STEP 9: Assets & Liabilities ====== -->
 <div class="step-content" id="step9" style="display:none;">
     <div class="form-section-title"><i class="fas fa-building"></i> Real Properties</div>
-    <div id="realPropContainer"></div>
+    <div id="realPropContainer">
+        <?php if ($isEdit && !empty($employeeRealProps)): ?>
+            <?php foreach ($employeeRealProps as $rp): ?>
+                <div class="repeater-row">
+                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
+                    <div class="row">
+                        <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="rprop_desc[]" value="<?php echo e($rp['description']); ?>" placeholder="Description"></div>
+                        <div class="col-md-2"><input type="text" class="form-control form-control-sm" name="rprop_kind[]" value="<?php echo e($rp['kind']); ?>" placeholder="Kind"></div>
+                        <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="rprop_location[]" value="<?php echo e($rp['exact_location']); ?>" placeholder="Location"></div>
+                        <div class="col-md-2"><input type="number" step="0.01" class="form-control form-control-sm" name="rprop_assessed[]" value="<?php echo e($rp['assessed_value']); ?>" placeholder="Assessed Value"></div>
+                        <div class="col-md-2"><input type="number" step="0.01" class="form-control form-control-sm" name="rprop_market[]" value="<?php echo e($rp['market_value']); ?>" placeholder="Market Value"></div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
     <button type="button" class="btn-add-row mb-3" onclick="addRealPropertyRow()"><i class="fas fa-plus me-1"></i> Add
         Real Property</button>
 
     <div class="form-section-title mt-3"><i class="fas fa-car"></i> Personal Properties</div>
-    <div id="personalPropContainer"></div>
+    <div id="personalPropContainer">
+        <?php if ($isEdit && !empty($employeePersonalProps)): ?>
+            <?php foreach ($employeePersonalProps as $pp): ?>
+                <div class="repeater-row">
+                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
+                    <div class="row">
+                        <div class="col-md-5"><input type="text" class="form-control form-control-sm" name="pprop_desc[]" value="<?php echo e($pp['description']); ?>" placeholder="Description"></div>
+                        <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="pprop_year[]" value="<?php echo e($pp['year_acquired']); ?>" placeholder="Year Acquired"></div>
+                        <div class="col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="pprop_cost[]" value="<?php echo e($pp['acquisition_cost']); ?>" placeholder="Acquisition Cost"></div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
     <button type="button" class="btn-add-row mb-3" onclick="addPersonalPropertyRow()"><i class="fas fa-plus me-1"></i>
         Add Personal Property</button>
 
     <div class="form-section-title mt-3"><i class="fas fa-file-invoice-dollar"></i> Liabilities</div>
-    <div id="liabilitiesContainer"></div>
+    <div id="liabilitiesContainer">
+        <?php if ($isEdit && !empty($employeeLiabilities)): ?>
+            <?php foreach ($employeeLiabilities as $lb): ?>
+                <div class="repeater-row">
+                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
+                    <div class="row">
+                        <div class="col-md-5"><input type="text" class="form-control form-control-sm" name="liab_nature[]" value="<?php echo e($lb['nature_of_liability']); ?>" placeholder="Nature of Liability"></div>
+                        <div class="col-md-4"><input type="text" class="form-control form-control-sm" name="liab_creditor[]" value="<?php echo e($lb['creditor_name']); ?>" placeholder="Creditor"></div>
+                        <div class="col-md-3"><input type="number" step="0.01" class="form-control form-control-sm" name="liab_balance[]" value="<?php echo e($lb['outstanding_balance']); ?>" placeholder="Balance"></div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
     <button type="button" class="btn-add-row mb-3" onclick="addLiabilityRow()"><i class="fas fa-plus me-1"></i> Add
         Liability</button>
 
@@ -738,8 +836,8 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
                         value="<?php echo isset($employeeRefs[$r]) ? e($employeeRefs[$r]['reference_address']) : ''; ?>">
                 </div>
                 <div class="col-md-3 mb-2">
-                    <label class="form-label">Telephone No.</label>
-                    <input type="text" class="form-control form-control-sm" name="ref_telephone[]"
+                    <label class="form-label">Mobile Number</label>
+                    <input type="text" class="form-control form-control-sm" name="ref_telephone[]" maxlength="11"
                         value="<?php echo isset($employeeRefs[$r]) ? e($employeeRefs[$r]['reference_telephone']) : ''; ?>">
                 </div>
             </div>

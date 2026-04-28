@@ -278,6 +278,32 @@ while ($row = $branch_q->fetch_assoc()) {
     .perf-filter-btn.active.exceeds { background: #17a2b8; color: #fff; }
     .perf-filter-btn.active.meets { background: #ffc107; color: #000; }
     .perf-filter-btn.active.needs { background: #dc3545; color: #fff; }
+    
+    /* Responsive Filter Group */
+    @media (max-width: 768px) {
+        .filter-group {
+            width: 100%;
+            overflow-x: auto;
+            white-space: nowrap;
+            padding: 5px 2px 10px;
+            display: flex !important;
+            gap: 8px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        .filter-group::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+        .perf-filter-btn {
+            flex: 0 0 auto;
+        }
+        .cc-header.d-flex.justify-content-between {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 15px;
+        }
+    }
 
     .chart-label-premium {
         font-size: 0.7rem;

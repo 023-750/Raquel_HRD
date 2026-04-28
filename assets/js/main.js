@@ -8,12 +8,22 @@
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.getElementById('sidebarOverlay');
+    const body = document.body;
     const isMobile = window.matchMedia('(max-width: 992px)').matches;
 
     if (isMobile) {
         // Mobile behavior: slide-in/slide-out
         sidebar.classList.toggle('show');
         if (overlay) overlay.classList.toggle('show');
+        
+        // Toggle body scroll lock
+        if (sidebar.classList.contains('show')) {
+            body.classList.add('mobile-sidebar-active');
+            document.documentElement.classList.add('mobile-sidebar-active');
+        } else {
+            body.classList.remove('mobile-sidebar-active');
+            document.documentElement.classList.remove('mobile-sidebar-active');
+        }
     } else {
         // Desktop behavior: collapse to icon-only
         document.documentElement.classList.toggle('sidebar-collapsed');
@@ -138,3 +148,23 @@ document.addEventListener("DOMContentLoaded", function () {
 if (typeof window !== 'undefined') {
     window.initDynamicComponents = initDynamicComponents;
 }
+
+// Back to Top Logic
+window.addEventListener('scroll', function() {
+    const btn = document.getElementById('backToTop');
+    if (!btn) return;
+    if (window.pageYOffset > 300) {
+        btn.style.display = 'flex';
+    } else {
+        btn.style.display = 'none';
+    }
+});
+
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
+

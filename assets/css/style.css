@@ -258,12 +258,13 @@ a {
     top: 0;
     left: 0;
     width: var(--sidebar-width);
-    height: 100vh;
+    bottom: 0; /* Use bottom: 0 instead of fixed height for better mobile compatibility */
     background: #111111;
     color: rgba(255, 255, 255, 0.8);
     padding: 0;
-    z-index: 1001;
+    z-index: 1040; /* Above top-navbar (1030) */
     overflow-y: auto;
+    overscroll-behavior: contain; /* Prevent scroll chaining to body */
     transition: width 0.3s ease, transform 0.3s ease;
     border-right: none;
     box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
@@ -300,7 +301,7 @@ a {
 }
 
 .sidebar-nav {
-    padding: 15px 0;
+    padding: 15px 0 100px; /* Extra bottom padding to ensure logout is visible on long menus */
 }
 
 .sidebar-nav .nav-label {
@@ -1187,7 +1188,21 @@ a {
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
+    z-index: 1035; /* Above top-navbar (1030) but below sidebar (1040) */
+}
+
+/* Prevent scrolling when mobile sidebar is active */
+html.mobile-sidebar-active,
+body.mobile-sidebar-active {
+    overflow: hidden !important;
+    height: 100% !important;
+    width: 100% !important;
+    position: relative;
+    touch-action: none; /* Disable touch gestures on body */
+}
+
+body.mobile-sidebar-active .sidebar {
+    touch-action: auto; /* Re-enable touch gestures on sidebar itself */
 }
 
 .sidebar-overlay.show {
@@ -2740,3 +2755,40 @@ video {
         margin: 0 -12px -12px;
     }
 }
+
+/* Back to Top Button */
+#backToTop {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 45px;
+    height: 45px;
+    background: var(--primary-blue);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 2000;
+    transition: all 0.3s ease;
+    opacity: 0.8;
+}
+
+#backToTop:hover {
+    opacity: 1;
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+@media (max-width: 768px) {
+    #backToTop {
+        bottom: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+    }
+}
+

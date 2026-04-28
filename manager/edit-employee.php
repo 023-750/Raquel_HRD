@@ -86,6 +86,9 @@ $employeeEligibility = $conn->query("SELECT * FROM employee_eligibility WHERE em
 $employeeSkills = $conn->query("SELECT * FROM employee_skills WHERE employee_id = $eid ORDER BY skill_id")->fetch_all(MYSQLI_ASSOC);
 $employeeRecognitions = $conn->query("SELECT * FROM employee_recognitions WHERE employee_id = $eid ORDER BY recognition_id")->fetch_all(MYSQLI_ASSOC);
 $employeeMemberships = $conn->query("SELECT * FROM employee_memberships WHERE employee_id = $eid ORDER BY membership_id")->fetch_all(MYSQLI_ASSOC);
+$employeeRealProps = $conn->query("SELECT * FROM employee_real_properties WHERE employee_id = $eid ORDER BY property_id")->fetch_all(MYSQLI_ASSOC);
+$employeePersonalProps = $conn->query("SELECT * FROM employee_personal_properties WHERE employee_id = $eid ORDER BY property_id")->fetch_all(MYSQLI_ASSOC);
+$employeeLiabilities = $conn->query("SELECT * FROM employee_liabilities WHERE employee_id = $eid ORDER BY liability_id")->fetch_all(MYSQLI_ASSOC);
 $employeeRefs = $conn->query("SELECT * FROM employee_references WHERE employee_id = $eid ORDER BY reference_id")->fetch_all(MYSQLI_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -424,8 +427,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $a = $eid;
                 $b = trim($_POST['edu_school'][$i]);
                 $c = trim($_POST['edu_degree'][$i] ?? '');
-                $d = !empty($_POST['edu_from'][$i]) ? $_POST['edu_from'][$i] : null;
-                $f = !empty($_POST['edu_to'][$i]) ? $_POST['edu_to'][$i] : null;
+                $d = !empty($_POST['edu_from'][$i]) ? (strlen($_POST['edu_from'][$i]) == 4 ? $_POST['edu_from'][$i] . '-01-01' : $_POST['edu_from'][$i]) : null;
+                $f = !empty($_POST['edu_to'][$i]) ? (strlen($_POST['edu_to'][$i]) == 4 ? $_POST['edu_to'][$i] . '-01-01' : $_POST['edu_to'][$i]) : null;
                 $g = trim($_POST['edu_units'][$i] ?? '');
                 $h = trim($_POST['edu_year_grad'][$i] ?? '');
                 $j = trim($_POST['edu_honors'][$i] ?? '');
@@ -442,8 +445,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty(trim($wt)))
                     continue;
                 $a = $eid;
-                $b = !empty($_POST['work_from'][$i]) ? $_POST['work_from'][$i] : null;
-                $c = !empty($_POST['work_to'][$i]) ? $_POST['work_to'][$i] : null;
+                $b = !empty($_POST['work_from'][$i]) ? (strlen($_POST['work_from'][$i]) == 4 ? $_POST['work_from'][$i] . '-01-01' : $_POST['work_from'][$i]) : null;
+                $c = !empty($_POST['work_to'][$i]) ? (strlen($_POST['work_to'][$i]) == 4 ? $_POST['work_to'][$i] . '-01-01' : $_POST['work_to'][$i]) : null;
                 $d = trim($wt);
                 $f = trim($_POST['work_company'][$i] ?? '');
                 $g = !empty($_POST['work_salary'][$i]) ? (float) $_POST['work_salary'][$i] : null;
@@ -462,8 +465,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty(trim($tt)))
                     continue;
                 $a = $eid;
-                $b = !empty($_POST['training_from'][$i]) ? $_POST['training_from'][$i] : null;
-                $c = !empty($_POST['training_to'][$i]) ? $_POST['training_to'][$i] : null;
+                $b = !empty($_POST['training_from'][$i]) ? (strlen($_POST['training_from'][$i]) == 4 ? $_POST['training_from'][$i] . '-01-01' : $_POST['training_from'][$i]) : null;
+                $c = !empty($_POST['training_to'][$i]) ? (strlen($_POST['training_to'][$i]) == 4 ? $_POST['training_to'][$i] . '-01-01' : $_POST['training_to'][$i]) : null;
                 $d = trim($tt);
                 $f = trim($_POST['training_type'][$i] ?? '');
                 $g = !empty($_POST['training_hours'][$i]) ? (float) $_POST['training_hours'][$i] : null;
@@ -481,8 +484,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty(trim($vo)))
                     continue;
                 $a = $eid;
-                $b = !empty($_POST['vol_from'][$i]) ? $_POST['vol_from'][$i] : null;
-                $c = !empty($_POST['vol_to'][$i]) ? $_POST['vol_to'][$i] : null;
+                $b = !empty($_POST['vol_from'][$i]) ? (strlen($_POST['vol_from'][$i]) == 4 ? $_POST['vol_from'][$i] . '-01-01' : $_POST['vol_from'][$i]) : null;
+                $c = !empty($_POST['vol_to'][$i]) ? (strlen($_POST['vol_to'][$i]) == 4 ? $_POST['vol_to'][$i] . '-01-01' : $_POST['vol_to'][$i]) : null;
                 $d = trim($vo);
                 $f = trim($_POST['vol_address'][$i] ?? '');
                 $g = !empty($_POST['vol_hours'][$i]) ? (float) $_POST['vol_hours'][$i] : null;
@@ -500,8 +503,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty(trim($et)))
                     continue;
                 $a = $eid;
-                $b = !empty($_POST['elig_from'][$i]) ? $_POST['elig_from'][$i] : null;
-                $c = !empty($_POST['elig_to'][$i]) ? $_POST['elig_to'][$i] : null;
+                $b = !empty($_POST['elig_from'][$i]) ? (strlen($_POST['elig_from'][$i]) == 4 ? $_POST['elig_from'][$i] . '-01-01' : $_POST['elig_from'][$i]) : null;
+                $c = !empty($_POST['elig_to'][$i]) ? (strlen($_POST['elig_to'][$i]) == 4 ? $_POST['elig_to'][$i] . '-01-01' : $_POST['elig_to'][$i]) : null;
                 $d = trim($_POST['elig_number'][$i] ?? '');
                 $f = !empty($_POST['elig_exam_date'][$i]) ? $_POST['elig_exam_date'][$i] : null;
                 $g = trim($_POST['elig_exam_place'][$i] ?? '');
@@ -525,13 +528,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sk->close();
         }
         if (!empty($_POST['recognition_title'])) {
-            $rc = $conn->prepare("INSERT INTO employee_recognitions (employee_id, recognition_title) VALUES (?,?)");
-            foreach ($_POST['recognition_title'] as $r) {
+            $rc = $conn->prepare("INSERT INTO employee_recognitions (employee_id, recognition_title, issued_by, date_awarded) VALUES (?,?,?,?)");
+            foreach ($_POST['recognition_title'] as $i => $r) {
                 if (empty(trim($r)))
                     continue;
                 $a = $eid;
-                $b = trim($r);
-                $rc->bind_param("is", $a, $b);
+                $rt = trim($r);
+                $rib = trim($_POST['recognition_issued_by'][$i] ?? '');
+                $rd = !empty($_POST['recognition_date'][$i]) ? $_POST['recognition_date'][$i] : null;
+                $rc->bind_param("isss", $a, $rt, $rib, $rd);
                 $rc->execute();
             }
             $rc->close();
@@ -750,5 +755,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateWizardUI(getCurrentStep());
 });
 </script>
+
+<!-- Back to Top Button -->
+<button type="button" id="backToTop" onclick="scrollToTop()" title="Back to Top">
+    <i class="fas fa-chevron-up"></i>
+</button>
 
 <?php require_once '../includes/footer.php'; ?>

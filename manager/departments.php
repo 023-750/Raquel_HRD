@@ -91,6 +91,76 @@ $departments = $conn->query("
 ");
 ?>
 
+<style>
+    @media (max-width: 768px) {
+        .table-responsive {
+            border: none;
+        }
+        #deptTable {
+            border: none;
+        }
+        #deptTable thead {
+            display: none;
+        }
+        #deptTable tbody {
+            background: transparent;
+        }
+        #deptTable tr {
+            display: block;
+            background: #fff;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #f0f0f0;
+            position: relative;
+        }
+        #deptTable td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: none;
+            padding: 10px 0;
+            text-align: right;
+            font-size: 0.9rem;
+        }
+        #deptTable td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: left;
+        }
+        /* Dept Name Highlight */
+        #deptTable td:nth-child(1) {
+            justify-content: flex-start;
+            padding-top: 5px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        #deptTable td:nth-child(1)::before {
+            display: none;
+        }
+        #deptTable td:nth-child(1) strong {
+            font-size: 1.1rem;
+            color: var(--primary-blue);
+        }
+        /* Action buttons grouping */
+        #deptTable td:last-child {
+            justify-content: flex-end;
+            gap: 10px;
+            border-top: 1px solid #f5f5f5;
+            margin-top: 10px;
+            padding-bottom: 5px;
+        }
+        #deptTable td:last-child::before {
+            display: none;
+        }
+    }
+</style>
+
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted mb-0">Manage company departments</p>
     <div>
@@ -128,13 +198,15 @@ $departments = $conn->query("
                 <tbody>
                     <?php if ($departments->num_rows === 0): ?>
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4"><i class="fas fa-sitemap fa-2x mb-2 d-block"
-                                    style="opacity:0.3;"></i>No departments found. Add your first department above.</td>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-sitemap fa-2x mb-2 d-block" style="opacity:0.3;"></i>
+                                No departments found. Add your first department above.
+                            </td>
                         </tr>
                     <?php else: ?>
                         <?php while ($d = $departments->fetch_assoc()): ?>
                             <tr>
-                                <td>
+                                <td data-label="Department">
                                     <div class="d-flex align-items-center">
                                         <div class="rounded-circle me-2 text-white d-flex align-items-center justify-content-center"
                                             style="width:32px;height:32px;background:var(--primary-blue);font-size:0.8rem;font-weight:bold;">
@@ -145,25 +217,25 @@ $departments = $conn->query("
                                         </strong>
                                     </div>
                                 </td>
-                                <td class="small text-muted">
+                                <td data-label="Description" class="small text-muted">
                                     <?php echo e($d['description'] ?: 'No description'); ?>
                                 </td>
-                                <td>
+                                <td data-label="Employees">
                                     <span class="badge bg-info">
                                         <?php echo $d['employee_count']; ?>
                                     </span>
                                 </td>
-                                <td>
+                                <td data-label="Status">
                                     <?php if ($d['is_active']): ?>
                                         <span class="badge bg-success">Active</span>
                                     <?php else: ?>
                                         <span class="badge bg-secondary">Inactive</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><small>
+                                <td data-label="Created"><small>
                                         <?php echo formatDate($d['created_at']); ?>
                                     </small></td>
-                                <td>
+                                <td data-label="Actions">
                                     <button class="btn btn-sm btn-outline-primary" title="Edit"
                                         onclick="openEditModal(<?php echo $d['department_id']; ?>, '<?php echo e(addslashes($d['department_name'])); ?>', '<?php echo e(addslashes($d['description'] ?? '')); ?>', <?php echo $d['is_active']; ?>)"
                                         data-bs-toggle="modal" data-bs-target="#editDeptModal">
@@ -178,6 +250,7 @@ $departments = $conn->query("
                             </tr>
                         <?php endwhile; ?>
                     <?php endif; ?>
+                </tbody>
                 </tbody>
             </table>
         </div>

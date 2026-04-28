@@ -6,37 +6,51 @@ require_once '../includes/functions.php';
 
 // Handle activate/deactivate
 if (isset($_GET['deactivate']) && is_numeric($_GET['deactivate'])) {
-    $eid = (int)$_GET['deactivate'];
+    $eid = (int) $_GET['deactivate'];
     $conn->query("UPDATE employees SET is_active = 0 WHERE employee_id = $eid");
     logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'Employee', $eid, 'Deactivated employee');
     redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee deactivated successfully.');
 }
 if (isset($_GET['activate']) && is_numeric($_GET['activate'])) {
-    $eid = (int)$_GET['activate'];
+    $eid = (int) $_GET['activate'];
     $conn->query("UPDATE employees SET is_active = 1 WHERE employee_id = $eid");
     logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'Employee', $eid, 'Reactivated employee');
     redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee reactivated successfully.');
 }
 
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $eid = (int)$_GET['delete'];
+    $eid = (int) $_GET['delete'];
     // Delete the employee and all normalized sub-tables
     $tables = [
-        'employee_details', 'employee_government_ids', 'employee_addresses', 
-        'employee_contacts', 'employee_emergency_contacts', 'employee_disclosures', 
-        'employee_family', 'employee_children', 'employee_siblings', 
-        'employee_education', 'employee_work_experience', 'employee_trainings', 
-        'employee_voluntary_work', 'employee_eligibility', 'employee_skills', 
-        'employee_recognitions', 'employee_memberships', 'employee_real_properties', 
-        'employee_personal_properties', 'employee_liabilities', 'employee_references'
+        'employee_details',
+        'employee_government_ids',
+        'employee_addresses',
+        'employee_contacts',
+        'employee_emergency_contacts',
+        'employee_disclosures',
+        'employee_family',
+        'employee_children',
+        'employee_siblings',
+        'employee_education',
+        'employee_work_experience',
+        'employee_trainings',
+        'employee_voluntary_work',
+        'employee_eligibility',
+        'employee_skills',
+        'employee_recognitions',
+        'employee_memberships',
+        'employee_real_properties',
+        'employee_personal_properties',
+        'employee_liabilities',
+        'employee_references'
     ];
     foreach ($tables as $tbl) {
         $conn->query("DELETE FROM $tbl WHERE employee_id = $eid");
     }
-    
+
     // Delete career movements and evaluations (Evaluations have their own score sub-deletion)
     $conn->query("DELETE FROM career_movements WHERE employee_id = $eid");
-    
+
     $conn->query("DELETE FROM employees WHERE employee_id = $eid");
     logAudit($conn, $_SESSION['user_id'], 'DELETE', 'Employee', $eid, 'Permanently deleted employee');
     redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee deleted permanently.');
@@ -57,15 +71,18 @@ $employees = $conn->query("
 // Fetch distinct values for filter dropdowns
 $job_titles_res = $conn->query("SELECT DISTINCT job_title FROM employees WHERE job_title IS NOT NULL AND job_title != '' ORDER BY job_title ASC");
 $job_titles = [];
-while ($r = $job_titles_res->fetch_assoc()) $job_titles[] = $r['job_title'];
+while ($r = $job_titles_res->fetch_assoc())
+    $job_titles[] = $r['job_title'];
 
 $departments_res = $conn->query("SELECT d.department_name FROM departments d ORDER BY d.department_name ASC");
 $departments = [];
-while ($r = $departments_res->fetch_assoc()) $departments[] = $r['department_name'];
+while ($r = $departments_res->fetch_assoc())
+    $departments[] = $r['department_name'];
 
 $branches_res = $conn->query("SELECT b.branch_name FROM branches b ORDER BY b.branch_name ASC");
 $branches = [];
-while ($r = $branches_res->fetch_assoc()) $branches[] = $r['branch_name'];
+while ($r = $branches_res->fetch_assoc())
+    $branches[] = $r['branch_name'];
 
 $statuses = ['Regular', 'Probationary', 'Contractual'];
 $selected_branch = $_GET['branch'] ?? '';
@@ -82,11 +99,13 @@ $selected_branch = $_GET['branch'] ?? '';
         gap: 12px;
         align-items: center;
     }
+
     .filter-group {
         position: relative;
         min-width: 180px;
         flex: 1;
     }
+
     .filter-group label {
         display: block;
         font-size: 0.7rem;
@@ -96,6 +115,7 @@ $selected_branch = $_GET['branch'] ?? '';
         color: #8094ae;
         margin-bottom: 4px;
     }
+
     .filter-group select {
         width: 100%;
         padding: 8px 32px 8px 12px;
@@ -113,23 +133,27 @@ $selected_branch = $_GET['branch'] ?? '';
         background-position: right 10px center;
         cursor: pointer;
     }
+
     .filter-group select:focus {
         outline: none;
         border-color: var(--primary-blue);
-        box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 59,130,246), 0.1);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 59, 130, 246), 0.1);
     }
+
     .filter-group select.active-filter {
         border-color: var(--primary-blue);
         background-color: #eef4ff;
         color: var(--primary-blue);
         font-weight: 600;
     }
+
     .filter-actions {
         display: flex;
         align-items: flex-end;
         gap: 8px;
         padding-bottom: 1px;
     }
+
     .filter-summary {
         padding: 8px 20px;
         background: #fff;
@@ -139,15 +163,18 @@ $selected_branch = $_GET['branch'] ?? '';
         gap: 8px;
         flex-wrap: wrap;
     }
+
     .filter-summary.has-filters {
         display: flex;
     }
+
     .filter-summary .filter-label {
         font-size: 0.78rem;
         font-weight: 600;
         color: #8094ae;
         margin-right: 4px;
     }
+
     .filter-chip {
         display: inline-flex;
         align-items: center;
@@ -161,19 +188,23 @@ $selected_branch = $_GET['branch'] ?? '';
         color: var(--primary-blue);
         animation: chipIn 0.2s ease;
     }
+
     .filter-chip .chip-category {
         font-weight: 400;
         color: #8094ae;
     }
+
     .filter-chip .remove-chip {
         cursor: pointer;
         opacity: 0.6;
         transition: opacity 0.15s;
         font-size: 0.65rem;
     }
+
     .filter-chip .remove-chip:hover {
         opacity: 1;
     }
+
     .btn-clear-filters {
         font-size: 0.75rem;
         font-weight: 600;
@@ -185,17 +216,123 @@ $selected_branch = $_GET['branch'] ?? '';
         transition: all 0.15s;
         border-radius: 6px;
     }
+
     .btn-clear-filters:hover {
         background: #fff5f5;
     }
+
     @keyframes chipIn {
-        from { transform: scale(0.85); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
+        from {
+            transform: scale(0.85);
+            opacity: 0;
+        }
+
+        to {
+            transform: scale(1);
+            opacity: 1;
+        }
     }
+
     @media (max-width: 768px) {
-        .filter-group { min-width: 140px; }
+        .filter-group {
+            min-width: 140px;
+        }
+
+        /* Employee Table Mobile Revamp */
+        #empTable {
+            border: none;
+        }
+
+        #empTable thead {
+            display: none;
+        }
+
+        #empTable tbody {
+            background: transparent;
+        }
+
+        #empTable tr {
+            display: block;
+            background: #fff;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f0f0f0;
+            position: relative;
+        }
+
+        #empTable td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: none;
+            padding: 10px 0;
+            text-align: right;
+            font-size: 0.9rem;
+        }
+
+        #empTable td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: left;
+        }
+
+        /* Name and Avatar Column */
+        #empTable td:nth-child(1) {
+            justify-content: flex-start;
+            padding-top: 5px;
+            margin-bottom: 12px;
+            border-bottom: 1.5px solid #f8f9fa;
+        }
+
+        #empTable td:nth-child(1)::before {
+            display: none;
+        }
+
+        #empTable td:nth-child(1) strong {
+            font-size: 1.1rem;
+            color: var(--primary-blue);
+        }
+
+        #empTable td:nth-child(1) img {
+            width: 45px !important;
+            height: 45px !important;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Action buttons grouping */
+        #empTable td:last-child {
+            justify-content: center;
+            gap: 12px;
+            border-top: 1.5px solid #f8f9fa;
+            margin-top: 10px;
+            padding-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        #empTable td:last-child::before {
+            display: none;
+        }
+
+        #empTable td:last-child .btn {
+            padding: 8px 15px;
+            flex: 1;
+            min-width: 40px;
+        }
+
+        #paginationWrapper {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
     }
 </style>
+
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted mb-0">Manage employee records</p>
@@ -207,7 +344,8 @@ $selected_branch = $_GET['branch'] ?? '';
         <h5><i class="fas fa-users me-2"></i>All Employees</h5>
         <div class="search-box">
             <i class="fas fa-search search-icon"></i>
-            <input type="text" class="form-control form-control-sm" id="customSearchEmp" placeholder="Search employees...">
+            <input type="text" class="form-control form-control-sm" id="customSearchEmp"
+                placeholder="Search employees...">
         </div>
     </div>
 
@@ -236,7 +374,8 @@ $selected_branch = $_GET['branch'] ?? '';
             <select id="filterBranch">
                 <option value="">All Branches</option>
                 <?php foreach ($branches as $br): ?>
-                    <option value="<?php echo e($br); ?>" <?php echo ($selected_branch === $br) ? 'selected' : ''; ?>><?php echo e($br); ?></option>
+                    <option value="<?php echo e($br); ?>" <?php echo ($selected_branch === $br) ? 'selected' : ''; ?>>
+                        <?php echo e($br); ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -275,45 +414,51 @@ $selected_branch = $_GET['branch'] ?? '';
                 </thead>
                 <tbody>
                     <?php while ($emp = $employees->fetch_assoc()): ?>
-                        <tr data-jobtitle="<?php echo e($emp['job_title']); ?>" data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>" data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>" data-status="<?php echo e($emp['employment_status']); ?>">
-                            <td>
+                        <tr data-jobtitle="<?php echo e($emp['job_title']); ?>"
+                            data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
+                            data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
+                            data-status="<?php echo e($emp['employment_status']); ?>">
+                            <td data-label="Name">
                                 <div class="d-flex align-items-center">
-                                    <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                    <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile"
+                                        class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
                                     <strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong>
                                 </div>
                             </td>
-                            <td><?php echo e($emp['job_title']); ?></td>
-                            <td><?php echo e($emp['department_name'] ?? 'N/A'); ?></td>
-                            <td><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
-                            <td>
+                            <td data-label="Job Title"><?php echo e($emp['job_title']); ?></td>
+                            <td data-label="Department"><?php echo e($emp['department_name'] ?? 'N/A'); ?></td>
+                            <td data-label="Branch"><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
+                            <td data-label="Status">
                                 <span class="badge <?php echo $emp['is_active'] ? 'bg-success' : 'bg-danger'; ?>">
                                     <?php echo $emp['employment_status']; ?>
                                 </span>
                             </td>
-                            <td><small><?php echo formatDate($emp['hire_date']); ?></small></td>
-                            <td>
-                                <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-sm btn-outline-info" title="View Details">
+                            <td data-label="Hire Date"><small><?php echo formatDate($emp['hire_date']); ?></small></td>
+                            <td data-label="Actions">
+                                <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                    class="btn btn-sm btn-outline-info" title="View Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-sm btn-outline-primary" title="Edit">
+                                <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                    class="btn btn-sm btn-outline-primary" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 <?php if ($emp['is_active']): ?>
                                     <button type="button" class="btn btn-sm btn-outline-warning" title="Deactivate"
-                                            onclick="setDeactivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
-                                            data-bs-toggle="modal" data-bs-target="#deactivateModal">
+                                        onclick="setDeactivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                        data-bs-toggle="modal" data-bs-target="#deactivateModal">
                                         <i class="fas fa-user-slash"></i>
                                     </button>
                                 <?php else: ?>
                                     <button type="button" class="btn btn-sm btn-outline-success" title="Activate"
-                                            onclick="setActivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
-                                            data-bs-toggle="modal" data-bs-target="#activateModal">
+                                        onclick="setActivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                        data-bs-toggle="modal" data-bs-target="#activateModal">
                                         <i class="fas fa-user-check"></i>
                                     </button>
                                 <?php endif; ?>
                                 <button type="button" class="btn btn-sm btn-outline-danger" title="Delete Permanently"
-                                        onclick="setDeleteTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
-                                        data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    onclick="setDeleteTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                    data-bs-toggle="modal" data-bs-target="#deleteModal">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -347,7 +492,8 @@ $selected_branch = $_GET['branch'] ?? '';
             </div>
             <div class="modal-footer justify-content-center">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <a href="#" id="deactivateConfirmBtn" class="btn btn-warning"><i class="fas fa-user-slash me-1"></i>Deactivate</a>
+                <a href="#" id="deactivateConfirmBtn" class="btn btn-warning"><i
+                        class="fas fa-user-slash me-1"></i>Deactivate</a>
             </div>
         </div>
     </div>
@@ -367,7 +513,8 @@ $selected_branch = $_GET['branch'] ?? '';
             </div>
             <div class="modal-footer justify-content-center">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <a href="#" id="activateConfirmBtn" class="btn btn-success"><i class="fas fa-user-check me-1"></i>Activate</a>
+                <a href="#" id="activateConfirmBtn" class="btn btn-success"><i
+                        class="fas fa-user-check me-1"></i>Activate</a>
             </div>
         </div>
     </div>
@@ -383,228 +530,229 @@ $selected_branch = $_GET['branch'] ?? '';
             </div>
             <div class="modal-body text-center">
                 <p>Permanently delete <strong id="deleteEmpName"></strong>?</p>
-                <p class="text-danger small"><i class="fas fa-exclamation-circle me-1"></i>This will remove all their records including evaluations. This cannot be undone!</p>
+                <p class="text-danger small"><i class="fas fa-exclamation-circle me-1"></i>This will remove all their
+                    records including evaluations. This cannot be undone!</p>
             </div>
             <div class="modal-footer justify-content-center">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <a href="#" id="deleteConfirmBtn" class="btn btn-danger"><i class="fas fa-trash me-1"></i>Delete Permanently</a>
+                <a href="#" id="deleteConfirmBtn" class="btn btn-danger"><i class="fas fa-trash me-1"></i>Delete
+                    Permanently</a>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-function setDeactivateTarget(id, name) {
-    document.getElementById('deactivateEmpName').textContent = name;
-    document.getElementById('deactivateConfirmBtn').href = '?deactivate=' + id;
-}
-function setActivateTarget(id, name) {
-    document.getElementById('activateEmpName').textContent = name;
-    document.getElementById('activateConfirmBtn').href = '?activate=' + id;
-}
-function setDeleteTarget(id, name) {
-    document.getElementById('deleteEmpName').textContent = name;
-    document.getElementById('deleteConfirmBtn').href = '?delete=' + id;
-}
+    function setDeactivateTarget(id, name) {
+        document.getElementById('deactivateEmpName').textContent = name;
+        document.getElementById('deactivateConfirmBtn').href = '?deactivate=' + id;
+    }
+    function setActivateTarget(id, name) {
+        document.getElementById('activateEmpName').textContent = name;
+        document.getElementById('activateConfirmBtn').href = '?activate=' + id;
+    }
+    function setDeleteTarget(id, name) {
+        document.getElementById('deleteEmpName').textContent = name;
+        document.getElementById('deleteConfirmBtn').href = '?delete=' + id;
+    }
 
-// State Variables
-let currentPage = 1;
-const ITEMS_PER_PAGE = 10;
+    // State Variables
+    let currentPage = 1;
+    const ITEMS_PER_PAGE = 10;
 
-document.getElementById('customSearchEmp').addEventListener('input', function() {
-    currentPage = 1;
-    renderTable();
-});
-
-// --- Dropdown Filter Logic ---
-const filterSelects = ['filterJobTitle', 'filterDepartment', 'filterBranch', 'filterStatus'];
-const filterLabels = { filterJobTitle: 'Job Title', filterDepartment: 'Department', filterBranch: 'Branch', filterStatus: 'Status' };
-
-filterSelects.forEach(id => {
-    document.getElementById(id).addEventListener('change', function() {
+    document.getElementById('customSearchEmp').addEventListener('input', function () {
         currentPage = 1;
-        this.classList.toggle('active-filter', this.value !== '');
         renderTable();
-        updateFilterChips();
     });
-});
 
-function updateFilterChips() {
-    const chipsContainer = document.getElementById('filterChips');
-    const summary = document.getElementById('filterSummary');
-    let html = '';
-    let hasAny = false;
+    // --- Dropdown Filter Logic ---
+    const filterSelects = ['filterJobTitle', 'filterDepartment', 'filterBranch', 'filterStatus'];
+    const filterLabels = { filterJobTitle: 'Job Title', filterDepartment: 'Department', filterBranch: 'Branch', filterStatus: 'Status' };
 
     filterSelects.forEach(id => {
-        const el = document.getElementById(id);
-        if (el.value !== '') {
-            hasAny = true;
-            html += `<span class="filter-chip"><span class="chip-category">${filterLabels[id]}:</span> ${el.value} <i class="fas fa-times remove-chip" data-filter="${id}"></i></span>`;
-        }
-    });
-
-    chipsContainer.innerHTML = html;
-    summary.classList.toggle('has-filters', hasAny);
-
-    // Bind remove chip clicks
-    chipsContainer.querySelectorAll('.remove-chip').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const filterId = this.dataset.filter;
-            const select = document.getElementById(filterId);
-            select.value = '';
-            select.classList.remove('active-filter');
+        document.getElementById(id).addEventListener('change', function () {
             currentPage = 1;
+            this.classList.toggle('active-filter', this.value !== '');
             renderTable();
             updateFilterChips();
         });
     });
-}
 
-document.getElementById('clearAllFilters').addEventListener('click', function() {
-    filterSelects.forEach(id => {
-        const el = document.getElementById(id);
-        el.value = '';
-        el.classList.remove('active-filter');
+    function updateFilterChips() {
+        const chipsContainer = document.getElementById('filterChips');
+        const summary = document.getElementById('filterSummary');
+        let html = '';
+        let hasAny = false;
+
+        filterSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el.value !== '') {
+                hasAny = true;
+                html += `<span class="filter-chip"><span class="chip-category">${filterLabels[id]}:</span> ${el.value} <i class="fas fa-times remove-chip" data-filter="${id}"></i></span>`;
+            }
+        });
+
+        chipsContainer.innerHTML = html;
+        summary.classList.toggle('has-filters', hasAny);
+
+        // Bind remove chip clicks
+        chipsContainer.querySelectorAll('.remove-chip').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const filterId = this.dataset.filter;
+                const select = document.getElementById(filterId);
+                select.value = '';
+                select.classList.remove('active-filter');
+                currentPage = 1;
+                renderTable();
+                updateFilterChips();
+            });
+        });
+    }
+
+    document.getElementById('clearAllFilters').addEventListener('click', function () {
+        filterSelects.forEach(id => {
+            const el = document.getElementById(id);
+            el.value = '';
+            el.classList.remove('active-filter');
+        });
+        currentPage = 1;
+        renderTable();
+        updateFilterChips();
     });
-    currentPage = 1;
-    renderTable();
-    updateFilterChips();
-});
 
-function goToPage(page) {
-    currentPage = page;
-    renderTable();
-}
+    function goToPage(page) {
+        currentPage = page;
+        renderTable();
+    }
 
-function renderTable() {
-    const tbody = document.querySelector("#empTable tbody");
-    const allRows = Array.from(tbody.querySelectorAll("tr:not(.no-results-row)"));
-    const filterInput = document.getElementById('customSearchEmp').value.toLowerCase().trim();
+    function renderTable() {
+        const tbody = document.querySelector("#empTable tbody");
+        const allRows = Array.from(tbody.querySelectorAll("tr:not(.no-results-row)"));
+        const filterInput = document.getElementById('customSearchEmp').value.toLowerCase().trim();
 
-    // Get dropdown filter values
-    const fJobTitle = document.getElementById('filterJobTitle').value;
-    const fDepartment = document.getElementById('filterDepartment').value;
-    const fBranch = document.getElementById('filterBranch').value;
-    const fStatus = document.getElementById('filterStatus').value;
-    
-    let visibleRows = [];
-    
-    // 1. Filter (text search + dropdown filters)
-    allRows.forEach(row => {
-        const cells = Array.from(row.querySelectorAll("td"));
-        if (cells.length > 1) {
-            // Text search
-            const rowText = cells.slice(0, 6).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ').toLowerCase();
-            const textMatch = filterInput === "" || rowText.includes(filterInput);
+        // Get dropdown filter values
+        const fJobTitle = document.getElementById('filterJobTitle').value;
+        const fDepartment = document.getElementById('filterDepartment').value;
+        const fBranch = document.getElementById('filterBranch').value;
+        const fStatus = document.getElementById('filterStatus').value;
 
-            // Dropdown filters (use data attributes for precise matching)
-            const dropdownMatch =
-                (fJobTitle === '' || row.dataset.jobtitle === fJobTitle) &&
-                (fDepartment === '' || row.dataset.department === fDepartment) &&
-                (fBranch === '' || row.dataset.branch === fBranch) &&
-                (fStatus === '' || row.dataset.status === fStatus);
+        let visibleRows = [];
 
-            if (textMatch && dropdownMatch) {
-                visibleRows.push(row);
-                row.classList.remove('filtered-out');
+        // 1. Filter (text search + dropdown filters)
+        allRows.forEach(row => {
+            const cells = Array.from(row.querySelectorAll("td"));
+            if (cells.length > 1) {
+                // Text search
+                const rowText = cells.slice(0, 6).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ').toLowerCase();
+                const textMatch = filterInput === "" || rowText.includes(filterInput);
+
+                // Dropdown filters (use data attributes for precise matching)
+                const dropdownMatch =
+                    (fJobTitle === '' || row.dataset.jobtitle === fJobTitle) &&
+                    (fDepartment === '' || row.dataset.department === fDepartment) &&
+                    (fBranch === '' || row.dataset.branch === fBranch) &&
+                    (fStatus === '' || row.dataset.status === fStatus);
+
+                if (textMatch && dropdownMatch) {
+                    visibleRows.push(row);
+                    row.classList.remove('filtered-out');
+                } else {
+                    row.classList.add('filtered-out');
+                    row.style.display = "none";
+                }
+            }
+        });
+
+        // 2. Paginate
+        const totalPages = Math.ceil(visibleRows.length / ITEMS_PER_PAGE);
+        if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIdx = startIdx + ITEMS_PER_PAGE;
+
+        visibleRows.forEach((row, index) => {
+            if (index >= startIdx && index < endIdx) {
+                row.style.display = "";
             } else {
-                row.classList.add('filtered-out');
                 row.style.display = "none";
             }
-        }
-    });
+        });
 
-    // 2. Paginate
-    const totalPages = Math.ceil(visibleRows.length / ITEMS_PER_PAGE);
-    if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
-    if (currentPage < 1) currentPage = 1;
-
-    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIdx = startIdx + ITEMS_PER_PAGE;
-
-    visibleRows.forEach((row, index) => {
-        if (index >= startIdx && index < endIdx) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
-    });
-
-    updatePaginationUI(visibleRows.length, totalPages);
-    handleNoResults(visibleRows.length, filterInput, tbody);
-}
-
-function updatePaginationUI(totalItems, totalPages) {
-    const info = document.getElementById("paginationInfo");
-    const digits = document.getElementById("paginationNumbers");
-    if (!info || !digits) return;
-    
-    if (totalItems === 0) {
-        info.innerHTML = "Showing 0 entries";
-        digits.innerHTML = "";
-        return;
+        updatePaginationUI(visibleRows.length, totalPages);
+        handleNoResults(visibleRows.length, filterInput, tbody);
     }
-    
-    const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-    const end = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
-    info.innerHTML = `Showing ${start} to ${end} of ${totalItems} entries`;
-    
-    let html = "";
-    
-    // Previous Button
-    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+
+    function updatePaginationUI(totalItems, totalPages) {
+        const info = document.getElementById("paginationInfo");
+        const digits = document.getElementById("paginationNumbers");
+        if (!info || !digits) return;
+
+        if (totalItems === 0) {
+            info.innerHTML = "Showing 0 entries";
+            digits.innerHTML = "";
+            return;
+        }
+
+        const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+        const end = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
+        info.innerHTML = `Showing ${start} to ${end} of ${totalItems} entries`;
+
+        let html = "";
+
+        // Previous Button
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                 <button class="page-link" onclick="goToPage(${currentPage - 1})">Previous</button>
              </li>`;
-             
-    // Page Numbers (Show max 5 pagination buttons for cleaner look if many pages)
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
-    if (endPage - startPage < 4) {
-        startPage = Math.max(1, endPage - 4);
-    }
-    
-    if (startPage > 1) {
-        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-    }
-    for (let i = startPage; i <= endPage; i++) {
-        html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+
+        // Page Numbers (Show max 5 pagination buttons for cleaner look if many pages)
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+
+        if (startPage > 1) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
                     <button class="page-link" onclick="goToPage(${i})">${i}</button>
                  </li>`;
-    }
-    if (endPage < totalPages) {
-        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-    }
-    
-    // Next Button
-    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+        }
+        if (endPage < totalPages) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+
+        // Next Button
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
                 <button class="page-link" onclick="goToPage(${currentPage + 1})">Next</button>
              </li>`;
-             
-    digits.innerHTML = html;
-}
 
-function handleNoResults(totalItems, filterInput, tbody) {
-    const hasDropdownFilter = filterSelects.some(id => document.getElementById(id).value !== '');
-    let noResultsRow = tbody.querySelector('.no-results-row');
-    if (totalItems === 0 && (filterInput !== "" || hasDropdownFilter)) {
-        if (!noResultsRow) {
-            noResultsRow = document.createElement('tr');
-            noResultsRow.className = 'no-results-row text-center';
-            tbody.appendChild(noResultsRow);
-        }
-        let msg = 'No employees match the current filters.';
-        if (filterInput !== '') msg = `No employees found matching "<strong>${filterInput}</strong>"`;
-        noResultsRow.innerHTML = `<td colspan="7" class="py-4 text-muted"><i class="fas fa-filter fa-2x mb-3 d-block" style="opacity:0.2;"></i>${msg}</td>`;
-        noResultsRow.style.display = '';
-    } else if (noResultsRow) {
-        noResultsRow.remove();
+        digits.innerHTML = html;
     }
-}
 
-// Initial Render on Load
-document.addEventListener("DOMContentLoaded", function() {
-    renderTable();
-    updateFilterChips();
-});
+    function handleNoResults(totalItems, filterInput, tbody) {
+        const hasDropdownFilter = filterSelects.some(id => document.getElementById(id).value !== '');
+        let noResultsRow = tbody.querySelector('.no-results-row');
+        if (totalItems === 0 && (filterInput !== "" || hasDropdownFilter)) {
+            if (!noResultsRow) {
+                noResultsRow = document.createElement('tr');
+                noResultsRow.className = 'no-results-row text-center';
+                tbody.appendChild(noResultsRow);
+            }
+            let msg = 'No employees match the current filters.';
+            if (filterInput !== '') msg = `No employees found matching "<strong>${filterInput}</strong>"`;
+            noResultsRow.innerHTML = `<td colspan="7" class="py-4 text-muted"><i class="fas fa-filter fa-2x mb-3 d-block" style="opacity:0.2;"></i>${msg}</td>`;
+            noResultsRow.style.display = '';
+        } else if (noResultsRow) {
+            noResultsRow.remove();
+        }
+    }
+
+    // Initial Render on Load
+    document.addEventListener("DOMContentLoaded", function () {
+        renderTable();
+        updateFilterChips();
+    });
 </script>
-

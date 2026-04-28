@@ -166,6 +166,81 @@ $branches = $conn->query("
 ");
 ?>
 
+<style>
+    @media (max-width: 768px) {
+        .table-responsive {
+            border: none;
+        }
+        #branchTable {
+            border: none;
+        }
+        #branchTable thead {
+            display: none;
+        }
+        #branchTable tbody {
+            background: transparent;
+        }
+        #branchTable tr {
+            display: block;
+            background: #fff;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #f0f0f0;
+            position: relative;
+        }
+        #branchTable td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: none;
+            padding: 10px 0;
+            text-align: right;
+            font-size: 0.9rem;
+        }
+        #branchTable td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: left;
+        }
+        /* Branch Name Highlight */
+        #branchTable td:nth-child(1) {
+            justify-content: flex-start;
+            padding-top: 5px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        #branchTable td:nth-child(1)::before {
+            display: none;
+        }
+        #branchTable td:nth-child(1) strong {
+            font-size: 1.1rem;
+            color: var(--primary-blue);
+        }
+        /* Action buttons grouping */
+        #branchTable td:last-child {
+            justify-content: flex-end;
+            gap: 10px;
+            border-top: 1px solid #f5f5f5;
+            margin-top: 10px;
+            padding-bottom: 5px;
+        }
+        #branchTable td:last-child::before {
+            display: none;
+        }
+        #paginationWrapper {
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+    }
+</style>
+
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted mb-0">Manage company branches and locations</p>
     <div>
@@ -214,7 +289,7 @@ $branches = $conn->query("
                     <?php else: ?>
                         <?php while ($b = $branches->fetch_assoc()): ?>
                             <tr>
-                                <td>
+                                <td data-label="Branch">
                                     <div class="d-flex align-items-center">
                                         <div class="rounded-circle me-2 text-white d-flex align-items-center justify-content-center"
                                             style="width:32px;height:32px;background:var(--primary-light);font-size:0.8rem;font-weight:bold;">
@@ -223,15 +298,15 @@ $branches = $conn->query("
                                         <strong><?php echo e($b['branch_name']); ?></strong>
                                     </div>
                                 </td>
-                                <td><?php echo e($b['location']); ?></td>
-                                <td>
+                                <td data-label="Location"><?php echo e($b['location']); ?></td>
+                                <td data-label="Employees">
                                     <span class="badge bg-info"><?php echo $b['employee_count']; ?></span>
                                 </td>
-                                <td>
+                                <td data-label="Users">
                                     <span class="badge bg-secondary"><?php echo $b['user_count']; ?></span>
                                 </td>
-                                <td><small><?php echo formatDate($b['created_at']); ?></small></td>
-                                <td>
+                                <td data-label="Created"><small><?php echo formatDate($b['created_at']); ?></small></td>
+                                <td data-label="Actions">
                                     <button class="btn btn-sm btn-outline-primary" title="Edit"
                                         onclick="openEditModal(<?php echo $b['branch_id']; ?>, '<?php echo e(addslashes($b['branch_name'])); ?>', '<?php echo e(addslashes($b['location'])); ?>')"
                                         data-bs-toggle="modal" data-bs-target="#editBranchModal">
