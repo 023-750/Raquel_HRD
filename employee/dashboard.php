@@ -7,7 +7,7 @@ require_once '../includes/functions.php';
 $employee_id = (int)($_SESSION['employee_id'] ?? 0);
 
 $emp_stmt = $conn->prepare("
-    SELECT e.first_name, e.last_name, e.job_title, e.profile_picture,
+    SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.profile_picture,
            d.department_name, b.branch_name, e.hire_date,
            e.employment_status, e.employment_type
     FROM employees e
@@ -23,25 +23,28 @@ $emp_stmt->close();
 require_once '../includes/header.php';
 ?>
 
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="content-card ess-gradient" style="border:none;">
-      <div class="card-body p-4">
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-0 gap-4">
         <div class="d-flex align-items-center gap-4 flex-wrap">
-          <img src="<?php echo getEmployeeAvatar($emp['profile_picture']??''); ?>?v=<?php echo time();?>"
-               style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.5);">
-          <div>
-            <h2 class="mb-1 fw-bold">Welcome, <?php echo e($emp['first_name']??'Employee'); ?>!</h2>
-            <p class="mb-0 opacity-75">
-              <i class="fas fa-briefcase me-1"></i><?php echo e($emp['job_title']??'—'); ?>
-              <?php if(!empty($emp['department_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['department_name']); ?><?php endif; ?>
-              <?php if(!empty($emp['branch_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['branch_name']); ?><?php endif; ?>
-            </p>
-          </div>
+            <img src="<?php echo getEmployeeAvatar($emp['profile_picture']??''); ?>?v=<?php echo time();?>"
+                onclick="viewFullImage('<?php echo getEmployeeAvatar($emp['profile_picture']??''); ?>', '<?php echo e(($emp['first_name']??'') . ' ' . ($emp['last_name']??'')); ?>')"
+                class="cursor-pointer"
+                style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.3); box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s;">
+            <div>
+                <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">Employee Portal · Welcome</div>
+                <h2 class="text-white fw-bold mb-1 mt-1">Hello, <?php echo e($emp['first_name']??'Employee'); ?>!</h2>
+                <p class="mb-0 text-white-50 small">
+                    <i class="fas fa-briefcase me-1"></i><?php echo e($emp['job_title']??'—'); ?>
+                    <?php if(!empty($emp['department_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['department_name']); ?><?php endif; ?>
+                    <?php if(!empty($emp['branch_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['branch_name']); ?><?php endif; ?>
+                </p>
+            </div>
         </div>
-      </div>
+        <div class="d-none d-lg-block text-end">
+            <div class="text-white fw-bold" style="font-size: 1.1rem;"><?php echo date('h:i A'); ?></div>
+            <div class="text-white-50 x-small"><?php echo date('l, F d'); ?></div>
+        </div>
     </div>
-  </div>
 </div>
 
 <div class="row g-4">
@@ -67,7 +70,7 @@ require_once '../includes/header.php';
       <div class="card-header"><h5><i class="fas fa-briefcase me-2"></i>My Employment</h5></div>
       <div class="card-body">
         <table class="table table-borderless table-sm mb-0">
-          <tr><td class="text-muted">Employee ID</td><td><strong><?php echo e(getEmployeeDisplayId($emp)); ?></strong></td></tr>
+          <tr><td class="company-id-text">Company ID</td><td><strong class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></strong></td></tr>
           <tr><td class="text-muted">Full Name</td><td><strong><?php echo e(trim(($emp['first_name']??'').' '.($emp['last_name']??''))); ?></strong></td></tr>
           <tr><td class="text-muted">Position</td><td><?php echo e($emp['job_title']??'—'); ?></td></tr>
           <tr><td class="text-muted">Department</td><td><?php echo e($emp['department_name']??'—'); ?></td></tr>
@@ -77,7 +80,7 @@ require_once '../includes/header.php';
           <tr><td class="text-muted">Type</td><td><?php echo e($emp['employment_type']??'—'); ?></td></tr>
         </table>
         <div class="mt-3">
-          <a href="<?php echo BASE_URL; ?>/employee/my-employment.php" class="btn btn-outline-primary w-100">
+          <a href="<?php echo BASE_URL; ?>/employee/my-employment.php" class="btn btn-primary w-100">
             <i class="fas fa-eye me-2"></i>View Full Employment Info
           </a>
         </div>

@@ -1,0 +1,11 @@
+Appointment
+Deployment
+Newly Hired
+PB
+Promotion
+Regularization
+Reliever
+Resigned
+Separated
+Trainee
+Transfer

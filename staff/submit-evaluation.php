@@ -175,47 +175,510 @@ if (!empty($selected_template_id)) {
 ?>
 
 <style>
-    .step-wizard { display: flex; justify-content: space-between; position: relative; z-index: 1; background: #fff; padding-top: 5px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
-    .step-wizard .step { flex: 1; text-align: center; font-size: 0.95rem; font-weight: 600; padding: 12px 10px; border-bottom: 5px solid #e9ecef; color: #adb5bd; cursor: default; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 0.5px; }
-    .step-wizard .step.active { color: #0d6efd; border-bottom-color: #0d6efd; font-weight: 800; background-color: rgba(13, 110, 253, 0.05); }
-    .step-wizard .step.completed { color: #198754; border-bottom-color: #198754; font-weight: 700; background-color: rgba(25, 135, 84, 0.05); }
-    
-    /* Official Form Inspired Styling */
-    .form-style-container { border: 1px solid #000; padding: 0; background: #fff; margin-top: 15px; }
-    .form-header-box { display: flex; border-bottom: 1px solid #000; }
-    .form-logo-box { width: 140px; border-right: 1px solid #000; padding: 10px; display: flex; align-items: center; justify-content: center; background: #fff; }
-    .form-title-box { flex: 1; padding: 10px; text-align: center; }
-    .form-title-main { font-size: 1.25rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-    
-    .form-info-table { width: 100%; border-collapse: collapse; }
-    .form-info-table td { border: 1px solid #000; padding: 8px 12px; vertical-align: top; font-size: 0.9rem; }
-    .form-section-head { background: #f2f2f2; border: 1px solid #000; padding: 6px 12px; font-weight: bold; text-transform: uppercase; font-size: 0.85rem; margin-top: 15px; }
-    
-    .table-official { width: 100%; border-collapse: collapse; border: 1px solid #000; }
-    .table-official th, .table-official td { border: 1px solid #000; padding: 8px 12px; }
-    .table-official th { background: #f8f9fa; font-weight: bold; text-align: center; font-size: 0.85rem; }
-    
-    .rating-scale-legend { border: 1px solid #000; background: #fcfcfc; padding: 10px; margin-bottom: 20px; }
-    
-    .form-label-custom { font-weight: bold; font-size: 0.85rem; color: #333; display: block; margin-bottom: 4px; }
-    .form-input-clean { border: none; border-bottom: 1px border #ccc; border-radius: 0; padding: 4px 0; width: 100%; focus: outline-none; }
-    .form-input-clean:focus { border-bottom-color: #5a3e1b; outline: none; }
-    
-    /* Summary Overlay */
-    .summary-overlay { position: sticky; top: 10px; z-index: 100; background: rgba(255,255,255,0.95); border: 1px solid #5a3e1b; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 8px; padding: 10px 20px; margin-bottom: 20px; display: none; }
+    .staff-eval-page {
+        --eval-border: #e6ecdf;
+        --eval-soft: #f7faf5;
+        --eval-ink: #20300e;
+    }
+
+    .staff-eval-page .eval-hero-kicker {
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 0.72rem;
+        letter-spacing: 0;
+        text-transform: uppercase;
+    }
+
+    .staff-eval-page .eval-hero-badge {
+        background: #fff;
+        border-radius: 999px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        color: #1f2f12;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 9px 14px;
+    }
+
+    .staff-eval-page .eval-workspace-card {
+        border: 0;
+        border-radius: 18px;
+        box-shadow: 0 14px 34px rgba(12, 32, 8, 0.08);
+        overflow: hidden;
+    }
+
+    .staff-eval-page .eval-workspace-card > .card-body {
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdf8 100%);
+        padding: 22px;
+    }
+
+    .staff-eval-page .step-wizard {
+        background: var(--eval-soft);
+        border: 1px solid var(--eval-border);
+        border-radius: 16px;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        margin-bottom: 20px;
+        padding: 10px;
+    }
+
+    .staff-eval-page .step-wizard .step {
+        align-items: center;
+        background: #fff;
+        border: 1px solid transparent;
+        border-radius: 13px;
+        color: #6d7560;
+        cursor: default;
+        display: flex;
+        font-size: 0.86rem;
+        font-weight: 700;
+        gap: 10px;
+        min-height: 70px;
+        padding: 12px;
+        transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .staff-eval-page .step-wizard .step .step-index {
+        align-items: center;
+        background: #eef3e8;
+        border-radius: 12px;
+        color: var(--primary-blue);
+        display: inline-flex;
+        flex: 0 0 34px;
+        font-size: 0.9rem;
+        height: 34px;
+        justify-content: center;
+        width: 34px;
+    }
+
+    .staff-eval-page .step-wizard .step small {
+        color: var(--text-muted);
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-top: 2px;
+    }
+
+    .staff-eval-page .step-wizard .step.active {
+        background: #fff;
+        border-color: rgba(41, 67, 6, 0.24);
+        box-shadow: 0 8px 20px rgba(12, 32, 8, 0.08);
+        color: var(--primary-blue);
+        transform: translateY(-1px);
+    }
+
+    .staff-eval-page .step-wizard .step.active .step-index {
+        background: var(--primary-blue);
+        color: #fff;
+    }
+
+    .staff-eval-page .step-wizard .step.completed {
+        background: #f7fbf5;
+        border-color: rgba(25, 135, 84, 0.18);
+        color: #198754;
+    }
+
+    .staff-eval-page .step-wizard .step.completed .step-index {
+        background: rgba(25, 135, 84, 0.12);
+        color: #198754;
+    }
+
+    .staff-eval-page .form-style-container {
+        background: #fff;
+        border: 1px solid var(--eval-border);
+        border-radius: 18px;
+        box-shadow: 0 10px 24px rgba(12, 32, 8, 0.06);
+        margin-top: 0;
+        overflow: hidden;
+        padding: 0;
+    }
+
+    .staff-eval-page .form-header-box {
+        background: linear-gradient(135deg, #fbfdf8, #ffffff);
+        border-bottom: 1px solid var(--eval-border);
+        display: flex;
+    }
+
+    .staff-eval-page .form-logo-box {
+        align-items: center;
+        background: #fff;
+        border-right: 1px solid var(--eval-border);
+        display: flex;
+        justify-content: center;
+        padding: 18px;
+        width: 150px;
+    }
+
+    .staff-eval-page .form-title-box {
+        flex: 1;
+        padding: 18px;
+        text-align: left;
+    }
+
+    .staff-eval-page .form-title-main {
+        color: var(--eval-ink);
+        font-size: 1.1rem;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+    }
+
+    .staff-eval-page .form-info-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+    }
+
+    .staff-eval-page .form-info-table td {
+        border: 0;
+        border-bottom: 1px solid var(--eval-border);
+        border-right: 1px solid var(--eval-border);
+        font-size: 0.9rem;
+        padding: 18px;
+        vertical-align: top;
+    }
+
+    .staff-eval-page .form-info-table td:last-child {
+        border-right: 0;
+    }
+
+    .staff-eval-page .form-info-table tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .staff-eval-page .form-section-head {
+        background: linear-gradient(135deg, #f7faf5, #ffffff);
+        border: 0;
+        border-bottom: 1px solid var(--eval-border);
+        color: var(--eval-ink);
+        font-size: 0.86rem;
+        font-weight: 800;
+        letter-spacing: 0;
+        margin-top: 0;
+        padding: 16px 18px;
+        text-transform: uppercase;
+    }
+
+    .staff-eval-page .rating-scale-legend {
+        background: #fff;
+        border: 1px solid var(--eval-border);
+        border-radius: 14px;
+        box-shadow: 0 8px 18px rgba(12, 32, 8, 0.05);
+        margin-bottom: 20px;
+        padding: 16px;
+    }
+
+    .staff-eval-page .criteria-table-wrap,
+    .staff-eval-page #devPlanTable {
+        margin-bottom: 14px;
+    }
+
+    .staff-eval-page .table-official {
+        background: #fff;
+        border: 1px solid var(--eval-border);
+        border-collapse: separate;
+        border-radius: 14px;
+        border-spacing: 0;
+        overflow: hidden;
+        width: 100%;
+    }
+
+    .staff-eval-page .table-official th,
+    .staff-eval-page .table-official td {
+        border: 0;
+        border-bottom: 1px solid var(--eval-border);
+        border-right: 1px solid var(--eval-border);
+        padding: 12px 14px;
+        vertical-align: middle;
+    }
+
+    .staff-eval-page .table-official th:last-child,
+    .staff-eval-page .table-official td:last-child {
+        border-right: 0;
+    }
+
+    .staff-eval-page .table-official tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .staff-eval-page .table-official th {
+        background: var(--eval-soft);
+        color: var(--eval-ink);
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-align: center;
+    }
+
+    .staff-eval-page .table-official td.text-nowrap {
+        white-space: normal !important;
+    }
+
+    .staff-eval-page .form-label-custom {
+        color: var(--eval-ink);
+        display: block;
+        font-size: 0.82rem;
+        font-weight: 800;
+        margin-bottom: 7px;
+    }
+
+    .staff-eval-page .form-control,
+    .staff-eval-page .form-select {
+        border-radius: 10px;
+    }
+
+    .staff-eval-page .summary-overlay {
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid var(--eval-border);
+        border-left: 4px solid var(--primary-light);
+        border-radius: 14px;
+        box-shadow: 0 12px 28px rgba(12, 32, 8, 0.1);
+        display: none;
+        margin-bottom: 20px;
+        padding: 13px 18px;
+        position: sticky;
+        top: 76px;
+        z-index: 100;
+    }
+
+    .staff-eval-page .eval-nav-bar {
+        background: #fbfcf8 !important;
+    }
+
+    .staff-eval-page .career-growth-panel {
+        background: #f8fdf5;
+        border: 1px solid var(--eval-border) !important;
+        border-left: 4px solid var(--primary-blue) !important;
+        border-radius: 14px;
+    }
+
+    .staff-eval-page .dev-plan-row .btn {
+        width: auto;
+    }
 
     @media (max-width: 768px) {
-        .step-wizard { flex-direction: column; gap: 5px; }
-        .step-wizard .step { text-align: left; border-bottom: none; border-left: 3px solid #dee2e6; padding: 5px 15px; }
-        .step-wizard .step.active { border-left-color: #5a3e1b; }
+        .staff-eval-page .eval-workspace-card > .card-body {
+            padding: 14px;
+        }
+
+        .staff-eval-page .step-wizard {
+            grid-template-columns: repeat(5, minmax(158px, 1fr));
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+        }
+
+        .staff-eval-page .step-wizard .step {
+            min-height: 64px;
+            scroll-snap-align: start;
+        }
+
+        .staff-eval-page .summary-overlay {
+            top: 10px;
+        }
+
+        .staff-eval-page .summary-overlay > div,
+        .staff-eval-page .summary-overlay .d-flex.gap-4 {
+            align-items: flex-start !important;
+            flex-direction: column;
+            gap: 8px !important;
+        }
+
+        .staff-eval-page .form-header-box {
+            flex-direction: column;
+        }
+
+        .staff-eval-page .form-logo-box {
+            border-bottom: 1px solid var(--eval-border);
+            border-right: 0;
+            justify-content: flex-start;
+            width: 100%;
+        }
+
+        .staff-eval-page .form-info-table,
+        .staff-eval-page .form-info-table tbody,
+        .staff-eval-page .form-info-table tr,
+        .staff-eval-page .form-info-table td {
+            display: block;
+            width: 100% !important;
+        }
+
+        .staff-eval-page .form-info-table td {
+            border-right: 0;
+            padding: 15px;
+        }
+
+        .staff-eval-page .custom-period-group {
+            flex-direction: column;
+            max-width: none !important;
+        }
+
+        .staff-eval-page .custom-period-group > * {
+            border: 1px solid var(--eval-border) !important;
+            border-radius: 10px !important;
+            width: 100%;
+        }
+
+        .staff-eval-page .custom-period-group .input-group-text {
+            justify-content: flex-start;
+        }
+
+        .staff-eval-page .custom-period-group .input-group-text.bg-light,
+        .staff-eval-page .custom-period-group + .mt-1 {
+            display: none !important;
+        }
+
+        .staff-eval-page .rating-scale-legend .col-6 {
+            width: 100%;
+        }
+
+        .staff-eval-page .form-style-container > .p-3.d-flex,
+        .staff-eval-page #evalStep5 > .p-3.d-flex {
+            align-items: stretch !important;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .staff-eval-page .form-style-container > .p-3.d-flex .d-flex {
+            align-items: stretch !important;
+            flex-direction: column;
+            gap: 10px !important;
+        }
+
+        .staff-eval-page .form-style-container .btn {
+            width: 100%;
+        }
+
+        .staff-eval-page .dev-plan-row .btn {
+            width: auto;
+        }
+
+        .staff-eval-page .table-official thead {
+            display: none;
+        }
+
+        .staff-eval-page .table-official,
+        .staff-eval-page .table-official tbody,
+        .staff-eval-page .table-official tr,
+        .staff-eval-page .table-official td {
+            display: block;
+            width: 100%;
+        }
+
+        .staff-eval-page .table-official {
+            background: transparent;
+            border: 0;
+        }
+
+        .staff-eval-page .table-official tr {
+            background: #fff;
+            border: 1px solid var(--eval-border);
+            border-radius: 14px;
+            box-shadow: 0 8px 20px rgba(12, 32, 8, 0.06);
+            margin-bottom: 12px;
+            overflow: hidden;
+            padding: 8px 14px;
+        }
+
+        .staff-eval-page .table-official td {
+            align-items: center;
+            border: 0;
+            border-bottom: 1px solid var(--eval-border);
+            display: grid;
+            gap: 10px;
+            grid-template-columns: minmax(96px, 34%) minmax(0, 1fr);
+            overflow-wrap: anywhere;
+            padding: 10px 0;
+            text-align: right;
+        }
+
+        .staff-eval-page .table-official td::before {
+            color: var(--text-muted);
+            content: attr(data-label);
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-align: left;
+            text-transform: uppercase;
+        }
+
+        .staff-eval-page .table-official td:first-child {
+            display: block;
+            padding-bottom: 12px;
+            text-align: left;
+        }
+
+        .staff-eval-page .table-official td:first-child::before,
+        .staff-eval-page .table-official td[colspan]::before {
+            content: none;
+        }
+
+        .staff-eval-page .table-official td:last-child {
+            border-bottom: 0;
+        }
+
+        .staff-eval-page .table-official td[colspan] {
+            display: block;
+            text-align: center;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .staff-eval-page .table-official td {
+            grid-template-columns: 1fr;
+            gap: 4px;
+            text-align: left;
+        }
     }
 </style>
 
-<div class="content-card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5><i class="fas fa-edit me-2 text-primary"></i><?php echo $edit_eval ? 'Edit Evaluation' : 'Submit New Evaluation'; ?></h5>
-        <div class="badge bg-light text-dark border"><i class="fas fa-file-alt me-1"></i> HRD Form-013.01</div>
+<div class="staff-eval-page">
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+        <div>
+            <div class="eval-hero-kicker">Staff Portal · Administration</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-edit me-2" style="color:var(--primary-light);"></i>Performance Evaluation</h4>
+        </div>
+        <div class="eval-hero-badge">
+            <i class="fas fa-file-alt me-1 text-primary"></i> HRD Form-013.01
+        </div>
     </div>
+    <p class="text-white-50 small mb-0"><i class="fas fa-info-circle me-1"></i>Enter employee performance ratings across KRA and Behavioral sections to finalize the review.</p>
+
+    <div class="row g-3 mt-4">
+        <div class="col-6 col-md-4">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value">5</div>
+                        <div class="stat-label">Guided Steps</div>
+                    </div>
+                    <i class="fas fa-route stat-icon" style="color:#ffc107;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value">1-4</div>
+                        <div class="stat-label">Rating Scale</div>
+                    </div>
+                    <i class="fas fa-star-half-alt stat-icon" style="color:#0dcaf0;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><i class="fas fa-cloud"></i></div>
+                        <div class="stat-label">Auto-save Draft</div>
+                    </div>
+                    <i class="fas fa-shield-alt stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="content-card eval-workspace-card">
     <div class="card-body">
         
         <?php if (!$edit_eval): ?>
@@ -256,11 +719,26 @@ if (!empty($selected_template_id)) {
 
         <!-- Step Wizard -->
         <div class="step-wizard mb-4">
-            <div class="step active" id="stepLabel1">1. Info & Period</div>
-            <div class="step" id="stepLabel2">2. Template</div>
-            <div class="step" id="stepLabel3">3. KRA Results</div>
-            <div class="step" id="stepLabel4">4. Behavior</div>
-            <div class="step" id="stepLabel5">5. Finalize</div>
+            <div class="step active" id="stepLabel1">
+                <span class="step-index">1</span>
+                <span>Info<small>Employee & period</small></span>
+            </div>
+            <div class="step" id="stepLabel2">
+                <span class="step-index">2</span>
+                <span>Template<small>Choose form</small></span>
+            </div>
+            <div class="step" id="stepLabel3">
+                <span class="step-index">3</span>
+                <span>KRA Results<small>Weighted ratings</small></span>
+            </div>
+            <div class="step" id="stepLabel4">
+                <span class="step-index">4</span>
+                <span>Behavior<small>Values rating</small></span>
+            </div>
+            <div class="step" id="stepLabel5">
+                <span class="step-index">5</span>
+                <span>Finalize<small>Plans & submit</small></span>
+            </div>
         </div>
 
         <form method="POST" action="" id="evalForm">
@@ -322,21 +800,24 @@ if (!empty($selected_template_id)) {
                     <tr>
                         <td style="width:50%; vertical-align: top;">
                             <label class="form-label-custom mb-2">Evaluation Period</label>
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="d-flex flex-column">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="small fw-bold">From:</span>
-                                        <input type="date" class="form-control form-control-sm" name="period_start" value="<?php echo e($edit_eval['evaluation_period_start'] ?? ''); ?>" required>
-                                    </div>
-                                    <span class="text-muted" style="font-size:0.7rem; margin-left:45px;">(mm/dd/yyyy)</span>
-                                </div>
-                                <div class="d-flex flex-column">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <span class="small fw-bold">To:</span>
-                                        <input type="date" class="form-control form-control-sm" name="period_end" value="<?php echo e($edit_eval['evaluation_period_end'] ?? ''); ?>" required>
-                                    </div>
-                                    <span class="text-muted" style="font-size:0.7rem; margin-left:30px;">(mm/dd/yyyy)</span>
-                                </div>
+                            <div class="input-group custom-period-group" style="max-width: 450px;">
+                                <span class="input-group-text bg-white border-end-0">
+                                    <i class="far fa-calendar-alt text-primary-light"></i>
+                                    <span class="ms-1 x-small text-muted">From</span>
+                                </span>
+                                <input type="date" class="form-control form-control-sm border-start-0 ps-1" name="period_start" value="<?php echo e($edit_eval['evaluation_period_start'] ?? ''); ?>" required>
+                                <span class="input-group-text bg-light border-start-0 border-end-0 px-2">
+                                    <i class="fas fa-arrow-right text-muted x-small"></i>
+                                </span>
+                                <span class="input-group-text bg-white border-end-0">
+                                    <i class="far fa-calendar-check text-primary-light"></i>
+                                    <span class="ms-1 x-small text-muted">To</span>
+                                </span>
+                                <input type="date" class="form-control form-control-sm border-start-0 ps-1" name="period_end" value="<?php echo e($edit_eval['evaluation_period_end'] ?? ''); ?>" required>
+                            </div>
+                            <div class="mt-1 d-flex gap-4">
+                                <span class="text-muted x-small ms-5">(start date)</span>
+                                <span class="text-muted x-small ms-5">(end date)</span>
                             </div>
                         </td>
                         <td style="width:30%; vertical-align: top;">
@@ -358,7 +839,7 @@ if (!empty($selected_template_id)) {
                         </td>
                     </tr>
                 </table>
-                <div class="p-3 text-end bg-light border-top">
+                <div class="p-3 text-end bg-light border-top eval-nav-bar">
                     <button type="button" class="btn btn-primary px-4" onclick="goToStep(2)">Next Step <i class="fas fa-chevron-right ms-2"></i></button>
                 </div>
             </div>
@@ -392,7 +873,7 @@ if (!empty($selected_template_id)) {
                         </div>
                     </div>
                 </div>
-                <div class="p-3 d-flex justify-content-between bg-light border-top">
+                <div class="p-3 d-flex justify-content-between bg-light border-top eval-nav-bar">
                     <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(1)"><i class="fas fa-chevron-left me-2"></i>Back</button>
                     <button type="button" class="btn btn-primary px-4" onclick="goToStep(3)">Next Step <i class="fas fa-chevron-right ms-2"></i></button>
                 </div>
@@ -406,7 +887,7 @@ if (!empty($selected_template_id)) {
                         <!-- Loaded dynamically -->
                     </div>
                 </div>
-                <div class="p-3 d-flex justify-content-between bg-light border-top">
+                <div class="p-3 d-flex justify-content-between bg-light border-top eval-nav-bar">
                     <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(2)"><i class="fas fa-chevron-left me-2"></i>Back</button>
                     <button type="button" class="btn btn-primary px-4" onclick="goToStep(4)">Next Step <i class="fas fa-chevron-right ms-2"></i></button>
                 </div>
@@ -420,7 +901,7 @@ if (!empty($selected_template_id)) {
                         <!-- Loaded dynamically -->
                     </div>
                 </div>
-                <div class="p-3 d-flex justify-content-between bg-light border-top">
+                <div class="p-3 d-flex justify-content-between bg-light border-top eval-nav-bar">
                     <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(3)"><i class="fas fa-chevron-left me-2"></i>Back</button>
                     <button type="button" class="btn btn-primary px-4" onclick="goToStep(5)">Next Step <i class="fas fa-chevron-right ms-2"></i></button>
                 </div>
@@ -456,7 +937,7 @@ if (!empty($selected_template_id)) {
                     <!-- IV. Career Growth (matching official evaluation form) -->
                     <div class="mb-4">
                         <label class="form-label-custom">IV. Career Growth</label>
-                        <div class="p-3 border" style="background:#f8fdf5; border-left: 4px solid #5a3e1b !important;">
+                        <div class="p-3 border career-growth-panel">
                             <div class="mb-3">
                                 <div class="fw-semibold mb-2" style="font-size:0.92rem;">Is the employee better suited for another job within the company?</div>
                                 <div class="d-flex gap-4">
@@ -489,7 +970,7 @@ if (!empty($selected_template_id)) {
                     </div>
                 </div>
 
-                <div class="p-3 d-flex justify-content-between align-items-center bg-light border-top">
+                <div class="p-3 d-flex justify-content-between align-items-center bg-light border-top eval-nav-bar">
                     <div class="d-flex align-items-center gap-3">
                         <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(4)"><i class="fas fa-chevron-left me-2"></i>Back</button>
                         <span id="evalAutosaveIndicator" class="text-muted small d-none" style="transition:opacity 0.5s;">
@@ -508,6 +989,7 @@ if (!empty($selected_template_id)) {
             </div>
         </form>
     </div>
+</div>
 </div>
 
 <script>
@@ -561,32 +1043,32 @@ function loadCriteria() {
 
             // Build KRA table
             if (data.kra && data.kra.length > 0) {
-                let html = `<div class="p-2 border bg-light mb-3"><table class="table-official" id="kraTable">`;
+                let html = `<div class="criteria-table-wrap"><table class="table-official" id="kraTable">`;
                 html += `<thead><tr><th style="text-align:left;">I. KEY RESULT AREAS (${data.kra_weight}%)</th><th style="width:90px;">Weight</th><th style="width:110px;">Rating</th><th style="width:100px;">Total</th></tr></thead><tbody>`;
                 data.kra.forEach((c, i) => {
                     html += `<tr>
-                        <td><div class="fw-bold">KRA ${i+1}: ${esc(c.criterion_name)}</div><div class="small text-muted">${esc(c.description)}</div></td>
-                        <td class="text-center fw-bold">${c.weight}%</td>
-                        <td><input type="number" class="form-control form-control-sm kra-score-input text-center fw-bold border-primary" name="kra_scores[${c.criterion_id}]" data-weight="${c.weight}" min="1" max="4" step="0.01" required oninput="calculateAllScores()"></td>
-                        <td class="text-center fw-bold text-primary kra-total-cell" id="kraTotal_${c.criterion_id}">-</td>
+                        <td data-label="KRA"><div class="fw-bold">KRA ${i+1}: ${esc(c.criterion_name)}</div><div class="small text-muted">${esc(c.description)}</div></td>
+                        <td data-label="Weight" class="text-center fw-bold">${c.weight}%</td>
+                        <td data-label="Rating"><input type="number" class="form-control form-control-sm kra-score-input text-center fw-bold border-primary" name="kra_scores[${c.criterion_id}]" data-weight="${c.weight}" min="1" max="4" step="0.01" required oninput="calculateAllScores()"></td>
+                        <td data-label="Total" class="text-center fw-bold text-primary kra-total-cell" id="kraTotal_${c.criterion_id}">-</td>
                     </tr>`;
                 });
-                html += `<tr class="bg-light fw-bold"><td class="text-end">SUB TOTAL</td><td class="text-center" id="kraWeightTotal">0%</td><td></td><td class="text-center text-primary" id="kraSubTotal">-</td></tr></tbody></table></div>`;
+                html += `<tr class="bg-light fw-bold"><td data-label="Subtotal" class="text-end">SUB TOTAL</td><td data-label="Weight" class="text-center" id="kraWeightTotal">0%</td><td data-label="Rating"></td><td data-label="Total" class="text-center text-primary" id="kraSubTotal">-</td></tr></tbody></table></div>`;
                 kraArea.innerHTML = html;
             }
 
             // Build Behavior table
             if (data.behavior && data.behavior.length > 0) {
-                let html = `<div class="p-2 border bg-light"><table class="table-official" id="behTable">`;
+                let html = `<div class="criteria-table-wrap"><table class="table-official" id="behTable">`;
                 html += `<thead><tr><th style="text-align:left;">II. BEHAVIOR AND VALUES (${data.behavior_weight}%)</th><th>KPI Description</th><th style="width:110px;">Rating</th></tr></thead><tbody>`;
                 data.behavior.forEach((c, i) => {
                     html += `<tr>
-                        <td class="fw-bold text-nowrap">${i+1}. ${esc(c.criterion_name)}</td>
-                        <td class="small">${esc(c.kpi_description || c.description || '')}</td>
-                        <td><input type="number" class="form-control form-control-sm beh-score-input text-center fw-bold border-primary" name="beh_scores[${c.criterion_id}]" min="1" max="4" step="0.01" required oninput="calculateAllScores()"></td>
+                        <td data-label="Behavior" class="fw-bold text-nowrap">${i+1}. ${esc(c.criterion_name)}</td>
+                        <td data-label="Description" class="small">${esc(c.kpi_description || c.description || '')}</td>
+                        <td data-label="Rating"><input type="number" class="form-control form-control-sm beh-score-input text-center fw-bold border-primary" name="beh_scores[${c.criterion_id}]" min="1" max="4" step="0.01" required oninput="calculateAllScores()"></td>
                     </tr>`;
                 });
-                html += `<tr class="bg-light fw-bold"><td colspan="2" class="text-end">AVERAGE</td><td class="text-center text-primary" id="behAverage">-</td></tr></tbody></table></div>`;
+                html += `<tr class="bg-light fw-bold"><td data-label="Average" colspan="2" class="text-end">AVERAGE</td><td data-label="Rating" class="text-center text-primary" id="behAverage">-</td></tr></tbody></table></div>`;
                 behArea.innerHTML = html;
             }
         })
@@ -653,10 +1135,10 @@ function updateSummary() {
 function addDevPlan(area = '', support = '', timeframe = '') {
     const container = document.getElementById('devPlanContainer');
     const html = `<tr class="dev-plan-row">
-        <td><input type="text" class="form-control form-control-sm border-0" name="dev_area[]" placeholder="Improvement area..." value="${esc(area)}"></td>
-        <td><input type="text" class="form-control form-control-sm border-0" name="dev_support[]" placeholder="Support needed..." value="${esc(support)}"></td>
-        <td><input type="text" class="form-control form-control-sm border-0" name="dev_timeframe[]" placeholder="Time frame" value="${esc(timeframe)}"></td>
-        <td class="text-center"><button type="button" class="btn btn-sm text-danger" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
+        <td data-label="Improvement"><input type="text" class="form-control form-control-sm border-0" name="dev_area[]" placeholder="Improvement area..." value="${esc(area)}"></td>
+        <td data-label="Support"><input type="text" class="form-control form-control-sm border-0" name="dev_support[]" placeholder="Support needed..." value="${esc(support)}"></td>
+        <td data-label="Time Frame"><input type="text" class="form-control form-control-sm border-0" name="dev_timeframe[]" placeholder="Time frame" value="${esc(timeframe)}"></td>
+        <td data-label="Remove" class="text-center"><button type="button" class="btn btn-sm text-danger" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
     </tr>`;
     container.insertAdjacentHTML('beforeend', html);
 }
@@ -888,33 +1370,33 @@ function loadCriteriaWithScores(kraScores, behScores) {
             templateWeights.behavior = data.behavior_weight || 20;
 
             if (data.kra && data.kra.length) {
-                let html = `<div class="p-2 border bg-light mb-3"><table class="table-official" id="kraTable">`;
+                let html = `<div class="criteria-table-wrap"><table class="table-official" id="kraTable">`;
                 html += `<thead><tr><th style="text-align:left;">I. KEY RESULT AREAS (${data.kra_weight}%)</th><th style="width:90px;">Weight</th><th style="width:110px;">Rating</th><th style="width:100px;">Total</th></tr></thead><tbody>`;
                 data.kra.forEach((c, i) => {
                     const saved = kraScores[c.criterion_id] || '';
                     html += `<tr>
-                        <td><div class="fw-bold">KRA ${i+1}: ${esc(c.criterion_name)}</div><div class="small text-muted">${esc(c.description)}</div></td>
-                        <td class="text-center fw-bold">${c.weight}%</td>
-                        <td><input type="number" class="form-control form-control-sm kra-score-input text-center fw-bold border-primary" name="kra_scores[${c.criterion_id}]" data-weight="${c.weight}" min="1" max="4" step="0.01" value="${esc(saved)}" required oninput="calculateAllScores()"></td>
-                        <td class="text-center fw-bold text-primary kra-total-cell" id="kraTotal_${c.criterion_id}">-</td>
+                        <td data-label="KRA"><div class="fw-bold">KRA ${i+1}: ${esc(c.criterion_name)}</div><div class="small text-muted">${esc(c.description)}</div></td>
+                        <td data-label="Weight" class="text-center fw-bold">${c.weight}%</td>
+                        <td data-label="Rating"><input type="number" class="form-control form-control-sm kra-score-input text-center fw-bold border-primary" name="kra_scores[${c.criterion_id}]" data-weight="${c.weight}" min="1" max="4" step="0.01" value="${esc(saved)}" required oninput="calculateAllScores()"></td>
+                        <td data-label="Total" class="text-center fw-bold text-primary kra-total-cell" id="kraTotal_${c.criterion_id}">-</td>
                     </tr>`;
                 });
-                html += `<tr class="bg-light fw-bold"><td class="text-end">SUB TOTAL</td><td class="text-center" id="kraWeightTotal">0%</td><td></td><td class="text-center text-primary" id="kraSubTotal">-</td></tr></tbody></table></div>`;
+                html += `<tr class="bg-light fw-bold"><td data-label="Subtotal" class="text-end">SUB TOTAL</td><td data-label="Weight" class="text-center" id="kraWeightTotal">0%</td><td data-label="Rating"></td><td data-label="Total" class="text-center text-primary" id="kraSubTotal">-</td></tr></tbody></table></div>`;
                 if (kraArea) kraArea.innerHTML = html;
             }
 
             if (data.behavior && data.behavior.length) {
-                let html = `<div class="p-2 border bg-light"><table class="table-official" id="behTable">`;
+                let html = `<div class="criteria-table-wrap"><table class="table-official" id="behTable">`;
                 html += `<thead><tr><th style="text-align:left;">II. BEHAVIOR AND VALUES (${data.behavior_weight}%)</th><th>KPI Description</th><th style="width:110px;">Rating</th></tr></thead><tbody>`;
                 data.behavior.forEach((c, i) => {
                     const saved = behScores[c.criterion_id] || '';
                     html += `<tr>
-                        <td class="fw-bold text-nowrap">${i+1}. ${esc(c.criterion_name)}</td>
-                        <td class="small">${esc(c.kpi_description || c.description || '')}</td>
-                        <td><input type="number" class="form-control form-control-sm beh-score-input text-center fw-bold border-primary" name="beh_scores[${c.criterion_id}]" min="1" max="4" step="0.01" value="${esc(saved)}" required oninput="calculateAllScores()"></td>
+                        <td data-label="Behavior" class="fw-bold text-nowrap">${i+1}. ${esc(c.criterion_name)}</td>
+                        <td data-label="Description" class="small">${esc(c.kpi_description || c.description || '')}</td>
+                        <td data-label="Rating"><input type="number" class="form-control form-control-sm beh-score-input text-center fw-bold border-primary" name="beh_scores[${c.criterion_id}]" min="1" max="4" step="0.01" value="${esc(saved)}" required oninput="calculateAllScores()"></td>
                     </tr>`;
                 });
-                html += `<tr class="bg-light fw-bold"><td colspan="2" class="text-end">AVERAGE</td><td class="text-center text-primary" id="behAverage">-</td></tr></tbody></table></div>`;
+                html += `<tr class="bg-light fw-bold"><td data-label="Average" colspan="2" class="text-end">AVERAGE</td><td data-label="Rating" class="text-center text-primary" id="behAverage">-</td></tr></tbody></table></div>`;
                 if (behArea) behArea.innerHTML = html;
             }
             calculateAllScores();

@@ -4,16 +4,90 @@ require_once '../includes/session-check.php';
 checkRole(['Admin']);
 require_once '../includes/header.php';
 
-// Fetch all audit logs with user name
-$audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOIN users u ON al.user_id = u.user_id ORDER BY al.timestamp DESC LIMIT 100");
+$role_filters = [
+    'all' => [
+        'label' => 'All Roles',
+        'roles' => [],
+        'icon' => 'fas fa-layer-group',
+    ],
+    'staff' => [
+        'label' => 'Staff',
+        'roles' => ['HR Staff', 'Staff'],
+        'icon' => 'fas fa-user-edit',
+    ],
+    'supervisor' => [
+        'label' => 'Supervisor',
+        'roles' => ['HR Supervisor', 'Supervisor'],
+        'icon' => 'fas fa-user-check',
+    ],
+    'manager' => [
+        'label' => 'HR Manager',
+        'roles' => ['HR Manager', 'Manager'],
+        'icon' => 'fas fa-user-tie',
+    ],
+    'admin' => [
+        'label' => 'Admin',
+        'roles' => ['Admin'],
+        'icon' => 'fas fa-user-shield',
+    ],
+];
+
+$selected_role = $_GET['role'] ?? 'all';
+if (!array_key_exists($selected_role, $role_filters)) {
+    $selected_role = 'all';
+}
+
+$where = '';
+if (!empty($role_filters[$selected_role]['roles'])) {
+    $role_values = array_map(function ($role) use ($conn) {
+        return "'" . $conn->real_escape_string($role) . "'";
+    }, $role_filters[$selected_role]['roles']);
+    $where = 'WHERE u.role IN (' . implode(',', $role_values) . ')';
+}
+
+// Fetch audit logs with user name and role.
+$sql = "
+    SELECT al.*, u.full_name, u.role
+    FROM audit_logs al
+    LEFT JOIN users u ON al.user_id = u.user_id
+    $where
+    ORDER BY al.timestamp DESC
+    LIMIT 100
+";
+
+$audit_logs = $conn->query($sql);
 ?>
 
-<div class="content-card">
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">System Admin · Activity Monitor</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-clipboard-list me-2" style="color:var(--primary-light);"></i>Audit Trail</h4>
+        </div>
+        <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+            <i class="<?php echo e($role_filters[$selected_role]['icon']); ?> me-1"></i><?php echo e($role_filters[$selected_role]['label']); ?> · Latest 100 records
+        </div>
+    </div>
+    <p class="text-white-50 small mb-0"><i class="fas fa-search me-1"></i>Review login, account, and system configuration activity across the HRIS.</p>
+</div>
+
+<div class="content-card fadeup-1">
     <div class="card-header">
         <h5><i class="fas fa-clipboard-list me-2"></i>System Audit Trail</h5>
-        <div class="search-box">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" class="form-control form-control-sm" id="searchAudit" placeholder="Search logs..." onkeyup="filterTable('searchAudit', 'auditTable')">
+        <div class="d-flex align-items-center justify-content-end gap-2 flex-wrap ms-auto" style="flex: 1 1 460px;">
+            <form method="GET" class="mb-0">
+                <select class="form-select form-select-sm" name="role" onchange="this.form.submit()" aria-label="Filter audit trail by role" style="width: 190px;">
+                    <?php foreach ($role_filters as $key => $filter): ?>
+                        <option value="<?php echo e($key); ?>" <?php echo $selected_role === $key ? 'selected' : ''; ?>>
+                            <?php echo e($filter['label']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
+            <div class="search-box" style="min-width: 220px; flex: 1 1 220px; max-width: 320px;">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="form-control form-control-sm" id="searchAudit" placeholder="Search logs..." onkeyup="filterTable('searchAudit', 'auditTable')">
+            </div>
         </div>
     </div>
     <div class="card-body p-0">
@@ -24,6 +98,7 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
                         <th>ID</th>
                         <th>Timestamp</th>
                         <th>User</th>
+                        <th>Role</th>
                         <th>Action</th>
                         <th>Entity Type</th>
                         <th>Details</th>
@@ -32,13 +107,14 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
                 </thead>
                 <tbody>
                     <?php if ($audit_logs->num_rows === 0): ?>
-                        <tr><td colspan="7" class="text-center text-muted py-4">No audit logs found.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-4">No audit logs found for <?php echo e($role_filters[$selected_role]['label']); ?>.</td></tr>
                     <?php else: ?>
                         <?php while ($log = $audit_logs->fetch_assoc()): ?>
                             <tr>
                                 <td><?php echo $log['log_id']; ?></td>
                                 <td><small><?php echo formatDateTime($log['timestamp']); ?></small></td>
                                 <td><?php echo e($log['full_name'] ?? 'System'); ?></td>
+                                <td><span class="badge bg-secondary"><?php echo e($log['role'] ?? 'System'); ?></span></td>
                                 <td>
                                     <?php
                                     $badge_class = 'bg-secondary';

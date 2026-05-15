@@ -7,6 +7,8 @@ require_once '../includes/session-check.php';
 checkRole(['HR Manager']);
 require_once '../includes/functions.php';
 
+redirectWith(BASE_URL . '/manager/dashboard.php', 'info', 'PDS review is no longer part of the Manager Portal.');
+
 $submission_id = (int)($_GET['id'] ?? 0);
 if (!$submission_id) { header("Location: ".BASE_URL."/manager/pds-submissions.php"); exit; }
 
@@ -141,7 +143,7 @@ require_once '../includes/header.php';
     <h4 class="mb-0"><i class="fas fa-search me-2 text-primary"></i>Review PDS —
       <strong><?php echo e($sub['first_name'].' '.$sub['last_name']); ?></strong>
     </h4>
-    <small class="text-muted">Employee ID: <?php echo e(getEmployeeDisplayId($sub)); ?> &bull; Submitted: <?php echo formatDateTime($sub['submitted_at']??''); ?></small>
+    <small><span class="company-id-text">Company ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($sub)); ?></span></span> <span class="text-muted">&bull; Submitted: <?php echo formatDateTime($sub['submitted_at']??''); ?></span></small>
   </div>
   <div class="d-flex gap-2 align-items-center">
     <span class="badge bg-<?php echo $statusColors[$sub['status']]??'secondary'; ?> fs-6 px-3 py-2"><?php echo e($sub['status']); ?></span>

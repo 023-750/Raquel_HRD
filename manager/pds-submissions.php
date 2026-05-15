@@ -4,6 +4,8 @@ require_once '../includes/session-check.php';
 checkRole(['HR Manager']);
 require_once '../includes/functions.php';
 
+redirectWith(BASE_URL . '/manager/dashboard.php', 'info', 'PDS Submissions is no longer part of the Manager Portal.');
+
 // Stats
 $stats = [];
 foreach (['Submitted','Under Review','Approved','Rejected','Changes Requested'] as $s) {

@@ -33,31 +33,64 @@ while ($row = $submissions->fetch_assoc()) {
 }
 ?>
 
-<div class="row g-3 mb-4">
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:0;color:rgba(255,255,255,.55);">HR Staff · Submission Tracker</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-paper-plane me-2" style="color:#BD9414;"></i>My Submissions</h4>
+        </div>
+        <div class="badge bg-white text-dark border-0 py-2 px-3" style="border-radius:20px;font-size:.75rem;box-shadow:0 4px 10px rgba(0,0,0,.1);">
+            <i class="fas fa-clipboard-check me-1 text-primary"></i><?php echo $total_c; ?> <?php echo $total_c === 1 ? 'submission' : 'submissions'; ?>
+        </div>
+    </div>
+    <p class="text-white-50 small mb-0"><i class="fas fa-route me-1"></i>Monitor submitted evaluations, review progress, and handle returned revisions from one place.</p>
+
+<div class="row g-3 mt-4">
     <div class="col-6 col-md-3">
-        <div class="content-card text-center p-3 h-100 border-start border-4 border-primary">
-            <div class="display-6 fw-bold text-primary"><?php echo $total_c; ?></div>
-            <div class="text-muted small fw-bold">Total Submissions</div>
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $total_c; ?></div>
+                    <div class="stat-label">Total Submissions</div>
+                </div>
+                <i class="fas fa-paper-plane stat-icon" style="color:#0d6efd;"></i>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="content-card text-center p-3 h-100 border-start border-4 border-warning">
-            <div class="display-6 fw-bold text-warning"><?php echo $pending_c; ?></div>
-            <div class="text-muted small fw-bold">Pending Review</div>
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $pending_c; ?></div>
+                    <div class="stat-label">Pending Review</div>
+                </div>
+                <i class="fas fa-hourglass-half stat-icon" style="color:#ffc107;"></i>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="content-card text-center p-3 h-100 border-start border-4 border-success">
-            <div class="display-6 fw-bold text-success"><?php echo $approved_c; ?></div>
-            <div class="text-muted small fw-bold">Approved</div>
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $approved_c; ?></div>
+                    <div class="stat-label">Approved</div>
+                </div>
+                <i class="fas fa-check-circle stat-icon" style="color:#28a745;"></i>
+            </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="content-card text-center p-3 h-100 border-start border-4 border-danger">
-            <div class="display-6 fw-bold text-danger"><?php echo $returned_c; ?></div>
-            <div class="text-muted small fw-bold">Returned</div>
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $returned_c; ?></div>
+                    <div class="stat-label">Returned</div>
+                </div>
+                <i class="fas fa-undo stat-icon" style="color:#dc3545;"></i>
+            </div>
         </div>
     </div>
+</div>
 </div>
 
 <div class="content-card">

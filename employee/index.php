@@ -6,7 +6,7 @@ require_once '../config/database.php';
 require_once '../includes/functions.php';
 
 // If already logged in as an Employee account, skip to dashboard
-if (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'Employee' && (int)($_SESSION['employee_id'] ?? 0) > 0) {
+if (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'Employee' && (int) ($_SESSION['employee_id'] ?? 0) > 0) {
     header("Location: dashboard.php");
     exit();
 }
@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['username'] = $user['username'];
                 $_SESSION['full_name'] = $user['full_name'];
                 $_SESSION['role'] = $user['role'];
-                $_SESSION['first_login_completed'] = (bool)($user['first_login_completed'] ?? false);
+                $_SESSION['first_login_completed'] = (bool) ($user['first_login_completed'] ?? false);
 
                 logAudit($conn, $user['user_id'], 'LOGIN', 'User', $user['user_id'], 'Employee logged into ESS portal.');
                 header("Location: dashboard.php");
@@ -58,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -67,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>/assets/css/style.css?v=<?php echo time(); ?>" rel="stylesheet">
 </head>
+
 <body>
     <div class="login-wrapper ess-login">
         <div class="login-card">
@@ -78,11 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <?php if ($error): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert"
-                    style="border-radius:8px;font-size:0.9rem;">
-                    <i class="fas fa-exclamation-circle me-2"></i><?php echo e($error); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                <?php renderFlashPopup('danger', $error); ?>
             <?php endif; ?>
 
             <form method="POST" action="" id="loginForm">
@@ -123,20 +121,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </button>
 
                 <div class="text-center">
-                    <a href="<?php echo BASE_URL; ?>/index.php" class="btn btn-outline-secondary btn-sm w-100" style="border-radius:10px;">
+                    <a href="<?php echo BASE_URL; ?>/index.php" class="btn btn-outline-secondary btn-sm w-100"
+                        style="border-radius:10px;">
                         <i class="fas fa-arrow-left me-2"></i>Admin / HR Login
                     </a>
                 </div>
             </form>
 
             <div class="text-center mt-4">
-                <small style="color:#adb5bd;">&copy; <?php echo date('Y'); ?> Raquel Pawnshop. All rights reserved.</small>
+                <small style="color:#adb5bd;">&copy; <?php echo date('Y'); ?> Raquel Pawnshop. All rights
+                    reserved.</small>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        document.querySelectorAll('.flash-toast').forEach(function (toastEl) {
+            toastEl.addEventListener('show.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-leaving');
+                toastEl.classList.add('flash-toast-entering');
+            });
+            toastEl.addEventListener('shown.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-entering');
+            });
+            toastEl.addEventListener('hide.bs.toast', function () {
+                toastEl.classList.add('flash-toast-leaving');
+            });
+            toastEl.addEventListener('hidden.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-leaving');
+            });
+            bootstrap.Toast.getOrCreateInstance(toastEl).show();
+        });
+
         function togglePassword() {
             const pwd = document.getElementById('password');
             const icon = document.getElementById('toggleIcon');
@@ -159,4 +176,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         });
     </script>
 </body>
+
 </html>

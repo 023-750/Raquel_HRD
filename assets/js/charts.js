@@ -48,6 +48,12 @@ function createPerformancePieChart(canvasId, data) {
                         }
                     }
                 }
+            },
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 1500,
+                easing: 'easeInOutQuart'
             }
         }
     });
@@ -100,6 +106,10 @@ function createTrendLineChart(canvasId, labels, values) {
                         }
                     }
                 }
+            },
+            animation: {
+                duration: 2000,
+                easing: 'easeInOutQuart'
             }
         }
     });
@@ -147,6 +157,14 @@ function createBranchBarChart(canvasId, labels, values) {
                             return context.dataset.label + ': ' + context.raw + '%';
                         }
                     }
+                }
+            },
+            animation: {
+                duration: 1800,
+                easing: 'easeInOutQuart',
+                delay: (context) => {
+                    // Stagger animation for each bar
+                    return context.dataIndex * 100;
                 }
             }
         }

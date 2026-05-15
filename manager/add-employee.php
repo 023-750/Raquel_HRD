@@ -261,12 +261,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
 
     // === SECTION 12: Employment ===
     $hire_date = !empty($_POST['hire_date']) ? $_POST['hire_date'] : null;
+    $job_title_id = !empty($_POST['job_title_id']) ? (int) $_POST['job_title_id'] : null;
     $job_title = trim($_POST['job_title'] ?? '');
     $department_id = !empty($_POST['department_id']) ? (int) $_POST['department_id'] : null;
+    $rank_category_id = !empty($_POST['rank_category_id']) ? (int) $_POST['rank_category_id'] : null;
     $branch_id = !empty($_POST['branch_id']) ? (int) $_POST['branch_id'] : null;
     $employment_status = $_POST['employment_status'] ?? 'Regular';
     $employment_type = $_POST['employment_type'] ?? 'Full-time';
     $employee_code = strtoupper(trim($_POST['employee_code'] ?? ''));
+    if ($employee_code === '')
+        $employee_code = null;
     $emergency_contact_name = trim($_POST['emergency_contact_name'] ?? '');
     $emergency_contact_relationship = trim($_POST['emergency_contact_relationship'] ?? '');
     $emergency_contact_number = trim($_POST['emergency_contact_number'] ?? '');
@@ -301,9 +305,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
         redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', "Image Upload Error: " . $upload_error);
     }
 
+    if ($job_title_id !== null) {
+        $jtStmt = $conn->prepare("SELECT job_title, department_id, is_active FROM job_titles WHERE job_title_id = ?");
+        $jtStmt->bind_param("i", $job_title_id);
+        $jtStmt->execute();
+        $jtRow = $jtStmt->get_result()->fetch_assoc();
+        $jtStmt->close();
+
+        if (!$jtRow || (int) $jtRow['is_active'] !== 1) {
+            redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Selected job title is invalid or inactive.');
+        }
+
+        if ($department_id !== null && (int) ($jtRow['department_id'] ?? 0) !== (int) $department_id) {
+            redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Selected job title does not belong to the selected department.');
+        }
+
+        $job_title = (string) $jtRow['job_title'];
+    }
+
     // Validate required
-    if (empty($employee_code) || empty($first_name) || empty($last_name) || empty($hire_date) || empty($job_title) || empty($department_id)) {
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Please fill in all required fields (Employee ID, Name, Hire Date, Job Title, Department).');
+    if (empty($first_name) || empty($last_name) || empty($hire_date) || empty($department_id) || ($job_title_id === null && $job_title === '')) {
+        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Please fill in all required fields (Name, Hire Date, Job Title, Department).');
     }
 
     // Strictly no duplicate employee
@@ -316,14 +338,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
     }
     $dupCheck->close();
 
-    $codeCheck = $conn->prepare("SELECT employee_id FROM employees WHERE employee_code = ?");
-    $codeCheck->bind_param("s", $employee_code);
-    $codeCheck->execute();
-    if ($codeCheck->get_result()->num_rows > 0) {
+    if ($employee_code !== null) {
+        $codeCheck = $conn->prepare("SELECT employee_id FROM employees WHERE employee_code = ?");
+        $codeCheck->bind_param("s", $employee_code);
+        $codeCheck->execute();
+        if ($codeCheck->get_result()->num_rows > 0) {
+            $codeCheck->close();
+            redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', "Employee ID '$employee_code' already exists in the system.");
+        }
         $codeCheck->close();
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', "Employee ID '$employee_code' already exists in the system.");
     }
-    $codeCheck->close();
 
     // Build address string for legacy column
     $address = trim("$res_house_no $res_street $res_subdivision $res_barangay $res_city $res_province $res_zip_code");
@@ -334,13 +358,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
         $sql = "INSERT INTO employees (
             employee_code, first_name, last_name, middle_name, name_extension,
             date_of_birth, place_of_birth, gender, civil_status,
-            hire_date, job_title, department_id, branch_id, 
+            hire_date, job_title, job_title_id, department_id, rank_category_id, branch_id,
             employment_status, employment_type, contract_start_date, contract_end_date, profile_picture
-        ) VALUES (?,?,?,?,?, ?,?,?,?, ?,?,?,?, ?,?,?,?,?)";
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
         $stmt = $conn->prepare($sql);
         $stmt->bind_param(
-            "sssssssssssiisssss",
+            "sssssssssssiiiisssss",
             $employee_code,
             $first_name,
             $last_name,
@@ -352,7 +376,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
             $civil_status,
             $hire_date,
             $job_title,
+            $job_title_id,
             $department_id,
+            $rank_category_id,
             $branch_id,
             $employment_status,
             $employment_type,
@@ -704,6 +730,8 @@ require_once '../includes/header.php';
 $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
 $departments_result = $conn->query("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name");
 $departments = $departments_result ? $departments_result->fetch_all(MYSQLI_ASSOC) : [];
+$job_titles_result = $conn->query("SELECT job_title_id, job_title, department_id FROM job_titles WHERE is_active = 1 ORDER BY job_title");
+$jobTitles = $job_titles_result ? $job_titles_result->fetch_all(MYSQLI_ASSOC) : [];
 
 $stepLabels = [
     '1' => 'Personal Info',
@@ -744,19 +772,18 @@ $stepLabels = [
 
             <div id="wizardStepTabs" class="d-flex flex-wrap gap-1 justify-content-center mb-4">
                 <?php foreach ($stepLabels as $num => $label): ?>
-                    <button type="button"
-                        id="tab-step<?php echo (int)$num; ?>"
-                        onclick="showStep(<?php echo (int)$num; ?>)"
+                    <button type="button" id="tab-step<?php echo (int) $num; ?>" onclick="showStep(<?php echo (int) $num; ?>)"
                         class="btn btn-sm step-tab px-3 btn-outline-secondary"
                         style="min-width:70px; font-size: 0.72rem; border-radius: 20px;">
-                        <span class="d-none d-md-inline"><?php echo (int)$num . '. ' . e($label); ?></span>
-                        <span class="d-md-none"><?php echo (int)$num; ?></span>
+                        <span class="d-none d-md-inline"><?php echo (int) $num . '. ' . e($label); ?></span>
+                        <span class="d-md-none"><?php echo (int) $num; ?></span>
                     </button>
                 <?php endforeach; ?>
             </div>
 
             <div class="d-flex justify-content-center align-items-center gap-3 pt-3 border-top mb-4">
-                <button type="button" id="prevBtn" onclick="prevStep()" class="btn btn-outline-secondary px-4 shadow-sm" style="display:none;">
+                <button type="button" id="prevBtn" onclick="prevStep()" class="btn btn-outline-secondary px-4 shadow-sm"
+                    style="display:none;">
                     <i class="fas fa-arrow-left me-2"></i>Back
                 </button>
                 <div class="d-flex gap-2">
@@ -777,56 +804,56 @@ $stepLabels = [
 
 <script src="<?php echo BASE_URL; ?>/assets/js/employee-form.js?v=<?php echo time(); ?>"></script>
 <script>
-function updateWizardUI(step) {
-    step = parseInt(step, 10) || 1;
+    function updateWizardUI(step) {
+        step = parseInt(step, 10) || 1;
 
-    // Step tabs
-    const tabs = document.querySelectorAll('#wizardStepTabs .step-tab');
-    tabs.forEach((btn, idx) => {
-        const n = idx + 1;
-        btn.classList.toggle('btn-primary', n === step);
-        btn.classList.toggle('btn-outline-secondary', n !== step);
-    });
+        // Step tabs
+        const tabs = document.querySelectorAll('#wizardStepTabs .step-tab');
+        tabs.forEach((btn, idx) => {
+            const n = idx + 1;
+            btn.classList.toggle('btn-primary', n === step);
+            btn.classList.toggle('btn-outline-secondary', n !== step);
+        });
 
-    // Progress bar
-    const bar = document.getElementById('pdsProgressBar');
-    if (bar) bar.style.width = ((step / 12) * 100) + '%';
+        // Progress bar
+        const bar = document.getElementById('pdsProgressBar');
+        if (bar) bar.style.width = ((step / 12) * 100) + '%';
 
-    // Nav buttons
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    if (prevBtn) prevBtn.style.display = (step === 1) ? 'none' : 'inline-block';
-    if (nextBtn) nextBtn.style.display = (step === 12) ? 'none' : 'inline-block';
-    if (submitBtn) submitBtn.style.display = (step === 12) ? 'inline-block' : 'none';
-}
-
-function getCurrentStep() {
-    const input = document.getElementById('currentStepInput');
-    const val = input ? parseInt(input.value, 10) : 1;
-    return isNaN(val) ? 1 : val;
-}
-
-function nextStep() {
-    const s = getCurrentStep();
-    if (s < 12) showStep(s + 1);
-}
-
-function prevStep() {
-    const s = getCurrentStep();
-    if (s > 1) showStep(s - 1);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    const originalShowStep = window.showStep;
-    if (typeof originalShowStep === 'function') {
-        window.showStep = function(step) {
-            originalShowStep(step);
-            updateWizardUI(step);
-        };
+        // Nav buttons
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        if (prevBtn) prevBtn.style.display = (step === 1) ? 'none' : 'inline-block';
+        if (nextBtn) nextBtn.style.display = (step === 12) ? 'none' : 'inline-block';
+        if (submitBtn) submitBtn.style.display = (step === 12) ? 'inline-block' : 'none';
     }
-    updateWizardUI(getCurrentStep());
-});
+
+    function getCurrentStep() {
+        const input = document.getElementById('currentStepInput');
+        const val = input ? parseInt(input.value, 10) : 1;
+        return isNaN(val) ? 1 : val;
+    }
+
+    function nextStep() {
+        const s = getCurrentStep();
+        if (s < 12) showStep(s + 1);
+    }
+
+    function prevStep() {
+        const s = getCurrentStep();
+        if (s > 1) showStep(s - 1);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const originalShowStep = window.showStep;
+        if (typeof originalShowStep === 'function') {
+            window.showStep = function (step) {
+                originalShowStep(step);
+                updateWizardUI(step);
+            };
+        }
+        updateWizardUI(getCurrentStep());
+    });
 </script>
 
 <!-- Back to Top Button -->
@@ -871,4 +898,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </form>
         </div>
     </div>
+</div>
+</div>
+</div>
 </div>

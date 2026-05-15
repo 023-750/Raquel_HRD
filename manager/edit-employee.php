@@ -5,8 +5,14 @@ checkRole(['HR Manager']);
 require_once '../includes/functions.php';
 
 $eid = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+$return_to = $_POST['return_to'] ?? ($_GET['return'] ?? (BASE_URL . '/manager/employees.php'));
+if (strpos($return_to, BASE_URL . '/manager/employees.php') !== 0 && strpos($return_to, '/manager/employees.php') !== 0) {
+    $return_to = BASE_URL . '/manager/employees.php';
+}
+$return_param = '&return=' . urlencode($return_to);
+
 if ($eid <= 0) {
-    redirectWith(BASE_URL . '/manager/employees.php', 'danger', 'Invalid employee ID.');
+    redirectWith($return_to, 'danger', 'Invalid employee ID.');
 }
 
 $stmt = $conn->prepare("SELECT e.*, 
@@ -30,7 +36,7 @@ $emp = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if (!$emp) {
-    redirectWith(BASE_URL . '/manager/employees.php', 'danger', 'Employee not found.');
+    redirectWith($return_to, 'danger', 'Employee not found.');
 }
 
 // Strictly prevent editing of System Admin profiles in the employee management module
@@ -39,7 +45,7 @@ $adminCheck->bind_param("i", $eid);
 $adminCheck->execute();
 if ($adminCheck->get_result()->num_rows > 0) {
     $adminCheck->close();
-    redirectWith(BASE_URL . '/manager/employees.php', 'danger', 'Access denied to system administrator profiles.');
+    redirectWith($return_to, 'danger', 'Access denied to system administrator profiles.');
 }
 $adminCheck->close();
 
@@ -65,14 +71,19 @@ if ($emerg) {
 $family = $conn->query("SELECT * FROM employee_family WHERE employee_id=$eid")->fetch_all(MYSQLI_ASSOC);
 foreach ($family as $m) {
     $pre = strtolower($m['member_type']);
-    if ($pre === 'mother')
-        $pre = 'mother_maiden';
-    $emp[$pre . '_surname'] = $m['surname'];
-    $emp[$pre . '_first_name'] = $m['first_name'];
-    $emp[$pre . '_middle_name'] = $m['middle_name'];
-    if (isset($m['name_extension']))
-        $emp[$pre . '_name_ext'] = $m['name_extension'];
-    $emp[$pre . '_occupation'] = $m['occupation'];
+    if ($pre === 'mother') {
+        $emp['mother_maiden_surname'] = $m['surname'];
+        $emp['mother_first_name'] = $m['first_name'];
+        $emp['mother_middle_name'] = $m['middle_name'];
+        $emp['mother_occupation'] = $m['occupation'];
+    } else {
+        $emp[$pre . '_surname'] = $m['surname'];
+        $emp[$pre . '_first_name'] = $m['first_name'];
+        $emp[$pre . '_middle_name'] = $m['middle_name'];
+        if (isset($m['name_extension']))
+            $emp[$pre . '_name_ext'] = $m['name_extension'];
+        $emp[$pre . '_occupation'] = $m['occupation'];
+    }
 }
 
 // Load child table data for edit mode
@@ -169,12 +180,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Employment
     $hire_date = !empty($_POST['hire_date']) ? $_POST['hire_date'] : null;
+    $job_title_id = !empty($_POST['job_title_id']) ? (int) $_POST['job_title_id'] : null;
     $job_title = trim($_POST['job_title'] ?? '');
     $department_id = !empty($_POST['department_id']) ? (int) $_POST['department_id'] : null;
+    $rank_category_id = !empty($_POST['rank_category_id']) ? (int) $_POST['rank_category_id'] : null;
     $branch_id = !empty($_POST['branch_id']) ? (int) $_POST['branch_id'] : null;
     $employment_status = $_POST['employment_status'] ?? 'Regular';
     $employment_type = $_POST['employment_type'] ?? 'Full-time';
     $employee_code = strtoupper(trim($_POST['employee_code'] ?? ''));
+    if ($employee_code === '') $employee_code = null;
     $is_active = isset($_POST['is_active']) ? 1 : 0;
     $emergency_contact_name = trim($_POST['emergency_contact_name'] ?? '');
     $emergency_contact_relationship = trim($_POST['emergency_contact_relationship'] ?? '');
@@ -182,9 +196,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contract_start_date = !empty($_POST['contract_start_date']) ? $_POST['contract_start_date'] : null;
     $contract_end_date = !empty($_POST['contract_end_date']) ? $_POST['contract_end_date'] : null;
 
-    if (empty($employee_code) || empty($first_name) || empty($last_name) || empty($hire_date) || empty($job_title) || empty($department_id)) {
+    if ($job_title_id !== null) {
+        $jtStmt = $conn->prepare("SELECT job_title, department_id, is_active FROM job_titles WHERE job_title_id = ?");
+        $jtStmt->bind_param("i", $job_title_id);
+        $jtStmt->execute();
+        $jtRow = $jtStmt->get_result()->fetch_assoc();
+        $jtStmt->close();
+
+        if (!$jtRow || (int) $jtRow['is_active'] !== 1) {
+            $step = $_POST['current_step'] ?? 1;
+            redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step$return_param", 'danger', 'Selected job title is invalid or inactive.');
+        }
+
+        if ($department_id !== null && (int) ($jtRow['department_id'] ?? 0) !== (int) $department_id) {
+            $step = $_POST['current_step'] ?? 1;
+            redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step$return_param", 'danger', 'Selected job title does not belong to the selected department.');
+        }
+
+        $job_title = (string) $jtRow['job_title'];
+    }
+
+    if (empty($first_name) || empty($last_name) || empty($hire_date) || empty($department_id) || ($job_title_id === null && $job_title === '')) {
         $step = $_POST['current_step'] ?? 1;
-        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step", 'danger', 'Please fill in all required fields.');
+        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step$return_param", 'danger', 'Please fill in all required fields.');
     }
 
     // Strictly no duplicate employee
@@ -194,19 +228,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($dupCheck->get_result()->num_rows > 0) {
         $dupCheck->close();
         $step = $_POST['current_step'] ?? 1;
-        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step", 'danger', "An employee named '$first_name $last_name' already exists in the system.");
+        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step$return_param", 'danger', "An employee named '$first_name $last_name' already exists in the system.");
     }
     $dupCheck->close();
 
-    $codeCheck = $conn->prepare("SELECT employee_id FROM employees WHERE employee_code = ? AND employee_id != ?");
-    $codeCheck->bind_param("si", $employee_code, $eid);
-    $codeCheck->execute();
-    if ($codeCheck->get_result()->num_rows > 0) {
+    if ($employee_code !== null) {
+        $codeCheck = $conn->prepare("SELECT employee_id FROM employees WHERE employee_code = ? AND employee_id != ?");
+        $codeCheck->bind_param("si", $employee_code, $eid);
+        $codeCheck->execute();
+        if ($codeCheck->get_result()->num_rows > 0) {
+            $codeCheck->close();
+            $step = $_POST['current_step'] ?? 1;
+            redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step$return_param", 'danger', "Employee ID '$employee_code' already exists in the system.");
+        }
         $codeCheck->close();
-        $step = $_POST['current_step'] ?? 1;
-        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step", 'danger', "Employee ID '$employee_code' already exists in the system.");
     }
-    $codeCheck->close();
 
     // Profile picture
     $new_filename = null;
@@ -236,7 +272,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($upload_error) {
         $step = $_POST['current_step'] ?? 1;
-        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step", 'danger', "Image Upload Error: " . $upload_error);
+        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step$return_param", 'danger', "Image Upload Error: " . $upload_error);
     }
 
     $conn->begin_transaction();
@@ -244,7 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sql = "UPDATE employees SET
             employee_code=?, first_name=?, last_name=?, middle_name=?, name_extension=?,
             date_of_birth=?, place_of_birth=?, gender=?, civil_status=?,
-            hire_date=?, job_title=?, department_id=?, branch_id=?, 
+            hire_date=?, job_title=?, job_title_id=?, department_id=?, rank_category_id=?, branch_id=?,
             employment_status=?, employment_type=?, contract_start_date=?, contract_end_date=?, is_active=?";
 
         if ($new_filename)
@@ -252,8 +288,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sql .= " WHERE employee_id=?";
 
         $stmt = $conn->prepare($sql);
-        $types = "sssssssssssiissssi" . ($new_filename ? "s" : "") . "i";
-        $params = [$employee_code, $first_name, $last_name, $middle_name, $name_extension, $date_of_birth, $place_of_birth, $gender, $civil_status, $hire_date, $job_title, $department_id, $branch_id, $employment_status, $employment_type, $contract_start_date, $contract_end_date, $is_active];
+        $types = "sssssssssssiiiissssi" . ($new_filename ? "s" : "") . "i";
+        $params = [$employee_code, $first_name, $last_name, $middle_name, $name_extension, $date_of_birth, $place_of_birth, $gender, $civil_status, $hire_date, $job_title, $job_title_id, $department_id, $rank_category_id, $branch_id, $employment_status, $employment_type, $contract_start_date, $contract_end_date, $is_active];
         if ($new_filename)
             $params[] = $new_filename;
         $params[] = $eid;
@@ -359,7 +395,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Exception $e) {
         $conn->rollback();
         $step = $_POST['current_step'] ?? 1;
-        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step", 'danger', "Failed to update: " . $e->getMessage());
+        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step$return_param", 'danger', "Failed to update: " . $e->getMessage());
     }
 
     if (true) { // Legacy wrapper to keep the rest of the file logic
@@ -528,15 +564,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sk->close();
         }
         if (!empty($_POST['recognition_title'])) {
-            $rc = $conn->prepare("INSERT INTO employee_recognitions (employee_id, recognition_title, issued_by, date_awarded) VALUES (?,?,?,?)");
+            $rc = $conn->prepare("INSERT INTO employee_recognitions (employee_id, recognition_title) VALUES (?,?)");
             foreach ($_POST['recognition_title'] as $i => $r) {
                 if (empty(trim($r)))
                     continue;
                 $a = $eid;
                 $rt = trim($r);
-                $rib = trim($_POST['recognition_issued_by'][$i] ?? '');
-                $rd = !empty($_POST['recognition_date'][$i]) ? $_POST['recognition_date'][$i] : null;
-                $rc->bind_param("isss", $a, $rt, $rib, $rd);
+                $rc->bind_param("is", $a, $rt);
                 $rc->execute();
             }
             $rc->close();
@@ -623,13 +657,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         $step = $_POST['current_step'] ?? 1;
         if (isset($_POST['quick_save'])) {
-            redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step", 'success', "Changes saved successfully.");
+            redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step$return_param", 'success', "Changes saved successfully.");
         } else {
-            redirectWith(BASE_URL . '/manager/employees.php', 'success', "Employee '$first_name $last_name' updated successfully.");
+            redirectWith($return_to, 'success', "Employee '$first_name $last_name' updated successfully.");
         }
     } else {
         $step = $_POST['current_step'] ?? 1;
-        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step", 'danger', "Failed to update: " . $stmt->error);
+        redirectWith(BASE_URL . "/manager/edit-employee.php?id=$eid&step=$step$return_param", 'danger', "Failed to update: " . $stmt->error);
     }
     $stmt->close();
 }
@@ -638,6 +672,8 @@ require_once '../includes/header.php';
 $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
 $departments_result = $conn->query("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name");
 $departments = $departments_result ? $departments_result->fetch_all(MYSQLI_ASSOC) : [];
+$job_titles_result = $conn->query("SELECT job_title_id, job_title, department_id FROM job_titles WHERE is_active = 1 ORDER BY job_title");
+$jobTitles = $job_titles_result ? $job_titles_result->fetch_all(MYSQLI_ASSOC) : [];
 
 $stepLabels = [
     '1' => 'Personal Info',
@@ -657,7 +693,7 @@ $stepLabels = [
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <p class="text-muted mb-0">Edit employee information</p>
-    <a href="<?php echo BASE_URL; ?>/manager/employees.php" class="btn btn-secondary">
+    <a href="<?php echo e($return_to); ?>" class="btn btn-secondary">
         <i class="fas fa-arrow-left me-2"></i>Back to Employees
     </a>
 </div>
@@ -669,6 +705,7 @@ $stepLabels = [
     </div>
     <div class="card-body">
         <form method="POST" action="" id="editEmployeeForm" enctype="multipart/form-data" data-is-edit="true">
+            <input type="hidden" name="return_to" value="<?php echo e($return_to); ?>">
             <div class="pds-progress mb-3">
                 <div id="pdsProgressBar" class="pds-progress-bar" style="width: 8.33%;"></div>
             </div>

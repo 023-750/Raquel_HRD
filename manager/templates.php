@@ -62,27 +62,80 @@ $templates = $conn->query("SELECT et.*, u.full_name as created_by_name,
     LEFT JOIN users u ON et.created_by = u.user_id
     WHERE et.status = 'Active'
     ORDER BY et.updated_at DESC");
+$active_template_count = $templates->num_rows;
+$archived_template_count = (int) $conn->query("SELECT COUNT(*) as cnt FROM evaluation_templates WHERE status = 'Archived'")->fetch_assoc()['cnt'];
+$used_template_count = (int) $conn->query("SELECT COUNT(DISTINCT template_id) as cnt FROM evaluations WHERE template_id IS NOT NULL AND deleted_at IS NULL")->fetch_assoc()['cnt'];
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <p class="text-muted mb-0"><i class="fas fa-file-alt me-1"></i>Manage performance evaluation templates</p>
-    </div>
-    <div class="d-flex gap-2">
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Evaluations</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-file-alt me-2" style="color:#BD9414;"></i>Evaluation Templates</h4>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
         <button type="button" class="btn btn-outline-danger d-none shadow-sm" id="batchDeleteBtn" onclick="confirmBatchDelete()">
             <i class="fas fa-trash-alt me-1"></i>Batch Delete (<span id="deleteCount">0</span>)
         </button>
-        <a href="<?php echo BASE_URL; ?>/manager/template-archive.php" class="btn btn-outline-secondary">
+        <a href="<?php echo BASE_URL; ?>/manager/template-archive.php" class="btn btn-outline-light btn-sm">
             <i class="fas fa-archive me-1"></i>Archive
         </a>
-        <a href="<?php echo BASE_URL; ?>/manager/create-template.php" class="btn btn-primary">
-            <i class="fas fa-plus me-2"></i>Create Template
+        <a href="<?php echo BASE_URL; ?>/manager/create-template.php" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus me-1"></i>Create Template
         </a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $active_template_count; ?></div>
+                        <div class="stat-label">Active Templates</div>
+                    </div>
+                    <i class="fas fa-file-alt stat-icon text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $archived_template_count; ?></div>
+                        <div class="stat-label">Archived</div>
+                    </div>
+                    <i class="fas fa-archive stat-icon" style="color:#BD9414;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $used_template_count; ?></div>
+                        <div class="stat-label">Used in Evaluations</div>
+                    </div>
+                    <i class="fas fa-chart-bar stat-icon" style="color:#17a2b8;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value">100%</div>
+                        <div class="stat-label">KRA Target</div>
+                    </div>
+                    <i class="fas fa-balance-scale stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <?php if ($templates->num_rows === 0): ?>
-    <div class="chart-card fadeup">
+    <div class="chart-card fadeup-1">
         <div class="card-body text-center py-5">
             <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#e8f5e9,#c8e6c9);display:inline-flex;align-items:center;justify-content:center;font-size:2rem;color:#388e3c;margin-bottom:16px;">
                 <i class="fas fa-file-alt"></i>
@@ -97,7 +150,7 @@ $templates = $conn->query("SELECT et.*, u.full_name as created_by_name,
 <?php else: ?>
     <form method="POST" action="" id="batchDeleteForm">
         <input type="hidden" name="action" value="batch_delete">
-        <div class="row g-4">
+        <div class="row g-4 fadeup-1">
             <?php while ($t = $templates->fetch_assoc()):
             $kra_w = (float)($t['kra_total_weight'] ?? 0);
             $wclass = abs($kra_w - 100) < 0.01 ? 'bg-success' : 'bg-warning text-dark';

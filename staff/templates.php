@@ -13,10 +13,58 @@ $templates = $conn->query("SELECT et.*, u.full_name as created_by_name,
     LEFT JOIN users u ON et.created_by = u.user_id
     WHERE et.status = 'Active' AND et.deleted_at IS NULL
     ORDER BY et.template_name ASC");
+$template_total = (int) $templates->num_rows;
+$criteria_total = (int) ($conn->query("SELECT COUNT(*) as c FROM evaluation_criteria ec JOIN evaluation_templates et ON ec.template_id = et.template_id WHERE et.status = 'Active' AND et.deleted_at IS NULL")->fetch_assoc()['c'] ?? 0);
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted mb-0"><i class="fas fa-lock me-1"></i> Browse evaluation templates and review scoring criteria. Read-only access.</p>
+<div class="staff-template-page">
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:0;color:rgba(255,255,255,.55);">HR Staff · Template Library</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-file-alt me-2" style="color:#BD9414;"></i>Template Viewing</h4>
+        </div>
+        <div class="badge bg-white text-dark border-0 py-2 px-3" style="border-radius:20px;font-size:.75rem;box-shadow:0 4px 10px rgba(0,0,0,.1);">
+            <i class="fas fa-lock me-1 text-primary"></i>Read-only access
+        </div>
+    </div>
+    <p class="text-white-50 small mb-0"><i class="fas fa-eye me-1"></i>Browse active evaluation templates and review their scoring criteria before creating evaluations.</p>
+
+    <div class="row g-3 mt-4">
+        <div class="col-6 col-md-4">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $template_total; ?></div>
+                        <div class="stat-label">Active Templates</div>
+                    </div>
+                    <i class="fas fa-layer-group stat-icon" style="color:#0d6efd;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $criteria_total; ?></div>
+                        <div class="stat-label">Scoring Criteria</div>
+                    </div>
+                    <i class="fas fa-list-check stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><i class="fas fa-eye"></i></div>
+                        <div class="stat-label">View Details</div>
+                    </div>
+                    <i class="fas fa-file-signature stat-icon" style="color:#ffc107;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php if ($templates->num_rows === 0): ?>
@@ -70,8 +118,12 @@ $templates = $conn->query("SELECT et.*, u.full_name as created_by_name,
         <?php endwhile; ?>
     </div>
 <?php endif; ?>
+</div>
 
 <style>
+.staff-template-page .row.g-4 {
+    align-items: stretch;
+}
 .template-card { transition: transform 0.2s ease, box-shadow 0.2s ease; border: 1.5px solid #f0f0f0; }
 .template-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0,0,0,0.08); }
 .template-icon { 
@@ -84,7 +136,7 @@ $templates = $conn->query("SELECT et.*, u.full_name as created_by_name,
 .bg-secondary-subtle { background-color: #f5f5f5; }
 .bg-success-subtle { background-color: #e8f5e9; }
 .bg-warning-subtle { background-color: #fff9c4; }
-.badge { border-radius: 6px; font-weight: 600; font-size: 0.7rem; }
+.badge { border-radius: 6px; font-weight: 600; font-size: 0.7rem; letter-spacing: 0; }
 </style>
 
 <?php require_once '../includes/footer.php'; ?>

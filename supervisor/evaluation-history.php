@@ -33,29 +33,62 @@ while ($row = $history->fetch_assoc()) {
 }
 ?>
 
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="content-card text-center p-3 h-100 border-start border-4 border-primary">
-            <div class="display-6 fw-bold text-primary"><?php echo $total_c; ?></div>
-            <div class="text-muted small fw-bold">Total Evaluations</div>
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Supervisor · Evaluation Records</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-history me-2" style="color:#BD9414;"></i>Evaluation History</h4>
+        </div>
+        <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+            <i class="fas fa-archive me-1"></i><?php echo $total_c; ?> records
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="content-card text-center p-3 h-100 border-start border-4 border-success">
-            <div class="display-6 fw-bold text-success"><?php echo $approved_c; ?></div>
-            <div class="text-muted small fw-bold">Approved</div>
+    <p class="text-white-50 small mb-0"><i class="fas fa-clipboard-list me-1"></i>Track completed evaluations, returned submissions, and approval outcomes across employee records.</p>
+
+    <div class="row g-3 mb-4 mt-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $total_c; ?></div>
+                        <div class="stat-label">Total Evaluations</div>
+                    </div>
+                    <i class="fas fa-clipboard-list stat-icon text-white-50"></i>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="content-card text-center p-3 h-100 border-start border-4 border-danger">
-            <div class="display-6 fw-bold text-danger"><?php echo $rejected_c; ?></div>
-            <div class="text-muted small fw-bold">Rejected</div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $approved_c; ?></div>
+                        <div class="stat-label">Approved</div>
+                    </div>
+                    <i class="fas fa-check-circle stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="content-card text-center p-3 h-100 border-start border-4 border-warning">
-            <div class="display-6 fw-bold text-warning"><?php echo $returned_c; ?></div>
-            <div class="text-muted small fw-bold">Returned</div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $rejected_c; ?></div>
+                        <div class="stat-label">Rejected</div>
+                    </div>
+                    <i class="fas fa-times-circle stat-icon" style="color:#dc3545;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $returned_c; ?></div>
+                        <div class="stat-label">Returned</div>
+                    </div>
+                    <i class="fas fa-undo-alt stat-icon" style="color:#ffc107;"></i>
+                </div>
+            </div>
         </div>
     </div>
 </div>

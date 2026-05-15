@@ -20,10 +20,6 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Automatically apply scheduled career movements
-require_once __DIR__ . '/functions.php';
-applyPendingCareerMovements($conn);
-
 /**
  * Check if current user has the required role.
  * 

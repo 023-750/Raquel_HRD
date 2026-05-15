@@ -76,7 +76,6 @@ if (!function_exists('getNotifIconClass')) {
         if (str_contains($t, 'approved') || str_contains($t, 'approval')) return 'approve';
         if (str_contains($t, 'rejected') || str_contains($t, 'reject')) return 'reject';
         if (str_contains($t, 'returned') || str_contains($t, 'revision')) return 'return';
-        if (str_contains($t, 'career') || str_contains($t, 'movement')) return 'career';
         if (str_contains($t, 'evaluation') || str_contains($t, 'endorsed') || str_contains($t, 'validation')) return 'eval';
         return 'system';
     }
@@ -88,7 +87,6 @@ if (!function_exists('getNotifFA')) {
             case 'approve': return 'fas fa-check-circle';
             case 'reject':  return 'fas fa-times-circle';
             case 'return':  return 'fas fa-undo-alt';
-            case 'career':  return 'fas fa-route';
             case 'eval':    return 'fas fa-file-alt';
             default:        return 'fas fa-bell';
         }
@@ -109,18 +107,118 @@ if (!function_exists('timeAgo')) {
 $base_url = strtok($_SERVER['REQUEST_URI'], '?');
 ?>
 
-<div class="notif-center-header">
-    <div class="notif-header-icon"><i class="fas fa-bell"></i></div>
-    <div class="notif-header-info">
-        <h2>Notification Center</h2>
-        <p>View updates, approval results, and HR feedback for your account</p>
+<style>
+    /* Mobile Optimization for Notification Center */
+    @media (max-width: 576px) {
+        .notif-stats-row {
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        .notif-stat-card {
+            padding: 10px 8px;
+            min-width: 0;
+            flex: 1;
+        }
+        .notif-stat-card .nsc-icon {
+            width: 30px;
+            height: 30px;
+            font-size: 0.85rem;
+            margin-right: 8px;
+        }
+        .notif-stat-card h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0;
+        }
+        .notif-stat-card p {
+            font-size: 0.65rem;
+        }
+        .notif-toolbar {
+            background: #fff;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+        .notif-filters {
+            display: flex;
+            overflow-x: auto;
+            gap: 8px;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            scrollbar-width: none;
+        }
+        .notif-filters::-webkit-scrollbar { display: none; }
+        .notif-filter-btn {
+            white-space: nowrap;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        .notif-search-box {
+            width: 100%;
+            margin-left: 0 !important;
+        }
+        .notif-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+        }
+        .notif-action-btn {
+            justify-content: center;
+            font-size: 0.75rem;
+            padding: 8px;
+        }
+        .notif-card {
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+        }
+        .notif-card-icon {
+            width: 38px;
+            height: 38px;
+            font-size: 0.9rem;
+        }
+        .notif-card-title {
+            font-size: 0.85rem;
+        }
+        .notif-card-message {
+            font-size: 0.78rem;
+            line-height: 1.4;
+        }
+        .notif-card-actions {
+            opacity: 1 !important;
+            flex-direction: column;
+            gap: 8px;
+        }
+    }
+</style>
+
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-0 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">Employee Portal · Inbox</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-bell me-2" style="color:var(--primary-light);"></i>Notification Center</h4>
+            <p class="text-white-50 small mb-0 mt-2 d-none d-sm-block">View updates, approval results, and HR feedback for your account</p>
+        </div>
+        <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-outline-light btn-sm px-3" style="border-radius: 20px;">
+            <i class="fas fa-arrow-left me-2"></i>Dashboard
+        </a>
     </div>
 </div>
 
-<div class="notif-stats-row">
-    <div class="notif-stat-card"><div class="nsc-icon total"><i class="fas fa-layer-group"></i></div><div class="nsc-info"><h4 id="statTotal"><?php echo $total_all; ?></h4><p>Total Notifications</p></div></div>
-    <div class="notif-stat-card"><div class="nsc-icon unread"><i class="fas fa-envelope"></i></div><div class="nsc-info"><h4 id="statUnread"><?php echo $total_unread; ?></h4><p>Unread</p></div></div>
-    <div class="notif-stat-card"><div class="nsc-icon read"><i class="fas fa-envelope-open"></i></div><div class="nsc-info"><h4 id="statRead"><?php echo $total_read; ?></h4><p>Read</p></div></div>
+<div class="notif-stats-row fadeup-1">
+    <div class="notif-stat-card">
+        <div class="nsc-icon" style="background:rgba(41,67,6,0.1); color:var(--primary-blue);"><i class="fas fa-layer-group"></i></div>
+        <div class="nsc-info"><h4 id="statTotal"><?php echo $total_all; ?></h4><p>Total</p></div>
+    </div>
+    <div class="notif-stat-card">
+        <div class="nsc-icon" style="background:rgba(189,148,20,0.1); color:var(--primary-light);"><i class="fas fa-envelope"></i></div>
+        <div class="nsc-info"><h4 id="statUnread"><?php echo $total_unread; ?></h4><p>Unread</p></div>
+    </div>
+    <div class="notif-stat-card">
+        <div class="nsc-icon" style="background:rgba(220,25,32,0.1); color:var(--accent);"><i class="fas fa-trash-alt"></i></div>
+        <div class="nsc-info"><h4 id="statRead"><?php echo $total_read; ?></h4><p>Read</p></div>
+    </div>
 </div>
 
 <div class="notif-toolbar">
@@ -146,7 +244,7 @@ $base_url = strtok($_SERVER['REQUEST_URI'], '?');
             <div class="notif-card-body" onclick="navigateNotif(<?php echo $notif['notification_id']; ?>, '<?php echo e($notif['link'] ?? ''); ?>', <?php echo $is_unread ? 'true' : 'false'; ?>)">
                 <div class="notif-card-title"><?php echo e($notif['title']); ?></div>
                 <div class="notif-card-message"><?php echo e($notif['message']); ?></div>
-                <div class="notif-card-time"><i class="far fa-clock"></i> <?php echo timeAgo($notif['created_at']); ?><?php if ($notif['link']): ?><span style="margin-left:4px;opacity:0.6;">•</span><span style="color:#294306;font-weight:500;">View Details <i class="fas fa-arrow-right" style="font-size:0.65rem;"></i></span><?php endif; ?></div>
+                <div class="notif-card-time"><i class="far fa-clock"></i> <?php echo timeAgo($notif['created_at']); ?><?php if ($notif['link']): ?><span style="margin-left:4px;opacity:0.6;">•</span><span style="color:var(--primary-blue);font-weight:600;">View Details <i class="fas fa-arrow-right" style="font-size:0.65rem;"></i></span><?php endif; ?></div>
             </div>
             <?php if ($is_unread): ?><div class="notif-unread-dot" title="Unread"></div><?php endif; ?>
             <div class="notif-card-actions">

@@ -53,18 +53,21 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
 ?>
 
 <div class="backup-module">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-bold mb-1">System Backup & Recovery</h2>
-            <p class="text-muted mb-0">Manage database snapshots and system exports</p>
+    <div class="page-hero fadeup">
+        <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+            <div>
+                <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">System Admin · Recovery Center</div>
+                <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-database me-2" style="color:var(--primary-light);"></i>System Backup & Recovery</h4>
+            </div>
+            <button class="btn btn-light text-primary" id="btnCreateBackup">
+                <i class="fas fa-database me-2"></i>Create New Backup
+            </button>
         </div>
-        <button class="btn btn-primary btn-lg" id="btnCreateBackup">
-            <i class="fas fa-database me-2"></i>Create New Backup
-        </button>
+        <p class="text-white-50 small mb-0"><i class="fas fa-shield-alt me-1"></i>Manage database snapshots and system exports.</p>
     </div>
 
     <!-- Stats Info -->
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-4 fadeup-1">
         <div class="col-md-4">
             <div class="stat-card">
                 <div class="stat-icon blue"><i class="fas fa-file-archive"></i></div>
@@ -76,7 +79,7 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
         </div>
         <div class="col-md-4">
             <div class="stat-card">
-                <div class="stat-icon orange"><i class="fas fa-hdd"></i></div>
+                <div class="stat-icon gold"><i class="fas fa-hdd"></i></div>
                 <div class="stat-info">
                     <?php 
                     $total_size = array_sum(array_column($backups, 'size')); 
@@ -98,7 +101,7 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
     </div>
 
     <!-- Backup List -->
-    <div class="content-card">
+    <div class="content-card fadeup-2">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5><i class="fas fa-history me-2"></i>Backup History</h5>
             <span class="badge bg-info">Auto-cleanup: Not Active</span>

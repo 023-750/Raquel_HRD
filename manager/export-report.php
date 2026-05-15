@@ -7,10 +7,10 @@ require_once '../includes/session-check.php';
 checkRole(['HR Manager']);
 
 $report_type = $_GET['report_type'] ?? '';
-$branch_id   = intval($_GET['branch_id'] ?? 0);
+$branch_id = intval($_GET['branch_id'] ?? 0);
 $department_id = intval($_GET['department'] ?? 0);
-$date_from   = trim($_GET['date_from'] ?? '');
-$date_to     = trim($_GET['date_to'] ?? '');
+$date_from = trim($_GET['date_from'] ?? '');
+$date_to = trim($_GET['date_to'] ?? '');
 $export_type = strtolower(trim($_GET['export_type'] ?? 'csv'));
 
 // Build SQL based on report type
@@ -31,8 +31,26 @@ switch ($report_type) {
         $params = [];
         $types = '';
 
-        if ($branch_id > 0) { $where .= " AND e.branch_id = ?"; $params[] = $branch_id; $types .= 'i'; }
-        if ($department_id > 0) { $where .= " AND e.department_id = ?"; $params[] = $department_id; $types .= 'i'; }
+        if ($branch_id > 0) {
+            $where .= " AND e.branch_id = ?";
+            $params[] = $branch_id;
+            $types .= 'i';
+        }
+        if ($department_id > 0) {
+            $where .= " AND e.department_id = ?";
+            $params[] = $department_id;
+            $types .= 'i';
+        }
+        if (!empty($date_from)) {
+            $where .= " AND e.hire_date >= ?";
+            $params[] = $date_from;
+            $types .= 's';
+        }
+        if (!empty($date_to)) {
+            $where .= " AND e.hire_date <= ?";
+            $params[] = $date_to;
+            $types .= 's';
+        }
 
         $sql = "SELECT e.last_name, e.first_name, e.middle_name, e.job_title, d.department_name, e.hire_date,
                        e.employment_status, e.employment_type, b.branch_name, c.mobile_number, c.personal_email
@@ -43,18 +61,25 @@ switch ($report_type) {
                 $where ORDER BY e.last_name, e.first_name";
 
         $stmt = $conn->prepare($sql);
-        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        if (!empty($params))
+            $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
         $i = 1;
         while ($r = $result->fetch_assoc()) {
             $rows[] = [
                 $i++,
-                $r['last_name'], $r['first_name'], $r['middle_name'] ?? '',
-                $r['job_title'], $r['department_name'] ?? 'N/A', $r['branch_name'] ?? 'N/A',
+                $r['last_name'],
+                $r['first_name'],
+                $r['middle_name'] ?? '',
+                $r['job_title'],
+                $r['department_name'] ?? 'N/A',
+                $r['branch_name'] ?? 'N/A',
                 $r['hire_date'] ? date('M d, Y', strtotime($r['hire_date'])) : 'N/A',
-                $r['employment_status'], $r['employment_type'],
-                $r['mobile_number'] ?? 'N/A', $r['personal_email'] ?? 'N/A'
+                $r['employment_status'],
+                $r['employment_type'],
+                $r['mobile_number'] ?? 'N/A',
+                $r['personal_email'] ?? 'N/A'
             ];
         }
         $stmt->close();
@@ -71,10 +96,26 @@ switch ($report_type) {
         $params = [];
         $types = '';
 
-        if ($branch_id > 0) { $where .= " AND e.branch_id = ?"; $params[] = $branch_id; $types .= 'i'; }
-        if ($department_id > 0) { $where .= " AND e.department_id = ?"; $params[] = $department_id; $types .= 'i'; }
-        if (!empty($date_from)) { $where .= " AND ev.approved_date >= ?"; $params[] = $date_from; $types .= 's'; }
-        if (!empty($date_to)) { $where .= " AND ev.approved_date <= ?"; $params[] = $date_to . ' 23:59:59'; $types .= 's'; }
+        if ($branch_id > 0) {
+            $where .= " AND e.branch_id = ?";
+            $params[] = $branch_id;
+            $types .= 'i';
+        }
+        if ($department_id > 0) {
+            $where .= " AND e.department_id = ?";
+            $params[] = $department_id;
+            $types .= 'i';
+        }
+        if (!empty($date_from)) {
+            $where .= " AND ev.approved_date >= ?";
+            $params[] = $date_from;
+            $types .= 's';
+        }
+        if (!empty($date_to)) {
+            $where .= " AND ev.approved_date <= ?";
+            $params[] = $date_to . ' 23:59:59';
+            $types .= 's';
+        }
 
         $sql = "SELECT CONCAT(e.last_name, ', ', e.first_name) as employee_name, e.job_title, d.department_name,
                        b.branch_name, et.template_name, ev.total_score, ev.performance_level,
@@ -87,7 +128,8 @@ switch ($report_type) {
                 $where ORDER BY ev.approved_date DESC, e.last_name";
 
         $stmt = $conn->prepare($sql);
-        if (!empty($params)) $stmt->bind_param($types, ...$params);
+        if (!empty($params))
+            $stmt->bind_param($types, ...$params);
         $stmt->execute();
         $result = $stmt->get_result();
         $i = 1;
@@ -98,59 +140,15 @@ switch ($report_type) {
             }
             $rows[] = [
                 $i++,
-                $r['employee_name'], $r['job_title'], $r['department_name'] ?? 'N/A',
-                $r['branch_name'] ?? 'N/A', $r['template_name'] ?? '',
-                $period, number_format($r['total_score'], 1),
+                $r['employee_name'],
+                $r['job_title'],
+                $r['department_name'] ?? 'N/A',
+                $r['branch_name'] ?? 'N/A',
+                $r['template_name'] ?? '',
+                $period,
+                number_format($r['total_score'], 1),
                 $r['performance_level'] ?? 'N/A',
                 $r['approved_date'] ? date('M d, Y', strtotime($r['approved_date'])) : 'N/A'
-            ];
-        }
-        $stmt->close();
-        break;
-
-    // ===========================
-    // CAREER MOVEMENTS
-    // ===========================
-    case 'career_movements':
-        $report_title = 'Career Movements';
-        $headers = ['#', 'Employee', 'Type', 'Previous Position', 'New Position', 'From Branch', 'To Branch', 'Effective Date', 'Status', 'Logged By'];
-
-        $where = "WHERE e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)";
-        $params = [];
-        $types = '';
-
-        if ($branch_id > 0) { $where .= " AND (cm.previous_branch_id = ? OR cm.new_branch_id = ?)"; $params[] = $branch_id; $params[] = $branch_id; $types .= 'ii'; }
-        if ($department_id > 0) { $where .= " AND e.department_id = ?"; $params[] = $department_id; $types .= 'i'; }
-        if (!empty($date_from)) { $where .= " AND cm.effective_date >= ?"; $params[] = $date_from; $types .= 's'; }
-        if (!empty($date_to)) { $where .= " AND cm.effective_date <= ?"; $params[] = $date_to; $types .= 's'; }
-
-        $sql = "SELECT CONCAT(e.last_name, ', ', e.first_name) as employee_name,
-                       cm.movement_type, cm.previous_position, cm.new_position,
-                       cm.effective_date, cm.approval_status,
-                       pb.branch_name as prev_branch, nb.branch_name as new_branch,
-                       u.full_name as logged_by_name
-                FROM career_movements cm
-                LEFT JOIN employees e ON cm.employee_id = e.employee_id
-                LEFT JOIN branches pb ON cm.previous_branch_id = pb.branch_id
-                LEFT JOIN branches nb ON cm.new_branch_id = nb.branch_id
-                LEFT JOIN departments d ON e.department_id = d.department_id
-                LEFT JOIN users u ON cm.logged_by = u.user_id
-                $where ORDER BY cm.effective_date DESC";
-
-        $stmt = $conn->prepare($sql);
-        if (!empty($params)) $stmt->bind_param($types, ...$params);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $i = 1;
-        while ($r = $result->fetch_assoc()) {
-            $rows[] = [
-                $i++,
-                $r['employee_name'] ?? '', $r['movement_type'],
-                $r['previous_position'] ?? 'N/A', $r['new_position'],
-                $r['prev_branch'] ?? 'N/A', $r['new_branch'] ?? 'N/A',
-                date('M d, Y', strtotime($r['effective_date'])),
-                $r['approval_status'],
-                $r['logged_by_name'] ?? 'N/A'
             ];
         }
         $stmt->close();
@@ -199,11 +197,13 @@ if ($export_type === 'pdf') {
     require_once '../includes/plugins/fpdf/fpdf.php';
 
     // Custom PDF class with header/footer
-    class ReportPDF extends FPDF {
+    class ReportPDF extends FPDF
+    {
         public $reportTitle = '';
         public $generatedDate = '';
 
-        function Header() {
+        function Header()
+        {
             // Logo
             $logoPath = dirname(__DIR__) . '/assets/img/logo/logo.png';
             if (file_exists($logoPath)) {
@@ -230,7 +230,8 @@ if ($export_type === 'pdf') {
             $this->Ln(4);
         }
 
-        function Footer() {
+        function Footer()
+        {
             $this->SetY(-15);
             $this->SetFont('Arial', 'I', 8);
             $this->SetTextColor(128);

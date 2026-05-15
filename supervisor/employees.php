@@ -5,260 +5,795 @@ checkRole(['HR Supervisor']);
 require_once '../includes/functions.php';
 require_once '../includes/header.php';
 
-// Fetch employees in the supervisor's branch
-$branch_id = $_SESSION['branch_id'] ?? 0;
-$stmt = $conn->prepare("
+// Fetch all non-admin employees so the supervisor directory matches HR Manager visibility.
+$employees = $conn->query("
     SELECT e.*, b.branch_name, d.department_name 
     FROM employees e 
     LEFT JOIN branches b ON e.branch_id = b.branch_id 
     LEFT JOIN departments d ON e.department_id = d.department_id 
-    WHERE e.branch_id = ? AND e.is_active = 1 
+    WHERE e.employee_id NOT IN (
+        SELECT employee_id
+        FROM users
+        WHERE role = 'Admin'
+          AND employee_id IS NOT NULL
+    )
     ORDER BY e.last_name, e.first_name
 ");
-$stmt->bind_param("i", $branch_id);
-$stmt->execute();
-$employees = $stmt->get_result();
-$stmt->close();
+$employee_total = (int) $employees->num_rows;
+$employee_active = (int) $conn->query("
+    SELECT COUNT(*) as cnt
+    FROM employees e
+    WHERE e.is_active = 1
+      AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
+")->fetch_assoc()['cnt'];
+$employee_inactive = max(0, $employee_total - $employee_active);
+
+// Fetch distinct values for filter dropdowns to mirror the HR Manager employee table.
+$job_titles_res = $conn->query("SELECT DISTINCT job_title FROM employees WHERE job_title IS NOT NULL AND job_title != '' ORDER BY job_title ASC");
+$job_titles = [];
+while ($r = $job_titles_res->fetch_assoc()) {
+    $job_titles[] = $r['job_title'];
+}
+
+$departments_res = $conn->query("SELECT d.department_name FROM departments d ORDER BY d.department_name ASC");
+$departments = [];
+while ($r = $departments_res->fetch_assoc()) {
+    $departments[] = $r['department_name'];
+}
+
+$branches_res = $conn->query("SELECT b.branch_name FROM branches b ORDER BY b.branch_name ASC");
+$branches = [];
+while ($r = $branches_res->fetch_assoc()) {
+    $branches[] = $r['branch_name'];
+}
+
+$statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted mb-0">View profiles and update contact information for employees in your branch.</p>
-</div>
+<style>
+    .supervisor-employee-page .card-header {
+        gap: 12px;
+    }
 
-<?php displayFlashMessage(); ?>
+    .supervisor-employee-page .employee-toolbar {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
 
-<div class="content-card">
-    <div class="card-header">
-        <h5><i class="fas fa-users me-2"></i>Branch Employees</h5>
-        <div class="search-box">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" class="form-control form-control-sm" id="customSearchEmp" placeholder="Search employees...">
+    .supervisor-employee-page .employee-toolbar .btn {
+        align-items: center;
+        display: inline-flex;
+        gap: 6px;
+        white-space: nowrap;
+    }
+
+    .supervisor-employee-page .filter-toolbar {
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #f8f9fc 0%, #f1f3f8 100%);
+        border-bottom: 1px solid #e8ecf1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .supervisor-employee-page .filter-group {
+        position: relative;
+        min-width: 180px;
+        flex: 1;
+    }
+
+    .supervisor-employee-page .filter-group label {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #8094ae;
+        margin-bottom: 4px;
+    }
+
+    .supervisor-employee-page .filter-group select {
+        width: 100%;
+        padding: 8px 32px 8px 12px;
+        border: 1px solid #dce3ed;
+        border-radius: 8px;
+        background: #fff;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: #344357;
+        transition: all 0.2s ease;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238094ae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        cursor: pointer;
+    }
+
+    .supervisor-employee-page .filter-group select:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 59, 130, 246), 0.1);
+    }
+
+    .supervisor-employee-page .filter-group select.active-filter {
+        border-color: var(--primary-blue);
+        background-color: #eef4ff;
+        color: var(--primary-blue);
+        font-weight: 600;
+    }
+
+    .supervisor-employee-page .filter-summary {
+        padding: 8px 20px;
+        background: #fff;
+        border-bottom: 1px solid #e8ecf1;
+        display: none;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .supervisor-employee-page .filter-summary.has-filters {
+        display: flex;
+    }
+
+    .supervisor-employee-page .filter-summary .filter-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #8094ae;
+        margin-right: 4px;
+    }
+
+    .supervisor-employee-page .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px;
+        background: #eef4ff;
+        border: 1px solid #d0dfff;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--primary-blue);
+    }
+
+    .supervisor-employee-page .filter-chip .chip-category {
+        font-weight: 400;
+        color: #8094ae;
+    }
+
+    .supervisor-employee-page .filter-chip .remove-chip {
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.15s;
+        font-size: 0.65rem;
+    }
+
+    .supervisor-employee-page .filter-chip .remove-chip:hover {
+        opacity: 1;
+    }
+
+    .supervisor-employee-page .btn-clear-filters {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #dc3545;
+        background: none;
+        border: none;
+        padding: 3px 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        border-radius: 6px;
+    }
+
+    .supervisor-employee-page .btn-clear-filters:hover {
+        background: #fff5f5;
+    }
+
+    @media (max-width: 768px) {
+        .supervisor-employee-page .filter-group {
+            min-width: 140px;
+        }
+
+        .supervisor-employee-page .chart-card {
+            background: transparent;
+            border: 0;
+            box-shadow: none;
+        }
+
+        .supervisor-employee-page .chart-card .cc-header {
+            align-items: stretch;
+            background: #fff;
+            border: 1px solid #eef2e8;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(12, 32, 8, 0.06);
+            flex-direction: column;
+            margin-bottom: 12px;
+        }
+
+        .supervisor-employee-page .search-box,
+        .supervisor-employee-page .search-box input {
+            width: 100%;
+        }
+
+        .supervisor-employee-page .employee-toolbar {
+            align-items: stretch;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .supervisor-employee-page .employee-toolbar .btn {
+            justify-content: center;
+            width: 100%;
+        }
+
+        .supervisor-employee-page .cc-body {
+            background: transparent;
+        }
+
+        .supervisor-employee-page .table-responsive {
+            overflow-x: visible;
+        }
+
+        .supervisor-employee-page #empTable {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .supervisor-employee-page #empTable thead {
+            display: none;
+        }
+
+        .supervisor-employee-page #empTable,
+        .supervisor-employee-page #empTable tbody,
+        .supervisor-employee-page #empTable tr,
+        .supervisor-employee-page #empTable td {
+            display: block;
+            width: 100%;
+        }
+
+        .supervisor-employee-page #empTable tbody tr {
+            background: #fff;
+            border: 1px solid rgba(41, 67, 6, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 8px 24px rgba(12, 32, 8, 0.07);
+            margin-bottom: 14px;
+            overflow: hidden;
+            padding: 8px 14px;
+        }
+
+        .supervisor-employee-page #empTable tbody tr:hover {
+            background: #fff;
+        }
+
+        .supervisor-employee-page #empTable tbody td {
+            align-items: center;
+            border: 0;
+            border-bottom: 1px solid #eef2e8;
+            display: grid;
+            gap: 10px;
+            grid-template-columns: minmax(92px, 34%) minmax(0, 1fr);
+            overflow-wrap: anywhere;
+            padding: 10px 0;
+            text-align: right;
+        }
+
+        .supervisor-employee-page #empTable tbody td::before {
+            color: var(--text-muted);
+            content: attr(data-label);
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            line-height: 1.2;
+            text-align: left;
+            text-transform: uppercase;
+        }
+
+        .supervisor-employee-page #empTable tbody td:nth-child(2) {
+            border-bottom: 1px solid #e8eee3;
+            display: flex;
+            justify-content: flex-start;
+            padding-bottom: 14px;
+            text-align: left;
+        }
+
+        .supervisor-employee-page #empTable tbody td:nth-child(2)::before,
+        .supervisor-employee-page #empTable tbody td:last-child::before,
+        .supervisor-employee-page #empTable tbody td[colspan]::before {
+            content: none;
+        }
+
+        .supervisor-employee-page #empTable tbody td:nth-child(2) img {
+            height: 46px !important;
+            width: 46px !important;
+        }
+
+        .supervisor-employee-page #empTable tbody td:nth-child(2) strong {
+            color: var(--primary-blue);
+            font-size: 1rem;
+        }
+
+        .supervisor-employee-page #empTable tbody td:last-child {
+            border-bottom: 0;
+            display: flex;
+            gap: 10px;
+            justify-content: stretch;
+            padding-top: 14px;
+        }
+
+        .supervisor-employee-page #empTable tbody td:last-child .btn {
+            align-items: center;
+            display: inline-flex;
+            flex: 1;
+            justify-content: center;
+            min-height: 38px;
+        }
+
+        .supervisor-employee-page #empTable tbody td[colspan] {
+            display: block;
+            padding: 28px 16px;
+            text-align: center;
+        }
+
+        .supervisor-employee-page #paginationWrapper {
+            background: #fff;
+            border: 1px solid #eef2e8;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(12, 32, 8, 0.06);
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 12px;
+            text-align: center;
+        }
+
+        .supervisor-employee-page #paginationNumbers {
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .supervisor-employee-page #empTable tbody td {
+            grid-template-columns: 1fr;
+            gap: 4px;
+            text-align: left;
+        }
+    }
+</style>
+
+<div class="supervisor-employee-page">
+    <?php displayFlashMessage(); ?>
+
+    <div class="page-hero fadeup mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+            <div>
+                <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">
+                    HR Supervisor · Employees</div>
+                <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-users me-2"
+                        style="color:#BD9414;"></i>Employee Information</h4>
+            </div>
+            <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+                <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-6">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value"><?php echo $employee_total; ?></div>
+                            <div class="stat-label">Total Employees</div>
+                        </div>
+                        <i class="fas fa-id-badge stat-icon text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value"><?php echo $employee_active; ?></div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                        <i class="fas fa-check-circle stat-icon" style="color:#28a745;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value"><?php echo $employee_inactive; ?></div>
+                            <div class="stat-label">Inactive</div>
+                        </div>
+                        <i class="fas fa-pause-circle stat-icon" style="color:#BD9414;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value">4</div>
+                            <div class="stat-label">Filters</div>
+                        </div>
+                        <i class="fas fa-filter stat-icon" style="color:#17a2b8;"></i>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover" id="empTable">
-                <thead>
-                    <tr>
-                        <th style="cursor: pointer;" onclick="sortTable(0)">Name <i class="fas fa-sort text-muted ms-1" style="font-size: 0.8rem;"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(1)">Job Title <i class="fas fa-sort text-muted ms-1" style="font-size: 0.8rem;"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(2)">Department <i class="fas fa-sort text-muted ms-1" style="font-size: 0.8rem;"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(3)">Branch <i class="fas fa-sort text-muted ms-1" style="font-size: 0.8rem;"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(4)">Hire Date <i class="fas fa-sort text-muted ms-1" style="font-size: 0.8rem;"></i></th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if ($employees->num_rows === 0): ?>
-                        <tr class="no-results-row"><td colspan="6" class="text-center py-4 text-muted">No active employees found in your branch.</td></tr>
-                    <?php else: ?>
-                        <?php while ($emp = $employees->fetch_assoc()): ?>
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
-                                        <strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong>
-                                    </div>
-                                </td>
-                                <td><?php echo e($emp['job_title']); ?></td>
-                                <td><?php echo e($emp['department_name'] ?? 'N/A'); ?></td>
-                                <td><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
-                                <td><small><?php echo formatDate($emp['hire_date']); ?></small></td>
-                                <td>
-                                    <a href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-sm btn-outline-info" title="View Details">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-sm btn-outline-primary" title="Edit Contact Info">
-                                        <i class="fas fa-address-card"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+
+    <div class="d-none d-md-flex justify-content-between align-items-center mb-4" data-flash-toast-anchor>
+        <p class="text-muted mb-0">Manage employee records</p>
+    </div>
+
+    <div class="chart-card fadeup">
+        <div class="cc-header">
+            <h5 class="d-none d-md-block"><i class="fas fa-users me-2"></i>All Employees</h5>
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="form-control form-control-sm" id="customSearchEmp"
+                    placeholder="Search employees...">
+            </div>
         </div>
-        <!-- Pagination Controls -->
-        <div class="d-flex justify-content-between align-items-center p-3 border-top" id="paginationWrapper">
-            <div id="paginationInfo" class="text-muted small"></div>
-            <ul class="pagination pagination-sm mb-0" id="paginationNumbers">
-            </ul>
+        <div class="filter-toolbar" id="filterToolbar">
+            <div class="filter-group">
+                <label><i class="fas fa-briefcase me-1"></i>Job Title</label>
+                <select id="filterJobTitle">
+                    <option value="">All Titles</option>
+                    <?php foreach ($job_titles as $jt): ?>
+                        <option value="<?php echo e($jt); ?>"><?php echo e($jt); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-sitemap me-1"></i>Department</label>
+                <select id="filterDepartment">
+                    <option value="">All Departments</option>
+                    <?php foreach ($departments as $dept): ?>
+                        <option value="<?php echo e($dept); ?>"><?php echo e($dept); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-building me-1"></i>Branch</label>
+                <select id="filterBranch">
+                    <option value="">All Branches</option>
+                    <?php foreach ($branches as $br): ?>
+                        <option value="<?php echo e($br); ?>"><?php echo e($br); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label><i class="fas fa-user-tag me-1"></i>Status</label>
+                <select id="filterStatus">
+                    <option value="">All Statuses</option>
+                    <?php foreach ($statuses as $st): ?>
+                        <option value="<?php echo e($st); ?>"><?php echo e($st); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <div class="filter-summary" id="filterSummary">
+            <span class="filter-label"><i class="fas fa-filter me-1"></i>Filters:</span>
+            <div id="filterChips"></div>
+            <button class="btn-clear-filters" id="clearAllFilters" title="Clear all filters">
+                <i class="fas fa-times me-1"></i>Clear All
+            </button>
+        </div>
+        <div class="cc-body p-0">
+            <div class="table-responsive">
+                <table class="table" id="empTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>Name</th>
+                            <th>Job Title</th>
+                            <th>Department</th>
+                            <th>Branch</th>
+                            <th>Status</th>
+                            <th>Hire Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($employees->num_rows === 0): ?>
+                            <tr class="no-results-row">
+                                <td colspan="8" class="text-center py-4 text-muted">No employees found.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php $count = 1; ?>
+                            <?php while ($emp = $employees->fetch_assoc()): ?>
+                                <tr data-jobtitle="<?php echo e($emp['job_title']); ?>"
+                                    data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
+                                    data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
+                                    data-status="<?php echo e($emp['employment_status']); ?>">
+                                    <td data-label="#"><strong><?php echo $count++; ?></strong></td>
+                                    <td data-label="Name">
+                                        <div class="d-flex align-items-center">
+                                            <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile"
+                                                class="rounded-circle me-2"
+                                                style="width: 32px; height: 32px; object-fit: cover;">
+                                            <strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong>
+                                        </div>
+                                    </td>
+                                    <td data-label="Job Title"><?php echo e($emp['job_title']); ?></td>
+                                    <td data-label="Department"><?php echo e($emp['department_name'] ?? 'N/A'); ?></td>
+                                    <td data-label="Branch"><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
+                                    <td data-label="Status">
+                                        <span
+                                            class="badge <?php echo !empty($emp['is_active']) ? 'bg-success' : 'bg-danger'; ?>">
+                                            <?php echo e($emp['employment_status']); ?>
+                                        </span>
+                                    </td>
+                                    <td data-label="Hire Date"><small><?php echo formatDate($emp['hire_date']); ?></small></td>
+                                    <td data-label="Actions">
+                                        <a href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                            class="btn btn-sm btn-outline-info" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                            class="btn btn-sm btn-outline-primary employee-edit-link"
+                                            data-base-href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                            title="Edit Employee">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <!-- Pagination Controls -->
+            <div class="d-flex justify-content-between align-items-center p-3 border-top" id="paginationWrapper">
+                <div id="paginationInfo" class="text-muted small"></div>
+                <ul class="pagination pagination-sm mb-0" id="paginationNumbers">
+                </ul>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// State Variables
-let sortDirection = false;
-let currentSortColumn = -1;
-let currentPage = 1;
-const ITEMS_PER_PAGE = 10;
+    // State Variables
+    let currentPage = 1;
+    const ITEMS_PER_PAGE = 10;
 
-function sortTable(columnIndex) {
-    if (currentSortColumn === columnIndex) {
-        sortDirection = !sortDirection;
-    } else {
-        currentSortColumn = columnIndex;
-        sortDirection = false;
-    }
-    
-    // Update icons
-    const ths = document.querySelectorAll("#empTable thead th");
-    ths.forEach((th, idx) => {
-        const icon = th.querySelector("i.fas");
-        if (icon) {
-            if (idx === columnIndex) {
-                icon.className = sortDirection ? "fas fa-sort-up ms-1" : "fas fa-sort-down ms-1";
-                icon.classList.remove("text-muted");
-                icon.classList.add("text-primary");
-            } else {
-                icon.className = "fas fa-sort text-muted ms-1";
-                icon.classList.remove("text-primary");
-            }
-        }
+    document.getElementById('customSearchEmp').addEventListener('input', function () {
+        currentPage = 1;
+        syncFiltersToUrl();
+        renderTable();
     });
 
-    renderTable();
-}
+    // Dropdown Filter Logic
+    const filterSelects = ['filterJobTitle', 'filterDepartment', 'filterBranch', 'filterStatus'];
+    const filterLabels = { filterJobTitle: 'Job Title', filterDepartment: 'Department', filterBranch: 'Branch', filterStatus: 'Status' };
+    const filterParams = { filterJobTitle: 'job_title', filterDepartment: 'department', filterBranch: 'branch', filterStatus: 'status' };
 
-document.getElementById('customSearchEmp').addEventListener('input', function() {
-    currentPage = 1; // Reset to page 1 on search
-    renderTable();
-});
+    function applyFiltersFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        document.getElementById('customSearchEmp').value = params.get('search') || '';
+        filterSelects.forEach(id => {
+            const el = document.getElementById(id);
+            const value = params.get(filterParams[id]) || '';
+            el.value = value;
+            el.classList.toggle('active-filter', value !== '');
+        });
+    }
 
-function goToPage(page) {
-    currentPage = page;
-    renderTable();
-}
+    function syncFiltersToUrl() {
+        const params = new URLSearchParams();
+        const search = document.getElementById('customSearchEmp').value.trim();
+        if (search !== '') params.set('search', search);
 
-function renderTable() {
-    const tbody = document.querySelector("#empTable tbody");
-    const allRowsArr = Array.from(tbody.querySelectorAll("tr:not(.no-results-row)"));
-    const filterInput = document.getElementById('customSearchEmp').value.toLowerCase().trim();
-    
-    let visibleRows = [];
-    
-    // 1. Filter
-    allRowsArr.forEach(row => {
-        const cells = Array.from(row.querySelectorAll("td"));
-        if (cells.length > 1) {
-            const rowText = cells.slice(0, 5).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ').toLowerCase();
-            if (filterInput === "" || rowText.includes(filterInput)) {
-                visibleRows.push(row);
-                row.classList.remove('filtered-out');
+        filterSelects.forEach(id => {
+            const value = document.getElementById(id).value;
+            if (value !== '') params.set(filterParams[id], value);
+        });
+
+        const query = params.toString();
+        const nextUrl = window.location.pathname + (query ? '?' + query : '');
+        history.replaceState(null, '', nextUrl);
+        updateEmployeeActionLinks();
+    }
+
+    function updateEmployeeActionLinks() {
+        const returnUrl = window.location.pathname + window.location.search;
+        document.querySelectorAll('.employee-edit-link').forEach(link => {
+            link.href = link.dataset.baseHref + '&return=' + encodeURIComponent(returnUrl);
+        });
+    }
+
+    filterSelects.forEach(id => {
+        document.getElementById(id).addEventListener('change', function () {
+            currentPage = 1;
+            this.classList.toggle('active-filter', this.value !== '');
+            syncFiltersToUrl();
+            renderTable();
+            updateFilterChips();
+        });
+    });
+
+    function updateFilterChips() {
+        const chipsContainer = document.getElementById('filterChips');
+        const summary = document.getElementById('filterSummary');
+        let html = '';
+        let hasAny = false;
+
+        filterSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el.value !== '') {
+                hasAny = true;
+                html += `<span class="filter-chip"><span class="chip-category">${filterLabels[id]}:</span> ${el.value} <i class="fas fa-times remove-chip" data-filter="${id}"></i></span>`;
+            }
+        });
+
+        chipsContainer.innerHTML = html;
+        summary.classList.toggle('has-filters', hasAny);
+
+        chipsContainer.querySelectorAll('.remove-chip').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const filterId = this.dataset.filter;
+                const select = document.getElementById(filterId);
+                select.value = '';
+                select.classList.remove('active-filter');
+                currentPage = 1;
+                syncFiltersToUrl();
+                renderTable();
+                updateFilterChips();
+            });
+        });
+    }
+
+    document.getElementById('clearAllFilters').addEventListener('click', function () {
+        filterSelects.forEach(id => {
+            const el = document.getElementById(id);
+            el.value = '';
+            el.classList.remove('active-filter');
+        });
+        currentPage = 1;
+        syncFiltersToUrl();
+        renderTable();
+        updateFilterChips();
+    });
+
+    function goToPage(page) {
+        currentPage = page;
+        renderTable();
+    }
+
+    function renderTable() {
+        const tbody = document.querySelector("#empTable tbody");
+        const allRowsArr = Array.from(tbody.querySelectorAll("tr:not(.no-results-row)"));
+        const filterInput = document.getElementById('customSearchEmp').value.toLowerCase().trim();
+        const fJobTitle = document.getElementById('filterJobTitle').value;
+        const fDepartment = document.getElementById('filterDepartment').value;
+        const fBranch = document.getElementById('filterBranch').value;
+        const fStatus = document.getElementById('filterStatus').value;
+
+        let visibleRows = [];
+
+        // 1. Filter (text search + dropdown filters)
+        allRowsArr.forEach(row => {
+            const cells = Array.from(row.querySelectorAll("td"));
+            if (cells.length > 1) {
+                const rowText = cells.slice(0, 6).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ').toLowerCase();
+                const textMatch = filterInput === "" || rowText.includes(filterInput);
+                const dropdownMatch =
+                    (fJobTitle === '' || row.dataset.jobtitle === fJobTitle) &&
+                    (fDepartment === '' || row.dataset.department === fDepartment) &&
+                    (fBranch === '' || row.dataset.branch === fBranch) &&
+                    (fStatus === '' || row.dataset.status === fStatus);
+
+                if (textMatch && dropdownMatch) {
+                    visibleRows.push(row);
+                    row.classList.remove('filtered-out');
+                } else {
+                    row.classList.add('filtered-out');
+                    row.style.display = "none";
+                }
+            }
+        });
+
+        // 2. Paginate
+        const totalPages = Math.ceil(visibleRows.length / ITEMS_PER_PAGE);
+        if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIdx = startIdx + ITEMS_PER_PAGE;
+
+        visibleRows.forEach((row, index) => {
+            if (index >= startIdx && index < endIdx) {
+                row.style.display = "";
             } else {
-                row.classList.add('filtered-out');
                 row.style.display = "none";
             }
-        }
-    });
-
-    // 2. Sort
-    if (currentSortColumn !== -1) {
-        visibleRows.sort((a, b) => {
-            let valA = a.querySelectorAll("td")[currentSortColumn].textContent.trim();
-            let valB = b.querySelectorAll("td")[currentSortColumn].textContent.trim();
-            
-            if (currentSortColumn === 4) { // Hire Date
-                valA = new Date(valA).getTime() || valA;
-                valB = new Date(valB).getTime() || valB;
-            }
-
-            if (valA < valB) return sortDirection ? -1 : 1;
-            if (valA > valB) return sortDirection ? 1 : -1;
-            return 0;
         });
-        
-        // Re-append sorted rows to DOM
-        visibleRows.forEach(row => tbody.appendChild(row));
+
+        updatePaginationUI(visibleRows.length, totalPages);
+        handleNoResults(visibleRows.length, filterInput, tbody);
     }
 
-    // 3. Paginate
-    const totalPages = Math.ceil(visibleRows.length / ITEMS_PER_PAGE);
-    if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
-    if (currentPage < 1) currentPage = 1;
+    function updatePaginationUI(totalItems, totalPages) {
+        const info = document.getElementById("paginationInfo");
+        const digits = document.getElementById("paginationNumbers");
+        if (!info || !digits) return;
 
-    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIdx = startIdx + ITEMS_PER_PAGE;
-
-    visibleRows.forEach((row, index) => {
-        if (index >= startIdx && index < endIdx) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
+        if (totalItems === 0) {
+            info.innerHTML = "Showing 0 entries";
+            digits.innerHTML = "";
+            return;
         }
-    });
 
-    updatePaginationUI(visibleRows.length, totalPages);
-    handleNoResults(visibleRows.length, filterInput, tbody);
-}
+        const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+        const end = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
+        info.innerHTML = `Showing ${start} to ${end} of ${totalItems} entries`;
 
-function updatePaginationUI(totalItems, totalPages) {
-    const info = document.getElementById("paginationInfo");
-    const digits = document.getElementById("paginationNumbers");
-    if (!info || !digits) return;
-    
-    if (totalItems === 0) {
-        info.innerHTML = "Showing 0 entries";
-        digits.innerHTML = "";
-        return;
-    }
-    
-    const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-    const end = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
-    info.innerHTML = `Showing ${start} to ${end} of ${totalItems} entries`;
-    
-    let html = "";
-    
-    // Previous Button
-    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+        let html = "";
+
+        // Previous Button
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                 <button class="page-link" onclick="goToPage(${currentPage - 1})">Previous</button>
              </li>`;
-             
-    // Page Numbers
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
-    if (endPage - startPage < 4) {
-        startPage = Math.max(1, endPage - 4);
-    }
-    
-    if (startPage > 1) {
-        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-    }
-    for (let i = startPage; i <= endPage; i++) {
-        html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+
+        // Page Numbers
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+
+        if (startPage > 1) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
                     <button class="page-link" onclick="goToPage(${i})">${i}</button>
                  </li>`;
-    }
-    if (endPage < totalPages) {
-        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-    }
-    
-    // Next Button
-    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+        }
+        if (endPage < totalPages) {
+            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+        }
+
+        // Next Button
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
                 <button class="page-link" onclick="goToPage(${currentPage + 1})">Next</button>
              </li>`;
-             
-    digits.innerHTML = html;
-}
 
-function handleNoResults(totalItems, filterInput, tbody) {
-    let noResultsRow = tbody.querySelector('.no-results-row.search-empty');
-    if (totalItems === 0 && filterInput !== "") {
-        if (!noResultsRow) {
-            noResultsRow = document.createElement('tr');
-            noResultsRow.className = 'no-results-row search-empty text-center';
-            tbody.appendChild(noResultsRow);
-        }
-        noResultsRow.innerHTML = `<td colspan="6" class="py-4 text-muted"><i class="fas fa-search fa-2x mb-3 d-block"></i>No employees found matching "<strong>${filterInput}</strong>"</td>`;
-        noResultsRow.style.display = '';
-    } else if (noResultsRow) {
-        noResultsRow.remove();
+        digits.innerHTML = html;
     }
-}
 
-// Initial Render on Load
-document.addEventListener("DOMContentLoaded", renderTable);
+    function handleNoResults(totalItems, filterInput, tbody) {
+        const hasDropdownFilter = filterSelects.some(id => document.getElementById(id).value !== '');
+        let noResultsRow = tbody.querySelector('.no-results-row.search-empty');
+        if (totalItems === 0 && (filterInput !== "" || hasDropdownFilter)) {
+            if (!noResultsRow) {
+                noResultsRow = document.createElement('tr');
+                noResultsRow.className = 'no-results-row search-empty text-center';
+                tbody.appendChild(noResultsRow);
+            }
+            let msg = 'No employees match the current filters.';
+            if (filterInput !== '') msg = `No employees found matching "<strong>${filterInput}</strong>"`;
+            noResultsRow.innerHTML = `<td colspan="8" class="py-4 text-muted"><i class="fas fa-filter fa-2x mb-3 d-block" style="opacity:0.2;"></i>${msg}</td>`;
+            noResultsRow.style.display = '';
+        } else if (noResultsRow) {
+            noResultsRow.remove();
+        }
+    }
+
+    // Initial Render on Load
+    document.addEventListener("DOMContentLoaded", function () {
+        applyFiltersFromUrl();
+        updateEmployeeActionLinks();
+        renderTable();
+        updateFilterChips();
+    });
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

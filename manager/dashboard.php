@@ -7,9 +7,21 @@ require_once '../includes/header.php';
 // Fetch stats
 $branch_id = $_SESSION['branch_id'];
 
+// Resolve the user's assigned branch name for auto-selection in the UI
+$user_branch_name = '';
+if (!empty($branch_id)) {
+    $br_stmt = $conn->prepare("SELECT branch_name FROM branches WHERE branch_id = ? LIMIT 1");
+    $br_stmt->bind_param("i", $branch_id);
+    $br_stmt->execute();
+    $br_res = $br_stmt->get_result();
+    if ($br_row = $br_res->fetch_assoc()) {
+        $user_branch_name = $br_row['branch_name'];
+    }
+    $br_stmt->close();
+}
+
 $total_employees = $conn->query("SELECT COUNT(*) as c FROM employees WHERE is_active = 1 AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['c'];
 $pending_evals = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE status = 'Pending Manager'")->fetch_assoc()['c'];
-$pending_movements = $conn->query("SELECT COUNT(*) as c FROM career_movements WHERE approval_status = 'Pending'")->fetch_assoc()['c'];
 $avg_score_result = $conn->query("SELECT AVG(total_score) as avg FROM evaluations WHERE status = 'Approved'");
 $avg_score = round($avg_score_result->fetch_assoc()['avg'] ?? 0, 1);
 $new_evals_month = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE MONTH(submitted_date) = MONTH(CURRENT_DATE()) AND YEAR(submitted_date) = YEAR(CURRENT_DATE())")->fetch_assoc()['c'];
@@ -38,14 +50,6 @@ $pending_evals_list = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.las
     LEFT JOIN users u ON ev.submitted_by = u.user_id
     WHERE ev.status = 'Pending Manager'
     ORDER BY ev.submitted_date DESC LIMIT 5");
-
-// Fetch pending career movements (5 most recent)
-$pending_cm_list = $conn->query("SELECT cm.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, u.full_name as logged_by_name
-    FROM career_movements cm
-    LEFT JOIN employees e ON cm.employee_id = e.employee_id
-    LEFT JOIN users u ON cm.logged_by = u.user_id
-    WHERE cm.approval_status = 'Pending'
-    ORDER BY cm.created_at DESC LIMIT 5");
 
 // 1. Performance Distribution Data
 $perf_dist = $conn->query("SELECT performance_level, COUNT(*) as count FROM evaluations WHERE status = 'Approved' AND performance_level IS NOT NULL GROUP BY performance_level");
@@ -99,6 +103,37 @@ $branch_q = $conn->query("SELECT b.branch_name, AVG(ev.total_score) as avg_score
     ORDER BY avg_score DESC LIMIT 10");
 while ($row = $branch_q->fetch_assoc()) {
     $branch_comp_data[] = ['label' => $row['branch_name'], 'value' => round($row['avg_score'], 1)];
+}
+
+// 6. Age Distribution Data
+$age_dist_q = $conn->query("
+    SELECT
+        CASE
+            WHEN age < 25 THEN '18-24'
+            WHEN age BETWEEN 25 AND 34 THEN '25-34'
+            WHEN age BETWEEN 35 AND 44 THEN '35-44'
+            WHEN age BETWEEN 45 AND 54 THEN '45-54'
+            ELSE '55+'
+        END as age_group,
+        COUNT(*) as count
+    FROM (
+        SELECT FLOOR(DATEDIFF(CURRENT_DATE, date_of_birth) / 365.25) as age
+        FROM employees
+        WHERE is_active = 1
+        AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
+    ) as employee_ages
+    GROUP BY age_group
+    ORDER BY age_group ASC
+");
+
+$age_labels = ['18-24', '25-34', '35-44', '45-54', '55+'];
+$age_counts = array_fill(0, count($age_labels), 0);
+$age_map = array_flip($age_labels);
+
+while ($row = $age_dist_q->fetch_assoc()) {
+    if (isset($age_map[$row['age_group']])) {
+        $age_counts[$age_map[$row['age_group']]] = (int)$row['count'];
+    }
 }
 ?>
 
@@ -320,6 +355,7 @@ while ($row = $branch_q->fetch_assoc()) {
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
         <div>
+            <div class="mb-1" style="color:#FFD97D;font-size:.88rem;font-weight:600;letter-spacing:.3px;"><?php echo getGreeting($_SESSION['full_name'] ?? ''); ?></div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Dashboard</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-tachometer-alt me-2" style="color:#BD9414;"></i>System Overview</h4>
         </div>
@@ -384,17 +420,6 @@ while ($row = $branch_q->fetch_assoc()) {
                         <div class="stat-label">Pending Evals</div>
                     </div>
                     <i class="fas fa-clock stat-icon" style="color:#ffc107;"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value"><?php echo $pending_movements; ?></div>
-                        <div class="stat-label">Pending Movements</div>
-                    </div>
-                    <i class="fas fa-exchange-alt stat-icon" style="color:#17a2b8;"></i>
                 </div>
             </div>
         </div>
@@ -624,6 +649,23 @@ while ($row = $branch_q->fetch_assoc()) {
     </div>
 </div>
 
+<!-- AGE DISTRIBUTION ROW -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <div class="cc-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-birthday-cake me-2 text-danger"></i>Employee Age Distribution</h5>
+                <span class="badge bg-light text-dark fw-normal" style="font-size: 0.7rem;">Workforce Demographics</span>
+            </div>
+            <div class="cc-body">
+                <div style="height: 300px;">
+                    <canvas id="ageDistChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- PERFORMANCE DISTRIBUTION TABLE ROW -->
 <div class="row g-4 mb-4">
     <div class="col-12">
@@ -671,15 +713,6 @@ while ($row = $branch_q->fetch_assoc()) {
                             Evaluations
                             <?php if ($pending_evals > 0): ?>
                                 <span class="badge bg-warning text-dark ms-1"><?php echo $pending_evals; ?></span>
-                            <?php endif; ?>
-                        </button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link" id="cm-tab" data-bs-toggle="tab" data-bs-target="#movements"
-                            type="button" role="tab">
-                            Career Movements
-                            <?php if ($pending_movements > 0): ?>
-                                <span class="badge bg-warning text-dark ms-1"><?php echo $pending_movements; ?></span>
                             <?php endif; ?>
                         </button>
                     </li>
@@ -733,47 +766,6 @@ while ($row = $branch_q->fetch_assoc()) {
                             <?php endif; ?>
                         </div>
                     </div>
-
-                    <!-- Career Movements Tab -->
-                    <div class="tab-pane fade" id="movements" role="tabpanel">
-                        <div class="approval-list">
-                            <?php if ($pending_cm_list->num_rows === 0): ?>
-                                <div class="empty-state-card">
-                                    <i class="fas fa-exchange-alt"></i>
-                                    <p class="mb-0">No pending career movements at this time.</p>
-                                </div>
-                            <?php else: ?>
-                                <?php while ($row = $pending_cm_list->fetch_assoc()): 
-                                    $initials = strtoupper(substr($row['employee_name'], 0, 1) . substr(explode(' ', $row['employee_name'])[1] ?? '', 0, 1));
-                                ?>
-                                    <div class="approval-item">
-                                        <div class="emp-info">
-                                            <div class="avatar-circle" style="background: rgba(23, 162, 184, 0.1); color: var(--info);"><?php echo $initials; ?></div>
-                                            <div class="details">
-                                                <h6><?php echo e($row['employee_name']); ?></h6>
-                                                <span>Type: <span class="badge bg-info text-dark x-small py-1"><?php echo e($row['movement_type']); ?></span></span>
-                                            </div>
-                                        </div>
-                                        <div class="score-meter d-none d-md-block">
-                                            <span class="score-val">Effective Date</span>
-                                            <div class="small fw-600"><?php echo formatDate($row['effective_date']); ?></div>
-                                        </div>
-                                        <div class="status-meta d-none d-sm-block">
-                                            <div class="fw-bold text-dark">Logged By</div>
-                                            <div class="x-small"><?php echo e($row['logged_by_name']); ?></div>
-                                        </div>
-                                        <a href="<?php echo BASE_URL; ?>/manager/career-movement-approval.php"
-                                           class="btn btn-primary btn-review">Review</a>
-                                    </div>
-                                <?php endwhile; ?>
-                                <div class="text-center pb-3">
-                                    <a href="<?php echo BASE_URL; ?>/manager/career-movement-approval.php" class="text-decoration-none small text-muted hover-primary">
-                                        View all pending movements <i class="fas fa-arrow-right ms-1"></i>
-                                    </a>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -781,6 +773,9 @@ while ($row = $branch_q->fetch_assoc()) {
 </div>
 
 <script>
+    // User's assigned branch (from session), injected server-side
+    const USER_ASSIGNED_BRANCH = <?php echo json_encode($user_branch_name); ?>;
+
     document.addEventListener('DOMContentLoaded', function () {
         // --- Professional Branch Selector Logic ---
         const trigger = document.getElementById('customSelectTrigger');
@@ -879,6 +874,23 @@ while ($row = $branch_q->fetch_assoc()) {
             trigger.classList.remove('active');
         });
 
+        // --- Auto-select the user's assigned branch on page load ---
+        if (USER_ASSIGNED_BRANCH) {
+            const defaultOption = Array.from(options).find(
+                opt => opt.dataset.name === USER_ASSIGNED_BRANCH
+            );
+            if (defaultOption) {
+                // Mark as selected
+                options.forEach(o => o.classList.remove('selected'));
+                defaultOption.classList.add('selected');
+                // Update the trigger text
+                selectedText.innerText = defaultOption.dataset.name;
+                selectedText.classList.remove('text-muted');
+                // Populate the Workforce Insight card
+                updateInsightCard(defaultOption.dataset);
+            }
+        }
+
         const commonOptions = {
             responsive: true,
             maintainAspectRatio: false,
@@ -896,10 +908,19 @@ while ($row = $branch_q->fetch_assoc()) {
                     data: [<?php echo $perf_data['Outstanding']; ?>, <?php echo $perf_data['Exceeds Expectations']; ?>, <?php echo $perf_data['Meets Expectations']; ?>, <?php echo $perf_data['Needs Improvement']; ?>],
                     backgroundColor: ['#28a745', '#17a2b8', '#ffc107', '#dc3545'],
                     borderWidth: 2,
-                    borderColor: '#fff'
+                    borderColor: '#fff',
+                    hoverOffset: 8
                 }]
             },
-            options: commonOptions
+            options: {
+                ...commonOptions,
+                animation: {
+                    animateRotate: true,
+                    animateScale: true,
+                    duration: 1500,
+                    easing: 'easeInOutQuart'
+                }
+            }
         });
 
         // 2. Evaluation Status (Doughnut)
@@ -910,10 +931,21 @@ while ($row = $branch_q->fetch_assoc()) {
                 datasets: [{
                     data: <?php echo json_encode($status_counts); ?>,
                     backgroundColor: ['#6c757d', '#ffc107', '#17a2b8', '#28a745', '#dc3545', '#007bff'],
-                    hoverOffset: 4
+                    hoverOffset: 8,
+                    borderWidth: 2,
+                    borderColor: '#fff'
                 }]
             },
-            options: commonOptions
+            options: {
+                ...commonOptions,
+                cutout: '65%',
+                animation: {
+                    animateRotate: true,
+                    animateScale: true,
+                    duration: 1500,
+                    easing: 'easeInOutQuart'
+                }
+            }
         });
 
         // 3. Performance Trends (Line Chart)
@@ -950,6 +982,13 @@ while ($row = $branch_q->fetch_assoc()) {
                         ticks: { callback: value => value + '%' }
                     },
                     x: { grid: { display: false } }
+                },
+                animation: {
+                    duration: 2000,
+                    easing: 'easeInOutQuart',
+                    onComplete: function() {
+                        // Optional callback when animation completes
+                    }
                 }
             }
         });
@@ -976,6 +1015,63 @@ while ($row = $branch_q->fetch_assoc()) {
                 scales: {
                     x: { max: 100, grid: { display: true, color: '#f8f9fa' } },
                     y: { grid: { display: false } }
+                },
+                animation: {
+                    duration: 1800,
+                    easing: 'easeInOutQuart',
+                    delay: (context) => {
+                        // Stagger animation for each bar
+                        return context.dataIndex * 100;
+                    }
+                }
+            }
+        });
+
+        // 5. Age Distribution (Vertical Bar Chart)
+        new Chart(document.getElementById('ageDistChart'), {
+            type: 'bar',
+            data: {
+                labels: <?php echo json_encode($age_labels); ?>,
+                datasets: [{
+                    label: 'Number of Employees',
+                    data: <?php echo json_encode($age_counts); ?>,
+                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                    borderColor: '#dc3545',
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    barThickness: 40
+                }]
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    ...commonOptions.plugins,
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.raw + ' Employees';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f0f0f0', drawBorder: false },
+                        ticks: { precision: 0 }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                },
+                animation: {
+                    duration: 1600,
+                    easing: 'easeInOutQuart',
+                    delay: (context) => {
+                        // Stagger animation for each bar
+                        return context.dataIndex * 80;
+                    }
                 }
             }
         });

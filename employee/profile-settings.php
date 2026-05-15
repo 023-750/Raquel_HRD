@@ -47,47 +47,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 require_once '../includes/header.php';
 ?>
 
-<div class="row justify-content-center">
-  <div class="col-md-6">
-    <div class="content-card">
-      <div class="card-header">
-        <h5><i class="fas fa-key me-2 text-primary"></i>Change Password</h5>
-      </div>
-      <div class="card-body">
-        <?php if ($success): ?>
-          <div class="alert alert-success"><i class="fas fa-check-circle me-2"></i><?php echo e($success); ?></div>
-        <?php endif; ?>
-        <?php if ($error): ?>
-          <div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i><?php echo e($error); ?></div>
-        <?php endif; ?>
-
-        <form method="POST">
-          <div class="mb-3">
-            <label class="form-label">Current Password <span class="text-danger">*</span></label>
-            <input type="password" name="current_password" class="form-control" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">New Password <span class="text-danger">*</span></label>
-            <input type="password" name="new_password" class="form-control" required minlength="6">
-            <div class="form-text">Minimum 6 characters.</div>
-          </div>
-          <div class="mb-4">
-            <label class="form-label">Confirm New Password <span class="text-danger">*</span></label>
-            <input type="password" name="confirm_password" class="form-control" required minlength="6">
-          </div>
-          <button type="submit" class="btn btn-primary w-100">
-            <i class="fas fa-save me-2"></i>Update Password
-          </button>
-        </form>
-
-        <div class="mt-3 text-center">
-          <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-outline-secondary btn-sm">
-            <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
-          </a>
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-0 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">Employee Portal · Security</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-key me-2" style="color:var(--primary-light);"></i>Change Password</h4>
+            <p class="text-white-50 small mb-0 mt-2 d-none d-sm-block">Update your security credentials to keep your account safe</p>
         </div>
-      </div>
+        <div class="d-none d-md-block">
+            <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
     </div>
-  </div>
+</div>
+
+<div class="d-md-none mb-4 fadeup" style="animation-delay: 0.1s;">
+    <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+        <i class="fas fa-arrow-left me-2"></i>Back to My Dashboard
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="content-card fadeup-1">
+            <div class="card-header">
+                <h5><i class="fas fa-shield-alt me-2"></i>Security Update</h5>
+            </div>
+            <div class="card-body p-4">
+                <?php if ($success): ?>
+                    <div class="alert alert-success border-0 shadow-sm"><i class="fas fa-check-circle me-2"></i><?php echo e($success); ?></div>
+                <?php endif; ?>
+                <?php if ($error): ?>
+                    <div class="alert alert-danger border-0 shadow-sm"><i class="fas fa-exclamation-circle me-2"></i><?php echo e($error); ?></div>
+                <?php endif; ?>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Current Password <span class="text-danger">*</span></label>
+                        <input type="password" name="current_password" class="form-control" placeholder="Enter current password" required>
+                    </div>
+                    <hr class="my-4 opacity-50">
+                    <div class="mb-3">
+                        <label class="form-label">New Password <span class="text-danger">*</span></label>
+                        <input type="password" name="new_password" class="form-control" placeholder="Minimum 6 characters" required minlength="6">
+                        <div class="form-text small text-muted">Use a strong password with mixed characters.</div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Confirm New Password <span class="text-danger">*</span></label>
+                        <input type="password" name="confirm_password" class="form-control" placeholder="Repeat new password" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+                        <i class="fas fa-save me-2"></i>Update Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php require_once '../includes/footer.php'; ?>

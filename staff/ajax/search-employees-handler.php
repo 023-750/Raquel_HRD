@@ -22,12 +22,13 @@ $params = [];
 $types = "";
 
 if (!empty($search)) {
-    $query .= " AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.employee_id LIKE ?)";
+    $query .= " AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.employee_code LIKE ? OR e.employee_id LIKE ?)";
     $sterm = "%$search%";
     $params[] = $sterm;
     $params[] = $sterm;
     $params[] = $sterm;
-    $types .= "sss";
+    $params[] = $sterm;
+    $types .= "ssss";
 }
 
 if (!empty($branch)) {

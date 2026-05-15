@@ -18,6 +18,13 @@ $chk = function ($key) use ($e) {
 $isEdit = !empty($e);
 $totalSteps = 12;
 $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
+$rankCategories = $rankCategories ?? [
+    ['rank_category_id' => 1, 'rank_name' => 'Executives'],
+    ['rank_category_id' => 2, 'rank_name' => 'Management Team'],
+    ['rank_category_id' => 3, 'rank_name' => 'Manager'],
+    ['rank_category_id' => 5, 'rank_name' => 'R&F'],
+    ['rank_category_id' => 4, 'rank_name' => 'Supervisor'],
+];
 ?>
 
 <input type="hidden" name="current_step" id="currentStepInput" value="<?php echo $currentStep; ?>">
@@ -38,7 +45,7 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
                     <div class="small text-muted mt-1">Current/New</div>
                 </div>
                 <div class="flex-grow-1">
-                    <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'HR Manager'): ?>
+                    <?php if ($_SESSION['role'] === 'Admin' || $_SESSION['role'] === 'HR Manager' || $_SESSION['role'] === 'HR Supervisor'): ?>
                         <input type="file" class="form-control" name="profile_picture" accept="image/*"
                             onchange="previewImage(this)">
                         <small class="text-muted d-block mt-1">Recommended: Square image, max 2MB (JPG, PNG)</small>
@@ -852,25 +859,21 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
     <div class="form-section-title"><i class="fas fa-building"></i> Employment Details</div>
     <div class="row">
         <div class="col-md-3 mb-3">
-            <label class="form-label">Employee ID <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="employee_code" value="<?php echo $v('employee_code'); ?>" required placeholder="e.g. 026-001">
-            <small class="text-muted">Use the official company employee ID.</small>
+            <label class="form-label">Employee ID (Company ID)</label>
+            <input type="text" class="form-control" name="employee_code" value="<?php echo $v('employee_code'); ?>" placeholder="e.g. 026-001">
+            <small class="text-muted">Optional: Official company issued ID.</small>
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">Hire Date <span class="text-danger">*</span></label>
             <input type="date" class="form-control" name="hire_date" value="<?php echo $v('hire_date'); ?>" required>
         </div>
         <div class="col-md-3 mb-3">
-            <label class="form-label">Job Title <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="job_title" value="<?php echo $v('job_title'); ?>" required>
-        </div>
-        <div class="col-md-4 mb-3">
             <label class="form-label">Department <span class="text-danger">*</span></label>
             <?php if (!empty($departments) && is_array($departments)): ?>
-                <select class="form-select" name="department_id" required>
-                    <option value="">-- Select Department --</option>
+                <select class="form-select" name="department_id" id="department_id" required>
+                    <option value="" data-name="">-- Select Department --</option>
                     <?php foreach ($departments as $dept): ?>
-                        <option value="<?php echo $dept['department_id']; ?>" <?php echo (($e['department_id'] ?? '') == $dept['department_id']) ? 'selected' : ''; ?>>
+                        <option value="<?php echo $dept['department_id']; ?>" data-name="<?php echo e($dept['department_name']); ?>" <?php echo (($e['department_id'] ?? '') == $dept['department_id']) ? 'selected' : ''; ?>>
                             <?php echo e($dept['department_name']); ?>
                         </option>
                     <?php endforeach; ?>
@@ -880,6 +883,50 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
                 <small class="text-muted">No departments defined yet. <a
                         href="<?php echo BASE_URL; ?>/manager/departments.php" target="_blank">Add departments</a></small>
             <?php endif; ?>
+        </div>
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Job Title <span class="text-danger">*</span></label>
+            <?php if (!empty($jobTitles) && is_array($jobTitles)): ?>
+                <select class="form-select" name="job_title_id" id="job_title_id" required>
+                    <option value="">-- Select Job Title --</option>
+                    <?php foreach ($jobTitles as $jt): ?>
+                        <?php
+                        $jt_id = (int) ($jt['job_title_id'] ?? 0);
+                        $selected = false;
+                        if (!empty($e['job_title_id'])) {
+                            $selected = (int) $e['job_title_id'] === $jt_id;
+                        } else {
+                            $selected = (($e['job_title'] ?? '') === ($jt['job_title'] ?? ''));
+                        }
+                        ?>
+                        <option value="<?php echo $jt_id; ?>"
+                            data-title="<?php echo e($jt['job_title']); ?>"
+                            data-dept-id="<?php echo (int) ($jt['department_id'] ?? 0); ?>"
+                            <?php echo $selected ? 'selected' : ''; ?>>
+                            <?php echo e($jt['job_title']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'HR Manager'): ?>
+                    <small class="text-muted">Missing a title? <a href="<?php echo BASE_URL; ?>/manager/positions.php" target="_blank">Manage positions</a></small>
+                <?php endif; ?>
+            <?php else: ?>
+                <input type="text" class="form-control" name="job_title" value="<?php echo $v('job_title'); ?>" required>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'HR Manager'): ?>
+                    <small class="text-muted">No positions defined yet. <a href="<?php echo BASE_URL; ?>/manager/positions.php" target="_blank">Add positions</a></small>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+        <div class="col-md-3 mb-3">
+            <label class="form-label">RANK</label>
+            <select class="form-select" name="rank_category_id" id="rank_category_id">
+                <option value="">Select Rank</option>
+                <?php foreach ($rankCategories as $rank): ?>
+                    <option value="<?php echo (int) $rank['rank_category_id']; ?>" <?php echo (($e['rank_category_id'] ?? '') == $rank['rank_category_id']) ? 'selected' : ''; ?>>
+                        <?php echo e($rank['rank_name']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
         </div>
     </div>
     <div class="row">
@@ -900,11 +947,16 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Employment Status</label>
+            <?php
+            $employmentStatuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
+            $employmentStatusValue = $e['employment_status'] ?? 'Regular';
+            ?>
             <select class="form-select" name="employment_status">
-                <option value="Regular" <?php echo $sel('employment_status', 'Regular'); ?>>Regular</option>
-                <option value="Probationary" <?php echo $sel('employment_status', 'Probationary'); ?>>Probationary
-                </option>
-                <option value="Contractual" <?php echo $sel('employment_status', 'Contractual'); ?>>Contractual</option>
+                <?php foreach ($employmentStatuses as $status): ?>
+                    <option value="<?php echo e($status); ?>" <?php echo $employmentStatusValue === $status ? 'selected' : ''; ?>>
+                        <?php echo e($status); ?>
+                    </option>
+                <?php endforeach; ?>
             </select>
         </div>
         <div class="col-md-4 mb-3">
@@ -916,26 +968,38 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
         </div>
     </div>
 
-    <!-- Contract Dates (Visible for Probationary / Contractual) -->
-    <div class="row" id="contractDatesRow" style="display: <?php echo in_array(($e['employment_status'] ?? 'Regular'), ['Probationary', 'Contractual']) ? 'flex' : 'none'; ?>;">
+    <!-- Contract Dates (Visible for temporary employment statuses) -->
+    <div class="row" id="contractDatesRow" style="display: <?php echo in_array(($e['employment_status'] ?? 'Regular'), ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Trainee'], true) ? 'flex' : 'none'; ?>;">
         <div class="col-md-4 mb-3">
-            <label class="form-label">Date Start (Contract/Probation)</label>
+            <label class="form-label">Date Start</label>
             <input type="date" class="form-control" name="contract_start_date" value="<?php echo $v('contract_start_date'); ?>">
         </div>
         <div class="col-md-4 mb-3">
-            <label class="form-label">Date Ended (Contract/Probation)</label>
+            <label class="form-label">Date Ended</label>
             <input type="date" class="form-control" name="contract_end_date" value="<?php echo $v('contract_end_date'); ?>">
         </div>
     </div>
 
     <?php if ($isEdit): ?>
         <div class="row">
-            <div class="col-md-4 mb-3">
-                <div class="form-check form-switch mt-4">
-                    <input class="form-check-input" type="checkbox" name="is_active" id="isActive" <?php echo $chk('is_active'); ?>>
-                    <label class="form-check-label" for="isActive">Active Employee</label>
+            <?php if ($_SESSION['role'] === 'HR Supervisor'): ?>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Employee Record Status</label>
+                    <div>
+                        <span class="badge <?php echo !empty($e['is_active']) ? 'bg-success' : 'bg-danger'; ?> px-3 py-2">
+                            <?php echo !empty($e['is_active']) ? 'Active Employee' : 'Inactive Employee'; ?>
+                        </span>
+                    </div>
+                    <small class="text-muted">Activation changes are handled by HR Manager.</small>
                 </div>
-            </div>
+            <?php else: ?>
+                <div class="col-md-4 mb-3">
+                    <div class="form-check form-switch mt-4">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="isActive" <?php echo $chk('is_active'); ?>>
+                        <label class="form-check-label" for="isActive">Active Employee</label>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
@@ -956,7 +1020,74 @@ $currentStep = isset($_GET['step']) ? (int)$_GET['step'] : 1;
             <input type="text" class="form-control" name="emergency_contact_number"
                 value="<?php echo $v('emergency_contact_number'); ?>"
                 placeholder="09171234567" pattern="\d{11}" title="Format: 11 digits (e.g. 09171234567)">
-        </div>
     </div>
 
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const deptSelect    = document.getElementById("department_id");
+    const jobTitleSelect = document.getElementById("job_title_id");
+
+    if (!deptSelect || !jobTitleSelect || jobTitleSelect.tagName !== 'SELECT') return;
+
+    // Snapshot all job-title options on page load (before any filtering).
+    // Each entry stores value, display text, and the department_id from the DB.
+    const allJobTitleOptions = Array.from(jobTitleSelect.options)
+        .filter(opt => opt.value !== "")
+        .map(opt => ({
+            value:  opt.value,
+            text:   opt.text.trim(),
+            title:  (opt.getAttribute("data-title") || opt.textContent || "").trim(),
+            deptId: parseInt(opt.getAttribute("data-dept-id") || "0", 10)
+        }));
+
+    // Remember the job title that was pre-selected (edit mode).
+    const initialJobTitle = "<?php echo (string) ($e['job_title_id'] ?? ''); ?>";
+
+    function appendJobTitleOption(jobTitle, currentJobTitle) {
+        const opt = document.createElement("option");
+        opt.value = jobTitle.value;
+        opt.textContent = jobTitle.text;
+        opt.setAttribute("data-title", jobTitle.title || jobTitle.text);
+        opt.setAttribute("data-dept-id", jobTitle.deptId);
+        if (jobTitle.value === currentJobTitle) {
+            opt.selected = true;
+        }
+        jobTitleSelect.appendChild(opt);
+    }
+
+    function updateJobTitles() {
+        const selectedDeptId = parseInt(deptSelect.value || "0", 10);
+        const currentJobTitle = jobTitleSelect.value || initialJobTitle;
+
+        // Rebuild the list
+        jobTitleSelect.innerHTML = "";
+
+        if (!selectedDeptId) {
+            jobTitleSelect.innerHTML = '<option value="">-- Select Department First --</option>';
+            jobTitleSelect.disabled = true;
+            return;
+        }
+
+        jobTitleSelect.disabled = false;
+        jobTitleSelect.innerHTML = '<option value="">-- Select Job Title --</option>';
+
+        allJobTitleOptions.forEach(jobTitle => {
+            if (jobTitle.deptId === selectedDeptId) {
+                appendJobTitleOption(jobTitle, currentJobTitle);
+            }
+        });
+
+        // If the previously-selected title is no longer visible, clear the field.
+        if (jobTitleSelect.value !== currentJobTitle) {
+            jobTitleSelect.value = "";
+        }
+    }
+
+    deptSelect.addEventListener("change", updateJobTitles);
+
+    // Run once on load so the list is correct in edit mode.
+    updateJobTitles();
+});
+</script>

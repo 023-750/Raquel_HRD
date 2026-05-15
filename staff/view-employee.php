@@ -56,162 +56,565 @@ require_once '../includes/header.php';
 
 // Helper for UI
 function field($label, $value) {
+    $is_company_id = strcasecmp($label, 'Company ID') === 0;
     $val = !empty($value) ? e($value) : '<span class="text-muted">N/A</span>';
-    return "<div class='row mb-2'><div class='col-sm-4 text-muted small'>$label</div><div class='col-sm-8 fw-semibold small'>$val</div></div>";
+    $label_class = $is_company_id ? 'company-id-text detail-label' : 'detail-label';
+    $value_class = $is_company_id ? 'company-id-value detail-value' : 'detail-value';
+    return "<div class='detail-item'><div class='$label_class'>$label</div><div class='$value_class'>$val</div></div>";
 }
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted mb-0"><i class="fas fa-lock me-1"></i> Employee Profile (Read Only)</p>
-    <a href="<?php echo BASE_URL; ?>/staff/search-employees.php" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Back to Search</a>
+<?php
+$fullName = $emp['first_name'] . ' ' . ($emp['middle_name'] ? $emp['middle_name'] . ' ' : '') . $emp['last_name'];
+$resAddr = trim(implode(', ', array_filter([$emp['res_house_no'], $emp['res_street'], $emp['res_subdivision'] ?? '', $emp['res_barangay'], $emp['res_city'], $emp['res_province'], $emp['res_zip_code'] ?? ''])));
+$permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_street'], $emp['perm_subdivision'] ?? '', $emp['perm_barangay'], $emp['perm_city'], $emp['perm_province'], $emp['perm_zip_code'] ?? ''])));
+?>
+
+<style>
+@media (min-width: 992px) {
+    .profile-sticky-col {
+        position: sticky;
+        top: calc(var(--header-height) + 18px);
+        align-self: flex-start;
+    }
+}
+
+.employee-page-title {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.employee-profile-card,
+.employee-section-card {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+}
+
+.employee-section-header {
+    padding: 1.25rem 1.5rem 0;
+}
+
+.employee-section-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary-blue);
+    margin-bottom: 0.4rem;
+}
+
+.employee-section-card .card-body,
+.employee-profile-card .card-body {
+    padding: 1.5rem;
+}
+
+.employee-subsection {
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    background: #fbfcfe;
+    padding: 1.15rem;
+    margin-bottom: 1rem;
+}
+
+.employee-subsection:last-child {
+    margin-bottom: 0;
+}
+
+.employee-subsection-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.9rem;
+}
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.9rem;
+}
+
+.detail-item {
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    border: 1px solid #edf2f7;
+    background: #fff;
+}
+
+.detail-label {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+}
+
+.detail-value {
+    color: var(--text-dark);
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.profile-meta-list {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.profile-meta-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    text-align: left;
+    padding: 0.8rem 0.9rem;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px solid #edf2f7;
+}
+
+.profile-meta-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 110, 253, 0.12);
+    color: var(--primary-blue);
+    flex-shrink: 0;
+}
+
+.profile-meta-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.profile-meta-value {
+    display: block;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.badge-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.employee-table-wrap {
+    border: 1px solid #edf2f7;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.employee-table-wrap .table {
+    margin-bottom: 0;
+}
+
+.employee-table-wrap thead th {
+    border-bottom: 1px solid #edf2f7;
+    background: #f8fafc;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.empty-state {
+    border: 1px dashed #d7e0ea;
+    border-radius: 16px;
+    padding: 2rem 1.25rem;
+    text-align: center;
+    color: var(--text-muted);
+    background: #fbfcfe;
+}
+
+.empty-state i {
+    font-size: 1.9rem;
+    opacity: 0.35;
+    margin-bottom: 0.75rem;
+}
+
+.empty-state p {
+    margin-bottom: 0;
+}
+
+@media (max-width: 767.98px) {
+    .employee-section-header {
+        padding: 1.1rem 1.1rem 0;
+    }
+
+    .employee-section-card .card-body,
+    .employee-profile-card .card-body {
+        padding: 1.1rem;
+    }
+
+    .employee-table-wrap,
+    .employee-table-wrap table,
+    .employee-table-wrap tbody,
+    .employee-table-wrap tr,
+    .employee-table-wrap td {
+        display: block;
+        width: 100%;
+    }
+
+    .employee-table-wrap thead {
+        display: none;
+    }
+
+    .employee-table-wrap tr {
+        padding: 1rem;
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    .employee-table-wrap tr:last-child {
+        border-bottom: none;
+    }
+
+    .employee-table-wrap td {
+        border: none !important;
+        padding: 0.45rem 0;
+    }
+
+    .employee-table-wrap td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 0.2rem;
+    }
+}
+</style>
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div>
+        <p class="text-muted mb-1"><i class="fas fa-lock me-1"></i>Employee Profile (Read Only)</p>
+        <h1 class="employee-page-title mb-0">Employee Information</h1>
+    </div>
+    <a href="<?php echo BASE_URL; ?>/staff/search-employees.php" class="btn btn-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Search
+    </a>
 </div>
 
-<div class="row">
-    <!-- Profile Card -->
-    <div class="col-md-3 mb-4">
-        <div class="content-card h-100 text-center">
+<div class="row g-4">
+    <div class="col-lg-4 col-xl-3 profile-sticky-col">
+        <div class="content-card employee-profile-card h-100 text-center">
             <div class="card-body py-4">
                 <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" class="rounded-circle img-thumbnail shadow-sm mb-3" style="width:120px;height:120px;object-fit:cover;">
-                <h5 class="mb-1"><?php echo e($emp['first_name'] . ' ' . $emp['last_name']); ?></h5>
+                <h5 class="mb-1"><?php echo e($fullName); ?></h5>
                 <p class="text-muted mb-2"><?php echo e($emp['job_title']); ?></p>
-                <span class="badge bg-success px-3 py-2">Active</span>
-                <hr class="my-3">
-                <div class="text-start small">
-                    <p class="mb-1"><i class="fas fa-envelope text-muted me-2" style="width:16px;"></i><?php echo e($emp['personal_email'] ?: 'N/A'); ?></p>
-                    <p class="mb-1"><i class="fas fa-phone text-muted me-2" style="width:16px;"></i><?php echo e($emp['mobile_number'] ?: 'N/A'); ?></p>
-                    <p class="mb-1"><i class="fas fa-building text-muted me-2" style="width:16px;"></i><?php echo e($emp['branch_name'] ?: 'N/A'); ?></p>
-                    <p class="mb-0"><i class="fas fa-sitemap text-muted me-2" style="width:16px;"></i><?php echo e($emp['department_name'] ?: 'N/A'); ?></p>
+                <p class="company-id-text small mb-3">Company ID: <span class="company-id-value"><?php echo e($emp['employee_code'] ?: 'N/A'); ?></span></p>
+                <div class="d-flex justify-content-center flex-wrap gap-2 mb-3">
+                    <span class="badge bg-success px-3 py-2">Active</span>
+                    <?php if (!empty($emp['employment_status'])): ?>
+                        <span class="badge bg-primary px-3 py-2"><?php echo e($emp['employment_status']); ?></span>
+                    <?php endif; ?>
+                </div>
+                <div class="profile-meta-list">
+                    <div class="profile-meta-item">
+                        <span class="profile-meta-icon"><i class="fas fa-envelope"></i></span>
+                        <div>
+                            <span class="profile-meta-label">Email</span>
+                            <span class="profile-meta-value"><?php echo e($emp['personal_email'] ?: 'N/A'); ?></span>
+                        </div>
+                    </div>
+                    <div class="profile-meta-item">
+                        <span class="profile-meta-icon"><i class="fas fa-phone"></i></span>
+                        <div>
+                            <span class="profile-meta-label">Mobile</span>
+                            <span class="profile-meta-value"><?php echo e($emp['mobile_number'] ?: 'N/A'); ?></span>
+                        </div>
+                    </div>
+                    <div class="profile-meta-item">
+                        <span class="profile-meta-icon"><i class="fas fa-building"></i></span>
+                        <div>
+                            <span class="profile-meta-label">Branch</span>
+                            <span class="profile-meta-value"><?php echo e($emp['branch_name'] ?: 'N/A'); ?></span>
+                        </div>
+                    </div>
+                    <div class="profile-meta-item">
+                        <span class="profile-meta-icon"><i class="fas fa-sitemap"></i></span>
+                        <div>
+                            <span class="profile-meta-label">Department</span>
+                            <span class="profile-meta-value"><?php echo e($emp['department_name'] ?: 'N/A'); ?></span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Detail Tabs -->
-    <div class="col-md-9 mb-4">
-        <div class="content-card h-100">
-            <div class="card-body p-4">
-                <ul class="nav nav-tabs mb-4" role="tablist">
-                    <li class="nav-item"><button class="nav-link active fw-bold small" data-bs-toggle="tab" data-bs-target="#t1" type="button"><i class="fas fa-user me-1"></i>Personal</button></li>
-                    <li class="nav-item"><button class="nav-link fw-bold small" data-bs-toggle="tab" data-bs-target="#t2" type="button"><i class="fas fa-briefcase me-1"></i>Employment</button></li>
-                    <li class="nav-item"><button class="nav-link fw-bold small" data-bs-toggle="tab" data-bs-target="#t3" type="button"><i class="fas fa-graduation-cap me-1"></i>Education</button></li>
-                    <li class="nav-item"><button class="nav-link fw-bold small" data-bs-toggle="tab" data-bs-target="#t4" type="button"><i class="fas fa-history me-1"></i>Work History</button></li>
-                    <li class="nav-item"><button class="nav-link fw-bold small" data-bs-toggle="tab" data-bs-target="#t5" type="button"><i class="fas fa-certificate me-1"></i>Skills & Training</button></li>
-                </ul>
-                <div class="tab-content">
-                    <!-- Personal Tab -->
-                    <div class="tab-pane fade show active" id="t1">
-                        <?php
-                        echo field('Full Name', $emp['first_name'] . ' ' . ($emp['middle_name'] ? $emp['middle_name'] . ' ' : '') . $emp['last_name']);
-                        echo field('Date of Birth', formatDate($emp['date_of_birth']));
-                        echo field('Place of Birth', $emp['place_of_birth']);
-                        echo field('Gender', $emp['gender']);
-                        echo field('Civil Status', $emp['civil_status']);
-                        echo field('Citizenship', $emp['citizenship']);
-                        ?>
-                        <h6 class="mt-3 mb-2 text-primary small fw-bold">Contact & Address</h6>
-                        <?php
-                        echo field('Email', $emp['personal_email']);
-                        echo field('Mobile', $emp['mobile_number']);
-                        echo field('Telephone', $emp['telephone_number']);
-                        $resAddr = trim(implode(', ', array_filter([$emp['res_house_no'], $emp['res_street'], $emp['res_barangay'], $emp['res_city'], $emp['res_province']])));
-                        echo field('Residential Address', $resAddr);
-                        $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_street'], $emp['perm_barangay'], $emp['perm_city'], $emp['perm_province']])));
-                        echo field('Permanent Address', $permAddr);
-                        ?>
-                        <h6 class="mt-3 mb-2 text-primary small fw-bold">Emergency Contact</h6>
-                        <?php
-                        echo field('Name', $emp['emergency_contact_name']);
-                        echo field('Relationship', $emp['emergency_contact_relationship']);
-                        echo field('Number', $emp['emergency_contact_number']);
-                        ?>
+    <div class="col-lg-8 col-xl-9">
+        <div class="row g-4">
+            <div class="col-xl-6">
+                <div class="content-card employee-section-card h-100">
+                    <div class="employee-section-header">
+                        <div>
+                            <div class="employee-section-kicker"><i class="fas fa-user"></i>Personal</div>
+                            <h5 class="mb-0">Personal Information</h5>
+                        </div>
                     </div>
-
-                    <!-- Employment Tab -->
-                    <div class="tab-pane fade" id="t2">
-                        <?php
-                        echo field('Employee ID', $emp['employee_id']);
-                        echo field('Job Title', $emp['job_title']);
-                        echo field('Department', $emp['department_name']);
-                        echo field('Branch', $emp['branch_name']);
-                        echo field('Employment Status', $emp['employment_status']);
-                        echo field('Employment Type', $emp['employment_type']);
-                        echo field('Date Hired', formatDate($emp['hire_date']));
-                        ?>
-                        <h6 class="mt-3 mb-2 text-primary small fw-bold">Government IDs</h6>
-                        <?php
-                        echo field('SSS Number', $emp['sss_number'] ?? '');
-                        echo field('PhilHealth Number', $emp['philhealth_number'] ?? '');
-                        echo field('Pag-IBIG Number', $emp['pagibig_number'] ?? '');
-                        echo field('TIN Number', $emp['tin_number'] ?? '');
-                        ?>
+                    <div class="card-body">
+                        <div class="detail-grid">
+                            <?php
+                            echo field('Full Name', $fullName);
+                            echo field('Date of Birth', formatDate($emp['date_of_birth']));
+                            echo field('Place of Birth', $emp['place_of_birth']);
+                            echo field('Gender', $emp['gender']);
+                            echo field('Civil Status', $emp['civil_status']);
+                            echo field('Citizenship', $emp['citizenship']);
+                            ?>
+                        </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Education Tab -->
-                    <div class="tab-pane fade" id="t3">
+            <div class="col-xl-6">
+                <div class="content-card employee-section-card h-100">
+                    <div class="employee-section-header">
+                        <div>
+                            <div class="employee-section-kicker"><i class="fas fa-address-card"></i>Contact</div>
+                            <h5 class="mb-0">Contact & Address</h5>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="employee-subsection">
+                            <div class="employee-subsection-title">Contact Channels</div>
+                            <div class="detail-grid">
+                                <?php
+                                echo field('Email', $emp['personal_email']);
+                                echo field('Mobile', $emp['mobile_number']);
+                                echo field('Telephone', $emp['telephone_number']);
+                                ?>
+                            </div>
+                        </div>
+                        <div class="employee-subsection">
+                            <div class="employee-subsection-title">Residential Address</div>
+                            <div class="detail-grid"><?php echo field('Address', $resAddr); ?></div>
+                        </div>
+                        <div class="employee-subsection">
+                            <div class="employee-subsection-title">Permanent Address</div>
+                            <div class="detail-grid"><?php echo field('Address', $permAddr); ?></div>
+                        </div>
+                        <div class="employee-subsection">
+                            <div class="employee-subsection-title">Emergency Contact</div>
+                            <div class="detail-grid">
+                                <?php
+                                echo field('Name', $emp['emergency_contact_name']);
+                                echo field('Relationship', $emp['emergency_contact_relationship']);
+                                echo field('Number', $emp['emergency_contact_number']);
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-6">
+                <div class="content-card employee-section-card h-100">
+                    <div class="employee-section-header">
+                        <div>
+                            <div class="employee-section-kicker"><i class="fas fa-briefcase"></i>Employment</div>
+                            <h5 class="mb-0">Employment Details</h5>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="employee-subsection">
+                            <div class="employee-subsection-title">Employment Profile</div>
+                            <div class="detail-grid">
+                                <?php
+                                echo field('Company ID', $emp['employee_code']);
+                                echo field('Department', $emp['department_name']);
+                                echo field('Job Title', $emp['job_title']);
+                                echo field('Branch', $emp['branch_name']);
+                                echo field('Employment Status', $emp['employment_status']);
+                                echo field('Employment Type', $emp['employment_type']);
+                                echo field('Date Hired', formatDate($emp['hire_date']));
+                                ?>
+                            </div>
+                        </div>
+                        <div class="employee-subsection">
+                            <div class="employee-subsection-title">Government IDs</div>
+                            <div class="detail-grid">
+                                <?php
+                                echo field('SSS Number', $emp['sss_number'] ?? '');
+                                echo field('PhilHealth Number', $emp['philhealth_number'] ?? '');
+                                echo field('Pag-IBIG Number', $emp['pagibig_number'] ?? '');
+                                echo field('TIN Number', $emp['tin_number'] ?? '');
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-6">
+                <div class="content-card employee-section-card h-100">
+                    <div class="employee-section-header">
+                        <div>
+                            <div class="employee-section-kicker"><i class="fas fa-graduation-cap"></i>Education</div>
+                            <h5 class="mb-0">Education Background</h5>
+                        </div>
+                    </div>
+                    <div class="card-body">
                         <?php if (empty($education)): ?>
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-graduation-cap fa-2x mb-2 opacity-25 d-block"></i>
+                            <div class="empty-state">
+                                <i class="fas fa-graduation-cap d-block"></i>
                                 <p>No education records available.</p>
                             </div>
                         <?php else: ?>
-                            <table class="table table-sm table-bordered small">
-                                <thead><tr><th>Level</th><th>School</th><th>Degree</th><th>Year</th></tr></thead>
-                                <tbody>
-                                    <?php foreach($education as $ed): ?>
-                                        <tr><td><?php echo e($ed['education_level']); ?></td><td><?php echo e($ed['school_name']); ?></td><td><?php echo e($ed['degree_course']); ?></td><td><?php echo e($ed['year_graduated']); ?></td></tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                            <div class="employee-table-wrap">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Level</th>
+                                            <th>School</th>
+                                            <th>Degree</th>
+                                            <th>Year</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach($education as $ed): ?>
+                                            <tr>
+                                                <td data-label="Level"><?php echo e($ed['education_level']); ?></td>
+                                                <td data-label="School"><?php echo e($ed['school_name']); ?></td>
+                                                <td data-label="Degree"><?php echo e($ed['degree_course'] ?: 'N/A'); ?></td>
+                                                <td data-label="Year"><?php echo e($ed['year_graduated'] ?: 'N/A'); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         <?php endif; ?>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Work History Tab -->
-                    <div class="tab-pane fade" id="t4">
+            <div class="col-12">
+                <div class="content-card employee-section-card">
+                    <div class="employee-section-header">
+                        <div>
+                            <div class="employee-section-kicker"><i class="fas fa-history"></i>Work</div>
+                            <h5 class="mb-0">Work History</h5>
+                        </div>
+                    </div>
+                    <div class="card-body">
                         <?php if (empty($work)): ?>
-                            <div class="text-center text-muted py-4">
-                                <i class="fas fa-briefcase fa-2x mb-2 opacity-25 d-block"></i>
+                            <div class="empty-state">
+                                <i class="fas fa-briefcase d-block"></i>
                                 <p>No work history records available.</p>
                             </div>
                         <?php else: ?>
-                            <table class="table table-sm table-bordered small">
-                                <thead><tr><th>Period</th><th>Position</th><th>Company</th></tr></thead>
-                                <tbody>
-                                    <?php foreach($work as $w): ?>
-                                        <tr><td><?php echo formatDate($w['date_from'], 'Y') . " - " . ($w['date_to'] ? formatDate($w['date_to'], 'Y') : 'Present'); ?></td><td><?php echo e($w['job_title']); ?></td><td><?php echo e($w['company_name']); ?></td></tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                            <div class="employee-table-wrap">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Period</th>
+                                            <th>Position</th>
+                                            <th>Company</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach($work as $w): ?>
+                                            <tr>
+                                                <td data-label="Period"><?php echo formatDate($w['date_from'], 'Y') . ' - ' . ($w['date_to'] ? formatDate($w['date_to'], 'Y') : 'Present'); ?></td>
+                                                <td data-label="Position"><?php echo e($w['job_title']); ?></td>
+                                                <td data-label="Company"><?php echo e($w['company_name']); ?></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
                         <?php endif; ?>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Skills & Training Tab -->
-                    <div class="tab-pane fade" id="t5">
-                        <h6 class="text-primary small fw-bold">Skills</h6>
-                        <div class="mb-3">
-                            <?php if (empty($skills)): ?>
-                                <span class="text-muted small">No skills recorded.</span>
-                            <?php else: ?>
-                                <?php foreach($skills as $sk) echo '<span class="badge bg-info me-1 mb-1">'.e($sk['skill_name']).'</span>'; ?>
-                            <?php endif; ?>
+            <div class="col-12">
+                <div class="content-card employee-section-card">
+                    <div class="employee-section-header">
+                        <div>
+                            <div class="employee-section-kicker"><i class="fas fa-certificate"></i>Development</div>
+                            <h5 class="mb-0">Skills & Training</h5>
                         </div>
-                        <h6 class="text-primary small fw-bold">Trainings & Seminars</h6>
-                        <?php if (empty($trainings)): ?>
-                            <span class="text-muted small">No training records available.</span>
-                        <?php else: ?>
-                            <ul class="small">
-                                <?php foreach($trainings as $tr) echo "<li>" . e($tr['training_title']) . " (" . formatDate($tr['date_from']) . ")</li>"; ?>
-                            </ul>
-                        <?php endif; ?>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-lg-5">
+                                <div class="employee-subsection h-100">
+                                    <div class="employee-subsection-title">Skills</div>
+                                    <?php if (empty($skills)): ?>
+                                        <div class="empty-state">
+                                            <i class="fas fa-star d-block"></i>
+                                            <p>No skills recorded.</p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="badge-cloud">
+                                            <?php foreach($skills as $sk): ?>
+                                                <span class="badge bg-info"><?php echo e($sk['skill_name']); ?></span>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="col-lg-7">
+                                <div class="employee-subsection h-100">
+                                    <div class="employee-subsection-title">Trainings & Seminars</div>
+                                    <?php if (empty($trainings)): ?>
+                                        <div class="empty-state">
+                                            <i class="fas fa-chalkboard-teacher d-block"></i>
+                                            <p>No training records available.</p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="employee-table-wrap">
+                                            <table class="table table-sm align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Training</th>
+                                                        <th>Date</th>
+                                                        <th>Type</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach($trainings as $tr): ?>
+                                                        <tr>
+                                                            <td data-label="Training"><?php echo e($tr['training_title']); ?></td>
+                                                            <td data-label="Date"><?php echo formatDate($tr['date_from']); ?></td>
+                                                            <td data-label="Type"><?php echo e($tr['training_type'] ?: 'General'); ?></td>
+                                                        </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-.nav-tabs .nav-link { color: var(--text-muted); border: none; border-bottom: 2px solid transparent; }
-.nav-tabs .nav-link.active { color: var(--primary-blue); background: transparent; border-bottom: 2px solid var(--primary-blue); }
-</style>
 
 <?php require_once '../includes/footer.php'; ?>

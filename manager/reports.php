@@ -4,145 +4,191 @@ require_once '../includes/session-check.php';
 checkRole(['HR Manager']);
 require_once '../includes/header.php';
 
-// Fetch branches and departments for filter dropdowns
 $branches = $conn->query("SELECT branch_id, branch_name FROM branches WHERE is_active = 1 AND deleted_at IS NULL ORDER BY branch_name");
 $departments = $conn->query("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name");
 ?>
 
-<!-- Report Generation Module -->
 <div class="reports-module">
-
-    <!-- Page Header -->
-    <div class="report-page-header mb-4">
-        <div class="d-flex align-items-center gap-3">
-            <div class="report-header-icon">
-                <i class="fas fa-file-alt"></i>
-            </div>
+    <div class="page-hero fadeup">
+        <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
             <div>
-                <h2 class="mb-0" style="font-weight:700;color:var(--text-dark);">Report Generation</h2>
-                <p class="mb-0 text-muted" style="font-size:0.9rem;">Generate, preview, and export comprehensive HR reports</p>
+                <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Reports</div>
+                <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-file-pdf me-2" style="color:#BD9414;"></i>Report Generation</h4>
+            </div>
+            <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+                <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">Report Types</div>
+                        </div>
+                        <i class="fas fa-layer-group stat-icon text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value">4</div>
+                            <div class="stat-label">Filters</div>
+                        </div>
+                        <i class="fas fa-filter stat-icon" style="color:#BD9414;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value">CSV</div>
+                            <div class="stat-label">Spreadsheet Export</div>
+                        </div>
+                        <i class="fas fa-file-csv stat-icon" style="color:#28a745;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="stat-value">PDF</div>
+                            <div class="stat-label">Printable Export</div>
+                        </div>
+                        <i class="fas fa-file-pdf stat-icon" style="color:#dc3545;"></i>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Report Type Selection Cards -->
-    <div class="row mb-4" id="reportTypeCards">
-        <div class="col-md-4">
-            <div class="report-type-card active" data-type="employee_masterlist" id="card-employee_masterlist">
-                <div class="rtc-icon"><i class="fas fa-address-book"></i></div>
-                <div class="rtc-info">
-                    <h6>Employee Masterlist</h6>
-                    <p>Complete roster with employment details, contacts, and branch assignments.</p>
+    <form id="reportForm" class="fadeup-1">
+        <input type="hidden" name="report_type" id="reportType" value="employee_masterlist">
+
+        <div class="report-builder-grid mb-4">
+            <section class="content-card report-picker-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-layer-group me-2"></i>Report Type</h5>
+                    <span class="report-step-badge">1</span>
                 </div>
-                <div class="rtc-check"><i class="fas fa-check-circle"></i></div>
-            </div>
+                <div class="card-body">
+                    <div class="report-type-list" id="reportTypeCards">
+                        <button type="button" class="report-type-card active" data-type="employee_masterlist" id="card-employee_masterlist">
+                            <span class="rtc-icon"><i class="fas fa-address-book"></i></span>
+                            <span class="rtc-info">
+                                <strong>Employee Masterlist</strong>
+                                <small>Roster, assignment, contact, and employment status details.</small>
+                            </span>
+                            <span class="rtc-check"><i class="fas fa-check"></i></span>
+                        </button>
+
+                        <button type="button" class="report-type-card" data-type="performance_summary" id="card-performance_summary">
+                            <span class="rtc-icon"><i class="fas fa-chart-line"></i></span>
+                            <span class="rtc-info">
+                                <strong>Performance Summary</strong>
+                                <small>Approved evaluations, scores, levels, templates, and periods.</small>
+                            </span>
+                            <span class="rtc-check"><i class="fas fa-check"></i></span>
+                        </button>
+
+                    </div>
+                </div>
+            </section>
+
+            <section class="content-card report-filter-card">
+                <div class="card-header">
+                    <h5><i class="fas fa-sliders-h me-2"></i>Filters</h5>
+                    <span class="report-step-badge">2</span>
+                </div>
+                <div class="card-body">
+                    <div class="report-selected-summary mb-3">
+                        <div>
+                            <span class="text-muted small d-block">Selected report</span>
+                            <strong id="selectedReportName">Employee Masterlist</strong>
+                        </div>
+                        <span class="report-format-pill"><i class="fas fa-file-export me-1"></i>CSV / PDF</span>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <label class="form-label">Branch</label>
+                            <select class="form-select" name="branch_id" id="filterBranch">
+                                <option value="">All Branches</option>
+                                <?php while ($b = $branches->fetch_assoc()): ?>
+                                    <option value="<?php echo $b['branch_id']; ?>"><?php echo e($b['branch_name']); ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-lg-6">
+                            <label class="form-label">Department</label>
+                            <select class="form-select" name="department" id="filterDepartment">
+                                <option value="">All Departments</option>
+                                <?php while ($d = $departments->fetch_assoc()): ?>
+                                    <option value="<?php echo $d['department_id']; ?>"><?php echo e($d['department_name']); ?></option>
+                                <?php endwhile; ?>
+                            </select>
+                        </div>
+
+                        <div class="col-lg-6" id="dateFromGroup">
+                            <label class="form-label">Date From</label>
+                            <input type="date" class="form-control" name="date_from" id="filterDateFrom">
+                        </div>
+
+                        <div class="col-lg-6" id="dateToGroup">
+                            <label class="form-label">Date To</label>
+                            <input type="date" class="form-control" name="date_to" id="filterDateTo">
+                        </div>
+                    </div>
+
+                    <div class="report-filter-actions mt-4">
+                        <button type="submit" class="btn btn-primary" id="btnGeneratePreview">
+                            <i class="fas fa-search me-1"></i>Generate Preview
+                        </button>
+                        <button class="btn btn-outline-secondary" type="button" id="btnResetFilters">
+                            <i class="fas fa-undo me-1"></i>Reset
+                        </button>
+                    </div>
+                </div>
+            </section>
         </div>
-        <div class="col-md-4">
-            <div class="report-type-card" data-type="performance_summary" id="card-performance_summary">
-                <div class="rtc-icon"><i class="fas fa-chart-line"></i></div>
-                <div class="rtc-info">
-                    <h6>Performance Summary</h6>
-                    <p>Evaluation scores, performance levels, and trend analysis per employee.</p>
-                </div>
-                <div class="rtc-check"><i class="fas fa-check-circle"></i></div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="report-type-card" data-type="career_movements" id="card-career_movements">
-                <div class="rtc-icon"><i class="fas fa-route"></i></div>
-                <div class="rtc-info">
-                    <h6>Career Movements</h6>
-                    <p>Promotions, transfers, demotions, and role changes with approval status.</p>
-                </div>
-                <div class="rtc-check"><i class="fas fa-check-circle"></i></div>
-            </div>
-        </div>
-    </div>
+    </form>
 
-    <!-- Filters Card -->
-    <div class="content-card mb-4" id="filterCard">
-        <div class="card-header">
-            <h5><i class="fas fa-sliders-h me-2"></i>Report Filters</h5>
-            <button class="btn btn-sm btn-outline-secondary" type="button" id="btnResetFilters">
-                <i class="fas fa-undo me-1"></i>Reset
-            </button>
-        </div>
-        <div class="card-body">
-            <form id="reportForm" class="row align-items-end g-3">
-                <input type="hidden" name="report_type" id="reportType" value="employee_masterlist">
-                
-                <div class="col-md-3">
-                    <label class="form-label">Branch</label>
-                    <select class="form-select" name="branch_id" id="filterBranch">
-                        <option value="">All Branches</option>
-                        <?php while ($b = $branches->fetch_assoc()): ?>
-                            <option value="<?php echo $b['branch_id']; ?>"><?php echo e($b['branch_name']); ?></option>
-                        <?php endwhile; ?>
-                    </select>
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label">Department</label>
-                    <select class="form-select" name="department" id="filterDepartment">
-                        <option value="">All Departments</option>
-                        <?php while ($d = $departments->fetch_assoc()): ?>
-                            <option value="<?php echo $d['department_id']; ?>"><?php echo e($d['department_name']); ?></option>
-                        <?php endwhile; ?>
-                    </select>
-                </div>
-
-                <div class="col-md-2" id="dateFromGroup">
-                    <label class="form-label">Date From</label>
-                    <input type="date" class="form-control" name="date_from" id="filterDateFrom">
-                </div>
-
-                <div class="col-md-2" id="dateToGroup">
-                    <label class="form-label">Date To</label>
-                    <input type="date" class="form-control" name="date_to" id="filterDateTo">
-                </div>
-
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100" id="btnGeneratePreview">
-                        <i class="fas fa-search me-1"></i>Generate Preview
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Action Bar -->
     <div class="report-action-bar mb-3" id="reportActionBar" style="display:none;">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div class="d-flex align-items-center gap-2">
-                <span class="report-result-badge" id="resultCount">
-                    <i class="fas fa-table me-1"></i><span id="rowCount">0</span> records found
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="report-result-badge">
+                    <i class="fas fa-table me-1"></i><span id="rowCount">0</span> records
                 </span>
+                <span class="report-scope-badge" id="reportScopeText">All branches and departments</span>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-success btn-sm" id="btnExportCSV">
-                    <i class="fas fa-file-csv me-1"></i>Export CSV
+                <button class="btn btn-success btn-sm" id="btnExportCSV" type="button">
+                    <i class="fas fa-file-csv me-1"></i>CSV
                 </button>
-                <button class="btn btn-danger btn-sm" id="btnExportPDF">
-                    <i class="fas fa-file-pdf me-1"></i>Export PDF
+                <button class="btn btn-danger btn-sm" id="btnExportPDF" type="button">
+                    <i class="fas fa-file-pdf me-1"></i>PDF
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Preview Area -->
     <div class="content-card" id="previewCard" style="display:none;">
         <div class="card-header">
-            <h5><i class="fas fa-eye me-2"></i>Report Preview</h5>
+            <h5><i class="fas fa-eye me-2"></i>Preview</h5>
             <span class="badge bg-info" id="reportTypeBadge">Employee Masterlist</span>
         </div>
         <div class="card-body p-0">
-            <div id="reportPreviewArea">
-                <!-- AJAX content loads here -->
-            </div>
+            <div id="reportPreviewArea"></div>
         </div>
     </div>
 
-    <!-- Loading Overlay -->
     <div class="report-loading-overlay" id="loadingOverlay" style="display:none;">
         <div class="report-spinner">
             <div class="spinner-border text-success" role="status"></div>
@@ -150,17 +196,17 @@ $departments = $conn->query("SELECT department_id, department_name FROM departme
         </div>
     </div>
 
-    <!-- Empty State (initial) -->
-    <div class="content-card" id="emptyState">
-        <div class="card-body text-center py-5">
-            <div class="empty-state-icon mb-3">
+    <div class="content-card report-empty-state" id="emptyState">
+        <div class="card-body">
+            <div class="empty-state-icon">
                 <i class="fas fa-file-alt"></i>
             </div>
-            <h5 class="text-muted">Select a Report Type &amp; Click Generate</h5>
-            <p class="text-muted mb-0" style="font-size:0.9rem;">Choose a report type above, configure your filters, then click <strong>Generate Preview</strong> to see results.</p>
+            <div>
+                <h5>Ready to generate</h5>
+                <p class="mb-0 text-muted">Choose a report, apply optional filters, then preview it before exporting.</p>
+            </div>
         </div>
     </div>
-
 </div>
 
 <script>
@@ -175,49 +221,62 @@ document.addEventListener('DOMContentLoaded', function() {
     const emptyState = document.getElementById('emptyState');
     const loadingOverlay = document.getElementById('loadingOverlay');
     const reportTypeBadge = document.getElementById('reportTypeBadge');
+    const selectedReportName = document.getElementById('selectedReportName');
+    const reportScopeText = document.getElementById('reportScopeText');
     const rowCountEl = document.getElementById('rowCount');
     const dateFromGroup = document.getElementById('dateFromGroup');
     const dateToGroup = document.getElementById('dateToGroup');
+    const filterBranch = document.getElementById('filterBranch');
+    const filterDepartment = document.getElementById('filterDepartment');
 
     const typeLabels = {
-        'employee_masterlist': 'Employee Masterlist',
-        'performance_summary': 'Performance Summary',
-        'career_movements': 'Career Movements'
+        employee_masterlist: 'Employee Masterlist',
+        performance_summary: 'Performance Summary'
     };
 
-    // Report type card selection
+    function setDateFieldsEnabled(enabled) {
+        [dateFromGroup, dateToGroup].forEach(group => {
+            const input = group.querySelector('input');
+            input.disabled = !enabled;
+            if (!enabled) {
+                input.value = '';
+            }
+            group.classList.toggle('is-disabled', !enabled);
+        });
+    }
+
+    function updateSelectedReport(type) {
+        reportTypeInput.value = type;
+        selectedReportName.textContent = typeLabels[type] || type;
+        reportTypeBadge.textContent = typeLabels[type] || type;
+        setDateFieldsEnabled(true);
+    }
+
+    function updateScopeText() {
+        const scopes = [];
+        if (filterBranch.value) {
+            scopes.push(filterBranch.options[filterBranch.selectedIndex].text);
+        }
+        if (filterDepartment.value) {
+            scopes.push(filterDepartment.options[filterDepartment.selectedIndex].text);
+        }
+        reportScopeText.textContent = scopes.length ? scopes.join(' / ') : 'All branches and departments';
+    }
+
     reportTypeCards.forEach(card => {
         card.addEventListener('click', function() {
-            reportTypeCards.forEach(c => c.classList.remove('active'));
+            reportTypeCards.forEach(item => item.classList.remove('active'));
             this.classList.add('active');
-            reportTypeInput.value = this.dataset.type;
-            
-            // Toggle date fields visibility
-            if (this.dataset.type === 'employee_masterlist') {
-                dateFromGroup.style.opacity = '0.4';
-                dateFromGroup.querySelector('input').disabled = true;
-                dateToGroup.style.opacity = '0.4';
-                dateToGroup.querySelector('input').disabled = true;
-            } else {
-                dateFromGroup.style.opacity = '1';
-                dateFromGroup.querySelector('input').disabled = false;
-                dateToGroup.style.opacity = '1';
-                dateToGroup.querySelector('input').disabled = false;
-            }
+            updateSelectedReport(this.dataset.type);
         });
     });
 
-    // Initial state: disable date fields for employee_masterlist
-    dateFromGroup.style.opacity = '0.4';
-    dateFromGroup.querySelector('input').disabled = true;
-    dateToGroup.style.opacity = '0.4';
-    dateToGroup.querySelector('input').disabled = true;
+    updateSelectedReport('employee_masterlist');
 
-    // Generate Preview
     reportForm.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(this);
-        
+
         emptyState.style.display = 'none';
         loadingOverlay.style.display = 'flex';
         previewCard.style.display = 'none';
@@ -234,31 +293,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 previewArea.innerHTML = data.html;
                 previewCard.style.display = 'block';
                 actionBar.style.display = 'block';
-                reportTypeBadge.textContent = typeLabels[reportTypeInput.value] || reportTypeInput.value;
                 rowCountEl.textContent = data.count || 0;
-                
-                // Animate in
+                updateScopeText();
                 previewCard.style.animation = 'fadeSlideUp 0.4s ease';
                 actionBar.style.animation = 'fadeSlideUp 0.3s ease';
-            } else {
-                previewArea.innerHTML = '<div class="text-center py-5 text-muted"><i class="fas fa-exclamation-triangle fa-2x mb-3 d-block" style="opacity:.4"></i>' + (data.message || 'No results found.') + '</div>';
-                previewCard.style.display = 'block';
-                actionBar.style.display = 'none';
+                return;
             }
+
+            previewArea.innerHTML = '<div class="report-message-state text-muted"><i class="fas fa-exclamation-triangle"></i><span>' + (data.message || 'No results found.') + '</span></div>';
+            previewCard.style.display = 'block';
         })
-        .catch(err => {
+        .catch(() => {
             loadingOverlay.style.display = 'none';
-            previewArea.innerHTML = '<div class="text-center py-5 text-danger"><i class="fas fa-times-circle fa-2x mb-3 d-block"></i>An error occurred while generating the report.</div>';
+            previewArea.innerHTML = '<div class="report-message-state text-danger"><i class="fas fa-times-circle"></i><span>An error occurred while generating the report.</span></div>';
             previewCard.style.display = 'block';
         });
     });
 
-    // Export CSV
     document.getElementById('btnExportCSV').addEventListener('click', function() {
         exportReport('csv');
     });
 
-    // Export PDF
     document.getElementById('btnExportPDF').addEventListener('click', function() {
         exportReport('pdf');
     });
@@ -266,22 +321,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function exportReport(exportType) {
         const formData = new FormData(reportForm);
         formData.append('export_type', exportType);
-        
-        // Build query string
-        const params = new URLSearchParams(formData).toString();
-        window.location.href = BASE + '/manager/export-report.php?' + params;
+        window.location.href = BASE + '/manager/export-report.php?' + new URLSearchParams(formData).toString();
     }
 
-    // Reset Filters
     document.getElementById('btnResetFilters').addEventListener('click', function() {
         reportForm.reset();
-        reportTypeInput.value = 'employee_masterlist';
-        reportTypeCards.forEach(c => c.classList.remove('active'));
+        reportTypeCards.forEach(item => item.classList.remove('active'));
         document.getElementById('card-employee_masterlist').classList.add('active');
-        dateFromGroup.style.opacity = '0.4';
-        dateFromGroup.querySelector('input').disabled = true;
-        dateToGroup.style.opacity = '0.4';
-        dateToGroup.querySelector('input').disabled = true;
+        updateSelectedReport('employee_masterlist');
         previewCard.style.display = 'none';
         actionBar.style.display = 'none';
         emptyState.style.display = 'block';

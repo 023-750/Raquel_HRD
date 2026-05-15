@@ -4,22 +4,46 @@ require_once '../includes/session-check.php';
 checkRole(['HR Manager']);
 require_once '../includes/functions.php';
 
+// Resolve the user's assigned branch name for auto-filtering
+$user_assigned_branch_name = '';
+$branch_id = $_SESSION['branch_id'];
+if (!empty($branch_id)) {
+    $br_stmt = $conn->prepare("SELECT branch_name FROM branches WHERE branch_id = ? LIMIT 1");
+    $br_stmt->bind_param("i", $branch_id);
+    $br_stmt->execute();
+    $br_res = $br_stmt->get_result();
+    if ($br_row = $br_res->fetch_assoc()) {
+        $user_assigned_branch_name = $br_row['branch_name'];
+    }
+    $br_stmt->close();
+}
+
 // Handle activate/deactivate
 if (isset($_GET['deactivate']) && is_numeric($_GET['deactivate'])) {
     $eid = (int) $_GET['deactivate'];
-    $conn->query("UPDATE employees SET is_active = 0 WHERE employee_id = $eid");
-    logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'Employee', $eid, 'Deactivated employee');
-    redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee deactivated successfully.');
+    $status = $_GET['status'] ?? 'Separated';
+    
+    $stmt = $conn->prepare("UPDATE employees SET is_active = 0, employment_status = ? WHERE employee_id = ?");
+    $stmt->bind_param("si", $status, $eid);
+    
+    if ($stmt->execute()) {
+        logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'Employee', $eid, "Deactivated employee with status: $status");
+        redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee deactivated successfully.');
+    }
+    $stmt->close();
 }
 if (isset($_GET['activate']) && is_numeric($_GET['activate'])) {
     $eid = (int) $_GET['activate'];
-    $conn->query("UPDATE employees SET is_active = 1 WHERE employee_id = $eid");
+    $conn->query("UPDATE employees SET is_active = 1, employment_status = 'Regular' WHERE employee_id = $eid");
     logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'Employee', $eid, 'Reactivated employee');
     redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee reactivated successfully.');
 }
 
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $eid = (int) $_GET['delete'];
+    // Delete the user account associated with this employee (if any) BEFORE deleting employee
+    // This prevents orphaned user accounts from appearing in User Management
+    $conn->query("DELETE FROM users WHERE employee_id = $eid");
     // Delete the employee and all normalized sub-tables
     $tables = [
         'employee_details',
@@ -48,9 +72,6 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
         $conn->query("DELETE FROM $tbl WHERE employee_id = $eid");
     }
 
-    // Delete career movements and evaluations (Evaluations have their own score sub-deletion)
-    $conn->query("DELETE FROM career_movements WHERE employee_id = $eid");
-
     $conn->query("DELETE FROM employees WHERE employee_id = $eid");
     logAudit($conn, $_SESSION['user_id'], 'DELETE', 'Employee', $eid, 'Permanently deleted employee');
     redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee deleted permanently.');
@@ -67,6 +88,14 @@ $employees = $conn->query("
     WHERE e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
     ORDER BY e.last_name, e.first_name
 ");
+$employee_total = (int) $employees->num_rows;
+$employee_active = (int) $conn->query("
+    SELECT COUNT(*) as cnt
+    FROM employees e
+    WHERE e.is_active = 1
+      AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
+")->fetch_assoc()['cnt'];
+$employee_inactive = max(0, $employee_total - $employee_active);
 
 // Fetch distinct values for filter dropdowns
 $job_titles_res = $conn->query("SELECT DISTINCT job_title FROM employees WHERE job_title IS NOT NULL AND job_title != '' ORDER BY job_title ASC");
@@ -84,8 +113,8 @@ $branches = [];
 while ($r = $branches_res->fetch_assoc())
     $branches[] = $r['branch_name'];
 
-$statuses = ['Regular', 'Probationary', 'Contractual'];
-$selected_branch = $_GET['branch'] ?? '';
+$statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
+$selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 ?>
 
 <style>
@@ -282,23 +311,23 @@ $selected_branch = $_GET['branch'] ?? '';
         }
 
         /* Name and Avatar Column */
-        #empTable td:nth-child(1) {
+        #empTable td:nth-child(2) {
             justify-content: flex-start;
             padding-top: 5px;
             margin-bottom: 12px;
             border-bottom: 1.5px solid #f8f9fa;
         }
 
-        #empTable td:nth-child(1)::before {
+        #empTable td:nth-child(2)::before {
             display: none;
         }
 
-        #empTable td:nth-child(1) strong {
+        #empTable td:nth-child(2) strong {
             font-size: 1.1rem;
             color: var(--primary-blue);
         }
 
-        #empTable td:nth-child(1) img {
+        #empTable td:nth-child(2) img {
             width: 45px !important;
             height: 45px !important;
             border: 2px solid #fff;
@@ -334,14 +363,73 @@ $selected_branch = $_GET['branch'] ?? '';
 </style>
 
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="page-hero fadeup d-md-none mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Employees</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-users me-2" style="color:#BD9414;"></i>All Employees</h4>
+        </div>
+        <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+            <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-6">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $employee_total; ?></div>
+                        <div class="stat-label">Total Employees</div>
+                    </div>
+                    <i class="fas fa-id-badge stat-icon text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $employee_active; ?></div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                    <i class="fas fa-check-circle stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $employee_inactive; ?></div>
+                        <div class="stat-label">Inactive</div>
+                    </div>
+                    <i class="fas fa-pause-circle stat-icon" style="color:#BD9414;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value">4</div>
+                        <div class="stat-label">Filters</div>
+                    </div>
+                    <i class="fas fa-filter stat-icon" style="color:#17a2b8;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="d-none d-md-flex justify-content-between align-items-center mb-4" data-flash-toast-anchor>
     <p class="text-muted mb-0">Manage employee records</p>
     <!-- Add Employee button removed as requested -->
 </div>
 
 <div class="chart-card fadeup">
     <div class="cc-header">
-        <h5><i class="fas fa-users me-2"></i>All Employees</h5>
+        <h5 class="d-none d-md-block"><i class="fas fa-users me-2"></i>All Employees</h5>
         <div class="search-box">
             <i class="fas fa-search search-icon"></i>
             <input type="text" class="form-control form-control-sm" id="customSearchEmp"
@@ -375,7 +463,8 @@ $selected_branch = $_GET['branch'] ?? '';
                 <option value="">All Branches</option>
                 <?php foreach ($branches as $br): ?>
                     <option value="<?php echo e($br); ?>" <?php echo ($selected_branch === $br) ? 'selected' : ''; ?>>
-                        <?php echo e($br); ?></option>
+                        <?php echo e($br); ?>
+                    </option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -403,6 +492,7 @@ $selected_branch = $_GET['branch'] ?? '';
             <table class="table table-hover" id="empTable">
                 <thead>
                     <tr>
+                        <th style="width: 50px;">#</th>
                         <th>Name</th>
                         <th>Job Title</th>
                         <th>Department</th>
@@ -413,11 +503,13 @@ $selected_branch = $_GET['branch'] ?? '';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php while ($emp = $employees->fetch_assoc()): ?>
+                    <?php $count = 1;
+                    while ($emp = $employees->fetch_assoc()): ?>
                         <tr data-jobtitle="<?php echo e($emp['job_title']); ?>"
                             data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                             data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                             data-status="<?php echo e($emp['employment_status']); ?>">
+                            <td data-label="#"><strong><?php echo $count++; ?></strong></td>
                             <td data-label="Name">
                                 <div class="d-flex align-items-center">
                                     <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile"
@@ -440,7 +532,8 @@ $selected_branch = $_GET['branch'] ?? '';
                                     <i class="fas fa-eye"></i>
                                 </a>
                                 <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
-                                    class="btn btn-sm btn-outline-primary" title="Edit">
+                                    class="btn btn-sm btn-outline-primary employee-edit-link" data-base-href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                    title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 <?php if ($emp['is_active']): ?>
@@ -478,22 +571,39 @@ $selected_branch = $_GET['branch'] ?? '';
 
 <?php require_once '../includes/footer.php'; ?>
 
-<!-- Deactivate Confirmation Modal -->
+<!-- Separation (Deactivate) Confirmation Modal -->
 <div class="modal fade" id="deactivateModal" tabindex="-1">
-    <div class="modal-dialog modal-sm">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="fas fa-user-slash me-2"></i>Deactivate Employee</h5>
+                <h5 class="modal-title"><i class="fas fa-user-slash me-2"></i>Employee Separation</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body text-center">
-                <p>Deactivate <strong id="deactivateEmpName"></strong>?</p>
-                <p class="text-muted small">This will mark them as inactive. You can reactivate later.</p>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <p>Select separation reason for <strong id="deactivateEmpName"></strong>:</p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Reason for Separation</label>
+                    <select id="separationReason" class="form-select">
+                        <option value="Regular">Regular (Temporary Deactivation)</option>
+                        <option value="Separated">Separated (General)</option>
+                        <option value="AWOL">AWOL</option>
+                        <option value="Retirement">Retirement</option>
+                        <option value="Death">Death</option>
+                        <option value="Permanent of Total Disability">Permanent of Total Disability</option>
+                        <option value="Resignation">Resignation</option>
+                        <option value="Failed in Training">Failed in Training</option>
+                        <option value="Termination for Cause">Termination for Cause</option>
+                    </select>
+                </div>
+                <p class="text-muted small text-center"><i class="fas fa-info-circle me-1"></i>This will mark the employee as inactive and update their status.</p>
             </div>
             <div class="modal-footer justify-content-center">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <a href="#" id="deactivateConfirmBtn" class="btn btn-warning"><i
-                        class="fas fa-user-slash me-1"></i>Deactivate</a>
+                <button type="button" id="deactivateConfirmBtn" class="btn btn-warning">
+                    <i class="fas fa-user-slash me-1"></i>Confirm Separation
+                </button>
             </div>
         </div>
     </div>
@@ -509,7 +619,7 @@ $selected_branch = $_GET['branch'] ?? '';
             </div>
             <div class="modal-body text-center">
                 <p>Reactivate <strong id="activateEmpName"></strong>?</p>
-                <p class="text-muted small">This will mark them as an active employee again.</p>
+                <p class="text-muted small">This will mark them as an active employee again and reset their status to <strong>Regular</strong>.</p>
             </div>
             <div class="modal-footer justify-content-center">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -543,10 +653,18 @@ $selected_branch = $_GET['branch'] ?? '';
 </div>
 
 <script>
+    let deactivateTargetId = null;
     function setDeactivateTarget(id, name) {
+        deactivateTargetId = id;
         document.getElementById('deactivateEmpName').textContent = name;
-        document.getElementById('deactivateConfirmBtn').href = '?deactivate=' + id;
     }
+
+    document.getElementById('deactivateConfirmBtn').addEventListener('click', function() {
+        const reason = document.getElementById('separationReason').value;
+        if (deactivateTargetId) {
+            window.location.href = '?deactivate=' + deactivateTargetId + '&status=' + encodeURIComponent(reason);
+        }
+    });
     function setActivateTarget(id, name) {
         document.getElementById('activateEmpName').textContent = name;
         document.getElementById('activateConfirmBtn').href = '?activate=' + id;
@@ -562,17 +680,54 @@ $selected_branch = $_GET['branch'] ?? '';
 
     document.getElementById('customSearchEmp').addEventListener('input', function () {
         currentPage = 1;
+        syncFiltersToUrl();
         renderTable();
     });
 
     // --- Dropdown Filter Logic ---
     const filterSelects = ['filterJobTitle', 'filterDepartment', 'filterBranch', 'filterStatus'];
     const filterLabels = { filterJobTitle: 'Job Title', filterDepartment: 'Department', filterBranch: 'Branch', filterStatus: 'Status' };
+    const filterParams = { filterJobTitle: 'job_title', filterDepartment: 'department', filterBranch: 'branch', filterStatus: 'status' };
+
+    function applyFiltersFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        document.getElementById('customSearchEmp').value = params.get('search') || '';
+        filterSelects.forEach(id => {
+            const el = document.getElementById(id);
+            const value = params.get(filterParams[id]) || '';
+            el.value = value;
+            el.classList.toggle('active-filter', value !== '');
+        });
+    }
+
+    function syncFiltersToUrl() {
+        const params = new URLSearchParams();
+        const search = document.getElementById('customSearchEmp').value.trim();
+        if (search !== '') params.set('search', search);
+
+        filterSelects.forEach(id => {
+            const value = document.getElementById(id).value;
+            if (value !== '') params.set(filterParams[id], value);
+        });
+
+        const query = params.toString();
+        const nextUrl = window.location.pathname + (query ? '?' + query : '');
+        history.replaceState(null, '', nextUrl);
+        updateEmployeeActionLinks();
+    }
+
+    function updateEmployeeActionLinks() {
+        const returnUrl = window.location.pathname + window.location.search;
+        document.querySelectorAll('.employee-edit-link').forEach(link => {
+            link.href = link.dataset.baseHref + '&return=' + encodeURIComponent(returnUrl);
+        });
+    }
 
     filterSelects.forEach(id => {
         document.getElementById(id).addEventListener('change', function () {
             currentPage = 1;
             this.classList.toggle('active-filter', this.value !== '');
+            syncFiltersToUrl();
             renderTable();
             updateFilterChips();
         });
@@ -603,6 +758,7 @@ $selected_branch = $_GET['branch'] ?? '';
                 select.value = '';
                 select.classList.remove('active-filter');
                 currentPage = 1;
+                syncFiltersToUrl();
                 renderTable();
                 updateFilterChips();
             });
@@ -616,6 +772,7 @@ $selected_branch = $_GET['branch'] ?? '';
             el.classList.remove('active-filter');
         });
         currentPage = 1;
+        syncFiltersToUrl();
         renderTable();
         updateFilterChips();
     });
@@ -743,7 +900,7 @@ $selected_branch = $_GET['branch'] ?? '';
             }
             let msg = 'No employees match the current filters.';
             if (filterInput !== '') msg = `No employees found matching "<strong>${filterInput}</strong>"`;
-            noResultsRow.innerHTML = `<td colspan="7" class="py-4 text-muted"><i class="fas fa-filter fa-2x mb-3 d-block" style="opacity:0.2;"></i>${msg}</td>`;
+            noResultsRow.innerHTML = `<td colspan="8" class="py-4 text-muted"><i class="fas fa-filter fa-2x mb-3 d-block" style="opacity:0.2;"></i>${msg}</td>`;
             noResultsRow.style.display = '';
         } else if (noResultsRow) {
             noResultsRow.remove();
@@ -752,6 +909,8 @@ $selected_branch = $_GET['branch'] ?? '';
 
     // Initial Render on Load
     document.addEventListener("DOMContentLoaded", function () {
+        applyFiltersFromUrl();
+        updateEmployeeActionLinks();
         renderTable();
         updateFilterChips();
     });

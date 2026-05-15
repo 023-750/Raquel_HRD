@@ -89,6 +89,10 @@ $departments = $conn->query("
     FROM departments d
     ORDER BY d.department_name
 ");
+$department_count = $departments->num_rows;
+$active_department_count = (int) $conn->query("SELECT COUNT(*) as cnt FROM departments WHERE is_active = 1")->fetch_assoc()['cnt'];
+$inactive_department_count = max(0, $department_count - $active_department_count);
+$department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM employees WHERE department_id IS NOT NULL AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['cnt'];
 ?>
 
 <style>
@@ -161,16 +165,66 @@ $departments = $conn->query("
 </style>
 
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted mb-0">Manage company departments</p>
-    <div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDeptModal">
-            <i class="fas fa-plus me-2"></i>Add Department
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Organization</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-sitemap me-2" style="color:#BD9414;"></i>Department Management</h4>
+        </div>
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDeptModal">
+            <i class="fas fa-plus me-1"></i>Add Department
         </button>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $department_count; ?></div>
+                        <div class="stat-label">Departments</div>
+                    </div>
+                    <i class="fas fa-sitemap stat-icon text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $active_department_count; ?></div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                    <i class="fas fa-check-circle stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $inactive_department_count; ?></div>
+                        <div class="stat-label">Inactive</div>
+                    </div>
+                    <i class="fas fa-pause-circle stat-icon" style="color:#BD9414;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $department_employee_total; ?></div>
+                        <div class="stat-label">Assigned Employees</div>
+                    </div>
+                    <i class="fas fa-users stat-icon" style="color:#17a2b8;"></i>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="chart-card fadeup">
+<div class="chart-card fadeup-1">
     <div class="cc-header">
         <h5><i class="fas fa-sitemap me-2"></i>All Departments</h5>
         <div class="search-box">

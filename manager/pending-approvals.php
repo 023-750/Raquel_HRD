@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $stmt->execute();
         $stmt->close();
 
-        // 2. Fetch evaluation details for career movement and notifications
+        // 2. Fetch evaluation details for notifications
         $eval_info_q = $conn->prepare("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as emp_name, e.branch_id as emp_branch_id 
                                      FROM evaluations ev 
                                      LEFT JOIN employees e ON ev.employee_id = e.employee_id 
@@ -27,29 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $eval_info = $eval_info_q->get_result()->fetch_assoc();
         $eval_info_q->close();
 
-        // 3. Automatically create a Career Movement record if employee is marked as suited for another job
-        if (!empty($eval_info['career_growth_suited']) && !empty($eval_info['desired_position'])) {
-            $move_stmt = $conn->prepare("INSERT INTO career_movements 
-                (employee_id, movement_type, previous_position, new_position, previous_branch_id, new_branch_id, effective_date, reason, approval_status, approved_by, logged_by, is_applied) 
-                VALUES (?, 'Role Change', ?, ?, ?, ?, ?, ?, 'Approved', ?, ?, 0)");
-            
-            $reason = "Automatically generated from approved Performance Evaluation (ID: " . $eval_id . ")";
-            $move_stmt->bind_param("issiissii", 
-                $eval_info['employee_id'],
-                $eval_info['current_position'],
-                $eval_info['desired_position'],
-                $eval_info['emp_branch_id'],
-                $eval_info['emp_branch_id'], // Assuming same branch for role change goals
-                $eval_info['target_date'],
-                $reason,
-                $_SESSION['user_id'],
-                $eval_info['submitted_by']
-            );
-            $move_stmt->execute();
-            $move_stmt->close();
-        }
-
-        // 4. Send Notifications
+        // 3. Send notifications
         if ($eval_info['submitted_by']) {
             createNotification($conn, $eval_info['submitted_by'], 'Evaluation Approved', "Your evaluation for {$eval_info['emp_name']} has been approved.", BASE_URL . '/staff/my-submissions.php');
         }
@@ -120,40 +98,53 @@ while ($row = $pending->fetch_assoc()) {
     $all_pending[] = $row;
 }
 
-// Fetch pending career movements
-$pending_cm = $conn->query("SELECT cm.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, u.full_name as logged_by_name
-    FROM career_movements cm
-    LEFT JOIN employees e ON cm.employee_id = e.employee_id
-    LEFT JOIN users u ON cm.logged_by = u.user_id
-    WHERE cm.approval_status = 'Pending'
-    ORDER BY cm.created_at DESC");
-
-$cm_count = $pending_cm->num_rows;
-$all_cm = [];
-while ($row = $pending_cm->fetch_assoc()) {
-    $all_cm[] = $row;
-}
-
-$total_pending_all = $pending_count + $cm_count;
+$total_pending_all = $pending_count;
 ?>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="chart-card fadeup text-center p-3 h-100 border-start border-4 border-primary shadow-sm glass-card">
-            <div class="display-6 fw-bold text-primary"><?php echo $total_pending_all; ?></div>
-            <div class="text-muted small fw-bold text-uppercase">Total Pending Actions</div>
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Approvals</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-check-double me-2" style="color:#BD9414;"></i>Pending Approvals</h4>
+        </div>
+        <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+            <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="chart-card fadeup text-center p-3 h-100 border-start border-4 border-success shadow-sm">
-            <div class="display-6 fw-bold text-success"><?php echo $finalized_count; ?></div>
-            <div class="text-muted small fw-bold text-uppercase">Total Finalized</div>
+
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $total_pending_all; ?></div>
+                        <div class="stat-label">Pending Actions</div>
+                    </div>
+                    <i class="fas fa-hourglass-half stat-icon text-white-50"></i>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="chart-card fadeup p-3 h-100 bg-light border-0 shadow-sm d-flex flex-column justify-content-center">
-            <div class="small text-muted mb-1 italic"><i class="fas fa-info-circle me-1"></i>Quick Tip</div>
-            <div class="x-small text-muted">Approved evaluations with growth aspirations automatically create career movement records for tracking.</div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $pending_count; ?></div>
+                        <div class="stat-label">Evaluations</div>
+                    </div>
+                    <i class="fas fa-file-signature stat-icon" style="color:#BD9414;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $finalized_count; ?></div>
+                        <div class="stat-label">Finalized</div>
+                    </div>
+                    <i class="fas fa-check-circle stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -234,12 +225,6 @@ $total_pending_all = $pending_count + $cm_count;
                         <span class="badge rounded-pill bg-primary ms-1"><?php echo $pending_count; ?></span>
                     </button>
                 </li>
-                <li class="nav-item">
-                    <button class="nav-link" id="movements-tab" data-bs-toggle="tab" data-bs-target="#movements-pane" type="button" role="tab">
-                        <i class="fas fa-route me-2"></i>Career Movements
-                        <span class="badge rounded-pill bg-info text-dark ms-1"><?php echo $cm_count; ?></span>
-                    </button>
-                </li>
             </ul>
             <div class="search-box me-3">
                 <i class="fas fa-search search-icon"></i>
@@ -300,57 +285,6 @@ $total_pending_all = $pending_count + $cm_count;
                                                     data-bs-toggle="modal" data-bs-target="#reviewModal<?php echo $row['evaluation_id']; ?>">
                                                 Review Details
                                             </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Career Movements Tab -->
-            <div class="tab-pane fade" id="movements-pane" role="tabpanel">
-                <div class="table-responsive">
-                    <table class="table modern-table align-middle mb-0" id="moveTable">
-                        <thead>
-                            <tr>
-                                <th>Employee</th>
-                                <th>Movement Type</th>
-                                <th>Logged By</th>
-                                <th>Effective Date</th>
-                                <th class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($all_cm)): ?>
-                                <tr>
-                                    <td colspan="5" class="text-center py-5">
-                                        <i class="fas fa-route fa-3x text-light mb-3"></i>
-                                        <p class="text-muted">No pending career movements for approval.</p>
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php foreach ($all_cm as $row): 
-                                    $initials = strtoupper(substr($row['employee_name'], 0, 1) . substr(explode(' ', $row['employee_name'])[1] ?? '', 0, 1));
-                                ?>
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center gap-3">
-                                                <div class="emp-avatar bg-info text-dark"><?php echo $initials; ?></div>
-                                                <div>
-                                                    <div class="fw-bold text-dark"><?php echo e($row['employee_name']); ?></div>
-                                                    <small class="text-muted"><?php echo e($row['job_title'] ?? 'Staff'); ?></small>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td><span class="badge bg-info text-dark rounded-pill px-3"><?php echo e($row['movement_type']); ?></span></td>
-                                        <td><span class="small text-muted"><?php echo e($row['logged_by_name']); ?></span></td>
-                                        <td><div class="fw-bold small"><?php echo formatDate($row['effective_date']); ?></div></td>
-                                        <td class="text-end">
-                                            <a href="<?php echo BASE_URL; ?>/manager/career-movement-approval.php" class="btn btn-sm btn-primary px-3 rounded-pill shadow-sm">
-                                                Review Movement
-                                            </a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

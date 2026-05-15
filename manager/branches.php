@@ -141,12 +141,6 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
         redirectWith(BASE_URL . '/manager/branches.php', 'danger', $msg);
     }
 
-    // Check career movements
-    $cm_check = $conn->query("SELECT COUNT(*) as cnt FROM career_movements WHERE previous_branch_id = $bid OR new_branch_id = $bid")->fetch_assoc()['cnt'];
-    if ($cm_check > 0) {
-        redirectWith(BASE_URL . '/manager/branches.php', 'danger', "Cannot delete branch — it is referenced by $cm_check career movement(s).");
-    }
-
     // Safe to delete
     $branch_name_row = $conn->query("SELECT branch_name FROM branches WHERE branch_id = $bid")->fetch_assoc();
     $conn->query("DELETE FROM branches WHERE branch_id = $bid");
@@ -164,6 +158,9 @@ $branches = $conn->query("
     FROM branches b
     ORDER BY b.branch_name
 ");
+$branch_count = $branches->num_rows;
+$branch_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM employees WHERE branch_id IS NOT NULL AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['cnt'];
+$branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE branch_id IS NOT NULL")->fetch_assoc()['cnt'];
 ?>
 
 <style>
@@ -241,19 +238,71 @@ $branches = $conn->query("
 </style>
 
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted mb-0">Manage company branches and locations</p>
-    <div>
-        <button class="btn btn-outline-success me-2" data-bs-toggle="modal" data-bs-target="#importBranchModal">
-            <i class="fas fa-file-csv me-2"></i>Import CSV
-        </button>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBranchModal">
-            <i class="fas fa-plus me-2"></i>Add Branch
-        </button>
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Organization</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-building me-2" style="color:#BD9414;"></i>Branch Management</h4>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#importBranchModal">
+                <i class="fas fa-file-csv me-1"></i>Import CSV
+            </button>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addBranchModal">
+                <i class="fas fa-plus me-1"></i>Add Branch
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $branch_count; ?></div>
+                        <div class="stat-label">Branches</div>
+                    </div>
+                    <i class="fas fa-building stat-icon text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $branch_employee_total; ?></div>
+                        <div class="stat-label">Assigned Employees</div>
+                    </div>
+                    <i class="fas fa-users stat-icon" style="color:#BD9414;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo $branch_user_total; ?></div>
+                        <div class="stat-label">Portal Users</div>
+                    </div>
+                    <i class="fas fa-user-lock stat-icon" style="color:#17a2b8;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value">CSV</div>
+                        <div class="stat-label">Bulk Import</div>
+                    </div>
+                    <i class="fas fa-file-csv stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="chart-card fadeup">
+<div class="chart-card fadeup-1">
     <div class="cc-header">
         <h5><i class="fas fa-building me-2"></i>All Branches</h5>
         <div class="search-box">

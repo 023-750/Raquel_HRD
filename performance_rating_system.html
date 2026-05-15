@@ -1,0 +1,135 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .page { padding: 2rem 1.5rem; }
+  .header { margin-bottom: 2rem; padding-bottom: 1.25rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .header h1 { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+  .header p { font-size: 13px; color: var(--color-text-secondary); margin-top: 4px; }
+  .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 12px; }
+  .section { margin-bottom: 2rem; }
+  .process-table { width: 100%; border-collapse: collapse; }
+  .process-table th { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-align: left; padding: 0 12px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .process-table td { padding: 10px 12px; font-size: 14px; color: var(--color-text-primary); border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: middle; }
+  .process-table tr:last-child td { border-bottom: none; }
+  .process-table tr:hover td { background: var(--color-background-secondary); }
+  .step-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-size: 11px; font-weight: 500; margin-right: 10px; flex-shrink: 0; background: var(--color-background-secondary); color: var(--color-text-secondary); }
+  .step-cell { display: flex; align-items: center; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+  .badge-head { background: #E6F1FB; color: #0C447C; }
+  .badge-employee { background: #E1F5EE; color: #085041; }
+  .badge-hr { background: #EEEDFE; color: #3C3489; }
+  .access-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .access-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+  .access-card h3 { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .access-card p { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
+  .admin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .admin-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+  .admin-card .role { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 7px; }
+  .admin-card .perm { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+  .perm-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 4px; margin-bottom: 4px; }
+  .perm-view { background: #EAF3DE; color: #27500A; }
+  .perm-edit { background: #FAEEDA; color: #633806; }
+  .perm-all { background: #FCEBEB; color: #791F1F; }
+  @media (max-width: 520px) {
+    .access-grid, .admin-grid { grid-template-columns: 1fr; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .badge-head { background: #0C447C; color: #B5D4F4; }
+    .badge-employee { background: #085041; color: #9FE1CB; }
+    .badge-hr { background: #3C3489; color: #CECBF6; }
+    .perm-view { background: #27500A; color: #C0DD97; }
+    .perm-edit { background: #633806; color: #FAC775; }
+    .perm-all { background: #791F1F; color: #F7C1C1; }
+  }
+</style>
+
+<h2 class="sr-only">Performance Rating System — Process, Access Levels, and Admin Roles</h2>
+
+<div class="page">
+
+  <div class="header">
+    <h1><i class="ti ti-chart-bar" aria-hidden="true" style="font-size:20px; vertical-align:-2px; margin-right:8px; color:var(--color-text-secondary);"></i>Performance Rating System</h1>
+    <p>KRA/KPI-based employee evaluation workflow and role permissions</p>
+  </div>
+
+  <div class="section">
+    <p class="section-label">Rating process</p>
+    <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); overflow: hidden;">
+      <table class="process-table">
+        <thead>
+          <tr>
+            <th style="width: 60%;">Step</th>
+            <th>Person responsible</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="step-cell"><span class="step-num">1</span>Identification of KRA/KPI</div></td>
+            <td><span class="badge badge-head"><i class="ti ti-users" aria-hidden="true" style="font-size:13px;"></i>Heads</span></td>
+          </tr>
+          <tr>
+            <td><div class="step-cell"><span class="step-num">2</span>Perform self rating</div></td>
+            <td><span class="badge badge-employee"><i class="ti ti-user" aria-hidden="true" style="font-size:13px;"></i>Employee</span></td>
+          </tr>
+          <tr>
+            <td><div class="step-cell"><span class="step-num">3</span>Submit self rating</div></td>
+            <td><span class="badge badge-employee"><i class="ti ti-user" aria-hidden="true" style="font-size:13px;"></i>Employee</span></td>
+          </tr>
+          <tr>
+            <td><div class="step-cell"><span class="step-num">4</span>Receive self rating</div></td>
+            <td><span class="badge badge-head"><i class="ti ti-users" aria-hidden="true" style="font-size:13px;"></i>Head</span></td>
+          </tr>
+          <tr>
+            <td><div class="step-cell"><span class="step-num">5</span>Edit and approve the rating</div></td>
+            <td><span class="badge badge-head"><i class="ti ti-users" aria-hidden="true" style="font-size:13px;"></i>Head</span></td>
+          </tr>
+          <tr>
+            <td><div class="step-cell"><span class="step-num">6</span>Submit the final rating</div></td>
+            <td><span class="badge badge-head"><i class="ti ti-users" aria-hidden="true" style="font-size:13px;"></i>Head</span></td>
+          </tr>
+          <tr>
+            <td><div class="step-cell"><span class="step-num">7</span>Receive final rating</div></td>
+            <td><span class="badge badge-hr"><i class="ti ti-shield-check" aria-hidden="true" style="font-size:13px;"></i>HR Admin</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-label">Access level</p>
+    <div class="access-grid">
+      <div class="access-card">
+        <h3><span class="badge badge-employee" style="font-size:11px;"><i class="ti ti-user" aria-hidden="true" style="font-size:12px;"></i>Employee</span></h3>
+        <p style="margin-top:8px;">Can view and edit their own rating.</p>
+      </div>
+      <div class="access-card">
+        <h3><span class="badge badge-head" style="font-size:11px;"><i class="ti ti-users" aria-hidden="true" style="font-size:12px;"></i>Head</span></h3>
+        <p style="margin-top:8px;">Can view and edit ratings of employees under them.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <p class="section-label">Admin access</p>
+    <div class="admin-grid">
+      <div class="admin-card">
+        <div class="role"><i class="ti ti-shield" aria-hidden="true" style="font-size:16px; color:var(--color-text-secondary);"></i>HR Staff</div>
+        <div style="margin-bottom:6px;"><span class="perm-tag perm-view"><i class="ti ti-eye" aria-hidden="true" style="font-size:11px;"></i>View all ratings</span></div>
+        <div class="perm" style="color: var(--color-text-secondary); font-size:12px;">No editing permissions.</div>
+      </div>
+      <div class="admin-card">
+        <div class="role"><i class="ti ti-shield-half" aria-hidden="true" style="font-size:16px; color:var(--color-text-secondary);"></i>HR Supervisor</div>
+        <div style="margin-bottom:4px;"><span class="perm-tag perm-view"><i class="ti ti-eye" aria-hidden="true" style="font-size:11px;"></i>View all ratings</span></div>
+        <div><span class="perm-tag perm-edit"><i class="ti ti-edit" aria-hidden="true" style="font-size:11px;"></i>Edit R&F only</span></div>
+      </div>
+      <div class="admin-card">
+        <div class="role"><i class="ti ti-shield-check" aria-hidden="true" style="font-size:16px; color:var(--color-text-secondary);"></i>HR Manager</div>
+        <div style="margin-bottom:4px;"><span class="perm-tag perm-view"><i class="ti ti-eye" aria-hidden="true" style="font-size:11px;"></i>View all ratings</span></div>
+        <div><span class="perm-tag perm-all"><i class="ti ti-edit" aria-hidden="true" style="font-size:11px;"></i>Edit all employees</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>

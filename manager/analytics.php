@@ -469,8 +469,15 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         options: {
             responsive: true, maintainAspectRatio: false, cutout: '65%',
-            plugins: { legend: { display: false },
+            plugins: { 
+                legend: { display: false },
                 tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}` } }
+            },
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 1500,
+                easing: 'easeInOutQuart'
             }
         }
     });
@@ -552,6 +559,14 @@ document.addEventListener('DOMContentLoaded', function () {
                             return ` Avg: ${v.toFixed(2)}  (${lvl})`;
                         }
                     }
+                }
+            },
+            animation: {
+                duration: 2000,
+                easing: 'easeInOutQuart',
+                delay: (context) => {
+                    // Stagger animation for each bar
+                    return context.dataIndex * 100;
                 }
             }
         }

@@ -255,10 +255,282 @@ function previewImage(input) {
     }
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function normalizeChangeFieldName(name) {
+    return (name || '').replace(/\[\]$/, '');
+}
+
+function formatFallbackLabel(name) {
+    return normalizeChangeFieldName(name)
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function getChangeFieldLabel(name) {
+    const normalized = normalizeChangeFieldName(name);
+    const directLabels = {
+        first_name: 'First Name',
+        last_name: 'Surname',
+        middle_name: 'Middle Name',
+        name_extension: 'Name Extension',
+        date_of_birth: 'Date of Birth',
+        place_of_birth: 'Place of Birth',
+        gender: 'Gender',
+        civil_status: 'Civil Status',
+        height_m: 'Height',
+        weight_kg: 'Weight',
+        blood_type: 'Blood Type',
+        citizenship: 'Citizenship',
+        sss_number: 'SSS No.',
+        philhealth_number: 'PhilHealth No.',
+        pagibig_number: 'Pag-IBIG No.',
+        tin_number: 'TIN No.',
+        res_house_no: 'Residential House/Block/Lot No.',
+        res_street: 'Residential Street',
+        res_subdivision: 'Residential Subdivision/Village',
+        res_barangay: 'Residential Barangay',
+        res_city: 'Residential City/Municipality',
+        res_province: 'Residential Province',
+        res_zip_code: 'Residential Zip Code',
+        perm_house_no: 'Permanent House/Block/Lot No.',
+        perm_street: 'Permanent Street',
+        perm_subdivision: 'Permanent Subdivision/Village',
+        perm_barangay: 'Permanent Barangay',
+        perm_city: 'Permanent City/Municipality',
+        perm_province: 'Permanent Province',
+        perm_zip_code: 'Permanent Zip Code',
+        telephone_number: 'Telephone No.',
+        contact_number: 'Contact Number',
+        email: 'Email Address',
+        spouse_surname: 'Spouse Surname',
+        spouse_first_name: 'Spouse First Name',
+        spouse_middle_name: 'Spouse Middle Name',
+        spouse_name_ext: 'Spouse Name Extension',
+        spouse_occupation: 'Spouse Occupation',
+        father_surname: 'Father Surname',
+        father_first_name: 'Father First Name',
+        father_middle_name: 'Father Middle Name',
+        father_name_ext: 'Father Name Extension',
+        father_occupation: 'Father Occupation',
+        mother_maiden_surname: 'Mother Maiden Surname',
+        mother_first_name: 'Mother First Name',
+        mother_middle_name: 'Mother Middle Name',
+        mother_occupation: 'Mother Occupation',
+        is_related_to_company: 'Related to Company',
+        related_details: 'Related to Company Details',
+        has_admin_offense: 'Administrative Offense',
+        admin_offense_details: 'Administrative Offense Details',
+        has_criminal_charge: 'Criminal Charge',
+        criminal_charge_details: 'Criminal Charge Details',
+        has_criminal_conviction: 'Criminal Conviction',
+        criminal_conviction_details: 'Criminal Conviction Details',
+        has_been_separated: 'Separated From Service',
+        separation_details: 'Separation Details',
+        is_pwd: 'PWD Status',
+        pwd_details: 'PWD Details',
+        is_solo_parent: 'Solo Parent Status',
+        solo_parent_details: 'Solo Parent Details',
+        has_recent_hospital: 'Recent Hospitalization',
+        hospital_details: 'Hospitalization Details',
+        has_current_treatment: 'Current Treatment',
+        treatment_details: 'Treatment Details',
+        hire_date: 'Hire Date',
+        job_title: 'Job Title',
+        department_id: 'Department',
+        rank_category_id: 'Rank',
+        branch_id: 'Branch',
+        employment_status: 'Employment Status',
+        employment_type: 'Employment Type',
+        employee_code: 'Company ID',
+        is_active: 'Employee Record Status',
+        emergency_contact_name: 'Emergency Contact Name',
+        emergency_contact_relationship: 'Emergency Contact Relationship',
+        emergency_contact_number: 'Emergency Contact Number',
+        contract_start_date: 'Contract Start Date',
+        contract_end_date: 'Contract End Date'
+    };
+
+    if (directLabels[normalized]) {
+        return directLabels[normalized];
+    }
+
+    if (normalized.startsWith('child_')) return 'Children';
+    if (normalized.startsWith('sibling_')) return 'Siblings';
+    if (normalized.startsWith('edu_')) return 'Education';
+    if (normalized.startsWith('work_')) return 'Work Experience';
+    if (normalized.startsWith('training_')) return 'Training';
+    if (normalized.startsWith('vol_')) return 'Voluntary Work';
+    if (normalized.startsWith('elig_')) return 'Eligibility';
+    if (normalized.startsWith('skill_')) return 'Skills';
+    if (normalized.startsWith('recognition_')) return 'Recognition';
+    if (normalized.startsWith('membership_')) return 'Membership';
+    if (normalized.startsWith('rprop_')) return 'Real Properties';
+    if (normalized.startsWith('pprop_')) return 'Personal Properties';
+    if (normalized.startsWith('liab_')) return 'Liabilities';
+    if (normalized.startsWith('ref_')) return 'References';
+
+    return formatFallbackLabel(normalized);
+}
+
+function shouldIgnoreComparisonField(element) {
+    const name = element.name || '';
+    const type = (element.type || '').toLowerCase();
+
+    if (!name || element.disabled) return true;
+    if (['submit', 'button', 'file', 'image', 'reset'].includes(type)) return true;
+    if (['current_step', 'return_to', 'quick_save'].includes(name)) return true;
+
+    return false;
+}
+
+function getElementComparisonValue(element) {
+    const tagName = element.tagName.toLowerCase();
+    const type = (element.type || '').toLowerCase();
+
+    if (type === 'checkbox') {
+        return {
+            raw: element.checked ? '1' : '0',
+            display: element.checked ? 'Yes' : 'No'
+        };
+    }
+
+    if (type === 'radio') {
+        return {
+            raw: element.checked ? String(element.value || '').trim() : '',
+            display: element.checked ? String(element.value || '').trim() : ''
+        };
+    }
+
+    if (tagName === 'select') {
+        const selectedOption = element.options[element.selectedIndex];
+        const raw = String(element.value || '').trim();
+        const display = raw && selectedOption ? String(selectedOption.textContent || '').trim() : '';
+        return { raw, display };
+    }
+
+    const raw = String(element.value || '').trim();
+    return { raw, display: raw };
+}
+
+function serializeFormForComparison(form) {
+    const result = {};
+    const order = [];
+
+    Array.from(form.elements).forEach((element) => {
+        if (shouldIgnoreComparisonField(element)) return;
+
+        const name = element.name;
+        const label = getChangeFieldLabel(name);
+        const isArrayField = name.endsWith('[]');
+        const value = getElementComparisonValue(element);
+
+        if (isArrayField) {
+            if (!result[name]) {
+                result[name] = { label, rawValues: [], displayValues: [] };
+                order.push(name);
+            }
+
+            if (value.raw !== '') {
+                result[name].rawValues.push(value.raw);
+                result[name].displayValues.push(value.display || value.raw);
+            }
+            return;
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(result, name)) {
+            order.push(name);
+        }
+
+        result[name] = {
+            label,
+            raw: value.raw,
+            display: value.display
+        };
+    });
+
+    Object.keys(result).forEach((name) => {
+        if (name.endsWith('[]')) {
+            const rawValues = result[name].rawValues || [];
+            const displayValues = result[name].displayValues || [];
+            result[name] = {
+                label: result[name].label,
+                raw: rawValues.join(' | '),
+                display: displayValues.join(' | ')
+            };
+        }
+    });
+
+    return { values: result, order };
+}
+
+function buildChangedFieldList(initialSnapshot, currentSnapshot) {
+    const allNames = [...initialSnapshot.order];
+    currentSnapshot.order.forEach((name) => {
+        if (!allNames.includes(name)) allNames.push(name);
+    });
+
+    return allNames.reduce((changes, name) => {
+        const before = initialSnapshot.values[name] || { label: getChangeFieldLabel(name), raw: '', display: '' };
+        const after = currentSnapshot.values[name] || { label: getChangeFieldLabel(name), raw: '', display: '' };
+
+        if ((before.raw || '') === (after.raw || '')) {
+            return changes;
+        }
+
+        changes.push({
+            label: after.label || before.label || formatFallbackLabel(name),
+            from: before.display || 'Blank',
+            to: after.display || 'Blank'
+        });
+
+        return changes;
+    }, []);
+}
+
+function getChangeConfirmationModal() {
+    let modalElement = document.getElementById('employeeChangeSummaryModal');
+    if (!modalElement) {
+        modalElement = document.createElement('div');
+        modalElement.className = 'modal fade';
+        modalElement.id = 'employeeChangeSummaryModal';
+        modalElement.tabIndex = -1;
+        modalElement.setAttribute('aria-hidden', 'true');
+        modalElement.innerHTML = `
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i>Review Changes</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted mb-3">Please review the modified information before applying the update.</p>
+                        <div id="employeeChangeSummaryList" class="list-group"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel Changes</button>
+                        <button type="button" class="btn btn-primary" id="confirmEmployeeUpdateBtn">Confirm Update</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modalElement);
+    }
+
+    return modalElement;
+}
+
 // Automatically navigate to the step containing an invalid required field
 document.addEventListener("DOMContentLoaded", function () {
     // Handle URL-based step navigation
     const urlParams = new URLSearchParams(window.location.search);
+    const employeeForm = document.getElementById('addEmployeeForm') || document.getElementById('editEmployeeForm');
     const urlStep = urlParams.get('step');
     if (urlStep) {
         showStep(parseInt(urlStep));
@@ -270,9 +542,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    const form = document.querySelector('form');
-    if (form) {
-        form.addEventListener('invalid', function (e) {
+    if (employeeForm) {
+        employeeForm.addEventListener('invalid', function (e) {
             const stepContent = e.target.closest('.step-content');
             if (stepContent) {
                 const stepId = stepContent.id;
@@ -288,8 +559,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const statusSelect = document.querySelector('select[name="employment_status"]');
     const contractDatesRow = document.getElementById('contractDatesRow');
     if (statusSelect && contractDatesRow) {
+        const statusesWithDates = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Trainee'];
         const checkStatus = () => {
-            if (['Probationary', 'Contractual'].includes(statusSelect.value)) {
+            if (statusesWithDates.includes(statusSelect.value)) {
                 contractDatesRow.style.display = 'flex';
             } else {
                 contractDatesRow.style.display = 'none';
@@ -369,16 +641,19 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // === AUTO-SAVE DRAFT FEATURE ===
-    const isEdit = addForm.dataset.isEdit === 'true';
+    const isEdit = employeeForm ? employeeForm.dataset.isEdit === 'true' : false;
     const employeeId = isEdit ? (new URLSearchParams(window.location.search)).get('id') : 'new';
     const DRAFT_KEY = `hris_employee_draft_${employeeId}`;
+    const initialComparisonSnapshot = (employeeForm && isEdit) ? serializeFormForComparison(employeeForm) : null;
+    let allowEditSubmit = false;
 
     // Run for both Add and Edit pages
-    if (addForm) {
+    if (employeeForm) {
         let isSaving = false;
+        let isSubmitting = false;
 
         const saveDraft = () => {
-            const formData = new FormData(addForm);
+            const formData = new FormData(employeeForm);
             const data = {};
             formData.forEach((value, key) => {
                 // Don't save file inputs
@@ -399,6 +674,48 @@ document.addEventListener("DOMContentLoaded", function () {
             localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
         };
 
+        if (isEdit && initialComparisonSnapshot) {
+            const modalElement = getChangeConfirmationModal();
+            const modalInstance = new bootstrap.Modal(modalElement);
+            const summaryList = modalElement.querySelector('#employeeChangeSummaryList');
+            const confirmButton = modalElement.querySelector('#confirmEmployeeUpdateBtn');
+
+            employeeForm.addEventListener('submit', (event) => {
+                if (allowEditSubmit) return;
+
+                event.preventDefault();
+
+                const currentSnapshot = serializeFormForComparison(employeeForm);
+                const changes = buildChangedFieldList(initialComparisonSnapshot, currentSnapshot);
+
+                if (changes.length === 0) {
+                    window.alert('No changes detected.');
+                    return;
+                }
+
+                summaryList.innerHTML = changes.map(change => `
+                    <div class="list-group-item">
+                        <div class="fw-bold mb-1">${escapeHtml(change.label)}</div>
+                        <div class="small text-muted">${escapeHtml(change.from)} &rarr; ${escapeHtml(change.to)}</div>
+                    </div>
+                `).join('');
+
+                modalInstance.show();
+            });
+
+            confirmButton.addEventListener('click', () => {
+                allowEditSubmit = true;
+                isSubmitting = true;
+                modalInstance.hide();
+                HTMLFormElement.prototype.submit.call(employeeForm);
+            });
+        } else {
+            // For Add mode or any submission that doesn't require a review modal
+            employeeForm.addEventListener('submit', () => {
+                isSubmitting = true;
+            });
+        }
+
         // Debounced save
         const debounceSave = () => {
             if (isSaving) return;
@@ -409,8 +726,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }, 1000);
         };
 
-        addForm.addEventListener('input', debounceSave);
-        addForm.addEventListener('change', debounceSave);
+        employeeForm.addEventListener('input', debounceSave);
+        employeeForm.addEventListener('change', debounceSave);
 
         // Clear draft if success message is present in URL
         if (urlParams.get('msg') && urlParams.get('msg').toLowerCase().includes('success')) {
@@ -436,7 +753,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="btnClearDraft">Discard</button>
                 </div>
             `;
-            addForm.parentNode.insertBefore(restoreBanner, addForm);
+            employeeForm.parentNode.insertBefore(restoreBanner, employeeForm);
 
             document.getElementById('btnRestoreDraft').addEventListener('click', () => {
                 // 1. Create dynamic rows first
@@ -507,6 +824,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Unsaved changes warning
         window.onbeforeunload = (e) => {
+            if (isSubmitting) return;
             const draft = localStorage.getItem(DRAFT_KEY);
             if (draft) {
                 e.preventDefault();

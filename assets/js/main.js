@@ -98,6 +98,9 @@ function confirmDelete(message) {
  * Initialize components that need re-binding after PJAX load
  */
 function initDynamicComponents() {
+    positionFlashToasts();
+    initFlashToasts();
+
     // 1. Close alert after 5 seconds
     const alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(function (alert) {
@@ -108,9 +111,143 @@ function initDynamicComponents() {
             if (closeBtn) closeBtn.click();
         }, 5000);
     });
+
+    initAdminMobileTables();
+}
+
+/**
+ * Move flash toasts into a page-level anchor when one is available.
+ */
+function positionFlashToasts() {
+    const useInlineAnchor = window.matchMedia('(min-width: 768px)').matches;
+    const anchor = useInlineAnchor ? document.querySelector('[data-flash-toast-anchor]') : null;
+
+    document.querySelectorAll('[data-flash-toast-anchor].flash-toast-anchor-active').forEach(function (activeAnchor) {
+        activeAnchor.classList.remove('flash-toast-anchor-active');
+    });
+
+    document.querySelectorAll('.flash-toast-container').forEach(function (container) {
+        if (!container.flashToastPlaceholder && container.parentNode) {
+            const placeholder = document.createComment('flash-toast-original-position');
+            container.parentNode.insertBefore(placeholder, container);
+            container.flashToastPlaceholder = placeholder;
+        }
+
+        const currentAnchor = container.closest('[data-flash-toast-anchor]');
+        container.classList.toggle('flash-toast-container-mobile-sticky', !useInlineAnchor);
+
+        if (anchor) {
+            anchor.appendChild(container);
+            anchor.classList.add('flash-toast-anchor-active');
+            container.classList.add('flash-toast-container-inline');
+            return;
+        }
+
+        if (currentAnchor) {
+            currentAnchor.classList.remove('flash-toast-anchor-active');
+        }
+
+        container.classList.remove('flash-toast-container-inline');
+
+        if (!useInlineAnchor) {
+            document.body.appendChild(container);
+            return;
+        }
+
+        if (container.flashToastPlaceholder && container.flashToastPlaceholder.parentNode) {
+            container.flashToastPlaceholder.parentNode.insertBefore(container, container.flashToastPlaceholder.nextSibling);
+        }
+    });
+}
+
+/**
+ * Show shared flash messages as popup toasts.
+ */
+function initFlashToasts() {
+    document.querySelectorAll('.flash-toast').forEach(function (toastEl) {
+        if (toastEl.dataset.init) return;
+        toastEl.dataset.init = 'true';
+
+        if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+            toastEl.addEventListener('show.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-leaving');
+                toastEl.classList.add('flash-toast-entering');
+            });
+
+            toastEl.addEventListener('shown.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-entering');
+            });
+
+            toastEl.addEventListener('hide.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-entering');
+                toastEl.classList.add('flash-toast-leaving');
+            });
+
+            toastEl.addEventListener('hidden.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-leaving');
+                const container = toastEl.closest('.flash-toast-container');
+                const anchor = container ? container.closest('[data-flash-toast-anchor]') : null;
+                if (anchor) anchor.classList.remove('flash-toast-anchor-active');
+                if (container) container.remove();
+            });
+
+            bootstrap.Toast.getOrCreateInstance(toastEl).show();
+            return;
+        }
+
+        toastEl.classList.add('show', 'flash-toast-entering');
+        setTimeout(function () {
+            toastEl.classList.remove('flash-toast-entering');
+            toastEl.classList.add('flash-toast-leaving');
+            setTimeout(function () {
+                toastEl.classList.remove('show', 'flash-toast-leaving');
+                const container = toastEl.closest('.flash-toast-container');
+                const anchor = container ? container.closest('[data-flash-toast-anchor]') : null;
+                if (anchor) anchor.classList.remove('flash-toast-anchor-active');
+                if (container) container.remove();
+            }, 700);
+        }, 3000);
+    });
+}
+
+/**
+ * Add readable labels to admin table cells for the mobile card layout.
+ */
+function initAdminMobileTables() {
+    if (!document.body.classList.contains('admin-area')) return;
+
+    document.querySelectorAll('.table-responsive table').forEach(function (table) {
+        if (table.dataset.mobileLabels === 'true') return;
+
+        const headers = Array.from(table.querySelectorAll('thead th')).map(function (th) {
+            return th.textContent.replace(/\s+/g, ' ').trim();
+        });
+
+        if (!headers.length) return;
+
+        table.querySelectorAll('tbody tr').forEach(function (row) {
+            const cells = Array.from(row.children).filter(function (cell) {
+                return cell.tagName.toLowerCase() === 'td';
+            });
+
+            if (cells.length === 1 && cells[0].hasAttribute('colspan')) {
+                cells[0].classList.add('mobile-empty-cell');
+                return;
+            }
+
+            cells.forEach(function (cell, index) {
+                if (!cell.dataset.label && headers[index]) {
+                    cell.dataset.label = headers[index];
+                }
+            });
+        });
+
+        table.dataset.mobileLabels = 'true';
+    });
 }
 
 document.addEventListener('DOMContentLoaded', initDynamicComponents);
+window.addEventListener('resize', positionFlashToasts);
 
 /**
  * Common Main JS
@@ -134,10 +271,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Clear Employee Draft if success alert exists
-    const successAlert = document.querySelector('.alert-success');
-    if (successAlert) {
-        const text = successAlert.innerText.toLowerCase();
+    // Clear Employee Draft if success feedback exists
+    const successFeedback = document.querySelector('.alert-success, .flash-toast-success .toast-body');
+    if (successFeedback) {
+        const text = successFeedback.innerText.toLowerCase();
         if (text.includes('successfully') || text.includes('added') || text.includes('saved')) {
             localStorage.removeItem('hris_add_employee_draft');
         }
@@ -147,6 +284,9 @@ document.addEventListener("DOMContentLoaded", function () {
 // Export for PJAX use
 if (typeof window !== 'undefined') {
     window.initDynamicComponents = initDynamicComponents;
+    window.positionFlashToasts = positionFlashToasts;
+    window.initFlashToasts = initFlashToasts;
+    window.initAdminMobileTables = initAdminMobileTables;
 }
 
 // Back to Top Logic
@@ -167,4 +307,19 @@ function scrollToTop() {
     });
 }
 
-
+/**
+ * View full-size profile picture or any image in a shared modal
+ */
+function viewFullImage(src, name) {
+    const modalEl = document.getElementById('imageModal');
+    if (!modalEl) return;
+    
+    const modal = new bootstrap.Modal(modalEl);
+    const fullImage = document.getElementById('fullImage');
+    const fullImageName = document.getElementById('fullImageName');
+    
+    if (fullImage) fullImage.src = src;
+    if (fullImageName) fullImageName.textContent = name || '';
+    
+    modal.show();
+}

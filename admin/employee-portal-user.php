@@ -179,7 +179,7 @@ require_once '../includes/header.php';
             </div>
             <div class="col">
                 <div class="fw-bold"><?php echo e($user['job_title'] ?? ''); ?></div>
-                <div class="text-muted small"><?php echo e($user['branch_name'] ?? ''); ?> • Employee ID: <?php echo e(getEmployeeDisplayId($user)); ?></div>
+                <div class="text-muted small"><?php echo e($user['branch_name'] ?? ''); ?> &bull; <span class="company-id-text">Company ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($user)); ?></span></span></div>
             </div>
             <div class="col-auto">
                 <?php if (!empty($user['is_active'])): ?>

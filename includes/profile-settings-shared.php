@@ -168,19 +168,72 @@ require_once __DIR__ . '/header.php';
 ?>
 
 <?php if ($success_msg): ?>
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="fas fa-check-circle me-2"></i><?php echo e($success_msg); ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    <?php renderFlashPopup('success', $success_msg); ?>
 <?php endif; ?>
 <?php if ($error_msg): ?>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="fas fa-exclamation-circle me-2"></i><?php echo e($error_msg); ?>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
+    <?php renderFlashPopup('danger', $error_msg); ?>
 <?php endif; ?>
 
-<div class="row">
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);"><?php echo e($_SESSION['role']); ?> · Account</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-user-cog me-2" style="color:#BD9414;"></i>Profile &amp; Settings</h4>
+        </div>
+        <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+            <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value" style="font-size:1rem;"><?php echo e($user['role']); ?></div>
+                        <div class="stat-label">Access Role</div>
+                    </div>
+                    <i class="fas fa-id-badge stat-icon text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value" style="font-size:1rem;"><?php echo e($user['username']); ?></div>
+                        <div class="stat-label">Username</div>
+                    </div>
+                    <i class="fas fa-user stat-icon" style="color:#BD9414;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value" style="font-size:1rem;"><?php echo $linked_employee ? 'Linked' : 'None'; ?></div>
+                        <div class="stat-label">Employee Record</div>
+                    </div>
+                    <i class="fas fa-link stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value" style="font-size:1rem;"><?php echo formatDate($user['created_at']); ?></div>
+                        <div class="stat-label">Account Created</div>
+                    </div>
+                    <i class="fas fa-calendar stat-icon" style="color:#17a2b8;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row fadeup-1">
     <!-- Profile Card -->
     <div class="col-lg-4 mb-4">
         <div class="content-card h-100 text-center">
@@ -236,7 +289,7 @@ require_once __DIR__ . '/header.php';
                             <i class="fas fa-id-badge text-muted me-3" style="width:18px;"></i>
                             <div class="small">
                                 <div class="text-muted" style="font-size:0.7rem;">Linked Employee Record</div>
-                                <div class="fw-semibold"><?php echo e($linked_employee['first_name'] . ' ' . $linked_employee['last_name']); ?> (ID: <?php echo $linked_employee['employee_id']; ?>)</div>
+                                <div class="fw-semibold"><?php echo e($linked_employee['first_name'] . ' ' . $linked_employee['last_name']); ?> <span class="company-id-text">(Company ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($linked_employee)); ?></span>)</span></div>
                             </div>
                         </div>
                     <?php endif; ?>

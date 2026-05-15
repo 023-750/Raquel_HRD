@@ -19,8 +19,8 @@ $effective_role = $_SESSION['role'] ?? '';
 
 // Notifications are strictly account-based but now isolated by portal context.
 $notif_context = ($current_dir === 'employee') ? 'employee' : 'hr';
-$notif_count = getUnreadNotificationCount($conn, (int)$_SESSION['user_id'], $notif_context);
-$notifications = getRecentNotifications($conn, (int)$_SESSION['user_id'], 5, $notif_context);
+$notif_count = getUnreadNotificationCount($conn, (int) $_SESSION['user_id'], $notif_context);
+$notifications = getRecentNotifications($conn, (int) $_SESSION['user_id'], 5, $notif_context);
 
 // 1. Get profile picture from the linked EMPLOYEE account
 $stmt = $conn->prepare("
@@ -69,11 +69,12 @@ switch ($effective_role) {
             'EMPLOYEES' => [
                 ['icon' => 'fas fa-users', 'label' => 'Employees', 'url' => BASE_URL . '/manager/employees.php', 'page' => 'employees.php'],
                 ['icon' => 'fas fa-user-plus', 'label' => 'Add Employee', 'url' => BASE_URL . '/manager/add-employee.php', 'page' => 'add-employee.php'],
-                ['icon' => 'fas fa-inbox', 'label' => 'PDS Submissions', 'url' => BASE_URL . '/manager/pds-submissions.php', 'page' => 'pds-submissions.php'],
             ],
             'ORGANIZATION' => [
                 ['icon' => 'fas fa-building', 'label' => 'Branches', 'url' => BASE_URL . '/manager/branches.php', 'page' => 'branches.php'],
                 ['icon' => 'fas fa-sitemap', 'label' => 'Departments', 'url' => BASE_URL . '/manager/departments.php', 'page' => 'departments.php'],
+                ['icon' => 'fas fa-project-diagram', 'label' => 'Operation Management', 'url' => BASE_URL . '/manager/operation-management.php', 'page' => 'operation-management.php'],
+                ['icon' => 'fas fa-briefcase', 'label' => 'Positions', 'url' => BASE_URL . '/manager/positions.php', 'page' => 'positions.php'],
             ],
             'EVALUATIONS' => [
                 ['icon' => 'fas fa-file-alt', 'label' => 'Templates', 'url' => BASE_URL . '/manager/templates.php', 'page' => 'templates.php'],
@@ -81,8 +82,10 @@ switch ($effective_role) {
                 ['icon' => 'fas fa-check-double', 'label' => 'Pending Approvals', 'url' => BASE_URL . '/manager/pending-approvals.php', 'page' => 'pending-approvals.php'],
                 ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/manager/evaluation-history.php', 'page' => 'evaluation-history.php'],
             ],
-            'APPROVALS' => [
-                ['icon' => 'fas fa-route', 'label' => 'Career Movement', 'url' => BASE_URL . '/manager/career-movement-approval.php', 'page' => 'career-movement-approval.php'],
+
+            'CAREER' => [
+                ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/manager/career-movements.php', 'page' => 'career-movements.php'],
+                ['icon' => 'fas fa-chart-line', 'label' => 'Career Progression', 'url' => BASE_URL . '/manager/career-progression.php', 'page' => 'career-progression.php'],
             ],
             'ANALYTICS' => [
                 ['icon' => 'fas fa-chart-bar', 'label' => 'Analytics', 'url' => BASE_URL . '/manager/analytics.php', 'page' => 'analytics.php'],
@@ -101,16 +104,19 @@ switch ($effective_role) {
             ],
             'EMPLOYEES' => [
                 ['icon' => 'fas fa-address-book', 'label' => 'Employee Info', 'url' => BASE_URL . '/supervisor/employees.php', 'page' => 'employees.php'],
-                ['icon' => 'fas fa-search', 'label' => 'Search Employees', 'url' => BASE_URL . '/supervisor/search-employees.php', 'page' => 'search-employees.php'],
             ],
             'EVALUATIONS' => [
+                ['icon' => 'fas fa-user-plus', 'label' => 'Assign Evaluation', 'url' => BASE_URL . '/supervisor/assign-evaluation.php', 'page' => 'assign-evaluation.php'],
                 ['icon' => 'fas fa-clipboard-check', 'label' => 'Pending Validations', 'url' => BASE_URL . '/supervisor/pending-endorsements.php', 'page' => 'pending-endorsements.php'],
                 ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/supervisor/evaluation-history.php', 'page' => 'evaluation-history.php'],
-                ['icon' => 'fas fa-file-alt', 'label' => 'Template Viewing', 'url' => BASE_URL . '/supervisor/templates.php', 'page' => 'templates.php'],
             ],
             'CAREER' => [
-                ['icon' => 'fas fa-exchange-alt', 'label' => 'Career Movements', 'url' => BASE_URL . '/supervisor/career-movements.php', 'page' => 'career-movements.php'],
-                ['icon' => 'fas fa-plus-circle', 'label' => 'Log Movement', 'url' => BASE_URL . '/supervisor/log-movement.php', 'page' => 'log-movement.php'],
+                ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/supervisor/career-movements.php', 'page' => 'career-movements.php'],
+                ['icon' => 'fas fa-chart-line', 'label' => 'Career Progression', 'url' => BASE_URL . '/supervisor/career-progression.php', 'page' => 'career-progression.php'],
+            ],
+            'ANALYTICS' => [
+                ['icon' => 'fas fa-chart-bar', 'label' => 'Branch Analytics', 'url' => BASE_URL . '/supervisor/analytics.php', 'page' => 'analytics.php'],
+                ['icon' => 'fas fa-file-alt', 'label' => 'Reports', 'url' => BASE_URL . '/supervisor/reports.php', 'page' => 'reports.php'],
             ],
             'SETTINGS' => [
                 ['icon' => 'fas fa-user-cog', 'label' => 'Profile & Settings', 'url' => BASE_URL . '/supervisor/profile-settings.php', 'page' => 'profile-settings.php'],
@@ -127,13 +133,7 @@ switch ($effective_role) {
                 ['icon' => 'fas fa-edit', 'label' => 'Submit Evaluation', 'url' => BASE_URL . '/staff/submit-evaluation.php', 'page' => 'submit-evaluation.php'],
                 ['icon' => 'fas fa-file-alt', 'label' => 'My Drafts', 'url' => BASE_URL . '/staff/my-drafts.php', 'page' => 'my-drafts.php'],
                 ['icon' => 'fas fa-paper-plane', 'label' => 'My Submissions', 'url' => BASE_URL . '/staff/my-submissions.php', 'page' => 'my-submissions.php'],
-            ],
-            'SEARCH' => [
-                ['icon' => 'fas fa-search', 'label' => 'Employee Search', 'url' => BASE_URL . '/staff/search-employees.php', 'page' => 'search-employees.php'],
-            ],
-            'VIEWING' => [
-                ['icon' => 'fas fa-file-alt', 'label' => 'Template Viewing', 'url' => BASE_URL . '/staff/templates.php', 'page' => 'templates.php'],
-                ['icon' => 'fas fa-route', 'label' => 'Career History', 'url' => BASE_URL . '/staff/career-history.php', 'page' => 'career-history.php'],
+                ['icon' => 'fas fa-user-check', 'label' => 'Supervisor Ratings', 'url' => BASE_URL . '/staff/supervisor-ratings.php', 'page' => 'supervisor-ratings.php'],
             ],
             'SETTINGS' => [
                 ['icon' => 'fas fa-user-cog', 'label' => 'Profile & Settings', 'url' => BASE_URL . '/staff/profile-settings.php', 'page' => 'profile-settings.php'],
@@ -142,15 +142,31 @@ switch ($effective_role) {
         break;
 
     case 'Employee':
+        // Check if employee is also a supervisor (has subordinates)
+        $is_supervisor_menu = false;
+        if (isset($_SESSION['employee_id']) && $conn) {
+            $is_supervisor_menu = hasEmployeeSubordinates($conn, (int) $_SESSION['employee_id']);
+        }
+
+        $self_service_menu = [
+            ['icon' => 'fas fa-briefcase', 'label' => 'My Employment', 'url' => BASE_URL . '/employee/my-employment.php', 'page' => 'my-employment.php'],
+            ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php'],
+            ['icon' => 'fas fa-check-circle', 'label' => 'Completed Ratings', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php'],
+            ['icon' => 'fas fa-route', 'label' => 'Career Movement Request', 'url' => BASE_URL . '/employee/career-movement-request.php', 'page' => 'career-movement-request.php'],
+        ];
+
+        // Add supervisor-only links
+        if ($is_supervisor_menu) {
+            $self_service_menu[] = ['icon' => 'fas fa-clipboard-check', 'label' => 'Confirm Self-Rating', 'url' => BASE_URL . '/employee/confirm-rating.php', 'page' => 'confirm-rating.php'];
+        }
+
+        $self_service_menu[] = ['icon' => 'fas fa-bell', 'label' => 'Notifications', 'url' => BASE_URL . '/employee/notifications.php', 'page' => 'notifications.php'];
+
         $sidebar_menus = [
             'MAIN' => [
                 ['icon' => 'fas fa-tachometer-alt', 'label' => 'Dashboard', 'url' => BASE_URL . '/employee/dashboard.php', 'page' => 'dashboard.php'],
             ],
-            'SELF SERVICE' => [
-                ['icon' => 'fas fa-briefcase', 'label' => 'My Employment', 'url' => BASE_URL . '/employee/my-employment.php', 'page' => 'my-employment.php'],
-                ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php'],
-                ['icon' => 'fas fa-bell', 'label' => 'Notifications', 'url' => BASE_URL . '/employee/notifications.php', 'page' => 'notifications.php'],
-            ],
+            'SELF SERVICE' => $self_service_menu,
             'SETTINGS' => [
                 ['icon' => 'fas fa-user-cog', 'label' => 'Change Password', 'url' => BASE_URL . '/employee/profile-settings.php', 'page' => 'profile-settings.php'],
             ],
@@ -182,7 +198,7 @@ switch ($effective_role) {
     </script>
 </head>
 
-<body>
+<body class="<?php echo $current_dir === 'admin' ? 'admin-area' : ''; ?>">
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -251,7 +267,8 @@ switch ($effective_role) {
                     <div class="dropdown-header">
                         Notifications
                         <?php if ($notif_count > 0): ?>
-                            <a href="#" onclick="markAllRead(); return false;" style="font-size:0.75rem;font-weight:400;">Mark all read</a>
+                            <a href="#" onclick="markAllRead(); return false;"
+                                style="font-size:0.75rem;font-weight:400;">Mark all read</a>
                         <?php endif; ?>
                     </div>
                     <?php if (empty($notifications)): ?>
@@ -269,7 +286,7 @@ switch ($effective_role) {
                             </a>
                         <?php endforeach; ?>
 
-                        <?php 
+                        <?php
                         $current_portal = basename(dirname($_SERVER['SCRIPT_NAME']));
                         // Use portal name as URL part, fallback to session role for others
                         if (in_array($current_portal, ['employee', 'staff', 'manager', 'supervisor', 'admin'])) {

@@ -13,6 +13,20 @@ $branch_stmt = $conn->query("SELECT branch_id, branch_name FROM branches ORDER B
 $branches = $branch_stmt ? $branch_stmt->fetch_all(MYSQLI_ASSOC) : [];
 ?>
 
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:0;color:rgba(255,255,255,.55);">HR Staff · Employee Directory</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-search me-2" style="color:#BD9414;"></i>Employee Search</h4>
+        </div>
+        <div style="color:rgba(255,255,255,.65);font-size:.8rem;">
+            <i class="fas fa-filter me-1"></i>Live search and filters
+        </div>
+    </div>
+    <p class="text-white-50 small mb-0"><i class="fas fa-users-viewfinder me-1"></i>Find employee records by company ID, name, branch, department, position, status, or employment type.</p>
+</div>
+
+<div class="staff-search-page">
 <div class="row">
     <!-- Advanced Filters Sidebar -->
     <div class="col-lg-3 mb-4">
@@ -26,7 +40,7 @@ $branches = $branch_stmt ? $branch_stmt->fetch_all(MYSQLI_ASSOC) : [];
                         <label class="form-label small fw-semibold">General Search</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
-                            <input type="text" name="search" class="form-control border-start-0" placeholder="Name or employee ID..." id="searchInput">
+                            <input type="text" name="search" class="form-control border-start-0" placeholder="Name or company ID..." id="searchInput">
                         </div>
                     </div>
                     <div class="col-12">
@@ -55,9 +69,13 @@ $branches = $branch_stmt ? $branch_stmt->fetch_all(MYSQLI_ASSOC) : [];
                         <label class="form-label small fw-semibold">Employment Status</label>
                         <select name="status" class="form-select" id="filterStatus">
                             <option value="">All Statuses</option>
-                            <option value="Regular">Regular</option>
+                            <option value="OJT">OJT</option>
                             <option value="Probationary">Probationary</option>
-                            <option value="Contractual">Contractual</option>
+                            <option value="Project Based">Project Based</option>
+                            <option value="Project-Based">Project-Based</option>
+                            <option value="Regular">Regular</option>
+                            <option value="Separated">Separated</option>
+                            <option value="Trainee">Trainee</option>
                         </select>
                     </div>
                     <div class="col-12">
@@ -112,6 +130,7 @@ $branches = $branch_stmt ? $branch_stmt->fetch_all(MYSQLI_ASSOC) : [];
         </div>
     </div>
 </div>
+</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -158,29 +177,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     const row = `
                         <tr class="search-result-row">
-                            <td>
+                            <td data-label="Employee">
                                 <div class="d-flex align-items-center">
                                     <div class="user-avatar-sm me-3 bg-secondary-subtle rounded-circle d-flex align-items-center justify-content-center text-secondary fw-bold" style="width:40px; height:40px; min-width:40px;">
                                         ${avatarContent}
                                     </div>
                                     <div>
                                         <div class="fw-bold mb-0 text-dark">${emp.full_name}</div>
-                                        <small class="text-muted">ID: ${emp.employee_id}</small>
+                                        <small class="company-id-text">Company ID: <span class="company-id-value">${emp.employee_code || 'Unassigned'}</span></small>
                                     </div>
                                 </div>
                             </td>
-                            <td>
+                            <td data-label="Department">
                                 <div class="small fw-semibold text-dark">${emp.job_title}</div>
                                 <div class="small text-muted">${emp.department_name || 'N/A'}</div>
                             </td>
-                            <td>
+                            <td data-label="Branch">
                                 <div class="small text-dark">${emp.branch_name || 'N/A'}</div>
                             </td>
-                            <td>
+                            <td data-label="Employment">
                                 <div class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 mb-1">${emp.employment_status}</div>
                                 <div class="small text-muted">${emp.employment_type}</div>
                             </td>
-                            <td>
+                            <td data-label="Actions">
                                 <a href="view-employee.php?id=${emp.employee_id}" class="btn btn-sm btn-outline-info" title="View Profile">
                                     <i class="fas fa-eye me-1"></i>View
                                 </a>
@@ -201,14 +220,163 @@ document.addEventListener('DOMContentLoaded', function() {
 <style>
 .user-avatar-sm { font-size: 0.8rem; }
 .sticky-top { top: 1.5rem !important; }
-.table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 16px; border-bottom: 2px solid #f1f1f1; }
+.table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0; padding: 12px 16px; border-bottom: 2px solid #f1f1f1; }
 .table td { padding: 16px; border-bottom: 1px solid #f8f9fa; }
 .form-select, .form-control { border-radius: 8px; border: 1.5px solid #eee; padding: 0.6rem 0.8rem; }
 .form-select:focus, .form-control:focus { box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.05); border-color: #0d6efd; }
 .bg-primary-subtle { background-color: #e7f1ff; }
-.badge { border-radius: 6px; font-weight: 600; font-size: 0.7rem; letter-spacing: 0.3px; }
+.badge { border-radius: 6px; font-weight: 600; font-size: 0.7rem; letter-spacing: 0; }
 .search-result-row { transition: background-color 0.2s ease; }
 .search-result-row:hover { background-color: #f8fafe; }
+
+.staff-search-page .card-header {
+    gap: 12px;
+}
+
+@media (max-width: 768px) {
+    .staff-search-page .sticky-top {
+        position: static !important;
+        top: auto !important;
+        z-index: auto !important;
+    }
+
+    .staff-search-page .col-lg-3 .content-card {
+        border: 1px solid #eef2e8;
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(12, 32, 8, 0.06);
+    }
+
+    .staff-search-page .col-lg-9 > .content-card {
+        background: transparent;
+        border: 0;
+        box-shadow: none;
+    }
+
+    .staff-search-page .col-lg-9 > .content-card > .card-header {
+        align-items: stretch;
+        background: #fff;
+        border: 1px solid #eef2e8;
+        border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(12, 32, 8, 0.06);
+        flex-direction: column;
+        margin-bottom: 12px;
+        padding: 14px 16px;
+    }
+
+    .staff-search-page .col-lg-9 > .content-card > .card-body {
+        background: transparent;
+    }
+
+    .staff-search-page .table-responsive {
+        overflow-x: visible;
+    }
+
+    .staff-search-page #searchResultsTable {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .staff-search-page #searchResultsTable thead {
+        display: none;
+    }
+
+    .staff-search-page #searchResultsTable,
+    .staff-search-page #searchResultsTable tbody,
+    .staff-search-page #searchResultsTable tr,
+    .staff-search-page #searchResultsTable td {
+        display: block;
+        width: 100%;
+    }
+
+    .staff-search-page #searchResultsTable tbody tr {
+        background: #fff;
+        border: 1px solid rgba(41, 67, 6, 0.1);
+        border-radius: 15px;
+        box-shadow: 0 8px 24px rgba(12, 32, 8, 0.07);
+        margin-bottom: 14px;
+        overflow: hidden;
+        padding: 8px 14px;
+    }
+
+    .staff-search-page #searchResultsTable tbody tr:hover {
+        background: #fff;
+    }
+
+    .staff-search-page #searchResultsTable tbody td {
+        align-items: center;
+        border: 0;
+        border-bottom: 1px solid #eef2e8;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: minmax(104px, 36%) minmax(0, 1fr);
+        overflow-wrap: anywhere;
+        padding: 10px 0;
+        text-align: right;
+    }
+
+    .staff-search-page #searchResultsTable tbody td::before {
+        color: var(--text-muted);
+        content: attr(data-label);
+        font-size: 0.68rem;
+        font-weight: 800;
+        letter-spacing: 0;
+        line-height: 1.2;
+        text-align: left;
+        text-transform: uppercase;
+    }
+
+    .staff-search-page #searchResultsTable tbody td:first-child {
+        border-bottom: 1px solid #e8eee3;
+        display: flex;
+        justify-content: flex-start;
+        padding-bottom: 14px;
+        text-align: left;
+    }
+
+    .staff-search-page #searchResultsTable tbody td:first-child::before,
+    .staff-search-page #searchResultsTable tbody td:last-child::before,
+    .staff-search-page #searchResultsTable tbody td[colspan]::before {
+        content: none;
+    }
+
+    .staff-search-page #searchResultsTable tbody td:first-child .user-avatar-sm {
+        height: 46px !important;
+        width: 46px !important;
+    }
+
+    .staff-search-page #searchResultsTable tbody td:first-child .fw-bold {
+        color: var(--primary-blue);
+        font-size: 1rem;
+    }
+
+    .staff-search-page #searchResultsTable tbody td:last-child {
+        border-bottom: 0;
+        display: block;
+        padding-top: 14px;
+    }
+
+    .staff-search-page #searchResultsTable tbody td:last-child .btn {
+        align-items: center;
+        display: inline-flex;
+        justify-content: center;
+        min-height: 38px;
+        width: 100%;
+    }
+
+    .staff-search-page #searchResultsTable tbody td[colspan] {
+        display: block;
+        padding: 28px 16px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 420px) {
+    .staff-search-page #searchResultsTable tbody td {
+        grid-template-columns: 1fr;
+        gap: 4px;
+        text-align: left;
+    }
+}
 </style>
 
 <?php require_once '../includes/footer.php'; ?>

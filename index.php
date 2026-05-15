@@ -4,8 +4,21 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+function normalizeLoginRole($role)
+{
+    $role_aliases = [
+        'Manager' => 'HR Manager',
+        'Supervisor' => 'HR Supervisor',
+        'Staff' => 'HR Staff',
+    ];
+
+    return $role_aliases[$role] ?? $role;
+}
+
 // If already logged in, redirect to appropriate dashboard
 if (isset($_SESSION['user_id'])) {
+    $_SESSION['role'] = normalizeLoginRole($_SESSION['role'] ?? '');
+
     switch ($_SESSION['role']) {
         case 'Admin':
             header("Location: /raquel-hris/admin/dashboard.php");
@@ -22,6 +35,11 @@ if (isset($_SESSION['user_id'])) {
         case 'Employee':
             header("Location: /raquel-hris/employee/dashboard.php");
             break;
+        default:
+            session_unset();
+            session_destroy();
+            header("Location: /raquel-hris/index.php");
+            break;
     }
     exit();
 }
@@ -37,9 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 
-    if (checkLoginBruteForce($conn, $username, $ip)) {
-        $error = 'Too many failed login attempts. Please try again in 15 minutes.';
-    } elseif (empty($username)) {
+    // NOTE: Brute force protection temporarily disabled for testing
+    // if (checkLoginBruteForce($conn, $username, $ip)) {
+    //     $error = 'Too many failed login attempts. Please try again in 15 minutes.';
+    // } elseif (empty($username)) {
+    if (empty($username)) {
         $error = 'Please enter your username.';
     } elseif (empty($password)) {
         $error = 'Please enter your password.';
@@ -52,6 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result->num_rows === 1) {
             $user = $result->fetch_assoc();
+            $user['role'] = normalizeLoginRole($user['role'] ?? '');
 
             // Check if account is active
             if (!$user['is_active']) {
@@ -71,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['full_name'] = $user['full_name'];
                 $_SESSION['role'] = $user['role'];
                 $_SESSION['branch_id'] = $user['branch_id'];
-                $_SESSION['first_login_completed'] = (bool)($user['first_login_completed'] ?? false);
+                $_SESSION['first_login_completed'] = (bool) ($user['first_login_completed'] ?? false);
 
                 // Clear brute force attempts on successful login
                 clearLoginAttempts($conn, $username, $ip);
@@ -82,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $logStmt->bind_param("iis", $user['user_id'], $user['user_id'], $ip);
                 $logStmt->execute();
                 $logStmt->close();
-                
+
                 // Notify Admins of successful login
                 $adminStmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'Admin' AND is_active = 1");
                 $adminStmt->execute();
@@ -113,10 +134,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit();
             } else {
                 $error = 'Invalid username or password.';
-                
+
                 // Register failed attempt
                 registerLoginAttempt($conn, $username, $ip);
-                
+
                 // Notify Admins of failed login (wrong password)
                 $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
                 $adminStmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'Admin' AND is_active = 1");
@@ -129,10 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             $error = 'Invalid username or password.';
-            
+
             // Register failed attempt
             registerLoginAttempt($conn, $username, $ip);
-            
+
             // Notify Admins of failed login (invalid account)
             $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
             $adminStmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'Admin' AND is_active = 1");
@@ -174,11 +195,7 @@ render_login:
             </div>
 
             <?php if ($error): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert"
-                    style="border-radius:8px;font-size:0.9rem;">
-                    <i class="fas fa-exclamation-circle me-2"></i><?php echo htmlspecialchars($error); ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
+                <?php renderFlashPopup('danger', $error); ?>
             <?php endif; ?>
 
             <form method="POST" action="" id="loginForm">
@@ -189,7 +206,8 @@ render_login:
                             style="border-radius:8px 0 0 8px;border:1.5px solid #dee2e6;border-right:none;background:#f8f9fa;">
                             <i class="fas fa-user" style="color:#6c757d;font-size:0.85rem;"></i>
                         </span>
-                        <input type="text" class="form-control" id="username" name="username" placeholder="Enter your username"
+                        <input type="text" class="form-control" id="username" name="username"
+                            placeholder="Enter your username"
                             value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>" required
                             style="border-left:none;border-radius:0 8px 8px 0;">
                     </div>
@@ -218,7 +236,8 @@ render_login:
                     <i class="fas fa-sign-in-alt me-2"></i>Sign In
                 </button>
                 <div class="text-center">
-                    <a href="/raquel-hris/employee/index.php" class="btn btn-outline-secondary btn-sm w-100" style="border-radius:10px;">
+                    <a href="/raquel-hris/employee/index.php" class="btn btn-outline-secondary btn-sm w-100"
+                        style="border-radius:10px;">
                         <i class="fas fa-id-card me-2"></i>Employee Self-Service Login
                     </a>
                 </div>
@@ -233,6 +252,23 @@ render_login:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        document.querySelectorAll('.flash-toast').forEach(function (toastEl) {
+            toastEl.addEventListener('show.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-leaving');
+                toastEl.classList.add('flash-toast-entering');
+            });
+            toastEl.addEventListener('shown.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-entering');
+            });
+            toastEl.addEventListener('hide.bs.toast', function () {
+                toastEl.classList.add('flash-toast-leaving');
+            });
+            toastEl.addEventListener('hidden.bs.toast', function () {
+                toastEl.classList.remove('flash-toast-leaving');
+            });
+            bootstrap.Toast.getOrCreateInstance(toastEl).show();
+        });
+
         function togglePassword() {
             const pwd = document.getElementById('password');
             const icon = document.getElementById('toggleIcon');

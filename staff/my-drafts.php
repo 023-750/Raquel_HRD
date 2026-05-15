@@ -30,7 +30,21 @@ $drafts = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as e
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
     WHERE ev.submitted_by = $uid AND ev.status IN ('Draft', 'Returned')
     ORDER BY ev.updated_at DESC");
+$draft_total = (int) $drafts->num_rows;
 ?>
+
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:0;color:rgba(255,255,255,.55);">HR Staff · Draft Workspace</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-file-alt me-2" style="color:#BD9414;"></i>My Drafts</h4>
+        </div>
+        <div class="badge bg-white text-dark border-0 py-2 px-3" style="border-radius:20px;font-size:.75rem;box-shadow:0 4px 10px rgba(0,0,0,.1);">
+            <i class="fas fa-folder-open me-1 text-primary"></i><?php echo $draft_total; ?> active <?php echo $draft_total === 1 ? 'draft' : 'drafts'; ?>
+        </div>
+    </div>
+    <p class="text-white-50 small mb-0"><i class="fas fa-clock-rotate-left me-1"></i>Continue saved evaluations or revise returned submissions before sending them for validation.</p>
+</div>
 
 <div class="content-card">
     <div class="card-header">

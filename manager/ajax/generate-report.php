@@ -17,6 +17,18 @@ $date_to     = trim($_POST['date_to'] ?? '');
 $html = '';
 $count = 0;
 
+function reportSummaryGrid(array $items): string {
+    $html = '<div class="report-summary-grid">';
+    foreach ($items as $item) {
+        $html .= '<div class="report-summary-card">';
+        $html .= '<span>' . htmlspecialchars($item['label']) . '</span>';
+        $html .= '<strong>' . htmlspecialchars((string)$item['value']) . '</strong>';
+        $html .= '</div>';
+    }
+    $html .= '</div>';
+    return $html;
+}
+
 try {
     switch ($report_type) {
 
@@ -37,6 +49,16 @@ try {
                 $where .= " AND e.department_id = ?";
                 $params[] = $department_id;
                 $types .= 'i';
+            }
+            if (!empty($date_from)) {
+                $where .= " AND e.hire_date >= ?";
+                $params[] = $date_from;
+                $types .= 's';
+            }
+            if (!empty($date_to)) {
+                $where .= " AND e.hire_date <= ?";
+                $params[] = $date_to;
+                $types .= 's';
             }
 
             $sql = "SELECT e.employee_id, e.first_name, e.last_name, e.middle_name,
@@ -61,7 +83,35 @@ try {
                 exit;
             }
 
-            $html = '<div class="table-responsive"><table class="table table-hover table-striped">';
+            $regularCount = 0;
+            $probationaryCount = 0;
+            $branchNames = [];
+            $departmentNames = [];
+            $rows = [];
+
+            while ($row = $result->fetch_assoc()) {
+                $rows[] = $row;
+                if ($row['employment_status'] === 'Regular') {
+                    $regularCount++;
+                }
+                if ($row['employment_status'] === 'Probationary') {
+                    $probationaryCount++;
+                }
+                if (!empty($row['branch_name'])) {
+                    $branchNames[$row['branch_name']] = true;
+                }
+                if (!empty($row['department_name'])) {
+                    $departmentNames[$row['department_name']] = true;
+                }
+            }
+
+            $html = reportSummaryGrid([
+                ['label' => 'Total Employees', 'value' => $count],
+                ['label' => 'Regular', 'value' => $regularCount],
+                ['label' => 'Probationary', 'value' => $probationaryCount],
+                ['label' => 'Branches Covered', 'value' => count($branchNames)],
+            ]);
+            $html .= '<div class="table-responsive report-table-wrap"><table class="table table-hover table-striped report-preview-table report-masterlist-table">';
             $html .= '<thead><tr>
                 <th>#</th>
                 <th>Employee Name</th>
@@ -76,20 +126,20 @@ try {
             </tr></thead><tbody>';
 
             $i = 1;
-            while ($row = $result->fetch_assoc()) {
+            foreach ($rows as $row) {
                 $fullName = htmlspecialchars($row['last_name'] . ', ' . $row['first_name'] . (!empty($row['middle_name']) ? ' ' . $row['middle_name'] : ''));
                 $statusClass = $row['employment_status'] === 'Regular' ? 'bg-success' : ($row['employment_status'] === 'Probationary' ? 'bg-warning text-dark' : 'bg-secondary');
                 $html .= '<tr>
-                    <td>' . $i++ . '</td>
-                    <td><strong>' . $fullName . '</strong></td>
-                    <td>' . htmlspecialchars($row['job_title'] ?? '') . '</td>
-                    <td>' . htmlspecialchars($row['department_name'] ?? 'N/A') . '</td>
-                    <td>' . htmlspecialchars($row['branch_name'] ?? 'N/A') . '</td>
-                    <td>' . ($row['hire_date'] ? date('M d, Y', strtotime($row['hire_date'])) : 'N/A') . '</td>
-                    <td><span class="badge ' . $statusClass . '">' . htmlspecialchars($row['employment_status'] ?? '') . '</span></td>
-                    <td>' . htmlspecialchars($row['employment_type'] ?? '') . '</td>
-                    <td>' . htmlspecialchars($row['mobile_number'] ?? 'N/A') . '</td>
-                    <td>' . htmlspecialchars($row['personal_email'] ?? 'N/A') . '</td>
+                    <td data-label="#">' . $i++ . '</td>
+                    <td data-label="Employee Name"><strong>' . $fullName . '</strong></td>
+                    <td data-label="Position">' . htmlspecialchars($row['job_title'] ?? '') . '</td>
+                    <td data-label="Department">' . htmlspecialchars($row['department_name'] ?? 'N/A') . '</td>
+                    <td data-label="Branch">' . htmlspecialchars($row['branch_name'] ?? 'N/A') . '</td>
+                    <td data-label="Hire Date">' . ($row['hire_date'] ? date('M d, Y', strtotime($row['hire_date'])) : 'N/A') . '</td>
+                    <td data-label="Status"><span class="badge ' . $statusClass . '">' . htmlspecialchars($row['employment_status'] ?? '') . '</span></td>
+                    <td data-label="Type">' . htmlspecialchars($row['employment_type'] ?? '') . '</td>
+                    <td data-label="Mobile">' . htmlspecialchars($row['mobile_number'] ?? 'N/A') . '</td>
+                    <td data-label="Email">' . htmlspecialchars($row['personal_email'] ?? 'N/A') . '</td>
                 </tr>';
             }
             $html .= '</tbody></table></div>';
@@ -152,7 +202,35 @@ try {
                 exit;
             }
 
-            $html = '<div class="table-responsive"><table class="table table-hover table-striped">';
+            $scoreTotal = 0;
+            $ratedEmployees = [];
+            $levelCounts = [];
+            $latestApproved = '';
+            $rows = [];
+
+            while ($row = $result->fetch_assoc()) {
+                $rows[] = $row;
+                $scoreTotal += (float)$row['total_score'];
+                if (!empty($row['employee_id'])) {
+                    $ratedEmployees[$row['employee_id']] = true;
+                }
+                $level = $row['performance_level'] ?: 'N/A';
+                $levelCounts[$level] = ($levelCounts[$level] ?? 0) + 1;
+                if (!$latestApproved && !empty($row['approved_date'])) {
+                    $latestApproved = date('M d, Y', strtotime($row['approved_date']));
+                }
+            }
+            arsort($levelCounts);
+            $topLevel = key($levelCounts) ?: 'N/A';
+            $averageScore = $count > 0 ? number_format($scoreTotal / $count, 1) . '%' : '0.0%';
+
+            $html = reportSummaryGrid([
+                ['label' => 'Approved Evaluations', 'value' => $count],
+                ['label' => 'Employees Rated', 'value' => count($ratedEmployees)],
+                ['label' => 'Average Score', 'value' => $averageScore],
+                ['label' => 'Top Level', 'value' => $topLevel],
+            ]);
+            $html .= '<div class="table-responsive report-table-wrap"><table class="table table-hover table-striped report-preview-table">';
             $html .= '<thead><tr>
                 <th>#</th>
                 <th>Employee</th>
@@ -167,7 +245,7 @@ try {
             </tr></thead><tbody>';
 
             $i = 1;
-            while ($row = $result->fetch_assoc()) {
+            foreach ($rows as $row) {
                 $perfClass = 'bg-secondary';
                 switch ($row['performance_level']) {
                     case 'Excellent': $perfClass = 'bg-success'; break;
@@ -180,114 +258,16 @@ try {
                     $period = date('M Y', strtotime($row['evaluation_period_start'])) . ' - ' . date('M Y', strtotime($row['evaluation_period_end']));
                 }
                 $html .= '<tr>
-                    <td>' . $i++ . '</td>
-                    <td><strong>' . htmlspecialchars($row['employee_name']) . '</strong></td>
-                    <td>' . htmlspecialchars($row['job_title'] ?? '') . '</td>
-                    <td>' . htmlspecialchars($row['department_name'] ?? 'N/A') . '</td>
-                    <td>' . htmlspecialchars($row['branch_name'] ?? 'N/A') . '</td>
-                    <td>' . htmlspecialchars($row['template_name'] ?? '') . '</td>
-                    <td>' . $period . '</td>
-                    <td><strong>' . number_format($row['total_score'], 1) . '%</strong></td>
-                    <td><span class="badge ' . $perfClass . '">' . htmlspecialchars($row['performance_level'] ?? 'N/A') . '</span></td>
-                    <td>' . ($row['approved_date'] ? date('M d, Y', strtotime($row['approved_date'])) : 'N/A') . '</td>
-                </tr>';
-            }
-            $html .= '</tbody></table></div>';
-            $stmt->close();
-            break;
-
-        // ===========================
-        // CAREER MOVEMENTS
-        // ===========================
-        case 'career_movements':
-            $where = "WHERE e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)";
-            $params = [];
-            $types = '';
-
-            if ($branch_id > 0) {
-                $where .= " AND (cm.previous_branch_id = ? OR cm.new_branch_id = ?)";
-                $params[] = $branch_id;
-                $params[] = $branch_id;
-                $types .= 'ii';
-            }
-            if ($department_id > 0) {
-                $where .= " AND e.department_id = ?";
-                $params[] = $department_id;
-                $types .= 'i';
-            }
-            if (!empty($date_from)) {
-                $where .= " AND cm.effective_date >= ?";
-                $params[] = $date_from;
-                $types .= 's';
-            }
-            if (!empty($date_to)) {
-                $where .= " AND cm.effective_date <= ?";
-                $params[] = $date_to;
-                $types .= 's';
-            }
-
-            $sql = "SELECT cm.movement_id, cm.movement_type, cm.previous_position, cm.new_position,
-                           cm.effective_date, cm.reason, cm.approval_status,
-                           CONCAT(e.last_name, ', ', e.first_name) as employee_name,
-                           d.department_name,
-                           pb.branch_name as prev_branch,
-                           nb.branch_name as new_branch,
-                           u.full_name as logged_by_name
-                    FROM career_movements cm
-                    LEFT JOIN employees e ON cm.employee_id = e.employee_id
-                    LEFT JOIN branches pb ON cm.previous_branch_id = pb.branch_id
-                    LEFT JOIN branches nb ON cm.new_branch_id = nb.branch_id
-                    LEFT JOIN departments d ON e.department_id = d.department_id
-                    LEFT JOIN users u ON cm.logged_by = u.user_id
-                    $where
-                    ORDER BY cm.effective_date DESC";
-
-            $stmt = $conn->prepare($sql);
-            if (!empty($params)) $stmt->bind_param($types, ...$params);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $count = $result->num_rows;
-
-            if ($count === 0) {
-                echo json_encode(['success' => false, 'message' => 'No career movements found matching your filters.']);
-                exit;
-            }
-
-            $html = '<div class="table-responsive"><table class="table table-hover table-striped">';
-            $html .= '<thead><tr>
-                <th>#</th>
-                <th>Employee</th>
-                <th>Movement Type</th>
-                <th>Previous Position</th>
-                <th>New Position</th>
-                <th>From Branch</th>
-                <th>To Branch</th>
-                <th>Effective Date</th>
-                <th>Status</th>
-                <th>Logged By</th>
-            </tr></thead><tbody>';
-
-            $i = 1;
-            while ($row = $result->fetch_assoc()) {
-                $typeClass = 'bg-info';
-                switch ($row['movement_type']) {
-                    case 'Promotion': $typeClass = 'bg-success'; break;
-                    case 'Transfer': $typeClass = 'bg-primary'; break;
-                    case 'Demotion': $typeClass = 'bg-danger'; break;
-                    case 'Role Change': $typeClass = 'bg-warning text-dark'; break;
-                }
-                $statusClass = $row['approval_status'] === 'Approved' ? 'bg-success' : ($row['approval_status'] === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark');
-                $html .= '<tr>
-                    <td>' . $i++ . '</td>
-                    <td><strong>' . htmlspecialchars($row['employee_name'] ?? '') . '</strong></td>
-                    <td><span class="badge ' . $typeClass . '">' . htmlspecialchars($row['movement_type']) . '</span></td>
-                    <td>' . htmlspecialchars($row['previous_position'] ?? 'N/A') . '</td>
-                    <td>' . htmlspecialchars($row['new_position'] ?? '') . '</td>
-                    <td>' . htmlspecialchars($row['prev_branch'] ?? 'N/A') . '</td>
-                    <td>' . htmlspecialchars($row['new_branch'] ?? 'N/A') . '</td>
-                    <td>' . date('M d, Y', strtotime($row['effective_date'])) . '</td>
-                    <td><span class="badge ' . $statusClass . '">' . htmlspecialchars($row['approval_status']) . '</span></td>
-                    <td>' . htmlspecialchars($row['logged_by_name'] ?? 'N/A') . '</td>
+                    <td data-label="#">' . $i++ . '</td>
+                    <td data-label="Employee"><strong>' . htmlspecialchars($row['employee_name']) . '</strong></td>
+                    <td data-label="Position">' . htmlspecialchars($row['job_title'] ?? '') . '</td>
+                    <td data-label="Department">' . htmlspecialchars($row['department_name'] ?? 'N/A') . '</td>
+                    <td data-label="Branch">' . htmlspecialchars($row['branch_name'] ?? 'N/A') . '</td>
+                    <td data-label="Template">' . htmlspecialchars($row['template_name'] ?? '') . '</td>
+                    <td data-label="Eval Period">' . $period . '</td>
+                    <td data-label="Score"><strong>' . number_format($row['total_score'], 1) . '%</strong></td>
+                    <td data-label="Performance Level"><span class="badge ' . $perfClass . '">' . htmlspecialchars($row['performance_level'] ?? 'N/A') . '</span></td>
+                    <td data-label="Approved Date">' . ($row['approved_date'] ? date('M d, Y', strtotime($row['approved_date'])) : 'N/A') . '</td>
                 </tr>';
             }
             $html .= '</tbody></table></div>';

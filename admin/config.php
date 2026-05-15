@@ -42,14 +42,20 @@ while ($row = $settings_res->fetch_assoc()) {
 ?>
 
 <div class="config-module">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="fw-bold mb-1">System Configuration</h2>
-            <p class="text-muted mb-0">Manage global variables and security protocols</p>
+    <div class="page-hero fadeup">
+        <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+            <div>
+                <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">System Admin · Configuration</div>
+                <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-sliders-h me-2" style="color:var(--primary-light);"></i>System Configuration</h4>
+            </div>
+            <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+                <i class="fas fa-lock me-1"></i>Admin only
+            </div>
         </div>
+        <p class="text-white-50 small mb-0"><i class="fas fa-cog me-1"></i>Manage global variables and security protocols.</p>
     </div>
 
-    <form method="POST" action="">
+    <form method="POST" action="" class="fadeup-1">
         <div class="row g-4">
             <!-- General Settings -->
             <div class="col-lg-6">

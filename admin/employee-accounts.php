@@ -10,11 +10,14 @@ require_once '../includes/header.php';
 $per_page = 5;
 $current_page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($current_page - 1) * $per_page;
-$account_filter = $_GET['account_filter'] ?? 'all';
-$allowed_filters = ['all', 'common_employee', 'hr_system'];
-if (!in_array($account_filter, $allowed_filters, true)) {
-    $account_filter = 'all';
-}
+$selected_department = isset($_GET['department']) && $_GET['department'] !== '' ? max(0, (int)$_GET['department']) : 0;
+
+$department_options = $conn->query("
+    SELECT department_id, department_name
+    FROM departments
+    WHERE is_active = 1 AND deleted_at IS NULL
+    ORDER BY department_name
+");
 
 $hr_exists_condition = "EXISTS (
     SELECT 1
@@ -34,6 +37,7 @@ $base_from = "
         LIMIT 1
     )
     LEFT JOIN branches b ON e.branch_id = b.branch_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
     LEFT JOIN employee_contacts ec ON ec.contact_id = (
         SELECT ec2.contact_id
         FROM employee_contacts ec2
@@ -47,10 +51,8 @@ $base_where = "
     WHERE e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
 ";
 
-if ($account_filter === 'common_employee') {
-    $base_where .= " AND NOT $hr_exists_condition";
-} elseif ($account_filter === 'hr_system') {
-    $base_where .= " AND $hr_exists_condition";
+if ($selected_department > 0) {
+    $base_where .= " AND e.department_id = $selected_department";
 }
 
 // Count all employees shown in this page
@@ -72,6 +74,7 @@ $employees = $conn->query("
         e.last_name, 
         e.middle_name, 
         e.job_title, 
+        d.department_name,
         b.branch_name, 
         e.profile_picture, 
         e.is_active as emp_active,
@@ -136,24 +139,36 @@ unset($_SESSION['new_employee_credentials']);
 <script>document.addEventListener('DOMContentLoaded',()=>new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());</script>
 <?php endif; ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted mb-0">Manage employee access to the self-service portal</p>
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">System Admin · Employee Access</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-user-lock me-2" style="color:var(--primary-light);"></i>Portal Accounts</h4>
+        </div>
+        <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+            <i class="fas fa-users me-1"></i><?php echo $total_accounts; ?> employees
+        </div>
+    </div>
+    <p class="text-white-50 small mb-0"><i class="fas fa-key me-1"></i>Manage employee access to the self-service portal.</p>
 </div>
 
-<div class="alert alert-info py-2" style="font-size:0.9rem;">
+<div class="alert alert-info py-2 fadeup-1" style="font-size:0.9rem;">
     <i class="fas fa-info-circle me-2"></i>
-    Employee Portal accounts are separate from HR system accounts. Employee ID is suggested as the portal username, but you can use a custom one.
+    Employee Portal accounts are separate from HR system accounts. Company ID is suggested as the portal username, but you can use a custom one.
 </div>
 
-<div class="content-card">
+<div class="content-card fadeup-2">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
         <h5 class="mb-0"><i class="fas fa-user-lock me-2"></i>Portal Account Status</h5>
         <div class="d-flex align-items-center justify-content-end gap-2 flex-wrap ms-auto" style="flex: 1 1 420px;">
             <form method="GET" class="mb-0">
-                <select class="form-select form-select-sm" id="account_filter" name="account_filter" onchange="this.form.submit()" aria-label="Filter portal accounts" style="width: 220px;">
-                    <option value="all" <?php echo $account_filter === 'all' ? 'selected' : ''; ?>>All Employees</option>
-                    <option value="common_employee" <?php echo $account_filter === 'common_employee' ? 'selected' : ''; ?>>Common Employees</option>
-                    <option value="hr_system" <?php echo $account_filter === 'hr_system' ? 'selected' : ''; ?>>Using HR System</option>
+                <select class="form-select form-select-sm" id="department_filter" name="department" onchange="this.form.submit()" aria-label="Filter portal accounts by department" style="width: 220px;">
+                    <option value="">All Departments</option>
+                    <?php while ($department = $department_options->fetch_assoc()): ?>
+                        <option value="<?php echo (int) $department['department_id']; ?>" <?php echo $selected_department === (int) $department['department_id'] ? 'selected' : ''; ?>>
+                            <?php echo e($department['department_name']); ?>
+                        </option>
+                    <?php endwhile; ?>
                 </select>
             </form>
             <div class="search-box" style="min-width: 240px; flex: 1 1 240px; max-width: 320px;">
@@ -170,6 +185,7 @@ unset($_SESSION['new_employee_credentials']);
                         <th>#</th>
                         <th>Photo</th>
                         <th>Employee Name</th>
+                        <th>Department</th>
                         <th>Branch</th>
                         <th>Account Status</th>
                         <th>Portal Username</th>
@@ -177,56 +193,73 @@ unset($_SESSION['new_employee_credentials']);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $row_number = 1; ?>
-                    <?php while ($emp = $employees->fetch_assoc()): ?>
+                    <?php $row_number = $offset + 1; ?>
+                    <?php if ($employees->num_rows === 0): ?>
                         <tr>
-                            <td><strong><?php echo $row_number++; ?></strong></td>
-                            <td>
-                                <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>?v=<?php echo time(); ?>" 
-                                     alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
-                            </td>
-                            <td>
-                                <div><strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong></div>
-                                <small class="text-muted"><?php echo e($emp['job_title']); ?> (ID: <?php echo e(getEmployeeDisplayId($emp)); ?>)</small>
-                            </td>
-                            <td><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
-                            <td>
-                                <?php if ($emp['user_id']): ?>
-                                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Has Account</span>
-                                    <div class="mt-1 small fw-bold text-primary"><?php echo e($emp['role']); ?></div>
-                                    <?php if (!$emp['user_active']): ?>
-                                        <span class="badge bg-danger ms-1">Inactive</span>
-                                    <?php endif; ?>
-                                <?php else: ?>
-                                    <span class="badge bg-warning text-dark"><i class="fas fa-times-circle me-1"></i>No Account</span>
-                                <?php endif; ?>
-                                <?php if (!empty($emp['hr_role'])): ?>
-                                    <div class="mt-1 small text-muted">HR Account: <?php echo e($emp['hr_role']); ?></div>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php echo $emp['username'] ? '<code>' . e($emp['username']) . '</code>' : '<span class="text-muted small">Not Set</span>'; ?>
-                            </td>
-                            <td>
-                                <?php if (!$emp['user_id']): ?>
-                                    <button class="btn btn-sm btn-primary" 
-                                            onclick="openCreateAccountModal(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>', '<?php echo e(addslashes($emp['personal_email'] ?? '')); ?>', '<?php echo e(addslashes(getEmployeeDisplayId($emp))); ?>')">
-                                        <i class="fas fa-plus me-1"></i>Create Account
-                                    </button>
-                                <?php else: ?>
-                                    <?php if (($emp['role'] ?? '') === 'Employee'): ?>
-                                        <a href="employee-portal-user.php?user_id=<?php echo (int)$emp['user_id']; ?>" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-id-card me-1"></i>Manage Portal
-                                        </a>
-                                    <?php else: ?>
-                                        <a href="users.php?search=<?php echo urlencode($emp['username']); ?>" class="btn btn-sm btn-outline-warning">
-                                            <i class="fas fa-user-cog me-1"></i>Manage (HR)
-                                        </a>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-                            </td>
+                            <td colspan="8" class="text-center py-4 text-muted">No employees found for the selected department.</td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php else: ?>
+                        <?php while ($emp = $employees->fetch_assoc()): ?>
+                            <tr>
+                                <td data-label="#"><strong><?php echo $row_number++; ?></strong></td>
+                                <td data-label="Photo">
+                                    <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>?v=<?php echo time(); ?>"
+                                         alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
+                                </td>
+                                <td data-label="Employee Name">
+                                    <div><strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong></div>
+                                    <small class="text-muted"><?php echo e($emp['job_title']); ?> <span class="company-id-text">(Company ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span>)</span></small>
+                                </td>
+                                <td data-label="Department"><?php echo e($emp['department_name'] ?? 'N/A'); ?></td>
+                                <td data-label="Branch"><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
+                                <td data-label="Account Status">
+                                    <?php if ($emp['user_id']): ?>
+                                        <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Has Account</span>
+                                        <?php
+                                        $supervisory_titles = ['Area Supervisor', 'Immediate Head', 'Manager', 'Director', 'Team Lead', 'Supervisor'];
+                                        $display_role = $emp['role'];
+                                        foreach ($supervisory_titles as $title) {
+                                            if (stripos($emp['job_title'], $title) !== false) {
+                                                $display_role = $emp['job_title'];
+                                                break;
+                                            }
+                                        }
+                                        ?>
+                                        <div class="mt-1 small fw-bold text-primary"><?php echo e($display_role); ?></div>
+                                        <?php if (!$emp['user_active']): ?>
+                                            <span class="badge bg-danger ms-1">Inactive</span>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="badge bg-warning text-dark"><i class="fas fa-times-circle me-1"></i>No Account</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($emp['hr_role'])): ?>
+                                        <div class="mt-1 small text-muted">HR Account: <?php echo e($emp['hr_role']); ?></div>
+                                    <?php endif; ?>
+                                </td>
+                                <td data-label="Portal Username">
+                                    <?php echo $emp['username'] ? '<code>' . e($emp['username']) . '</code>' : '<span class="text-muted small">Not Set</span>'; ?>
+                                </td>
+                                <td data-label="Actions">
+                                    <?php if (!$emp['user_id']): ?>
+                                        <button class="btn btn-sm btn-primary"
+                                                onclick="openCreateAccountModal(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>', '<?php echo e(addslashes($emp['personal_email'] ?? '')); ?>', '<?php echo e(addslashes(getEmployeeDisplayId($emp))); ?>')">
+                                            <i class="fas fa-plus me-1"></i>Create Account
+                                        </button>
+                                    <?php else: ?>
+                                        <?php if (($emp['role'] ?? '') === 'Employee'): ?>
+                                            <a href="employee-portal-user.php?user_id=<?php echo (int)$emp['user_id']; ?>" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-id-card me-1"></i>Manage Portal
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="users.php?search=<?php echo urlencode($emp['username']); ?>" class="btn btn-sm btn-outline-warning">
+                                                <i class="fas fa-user-cog me-1"></i>Manage (HR)
+                                            </a>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>

@@ -6,8 +6,8 @@ require_once '../includes/functions.php';
 
 // ── Handle toggle active status ──────────────────────────────────────────────
 if (isset($_GET['toggle']) && is_numeric($_GET['toggle'])) {
-    $uid = (int)$_GET['toggle'];
-    if ($uid !== (int)$_SESSION['user_id']) {
+    $uid = (int) $_GET['toggle'];
+    if ($uid !== (int) $_SESSION['user_id']) {
         $conn->query("UPDATE users SET is_active = NOT is_active WHERE user_id = $uid");
         logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'User', $uid, 'Toggled user active status');
         redirectWith(BASE_URL . '/admin/users.php', 'success', 'User status updated successfully.');
@@ -16,8 +16,8 @@ if (isset($_GET['toggle']) && is_numeric($_GET['toggle'])) {
 
 // ── Handle delete ─────────────────────────────────────────────────────────────
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $uid = (int)$_GET['delete'];
-    if ($uid !== (int)$_SESSION['user_id']) {
+    $uid = (int) $_GET['delete'];
+    if ($uid !== (int) $_SESSION['user_id']) {
         $conn->query("DELETE FROM users WHERE user_id = $uid");
         logAudit($conn, $_SESSION['user_id'], 'DELETE', 'User', $uid, 'Deleted user account');
         redirectWith(BASE_URL . '/admin/users.php', 'success', 'User deleted successfully.');
@@ -30,17 +30,23 @@ require_once '../includes/header.php';
 
 // Pagination settings
 $per_page = 10;
-$current_page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+$current_page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
 $offset = ($current_page - 1) * $per_page;
 
-// Count all non-Employee users shown in this page
+// Count only HR system users (Admin or valid HR employees only)
+// Excludes orphaned accounts where employee was deleted (e.employee_id IS NULL)
 $total_users_result = $conn->query("
     SELECT COUNT(*) AS total
     FROM users u
-    WHERE u.role != 'Employee'
+    LEFT JOIN employees e ON u.employee_id = e.employee_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE (u.role = 'Admin')
+       OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff') 
+           AND e.employee_id IS NOT NULL 
+           AND d.department_name = 'Human Resources')
 ");
-$total_users = (int)($total_users_result->fetch_assoc()['total'] ?? 0);
-$total_pages = max(1, (int)ceil($total_users / $per_page));
+$total_users = (int) ($total_users_result->fetch_assoc()['total'] ?? 0);
+$total_pages = max(1, (int) ceil($total_users / $per_page));
 
 if ($current_page > $total_pages) {
     $current_page = $total_pages;
@@ -49,13 +55,18 @@ if ($current_page > $total_pages) {
 
 
 
-// Fetch all users except those with 'Employee' role (which are managed in Portal Accounts)
+// Fetch HR system users (Admin or valid HR employees only)
+// Excludes orphaned accounts where employee was deleted (e.employee_id IS NULL)
 $users = $conn->query("
     SELECT u.*, b.branch_name, e.profile_picture 
     FROM users u 
     LEFT JOIN branches b ON u.branch_id = b.branch_id 
     LEFT JOIN employees e ON u.employee_id = e.employee_id 
-    WHERE u.role != 'Employee'
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE (u.role = 'Admin')
+       OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff') 
+           AND e.employee_id IS NOT NULL 
+           AND d.department_name = 'Human Resources')
     ORDER BY u.created_at DESC
     LIMIT $per_page OFFSET $offset
 ");
@@ -63,13 +74,16 @@ $users = $conn->query("
 // Fetch branches for the add form
 $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
 
-// Fetch active employees who don't have an HR/admin account yet
+// Fetch active employees from Human Resources department who don't have an HR/admin account yet
 $eligible_employees = $conn->query("
     SELECT e.employee_id, e.first_name, e.last_name, ec.personal_email 
     FROM employees e 
+    JOIN departments d ON e.department_id = d.department_id
     LEFT JOIN employee_contacts ec ON e.employee_id = ec.employee_id
     LEFT JOIN users u ON e.employee_id = u.employee_id AND u.role != 'Employee'
-    WHERE u.user_id IS NULL AND e.is_active = 1 
+    WHERE u.user_id IS NULL 
+      AND e.is_active = 1 
+      AND d.department_name = 'Human Resources'
     ORDER BY e.last_name, e.first_name
 ");
 
@@ -79,54 +93,67 @@ unset($_SESSION['new_employee_credentials']);
 ?>
 
 <?php if ($new_creds): ?>
-<!-- Credential Slip Modal (shown once after creating an Employee account) -->
-<div class="modal fade" id="credentialSlipModal" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title"><i class="fas fa-key me-2"></i>Employee Credentials</h5>
-      </div>
-      <div class="modal-body text-center">
-        <p class="mb-1">Account created for:</p>
-        <h5 class="fw-bold"><?php echo e($new_creds['full_name']); ?></h5>
-        <hr>
-        <p class="mb-1"><small class="text-muted">Username (Employee ID)</small></p>
-        <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['username']); ?></div>
-        <p class="mb-1"><small class="text-muted">Password</small></p>
-        <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['password']); ?></div>
-        <div class="alert alert-warning py-2 mt-2" style="font-size:.82rem;">
-          <i class="fas fa-exclamation-triangle me-1"></i>Save and hand these credentials to the employee. This is shown only once.
+    <!-- Credential Slip Modal (shown once after creating an Employee account) -->
+    <div class="modal fade" id="credentialSlipModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-key me-2"></i>Employee Credentials</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="mb-1">Account created for:</p>
+                    <h5 class="fw-bold"><?php echo e($new_creds['full_name']); ?></h5>
+                    <hr>
+                    <p class="mb-1"><small class="text-muted">Username (Employee ID)</small></p>
+                    <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['username']); ?></div>
+                    <p class="mb-1"><small class="text-muted">Password</small></p>
+                    <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['password']); ?></div>
+                    <div class="alert alert-warning py-2 mt-2" style="font-size:.82rem;">
+                        <i class="fas fa-exclamation-triangle me-1"></i>Save and hand these credentials to the employee.
+                        This is shown only once.
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">Got it, I've noted the
+                        credentials</button>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="modal-footer justify-content-center">
-        <button type="button" class="btn btn-success" data-bs-dismiss="modal">Got it, I've noted the credentials</button>
-      </div>
     </div>
-  </div>
-</div>
-<script>document.addEventListener('DOMContentLoaded',()=>new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());</script>
+    <script>document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());</script>
 <?php endif; ?>
 
 <!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted mb-0">Manage system user accounts and roles</p>
-    <div class="d-flex gap-2 flex-wrap justify-content-end">
-        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addAdminModal">
-            <i class="fas fa-user-shield me-2"></i>Add New Admin
-        </button>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
-            <i class="fas fa-plus me-2"></i>Add New User
-        </button>
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">System Admin · Access Control</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-users-cog me-2" style="color:var(--primary-light);"></i>User Management</h4>
+        </div>
+        <div class="d-flex gap-2 flex-wrap justify-content-end">
+            <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#addAdminModal">
+                <i class="fas fa-user-shield me-2"></i>Add New Admin
+            </button>
+            <button class="btn btn-light text-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+                <i class="fas fa-plus me-2"></i>Add New User
+            </button>
+        </div>
     </div>
+    <p class="text-white-50 small mb-0"><i class="fas fa-lock me-1"></i>Manage system user accounts, roles, and HR access permissions.</p>
+</div>
+
+<div class="d-none d-md-flex justify-content-between align-items-center mb-4" data-flash-toast-anchor>
+    <p class="notification_placeholder text-muted mb-0">All USERS OF HRIS SYSTEM</p>
 </div>
 
 <!-- Users Table -->
-<div class="content-card">
+<div class="content-card fadeup-1">
     <div class="card-header">
         <h5><i class="fas fa-users me-2"></i>All Users</h5>
         <div class="search-box">
             <i class="fas fa-search search-icon"></i>
-            <input type="text" class="form-control form-control-sm" id="searchUsers" placeholder="Search users..." onkeyup="filterTable('searchUsers', 'usersTable')">
+            <input type="text" class="form-control form-control-sm" id="searchUsers" placeholder="Search users..."
+                onkeyup="filterTable('searchUsers', 'usersTable')">
         </div>
     </div>
     <div class="card-body p-0">
@@ -146,13 +173,14 @@ unset($_SESSION['new_employee_credentials']);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $row_number = 1; ?>
+                    <?php $row_number = $offset + 1; ?>
                     <?php while ($user = $users->fetch_assoc()): ?>
                         <tr>
                             <td><strong><?php echo $row_number++; ?></strong></td>
                             <td>
-                                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>?v=<?php echo time(); ?>" 
-                                     alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
+                                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>?v=<?php echo time(); ?>"
+                                    alt="Profile" class="rounded-circle"
+                                    style="width: 32px; height: 32px; object-fit: cover;">
                             </td>
                             <td><strong><?php echo e($user['username']); ?></strong></td>
                             <td><?php echo e($user['full_name']); ?></td>
@@ -168,19 +196,18 @@ unset($_SESSION['new_employee_credentials']);
                                 <?php if ($user['user_id'] != $_SESSION['user_id']): ?>
                                     <!-- Edit -->
                                     <a href="<?php echo BASE_URL; ?>/admin/edit-user.php?id=<?php echo $user['user_id']; ?>"
-                                       class="btn btn-sm btn-outline-primary" title="Edit User">
+                                        class="btn btn-sm btn-outline-primary" title="Edit User">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     <!-- Toggle Status -->
-                                    <a href="?toggle=<?php echo $user['user_id']; ?>"
-                                       class="btn btn-sm btn-outline-warning" title="Toggle Active/Inactive">
+                                    <a href="?toggle=<?php echo $user['user_id']; ?>" class="btn btn-sm btn-outline-warning"
+                                        title="Toggle Active/Inactive">
                                         <i class="fas fa-power-off"></i>
                                     </a>
                                     <!-- Delete — uses Bootstrap modal, no native confirm() -->
-                                    <button type="button" class="btn btn-sm btn-outline-danger"
-                                            title="Delete User"
-                                            onclick="setDeleteTarget(<?php echo $user['user_id']; ?>, '<?php echo e(addslashes($user['username'])); ?>')"
-                                            data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Delete User"
+                                        onclick="setDeleteTarget(<?php echo $user['user_id']; ?>, '<?php echo e(addslashes($user['username'])); ?>')"
+                                        data-bs-toggle="modal" data-bs-target="#deleteModal">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 <?php else: ?>
@@ -197,17 +224,21 @@ unset($_SESSION['new_employee_credentials']);
         <div class="card-footer bg-white border-0 pt-0">
             <nav aria-label="Users pagination">
                 <ul class="pagination pagination-sm justify-content-end mb-0">
-                    <?php $query_params = $_GET; unset($query_params['page']); ?>
+                    <?php $query_params = $_GET;
+                    unset($query_params['page']); ?>
                     <li class="page-item <?php echo $current_page <= 1 ? 'disabled' : ''; ?>">
-                        <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page - 1])); ?>">Previous</a>
+                        <a class="page-link"
+                            href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page - 1])); ?>">Previous</a>
                     </li>
                     <?php for ($p = 1; $p <= $total_pages; $p++): ?>
                         <li class="page-item <?php echo $p === $current_page ? 'active' : ''; ?>">
-                            <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $p])); ?>"><?php echo $p; ?></a>
+                            <a class="page-link"
+                                href="?<?php echo http_build_query(array_merge($query_params, ['page' => $p])); ?>"><?php echo $p; ?></a>
                         </li>
                     <?php endfor; ?>
                     <li class="page-item <?php echo $current_page >= $total_pages ? 'disabled' : ''; ?>">
-                        <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page + 1])); ?>">Next</a>
+                        <a class="page-link"
+                            href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page + 1])); ?>">Next</a>
                     </li>
                 </ul>
             </nav>
@@ -230,9 +261,9 @@ unset($_SESSION['new_employee_credentials']);
                         <select class="form-select" name="employee_id" required onchange="prefillUserInfo(this)">
                             <option value="">Select Employee</option>
                             <?php while ($emp = $eligible_employees->fetch_assoc()): ?>
-                                <option value="<?php echo $emp['employee_id']; ?>" 
-                                        data-name="<?php echo e($emp['first_name'] . ' ' . $emp['last_name']); ?>"
-                                        data-email="<?php echo e($emp['personal_email']); ?>">
+                                <option value="<?php echo $emp['employee_id']; ?>"
+                                    data-name="<?php echo e($emp['first_name'] . ' ' . $emp['last_name']); ?>"
+                                    data-email="<?php echo e($emp['personal_email']); ?>">
                                     <?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?>
                                 </option>
                             <?php endwhile; ?>
@@ -259,8 +290,10 @@ unset($_SESSION['new_employee_credentials']);
                         <label class="form-label">Branch</label>
                         <select class="form-select" name="branch_id">
                             <option value="">None (Admin)</option>
-                            <?php $branches->data_seek(0); while ($branch = $branches->fetch_assoc()): ?>
-                                <option value="<?php echo $branch['branch_id']; ?>"><?php echo e($branch['branch_name']); ?></option>
+                            <?php $branches->data_seek(0);
+                            while ($branch = $branches->fetch_assoc()): ?>
+                                <option value="<?php echo $branch['branch_id']; ?>"><?php echo e($branch['branch_name']); ?>
+                                </option>
                             <?php endwhile; ?>
                         </select>
                     </div>
@@ -294,7 +327,8 @@ unset($_SESSION['new_employee_credentials']);
             <form method="POST" action="<?php echo BASE_URL; ?>/admin/add-user.php">
                 <div class="modal-body">
                     <div class="alert alert-info py-2 small">
-                        <i class="fas fa-info-circle me-1"></i>Admin accounts are standalone and are not linked to employee records.
+                        <i class="fas fa-info-circle me-1"></i>Admin accounts are standalone and are not linked to
+                        employee records.
                     </div>
                     <input type="hidden" name="role" value="Admin">
                     <input type="hidden" name="redirect" value="users.php">
@@ -348,40 +382,40 @@ unset($_SESSION['new_employee_credentials']);
 </div>
 
 <script>
-function setDeleteTarget(userId, username) {
-    document.getElementById('deleteUserName').textContent = username;
-    document.getElementById('deleteConfirmBtn').href = '?delete=' + userId;
-}
-
-function prefillUserInfo(select) {
-    const option = select.options[select.selectedIndex];
-    if (!option.value) return;
-
-    document.getElementById('new_full_name').value = option.getAttribute('data-name');
-    document.getElementById('new_email').value     = option.getAttribute('data-email') || '';
-
-    const roleSelect    = document.querySelector('[name="role"]');
-    const usernameField = document.getElementById('new_username');
-
-    if (!usernameField.value || usernameField.value === option.value) {
-        const name = option.getAttribute('data-name').toLowerCase().replace(/\s+/g, '.');
-        usernameField.value = name;
+    function setDeleteTarget(userId, username) {
+        document.getElementById('deleteUserName').textContent = username;
+        document.getElementById('deleteConfirmBtn').href = '?delete=' + userId;
     }
-}
 
-document.addEventListener('DOMContentLoaded', function() {
-    const empSelect  = document.querySelector('#addUserModal [name="employee_id"]');
-    const usernameField = document.getElementById('new_username');
-    if (empSelect && usernameField) {
-        empSelect.addEventListener('change', function() {
-            const opt = empSelect.options[empSelect.selectedIndex];
-            if (!opt || !opt.value) return;
-            if (!usernameField.value || usernameField.value === opt.value || /^\d+$/.test(usernameField.value)) {
-                usernameField.value = opt.getAttribute('data-name')?.toLowerCase().replace(/\s+/g, '.') || '';
-            }
-        });
+    function prefillUserInfo(select) {
+        const option = select.options[select.selectedIndex];
+        if (!option.value) return;
+
+        document.getElementById('new_full_name').value = option.getAttribute('data-name');
+        document.getElementById('new_email').value = option.getAttribute('data-email') || '';
+
+        const roleSelect = document.querySelector('[name="role"]');
+        const usernameField = document.getElementById('new_username');
+
+        if (!usernameField.value || usernameField.value === option.value) {
+            const name = option.getAttribute('data-name').toLowerCase().replace(/\s+/g, '.');
+            usernameField.value = name;
+        }
     }
-});
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const empSelect = document.querySelector('#addUserModal [name="employee_id"]');
+        const usernameField = document.getElementById('new_username');
+        if (empSelect && usernameField) {
+            empSelect.addEventListener('change', function () {
+                const opt = empSelect.options[empSelect.selectedIndex];
+                if (!opt || !opt.value) return;
+                if (!usernameField.value || usernameField.value === opt.value || /^\d+$/.test(usernameField.value)) {
+                    usernameField.value = opt.getAttribute('data-name')?.toLowerCase().replace(/\s+/g, '.') || '';
+                }
+            });
+        }
+    });
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

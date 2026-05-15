@@ -166,14 +166,63 @@ require_once '../includes/header.php';
 </style>
 
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h4 class="fw-bold mb-1"><i class="fas fa-magic text-primary me-2"></i>Create New Template</h4>
-        <p class="text-muted mb-0">Construct a standardized evaluation matrix ensuring weight distribution equals 100%.</p>
+<div class="page-hero fadeup">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Evaluations</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-magic me-2" style="color:#BD9414;"></i>Create New Template</h4>
+        </div>
+        <a href="<?php echo BASE_URL; ?>/manager/templates.php" class="btn btn-outline-light btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Back to List
+        </a>
     </div>
-    <a href="<?php echo BASE_URL; ?>/manager/templates.php" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm">
-        <i class="fas fa-arrow-left me-2"></i>Back to List
-    </a>
+
+    <div class="row g-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value"><?php echo count($departments); ?></div>
+                        <div class="stat-label">Target Departments</div>
+                    </div>
+                    <i class="fas fa-sitemap stat-icon text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value">80%</div>
+                        <div class="stat-label">Default KRA</div>
+                    </div>
+                    <i class="fas fa-bullseye stat-icon" style="color:#BD9414;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value">20%</div>
+                        <div class="stat-label">Default Behavior</div>
+                    </div>
+                    <i class="fas fa-heart stat-icon" style="color:#dc3545;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value">100%</div>
+                        <div class="stat-label">Required Total</div>
+                    </div>
+                    <i class="fas fa-balance-scale stat-icon" style="color:#28a745;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Draft Restored Banner (hidden by default, shown by JS) -->
@@ -207,7 +256,7 @@ require_once '../includes/header.php';
     </div>
 </div>
 
-<form method="POST" action="" id="templateForm">
+<form method="POST" action="" id="templateForm" class="fadeup-1">
 
 <!-- Template Info Card -->
 <div class="content-card mb-4 border-0 shadow-sm border-start border-4 border-primary">
