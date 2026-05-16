@@ -672,7 +672,12 @@ require_once '../includes/header.php';
 $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
 $departments_result = $conn->query("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name");
 $departments = $departments_result ? $departments_result->fetch_all(MYSQLI_ASSOC) : [];
-$job_titles_result = $conn->query("SELECT job_title_id, job_title, department_id FROM job_titles WHERE is_active = 1 ORDER BY job_title");
+$job_titles_result = $conn->query("
+    SELECT job_title_id, job_title, department_id, rank_category_id, is_head, reports_to
+    FROM job_titles
+    WHERE is_active = 1
+    ORDER BY department_id, is_head DESC, job_title
+");
 $jobTitles = $job_titles_result ? $job_titles_result->fetch_all(MYSQLI_ASSOC) : [];
 
 $stepLabels = [

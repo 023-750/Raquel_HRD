@@ -19,7 +19,7 @@ if (!$tmpl) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $template_name = trim($_POST['template_name'] ?? '');
     $description = trim($_POST['description'] ?? '');
-    $target_position = trim($_POST['target_position'] ?? '');
+    $target_department = trim($_POST['target_department'] ?? '');
     $evaluation_type = $_POST['evaluation_type'] ?? 'Annual';
     $kra_weight = floatval($_POST['kra_weight'] ?? 80);
     $behavior_weight = floatval($_POST['behavior_weight'] ?? 20);
@@ -48,8 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Update template
-    $stmt = $conn->prepare("UPDATE evaluation_templates SET template_name=?, description=?, target_position=?, evaluation_type=?, kra_weight=?, behavior_weight=?, form_code=?, revision_date=?, effective_date_form=? WHERE template_id=?");
-    $stmt->bind_param("ssssddsssi", $template_name, $description, $target_position, $evaluation_type, $kra_weight, $behavior_weight, $form_code, $revision_date, $effective_date_form, $template_id);
+    $stmt = $conn->prepare("UPDATE evaluation_templates SET template_name=?, description=?, target_department=?, evaluation_type=?, kra_weight=?, behavior_weight=?, form_code=?, revision_date=?, effective_date_form=? WHERE template_id=?");
+    $stmt->bind_param("ssssddsssi", $template_name, $description, $target_department, $evaluation_type, $kra_weight, $behavior_weight, $form_code, $revision_date, $effective_date_form, $template_id);
     $stmt->execute();
     $stmt->close();
 
@@ -155,12 +155,12 @@ require_once '../includes/header.php';
                             <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-6 mb-3">
                     <label class="form-label">Target Department</label>
-                    <select class="form-select" name="target_position">
-                        <option value="All Positions" <?php echo ($tmpl['target_position'] ?? '') === 'All Positions' ? 'selected' : ''; ?>>All Positions</option>
+                    <select class="form-select" name="target_department">
+                        <option value="All Departments" <?php echo ($tmpl['target_department'] ?? '') === 'All Departments' ? 'selected' : ''; ?>>All Departments</option>
                             <?php foreach ($departments as $dept): ?>
-                            <option value="<?php echo e($dept); ?>" <?php echo ($tmpl['target_position'] ?? '') === $dept ? 'selected' : ''; ?>><?php echo e($dept); ?></option>
+                            <option value="<?php echo e($dept); ?>" <?php echo ($tmpl['target_department'] ?? '') === $dept ? 'selected' : ''; ?>><?php echo e($dept); ?></option>
                             <?php endforeach; ?>
                     </select>
                 </div>

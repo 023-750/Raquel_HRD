@@ -363,7 +363,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 </style>
 
 
-<div class="page-hero fadeup d-md-none mb-4">
+<div class="page-hero fadeup mb-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Employees</div>
@@ -375,7 +375,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
     </div>
 
     <div class="row g-3">
-        <div class="col-6">
+        <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -386,7 +386,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                 </div>
             </div>
         </div>
-        <div class="col-6">
+        <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -397,7 +397,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                 </div>
             </div>
         </div>
-        <div class="col-6">
+        <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -408,7 +408,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                 </div>
             </div>
         </div>
-        <div class="col-6">
+        <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -420,11 +420,6 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             </div>
         </div>
     </div>
-</div>
-
-<div class="d-none d-md-flex justify-content-between align-items-center mb-4" data-flash-toast-anchor>
-    <p class="text-muted mb-0">Manage employee records</p>
-    <!-- Add Employee button removed as requested -->
 </div>
 
 <div class="chart-card fadeup">

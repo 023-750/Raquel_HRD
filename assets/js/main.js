@@ -98,9 +98,6 @@ function confirmDelete(message) {
  * Initialize components that need re-binding after PJAX load
  */
 function initDynamicComponents() {
-    positionFlashToasts();
-    initFlashToasts();
-
     // 1. Close alert after 5 seconds
     const alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(function (alert) {
@@ -113,101 +110,6 @@ function initDynamicComponents() {
     });
 
     initAdminMobileTables();
-}
-
-/**
- * Move flash toasts into a page-level anchor when one is available.
- */
-function positionFlashToasts() {
-    const useInlineAnchor = window.matchMedia('(min-width: 768px)').matches;
-    const anchor = useInlineAnchor ? document.querySelector('[data-flash-toast-anchor]') : null;
-
-    document.querySelectorAll('[data-flash-toast-anchor].flash-toast-anchor-active').forEach(function (activeAnchor) {
-        activeAnchor.classList.remove('flash-toast-anchor-active');
-    });
-
-    document.querySelectorAll('.flash-toast-container').forEach(function (container) {
-        if (!container.flashToastPlaceholder && container.parentNode) {
-            const placeholder = document.createComment('flash-toast-original-position');
-            container.parentNode.insertBefore(placeholder, container);
-            container.flashToastPlaceholder = placeholder;
-        }
-
-        const currentAnchor = container.closest('[data-flash-toast-anchor]');
-        container.classList.toggle('flash-toast-container-mobile-sticky', !useInlineAnchor);
-
-        if (anchor) {
-            anchor.appendChild(container);
-            anchor.classList.add('flash-toast-anchor-active');
-            container.classList.add('flash-toast-container-inline');
-            return;
-        }
-
-        if (currentAnchor) {
-            currentAnchor.classList.remove('flash-toast-anchor-active');
-        }
-
-        container.classList.remove('flash-toast-container-inline');
-
-        if (!useInlineAnchor) {
-            document.body.appendChild(container);
-            return;
-        }
-
-        if (container.flashToastPlaceholder && container.flashToastPlaceholder.parentNode) {
-            container.flashToastPlaceholder.parentNode.insertBefore(container, container.flashToastPlaceholder.nextSibling);
-        }
-    });
-}
-
-/**
- * Show shared flash messages as popup toasts.
- */
-function initFlashToasts() {
-    document.querySelectorAll('.flash-toast').forEach(function (toastEl) {
-        if (toastEl.dataset.init) return;
-        toastEl.dataset.init = 'true';
-
-        if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
-            toastEl.addEventListener('show.bs.toast', function () {
-                toastEl.classList.remove('flash-toast-leaving');
-                toastEl.classList.add('flash-toast-entering');
-            });
-
-            toastEl.addEventListener('shown.bs.toast', function () {
-                toastEl.classList.remove('flash-toast-entering');
-            });
-
-            toastEl.addEventListener('hide.bs.toast', function () {
-                toastEl.classList.remove('flash-toast-entering');
-                toastEl.classList.add('flash-toast-leaving');
-            });
-
-            toastEl.addEventListener('hidden.bs.toast', function () {
-                toastEl.classList.remove('flash-toast-leaving');
-                const container = toastEl.closest('.flash-toast-container');
-                const anchor = container ? container.closest('[data-flash-toast-anchor]') : null;
-                if (anchor) anchor.classList.remove('flash-toast-anchor-active');
-                if (container) container.remove();
-            });
-
-            bootstrap.Toast.getOrCreateInstance(toastEl).show();
-            return;
-        }
-
-        toastEl.classList.add('show', 'flash-toast-entering');
-        setTimeout(function () {
-            toastEl.classList.remove('flash-toast-entering');
-            toastEl.classList.add('flash-toast-leaving');
-            setTimeout(function () {
-                toastEl.classList.remove('show', 'flash-toast-leaving');
-                const container = toastEl.closest('.flash-toast-container');
-                const anchor = container ? container.closest('[data-flash-toast-anchor]') : null;
-                if (anchor) anchor.classList.remove('flash-toast-anchor-active');
-                if (container) container.remove();
-            }, 700);
-        }, 3000);
-    });
 }
 
 /**
@@ -247,7 +149,6 @@ function initAdminMobileTables() {
 }
 
 document.addEventListener('DOMContentLoaded', initDynamicComponents);
-window.addEventListener('resize', positionFlashToasts);
 
 /**
  * Common Main JS
@@ -272,7 +173,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Clear Employee Draft if success feedback exists
-    const successFeedback = document.querySelector('.alert-success, .flash-toast-success .toast-body');
+    const successFeedback = document.querySelector('.alert-success, .flash-message-success .flash-message-text');
     if (successFeedback) {
         const text = successFeedback.innerText.toLowerCase();
         if (text.includes('successfully') || text.includes('added') || text.includes('saved')) {
@@ -284,8 +185,6 @@ document.addEventListener("DOMContentLoaded", function () {
 // Export for PJAX use
 if (typeof window !== 'undefined') {
     window.initDynamicComponents = initDynamicComponents;
-    window.positionFlashToasts = positionFlashToasts;
-    window.initFlashToasts = initFlashToasts;
     window.initAdminMobileTables = initAdminMobileTables;
 }
 

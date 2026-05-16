@@ -252,23 +252,6 @@ render_login:
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.querySelectorAll('.flash-toast').forEach(function (toastEl) {
-            toastEl.addEventListener('show.bs.toast', function () {
-                toastEl.classList.remove('flash-toast-leaving');
-                toastEl.classList.add('flash-toast-entering');
-            });
-            toastEl.addEventListener('shown.bs.toast', function () {
-                toastEl.classList.remove('flash-toast-entering');
-            });
-            toastEl.addEventListener('hide.bs.toast', function () {
-                toastEl.classList.add('flash-toast-leaving');
-            });
-            toastEl.addEventListener('hidden.bs.toast', function () {
-                toastEl.classList.remove('flash-toast-leaving');
-            });
-            bootstrap.Toast.getOrCreateInstance(toastEl).show();
-        });
-
         function togglePassword() {
             const pwd = document.getElementById('password');
             const icon = document.getElementById('toggleIcon');

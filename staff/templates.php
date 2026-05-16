@@ -88,7 +88,9 @@ $criteria_total = (int) ($conn->query("SELECT COUNT(*) as c FROM evaluation_crit
                             <div class="template-icon">
                                 <i class="fas fa-file-alt"></i>
                             </div>
-                            <span class="badge bg-info-subtle text-info border border-info-subtle px-2"><?php echo e($t['target_position'] ?: 'General'); ?></span>
+                            <?php if (!empty($t['target_department'])): ?>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2"><?php echo e($t['target_department']); ?></span>
+                            <?php endif; ?>
                         </div>
                         <h6 class="fw-bold text-dark mb-2"><?php echo e($t['template_name']); ?></h6>
                         <p class="text-muted small mb-3" style="line-height: 1.5;"><?php echo e(substr($t['description'] ?? 'No description provided.', 0, 120)); ?><?php echo strlen($t['description'] ?? '') > 120 ? '...' : ''; ?></p>

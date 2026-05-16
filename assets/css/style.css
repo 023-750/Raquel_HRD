@@ -556,335 +556,170 @@ a {
     line-height: 1.35;
 }
 
-/* ---------- Flash Popup Toasts ---------- */
-.flash-toast-container {
-    left: 0 !important;
-    right: 0 !important;
-    top: calc(var(--header-height) + 12px) !important;
-    bottom: auto !important;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    max-width: 100vw;
-    padding: 0 18px 0 calc(var(--sidebar-width) + 18px) !important;
-    overflow: hidden;
-    pointer-events: none;
-    z-index: 2055;
+.rank-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 12px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    background: rgba(111, 66, 193, 0.1);
+    color: #6f42c1;
+    border: 1px solid rgba(111, 66, 193, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1.4;
 }
 
-html.sidebar-collapsed .flash-toast-container {
-    padding-left: calc(var(--sidebar-collapsed-width) + 18px) !important;
+select option.position-group-label {
+    color: #294306;
+    font-weight: 800;
+    background: #eef5e8;
 }
 
-.flash-toast {
-    display: block !important;
-    width: min(420px, calc(100vw - var(--sidebar-width) - 36px));
-    min-width: 0;
-    max-width: 420px;
-    background: #fff;
-    border: 1px solid rgba(15, 23, 42, 0.12);
-    border-left: 5px solid var(--primary-blue);
-    border-radius: 14px;
-    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
-    overflow: hidden;
-    transform: translateX(125%);
-    opacity: 0;
-    will-change: transform, opacity;
-    pointer-events: auto;
-}
-
-html.sidebar-collapsed .flash-toast {
-    width: min(420px, calc(100vw - var(--sidebar-collapsed-width) - 36px));
-}
-
-.flash-toast-layout {
-    display: grid;
-    grid-template-columns: 56px minmax(0, 1fr);
-    min-height: 86px;
-}
-
-.flash-toast-status {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 18px 0 16px 16px;
-    background: transparent !important;
-}
-
-.flash-toast.flash-toast-entering,
-.flash-toast.showing,
-.flash-toast.show {
-    transform: translateX(0);
-    opacity: 1;
-    animation: flashToastEnterRight 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.flash-toast.flash-toast-leaving,
-.flash-toast.hide {
-    transform: translateX(125%);
-    opacity: 0;
-    animation: flashToastExitRight 0.62s cubic-bezier(0.65, 0, 0.35, 1) both;
-    pointer-events: none;
-}
-
-@keyframes flashToastEnterRight {
-    from {
-        transform: translateX(125%);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes flashToastExitRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-
-    to {
-        transform: translateX(125%);
-        opacity: 0;
-    }
-}
-
-.flash-toast-content {
-    min-width: 0;
-    padding: 14px 16px 14px 4px;
-}
-
-.flash-toast-head {
+/* ---------- Windows-style Flash Notifications ---------- */
+.flash-message-banner {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 2060;
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    background: transparent;
-    border-bottom: 0;
+    width: min(380px, calc(100vw - 44px));
+    min-height: 92px;
+    margin: 0;
+    padding: 14px 46px 14px 14px;
+    color: #f8fafc;
+    background: #202020;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 4px solid #7fb239;
+    border-radius: 0;
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.35);
+    animation: flashWinToastIn 0.28s ease-out both;
 }
 
-.flash-toast .btn-close {
-    flex: 0 0 auto;
+.flash-message-icon {
+    width: 38px;
+    height: 38px;
     margin-top: 2px;
-    opacity: 0.58;
-    transition: opacity 0.2s ease;
-}
-
-.flash-toast .btn-close:hover,
-.flash-toast .btn-close:focus {
-    opacity: 0.9;
-}
-
-.flash-toast-title {
-    color: var(--text-dark);
-    flex: 1 1 auto;
-    min-width: 0;
-    text-align: left;
-    font-size: 1rem;
-    line-height: 1.15;
-    font-weight: 800;
-}
-
-.flash-toast .toast-body {
-    background: transparent;
-    margin-top: 5px;
-    padding: 0;
-    color: #4b5563;
-    font-size: 0.9rem;
-    line-height: 1.45;
-}
-
-.flash-toast-message {
-    display: block;
-    color: #4b5563;
-    overflow-wrap: anywhere;
-}
-
-.flash-toast-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
+    border-radius: 2px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--primary-blue);
-    background: #eef5e8;
-    flex-shrink: 0;
-    box-shadow: inset 0 0 0 1px rgba(41, 67, 6, 0.12);
+    flex: 0 0 38px;
+    color: #7fb239;
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 1.05rem;
 }
 
-.flash-toast-success .flash-toast-icon {
-    color: var(--success);
-    background: #eaf8ef;
+.flash-message-copy {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
 }
 
-.flash-toast-danger .flash-toast-icon {
-    color: var(--danger);
-    background: #fdecec;
+.flash-message-app {
+    color: rgba(248, 250, 252, 0.72);
+    font-size: 0.74rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
 }
 
-.flash-toast-warning .flash-toast-icon {
-    color: var(--warning);
-    background: #fff6d9;
+.flash-message-title {
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.25;
 }
 
-.flash-toast-info .flash-toast-icon,
-.flash-toast-primary .flash-toast-icon {
-    color: var(--primary-blue);
-    background: #eef5e8;
+.flash-message-text {
+    color: rgba(248, 250, 252, 0.82);
+    font-size: 0.9rem;
+    font-weight: 400;
+    line-height: 1.38;
+    overflow-wrap: anywhere;
 }
 
-.flash-toast-success {
-    border-left-color: var(--success);
+.flash-message-banner .btn-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 8px;
+    opacity: 0.72;
 }
 
-.flash-toast-danger {
-    border-left-color: var(--danger);
+.flash-message-banner .btn-close:hover,
+.flash-message-banner .btn-close:focus {
+    opacity: 1;
 }
 
-.flash-toast-warning {
-    border-left-color: var(--warning);
+.flash-message-success {
+    border-left-color: #7fb239;
 }
 
-.flash-toast-info,
-.flash-toast-primary {
-    border-left-color: var(--primary-blue);
+.flash-message-success .flash-message-icon {
+    color: #7fb239;
 }
 
-@media (max-width: 992px) {
-    .flash-toast-container {
-        top: calc(var(--header-height) + 10px) !important;
-        bottom: auto !important;
-        left: 0 !important;
-        right: 0 !important;
-        align-items: flex-start;
-        padding: 0 12px !important;
+.flash-message-danger {
+    border-left-color: #e81123;
+}
+
+.flash-message-danger .flash-message-icon {
+    color: #ff5f6d;
+}
+
+.flash-message-warning {
+    border-left-color: #ffb900;
+}
+
+.flash-message-warning .flash-message-icon {
+    color: #ffcf44;
+}
+
+.flash-message-info,
+.flash-message-primary {
+    border-left-color: #0078d4;
+}
+
+.flash-message-info .flash-message-icon,
+.flash-message-primary .flash-message-icon {
+    color: #4db2ff;
+}
+
+@keyframes flashWinToastIn {
+    from {
+        transform: translateY(18px);
+        opacity: 0;
     }
 
-    .flash-toast {
-        width: min(420px, calc(100vw - 24px));
-        min-width: 0;
-        max-width: 420px;
-        background: #fff;
-        border: 1px solid rgba(15, 23, 42, 0.16);
-        border-left-width: 5px;
-        transform: translateX(125%);
-        margin: 0;
-        box-shadow: 0 18px 46px rgba(15, 23, 42, 0.28);
-    }
-
-    .flash-toast-success {
-        border-left-color: var(--success);
-    }
-
-    .flash-toast-danger {
-        border-left-color: var(--danger);
-    }
-
-    .flash-toast-warning {
-        border-left-color: var(--warning);
-    }
-
-    .flash-toast-info,
-    .flash-toast-primary {
-        border-left-color: var(--primary-blue);
-    }
-
-    .flash-toast-layout {
-        grid-template-columns: 52px minmax(0, 1fr);
-        min-height: 80px;
-    }
-
-    .flash-toast-status {
-        padding: 16px 0 14px 14px;
-    }
-
-    .flash-toast-content {
-        padding: 13px 14px 13px 2px;
-    }
-
-    .flash-toast-title {
-        color: #111827;
-        font-weight: 800;
-    }
-
-    .flash-toast-message {
-        color: #1f2937;
-        font-weight: 600;
-    }
-
-    .flash-toast.flash-toast-entering,
-    .flash-toast.showing,
-    .flash-toast.show {
-        transform: translateX(0);
-        animation: flashToastEnterRight 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
-    }
-
-    .flash-toast.flash-toast-leaving,
-    .flash-toast.hide {
-        transform: translateX(125%);
-        animation: flashToastExitRight 0.62s cubic-bezier(0.65, 0, 0.35, 1) both;
+    to {
+        transform: translateY(0);
+        opacity: 1;
     }
 }
 
 @media (max-width: 576px) {
-    .flash-toast-container {
-        top: calc(var(--header-height) + 10px) !important;
-        align-items: flex-start;
-    }
-
-    .flash-toast {
+    .flash-message-banner {
+        right: 12px;
+        bottom: 12px;
         width: calc(100vw - 24px);
-        max-width: none;
+        gap: 10px;
+        padding: 12px 42px 12px 12px;
     }
 
-    .flash-toast-icon {
-        width: 32px;
-        height: 32px;
+    .flash-message-icon {
+        width: 34px;
+        height: 34px;
+        flex-basis: 34px;
     }
 
-    .flash-toast .toast-body {
+    .flash-message-text {
         font-size: 0.86rem;
     }
-}
-
-@media (max-width: 767.98px) {
-    .flash-toast-container.flash-toast-container-mobile-sticky {
-        position: fixed !important;
-        top: calc(var(--header-height) + 10px) !important;
-        bottom: auto !important;
-        left: 0 !important;
-        right: 0 !important;
-        z-index: 2060;
-    }
-}
-
-[data-flash-toast-anchor].flash-toast-anchor-active {
-    gap: 16px;
-}
-
-[data-flash-toast-anchor] .flash-toast-container.flash-toast-container-inline {
-    position: static !important;
-    top: auto !important;
-    bottom: auto !important;
-    left: auto !important;
-    right: auto !important;
-    display: flex;
-    flex: 0 1 420px;
-    align-items: stretch;
-    width: min(420px, 100%);
-    max-width: 420px;
-    padding: 0 !important;
-    overflow: hidden;
-    z-index: 10;
-}
-
-[data-flash-toast-anchor] .flash-toast-container-inline .flash-toast {
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    margin: 0;
 }
 
 /* ---------- Admin Mobile Tables ---------- */

@@ -58,11 +58,12 @@ if ($current_page > $total_pages) {
 // Fetch HR system users (Admin or valid HR employees only)
 // Excludes orphaned accounts where employee was deleted (e.employee_id IS NULL)
 $users = $conn->query("
-    SELECT u.*, b.branch_name, e.profile_picture 
+    SELECT u.*, b.branch_name, e.profile_picture, e.job_title, rc.rank_name
     FROM users u 
     LEFT JOIN branches b ON u.branch_id = b.branch_id 
     LEFT JOIN employees e ON u.employee_id = e.employee_id 
     LEFT JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
     WHERE (u.role = 'Admin')
        OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff') 
            AND e.employee_id IS NOT NULL 
@@ -76,9 +77,10 @@ $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
 
 // Fetch active employees from Human Resources department who don't have an HR/admin account yet
 $eligible_employees = $conn->query("
-    SELECT e.employee_id, e.first_name, e.last_name, ec.personal_email 
+    SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, rc.rank_name, ec.personal_email
     FROM employees e 
     JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
     LEFT JOIN employee_contacts ec ON e.employee_id = ec.employee_id
     LEFT JOIN users u ON e.employee_id = u.employee_id AND u.role != 'Employee'
     WHERE u.user_id IS NULL 
@@ -167,6 +169,7 @@ unset($_SESSION['new_employee_credentials']);
                         <th>Full Name</th>
                         <th>Email</th>
                         <th>Role</th>
+                        <th>Position</th>
                         <th>Branch</th>
                         <th>Status</th>
                         <th>Actions</th>
@@ -186,6 +189,16 @@ unset($_SESSION['new_employee_credentials']);
                             <td><?php echo e($user['full_name']); ?></td>
                             <td><?php echo e($user['email']); ?></td>
                             <td><span class="badge bg-primary"><?php echo e($user['role']); ?></span></td>
+                            <td>
+                                <?php if (!empty($user['job_title'])): ?>
+                                    <div><?php echo e($user['job_title']); ?></div>
+                                    <?php if (!empty($user['rank_name'])): ?>
+                                        <small class="text-muted"><?php echo e($user['rank_name']); ?></small>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span class="text-muted small">Standalone account</span>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo e($user['branch_name'] ?? 'N/A'); ?></td>
                             <td>
                                 <span class="badge <?php echo $user['is_active'] ? 'bg-success' : 'bg-danger'; ?>">
@@ -263,8 +276,15 @@ unset($_SESSION['new_employee_credentials']);
                             <?php while ($emp = $eligible_employees->fetch_assoc()): ?>
                                 <option value="<?php echo $emp['employee_id']; ?>"
                                     data-name="<?php echo e($emp['first_name'] . ' ' . $emp['last_name']); ?>"
-                                    data-email="<?php echo e($emp['personal_email']); ?>">
+                                    data-email="<?php echo e($emp['personal_email']); ?>"
+                                    data-rank="<?php echo e($emp['rank_name'] ?? ''); ?>">
                                     <?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?>
+                                    <?php if (!empty($emp['job_title'])): ?>
+                                        - <?php echo e($emp['job_title']); ?>
+                                    <?php endif; ?>
+                                    <?php if (!empty($emp['employee_code'])): ?>
+                                        (<?php echo e($emp['employee_code']); ?>)
+                                    <?php endif; ?>
                                 </option>
                             <?php endwhile; ?>
                         </select>
@@ -283,8 +303,9 @@ unset($_SESSION['new_employee_credentials']);
                             <option value="">Select Role</option>
                             <option value="HR Staff">HR Staff</option>
                             <option value="HR Supervisor">HR Supervisor</option>
-                            <option value="HR Manager">HR Manager</option>
+                            <option value="HR Manager">HR Manager / Manager Level</option>
                         </select>
+                        <div class="form-text">Use this access role for any HR manager-level employee, including HR Manager I-V and OIC HR Manager.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Branch</label>
@@ -394,12 +415,23 @@ unset($_SESSION['new_employee_credentials']);
         document.getElementById('new_full_name').value = option.getAttribute('data-name');
         document.getElementById('new_email').value = option.getAttribute('data-email') || '';
 
-        const roleSelect = document.querySelector('[name="role"]');
+        const roleSelect = document.querySelector('#addUserModal [name="role"]');
         const usernameField = document.getElementById('new_username');
+        const rank = (option.getAttribute('data-rank') || '').toLowerCase();
 
         if (!usernameField.value || usernameField.value === option.value) {
             const name = option.getAttribute('data-name').toLowerCase().replace(/\s+/g, '.');
             usernameField.value = name;
+        }
+
+        if (roleSelect && !roleSelect.value) {
+            if (rank.includes('manager')) {
+                roleSelect.value = 'HR Manager';
+            } else if (rank.includes('supervisor')) {
+                roleSelect.value = 'HR Supervisor';
+            } else {
+                roleSelect.value = 'HR Staff';
+            }
         }
     }
 

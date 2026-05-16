@@ -315,7 +315,7 @@ foreach ($all_history as $row):
                     <div class="p-3 bg-light rounded-3 mb-4 border-start border-4 border-info">
                         <div class="row align-items-center">
                             <div class="col-sm-6">
-                                <small class="text-uppercase text-muted fw-bold d-block mb-1">Target Position</small>
+                                <small class="text-uppercase text-muted fw-bold d-block mb-1">Target Department</small>
                                 <div class="fw-bold text-primary" style="font-size: 1.1rem;"><?php echo e($row['desired_position'] ?? 'N/A'); ?></div>
                             </div>
                             <div class="col-sm-6 text-sm-end">

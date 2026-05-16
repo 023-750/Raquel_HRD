@@ -52,6 +52,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 require_once '../includes/header.php';
 
+$selected_department = trim($_GET['department'] ?? '');
+if (strlen($selected_department) > 100) {
+    $selected_department = substr($selected_department, 0, 100);
+}
+
+$department_options = $conn->query("
+    SELECT department_name
+    FROM departments
+    WHERE deleted_at IS NULL AND is_active = 1
+    ORDER BY department_name
+");
+
+$template_where = "WHERE et.status = 'Active'";
+if ($selected_department !== '') {
+    $safe_department = $conn->real_escape_string($selected_department);
+    $template_where .= " AND (et.target_department = '$safe_department' OR et.target_department = 'All Departments')";
+}
+
 // Fetch active templates with criteria counts
 $templates = $conn->query("SELECT et.*, u.full_name as created_by_name,
     (SELECT COUNT(*) FROM evaluation_criteria WHERE template_id = et.template_id AND section='KRA') as kra_count,
@@ -60,9 +78,10 @@ $templates = $conn->query("SELECT et.*, u.full_name as created_by_name,
     (SELECT COUNT(*) FROM evaluations WHERE template_id = et.template_id AND deleted_at IS NULL) as usage_count
     FROM evaluation_templates et
     LEFT JOIN users u ON et.created_by = u.user_id
-    WHERE et.status = 'Active'
+    $template_where
     ORDER BY et.updated_at DESC");
-$active_template_count = $templates->num_rows;
+$filtered_template_count = $templates->num_rows;
+$active_template_count = (int) $conn->query("SELECT COUNT(*) as cnt FROM evaluation_templates WHERE status = 'Active'")->fetch_assoc()['cnt'];
 $archived_template_count = (int) $conn->query("SELECT COUNT(*) as cnt FROM evaluation_templates WHERE status = 'Archived'")->fetch_assoc()['cnt'];
 $used_template_count = (int) $conn->query("SELECT COUNT(DISTINCT template_id) as cnt FROM evaluations WHERE template_id IS NOT NULL AND deleted_at IS NULL")->fetch_assoc()['cnt'];
 ?>
@@ -124,13 +143,48 @@ $used_template_count = (int) $conn->query("SELECT COUNT(DISTINCT template_id) as
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="stat-value">100%</div>
-                        <div class="stat-label">KRA Target</div>
+                        <div class="stat-value"><?php echo $filtered_template_count; ?></div>
+                        <div class="stat-label">Shown</div>
                     </div>
-                    <i class="fas fa-balance-scale stat-icon" style="color:#28a745;"></i>
+                    <i class="fas fa-filter stat-icon" style="color:#28a745;"></i>
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="content-card fadeup-1 mb-4">
+    <div class="card-body">
+        <form method="GET" action="" class="row g-3 align-items-end">
+            <div class="col-md-8 col-lg-5">
+                <label class="form-label">Department</label>
+                <select class="form-select" name="department" onchange="this.form.submit()">
+                    <option value="">All Departments</option>
+                    <?php while ($department = $department_options->fetch_assoc()): ?>
+                        <option value="<?php echo e($department['department_name']); ?>" <?php echo $selected_department === $department['department_name'] ? 'selected' : ''; ?>>
+                            <?php echo e($department['department_name']); ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter me-1"></i>Apply
+                </button>
+                <a href="<?php echo BASE_URL; ?>/manager/templates.php" class="btn btn-outline-secondary">
+                    <i class="fas fa-rotate-left me-1"></i>Reset
+                </a>
+            </div>
+            <div class="col-12">
+                <div class="small text-muted">
+                    <?php if ($selected_department !== ''): ?>
+                        Showing <?php echo number_format($filtered_template_count); ?> template<?php echo $filtered_template_count === 1 ? '' : 's'; ?> for <?php echo e($selected_department); ?>.
+                    <?php else: ?>
+                        Showing all active department templates.
+                    <?php endif; ?>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -140,8 +194,10 @@ $used_template_count = (int) $conn->query("SELECT COUNT(DISTINCT template_id) as
             <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#e8f5e9,#c8e6c9);display:inline-flex;align-items:center;justify-content:center;font-size:2rem;color:#388e3c;margin-bottom:16px;">
                 <i class="fas fa-file-alt"></i>
             </div>
-            <h5 class="text-muted mb-2">No Active Templates</h5>
-            <p class="text-muted small mb-4">Create your first evaluation template to get started.</p>
+            <h5 class="text-muted mb-2">No Active Templates Found</h5>
+            <p class="text-muted small mb-4">
+                <?php echo $selected_department !== '' ? 'No active templates match the selected department.' : 'Create your first evaluation template to get started.'; ?>
+            </p>
             <a href="<?php echo BASE_URL; ?>/manager/create-template.php" class="btn btn-primary">
                 <i class="fas fa-plus me-2"></i>Create Template
             </a>
@@ -171,9 +227,11 @@ $used_template_count = (int) $conn->query("SELECT COUNT(DISTINCT template_id) as
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2" style="font-size:0.65rem;">
                                     <?php echo e($t['evaluation_type'] ?? 'Annual'); ?>
                                 </span>
-                                <span class="badge bg-info-subtle text-info border px-2" style="font-size:0.65rem;">
-                                    <?php echo e($t['target_position'] ?: 'General'); ?>
-                                </span>
+                                <?php if (!empty($t['target_department'])): ?>
+                                    <span class="badge bg-success-subtle text-success border px-2" style="font-size:0.65rem;">
+                                        <?php echo e($t['target_department']); ?>
+                                    </span>
+                                <?php endif; ?>
                             </div>
                         </div>
 

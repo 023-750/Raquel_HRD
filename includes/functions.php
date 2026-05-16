@@ -864,7 +864,7 @@ function applyDueCareerProgressionMovements($conn)
 function renderFlashPopup($type, $message)
 {
 
-    $toast_icons = [
+    $flash_icons = [
 
         'success' => 'fas fa-check-circle',
 
@@ -878,9 +878,9 @@ function renderFlashPopup($type, $message)
 
     ];
 
-    $icon = $toast_icons[$type] ?? 'fas fa-bell';
+    $icon = $flash_icons[$type] ?? 'fas fa-bell';
 
-    $toast_titles = [
+    $flash_titles = [
 
         'success' => 'Success!',
 
@@ -894,36 +894,19 @@ function renderFlashPopup($type, $message)
 
     ];
 
-    $title = $toast_titles[$type] ?? 'Notice!';
+    $title = $flash_titles[$type] ?? 'Notice!';
 
+    $allowed_types = ['success', 'danger', 'warning', 'info', 'primary'];
+    $type_class = in_array($type, $allowed_types, true) ? $type : 'info';
 
-
-    echo '<div class="toast-container flash-toast-container position-fixed p-3">';
-
-    echo '<div class="toast flash-toast flash-toast-' . e($type) . '" role="alert" aria-live="assertive" aria-atomic="true" data-bs-delay="5000">';
-
-    echo '<div class="flash-toast-layout">';
-
-    echo '<div class="flash-toast-status"><span class="flash-toast-icon"><i class="' . e($icon) . '"></i></span></div>';
-
-    echo '<div class="flash-toast-content">';
-
-    echo '<div class="flash-toast-head">';
-
-    echo '<strong class="flash-toast-title">' . e($title) . '</strong>';
-
-    echo '<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>';
-
+    echo '<div class="flash-message-banner flash-message-' . e($type_class) . ' alert alert-dismissible fade show" role="alert">';
+    echo '<div class="flash-message-icon"><i class="' . e($icon) . '"></i></div>';
+    echo '<div class="flash-message-copy">';
+    echo '<span class="flash-message-app">Raquel HRIS</span>';
+    echo '<strong class="flash-message-title">' . e($title) . '</strong>';
+    echo '<span class="flash-message-text">' . e($message) . '</span>';
     echo '</div>';
-
-    echo '<div class="toast-body flash-toast-message">' . e($message) . '</div>';
-
-    echo '</div>';
-
-    echo '</div>';
-
-    echo '</div>';
-
+    echo '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>';
     echo '</div>';
 
 }

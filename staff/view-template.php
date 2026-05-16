@@ -51,8 +51,8 @@ require_once '../includes/header.php';
                     <span class="fw-bold text-dark"><?php echo e($template['template_name']); ?></span>
                 </div>
                 <div class="mb-3">
-                    <label class="small text-muted d-block">Target Position</label>
-                    <span class="badge bg-info-subtle text-info border border-info-subtle px-2"><?php echo e($template['target_position'] ?: 'General / All Positions'); ?></span>
+                    <label class="small text-muted d-block">Target Department</label>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2"><?php echo e($template['target_department'] ?: 'All Departments'); ?></span>
                 </div>
                 <div class="mb-3">
                     <label class="small text-muted d-block">Description</label>

@@ -102,7 +102,7 @@ $archive_count = $templates->num_rows;
                                 <i class="fas fa-file-alt"></i>
                             </div>
                             <span class="badge bg-info-subtle text-info border border-info-subtle px-2">
-                                <?php echo e($t['target_position'] ?: 'General'); ?>
+                                <?php echo e($t['target_department'] ?: 'All Departments'); ?>
                             </span>
                         </div>
 

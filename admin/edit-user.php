@@ -12,9 +12,10 @@ if ($uid <= 0) {
 
 // Fetch the user to edit with employee info and profile picture
 $stmt = $conn->prepare("
-    SELECT u.*, e.first_name, e.last_name, e.profile_picture, e.employee_code
+    SELECT u.*, e.first_name, e.last_name, e.profile_picture, e.employee_code, e.job_title, rc.rank_name
     FROM users u 
     LEFT JOIN employees e ON u.employee_id = e.employee_id 
+    LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
     WHERE u.user_id = ?
 ");
 $stmt->bind_param("i", $uid);
@@ -174,14 +175,23 @@ $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
                     <?php else: ?>
                         <select class="form-select" name="role" required>
                             <option value="Admin"        <?php echo $user['role']==='Admin'         ? 'selected' : ''; ?>>Admin</option>
-                            <option value="HR Manager"   <?php echo $user['role']==='HR Manager'   ? 'selected' : ''; ?>>HR Manager</option>
+                            <option value="HR Manager"   <?php echo $user['role']==='HR Manager'   ? 'selected' : ''; ?>>HR Manager / Manager Level</option>
                             <option value="HR Supervisor"<?php echo $user['role']==='HR Supervisor'? 'selected' : ''; ?>>HR Supervisor</option>
                             <option value="HR Staff"     <?php echo $user['role']==='HR Staff'     ? 'selected' : ''; ?>>HR Staff</option>
                         </select>
+                        <div class="form-text">This access role can be used by multiple HR manager-level employees.</div>
                     <?php endif; ?>
                 </div>
             </div>
             <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Employee Position</label>
+                    <input type="text" class="form-control"
+                           value="<?php echo e($user['job_title'] ?: 'Standalone account'); ?>" readonly>
+                    <?php if (!empty($user['rank_name'])): ?>
+                        <div class="form-text">Rank: <?php echo e($user['rank_name']); ?></div>
+                    <?php endif; ?>
+                </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Branch <small class="text-muted">(leave empty for Admin)</small></label>
                     <?php if ($is_standalone_admin): ?>
@@ -198,6 +208,9 @@ $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
                         </select>
                     <?php endif; ?>
                 </div>
+            </div>
+
+            <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">
                         New Password
@@ -206,9 +219,6 @@ $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
                     <input type="password" class="form-control" name="password"
                            minlength="6" placeholder="Min. 6 characters">
                 </div>
-            </div>
-
-            <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Change Profile Picture</label>
                     <input type="file" class="form-control" name="profile_picture" accept="image/*">

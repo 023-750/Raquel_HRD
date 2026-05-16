@@ -380,7 +380,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         </div>
 
         <div class="row g-3">
-            <div class="col-6">
+            <div class="col-6 col-md-3">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -391,7 +391,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                     </div>
                 </div>
             </div>
-            <div class="col-6">
+            <div class="col-6 col-md-3">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -402,7 +402,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                     </div>
                 </div>
             </div>
-            <div class="col-6">
+            <div class="col-6 col-md-3">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -413,7 +413,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                     </div>
                 </div>
             </div>
-            <div class="col-6">
+            <div class="col-6 col-md-3">
                 <div class="stat-card">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -427,7 +427,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         </div>
     </div>
 
-    <div class="d-none d-md-flex justify-content-between align-items-center mb-4" data-flash-toast-anchor>
+    <div class="d-none d-md-flex justify-content-between align-items-center mb-4">
         <p class="text-muted mb-0">Manage employee records</p>
     </div>
 

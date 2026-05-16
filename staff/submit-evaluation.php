@@ -74,12 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $submitted_date = ($action === 'submit') ? date('Y-m-d H:i:s') : null;
 
     if ($edit_id) {
-        // UPDATE: 20 params
-        // i=employee_id, i=template_id, s=type, s=period_start, s=period_end,
-        // s=status, d=total_score, d=kra_subtotal, d=behavior_average,
-        // s=performance_level, s=submitted_date, s=staff_comments, s=current_position,
-        // i=months_in_position, s=desired_position, s=target_date,
-        // i=career_growth_suited, s=career_growth_details, i=edit_id, i=user_id
         $stmt = $conn->prepare("UPDATE evaluations SET employee_id=?, template_id=?, evaluation_type=?, evaluation_period_start=?, evaluation_period_end=?, status=?, total_score=?, kra_subtotal=?, behavior_average=?, performance_level=?, submitted_date=?, staff_comments=?, current_position=?, months_in_position=?, desired_position=?, target_date=?, career_growth_suited=?, career_growth_details=? WHERE evaluation_id=? AND submitted_by=?");
         $stmt->bind_param("iissssdddssssissisii", $employee_id, $template_id, $evaluation_type, $period_start, $period_end, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $submitted_date, $staff_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details, $edit_id, $_SESSION['user_id']);
         $stmt->execute();
@@ -88,12 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->query("DELETE FROM evaluation_dev_plans WHERE evaluation_id = $edit_id");
         $eval_id = $edit_id;
     } else {
-        // INSERT: 19 params
-        // i=employee_id, i=template_id, s=type, s=period_start, s=period_end, i=user_id,
-        // s=status, d=total_score, d=kra_subtotal, d=behavior_average,
-        // s=performance_level, s=submitted_date, s=staff_comments, s=current_position,
-        // i=months_in_position, s=desired_position, s=target_date,
-        // i=career_growth_suited, s=career_growth_details
         $stmt = $conn->prepare("INSERT INTO evaluations (employee_id, template_id, evaluation_type, evaluation_period_start, evaluation_period_end, submitted_by, status, total_score, kra_subtotal, behavior_average, performance_level, submitted_date, staff_comments, current_position, months_in_position, desired_position, target_date, career_growth_suited, career_growth_details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("iisssisdddssssissis", $employee_id, $template_id, $evaluation_type, $period_start, $period_end, $_SESSION['user_id'], $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $submitted_date, $staff_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details);
         $stmt->execute();
@@ -854,9 +842,9 @@ if (!empty($selected_template_id)) {
                             <select class="form-select form-select-lg border-primary mb-4" name="template_id" id="templateSelect" required onchange="loadCriteria()">
                                 <option value="">-- Choose Template --</option>
                                 <?php $templates->data_seek(0); while ($t = $templates->fetch_assoc()): ?>
-                                    <option value="<?php echo $t['template_id']; ?>" data-target="<?php echo htmlspecialchars($t['target_position'] ?? 'All Positions'); ?>"
+                                    <option value="<?php echo $t['template_id']; ?>" data-target="<?php echo htmlspecialchars($t['target_department'] ?? 'All Departments'); ?>"
                                         <?php echo ($edit_eval && $edit_eval['template_id'] == $t['template_id']) ? 'selected' : ''; ?>>
-                                        <?php echo e($t['template_name']); ?> (<?php echo e($t['target_position'] ?? 'All Positions'); ?>)
+                                        <?php echo e($t['template_name']); ?> (<?php echo e($t['target_department'] ?? 'All Departments'); ?>)
                                     </option>
                                 <?php endwhile; ?>
                             </select>
@@ -1106,11 +1094,6 @@ function calculateAllScores() {
     const behAvg = behCount > 0 ? behTotal / behCount : 0;
     if (document.getElementById('behAverage')) document.getElementById('behAverage').textContent = behCount > 0 ? behAvg.toFixed(2) : '-';
 
-    // ── ORIGINAL FORMULA (additive 80/20 weighted sum) ── COMMENTED OUT ──────────
-    // To revert: uncomment the line below and remove / comment the NEW formula line.
-    // const overall = (kraSubTotal * templateWeights.kra / 100) + (behAvg * templateWeights.behavior / 100);
-    // ─────────────────────────────────────────────────────────────────────────────
-
     // NEW FORMULA — weight × rating × average (÷ 4 keeps result on the 1–4 scale)
     const overall = (kraSubTotal * behAvg) / 4.0;
     
@@ -1190,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     Array.from(tmplSelect.options).forEach(opt => {
                         if (opt.value === '') return; // Skip placeholder
                         const tTarget = opt.getAttribute('data-target');
-                        if (tTarget === 'All Positions' || tTarget === departmentName || !tTarget) {
+                        if (tTarget === 'All Departments' || tTarget === departmentName || !tTarget) {
                             opt.style.display = '';
                             if (opt.value === currentValue) hasValidSelection = true;
                         } else {
@@ -1234,6 +1217,19 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCriteriaWithScores(dbScores, dbScores);
     goToStep(3);
 <?php endif; ?>
+
+    // Attach auto-save listeners (moved outside initEvalDraft for general use)
+    const form = document.getElementById('evalForm');
+    if (form) {
+        form.addEventListener('input', () => {
+            clearTimeout(evalAutosaveTimer);
+            evalAutosaveTimer = setTimeout(saveEvalDraft, 2000);
+        });
+        form.addEventListener('change', () => {
+            clearTimeout(evalAutosaveTimer);
+            evalAutosaveTimer = setTimeout(saveEvalDraft, 2000);
+        });
+    }
 });
 
 // ============================================================
@@ -1439,19 +1435,6 @@ function initEvalDraft() {
         } catch(e) {
             localStorage.removeItem(EVAL_DRAFT_KEY);
         }
-    }
-
-    // Attach auto-save listeners
-    const form = document.getElementById('evalForm');
-    if (form) {
-        form.addEventListener('input', () => {
-            clearTimeout(evalAutosaveTimer);
-            evalAutosaveTimer = setTimeout(saveEvalDraft, 2000);
-        });
-        form.addEventListener('change', () => {
-            clearTimeout(evalAutosaveTimer);
-            evalAutosaveTimer = setTimeout(saveEvalDraft, 2000);
-        });
     }
 }
 

@@ -253,9 +253,9 @@ $rankCategories = $rankCategories ?? [
     <div class="form-section-title mt-3"><i class="fas fa-phone-alt"></i> Contact Information</div>
     <div class="row">
         <div class="col-md-4 mb-3">
-            <label class="form-label">Telephone No.</label>
+            <label class="form-label">Telephone No. <span class="text-muted small">(Optional)</span></label>
             <input type="text" class="form-control" name="telephone_number" value="<?php echo $v('telephone_number'); ?>" 
-                placeholder="(042) 000-0000" pattern="\(\d{3}\) \d{3}-\d{4}" title="Format: (000) 000-0000">
+                placeholder="(042) 000-0000" title="Format: (000) 000-0000">
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Mobile No.</label>
@@ -902,6 +902,15 @@ $rankCategories = $rankCategories ?? [
                         <option value="<?php echo $jt_id; ?>"
                             data-title="<?php echo e($jt['job_title']); ?>"
                             data-dept-id="<?php echo (int) ($jt['department_id'] ?? 0); ?>"
+                            <?php
+                            $group = 'other';
+                            if ((int)($jt['is_head'] ?? 0) === 1) {
+                                $group = 'head';
+                            } elseif ((int)($jt['rank_category_id'] ?? 5) < 5) {
+                                $group = 'direct';
+                            }
+                            ?>
+                            data-position-group="<?php echo $group; ?>"
                             <?php echo $selected ? 'selected' : ''; ?>>
                             <?php echo e($jt['job_title']); ?>
                         </option>
@@ -1039,7 +1048,8 @@ document.addEventListener("DOMContentLoaded", function() {
             value:  opt.value,
             text:   opt.text.trim(),
             title:  (opt.getAttribute("data-title") || opt.textContent || "").trim(),
-            deptId: parseInt(opt.getAttribute("data-dept-id") || "0", 10)
+            deptId: parseInt(opt.getAttribute("data-dept-id") || "0", 10),
+            group:  opt.getAttribute("data-position-group") || "other"
         }));
 
     // Remember the job title that was pre-selected (edit mode).
@@ -1051,9 +1061,19 @@ document.addEventListener("DOMContentLoaded", function() {
         opt.textContent = jobTitle.text;
         opt.setAttribute("data-title", jobTitle.title || jobTitle.text);
         opt.setAttribute("data-dept-id", jobTitle.deptId);
+        opt.setAttribute("data-position-group", jobTitle.group);
         if (jobTitle.value === currentJobTitle) {
             opt.selected = true;
         }
+        jobTitleSelect.appendChild(opt);
+    }
+
+    function appendGroupLabel(label) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = label;
+        opt.disabled = true;
+        opt.className = "position-group-label";
         jobTitleSelect.appendChild(opt);
     }
 
@@ -1073,11 +1093,39 @@ document.addEventListener("DOMContentLoaded", function() {
         jobTitleSelect.disabled = false;
         jobTitleSelect.innerHTML = '<option value="">-- Select Job Title --</option>';
 
-        allJobTitleOptions.forEach(jobTitle => {
-            if (jobTitle.deptId === selectedDeptId) {
+        const matchingTitles = allJobTitleOptions.filter(jobTitle => jobTitle.deptId === selectedDeptId);
+        const headTitles = matchingTitles.filter(jobTitle => jobTitle.group === "head");
+        const directTitles = matchingTitles.filter(jobTitle => jobTitle.group === "direct");
+        const otherTitles = matchingTitles.filter(jobTitle => jobTitle.group === "other");
+
+        if (headTitles.length) {
+            appendGroupLabel("-- HEAD --");
+            headTitles.forEach(jobTitle => {
                 appendJobTitleOption(jobTitle, currentJobTitle);
-            }
-        });
+            });
+        }
+
+        if (directTitles.length) {
+            appendGroupLabel("-- DIRECT REPORT --");
+            directTitles.forEach(jobTitle => {
+                appendJobTitleOption(jobTitle, currentJobTitle);
+            });
+        }
+
+        if (otherTitles.length) {
+            appendGroupLabel("-- OTHERS --");
+            otherTitles.forEach(jobTitle => {
+                appendJobTitleOption(jobTitle, currentJobTitle);
+            });
+        }
+
+        if (!matchingTitles.length) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "No positions found for this department";
+            opt.disabled = true;
+            jobTitleSelect.appendChild(opt);
+        }
 
         // If the previously-selected title is no longer visible, clear the field.
         if (jobTitleSelect.value !== currentJobTitle) {

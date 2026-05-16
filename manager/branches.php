@@ -3,6 +3,30 @@ $page_title = 'Branch Management';
 require_once '../includes/session-check.php';
 checkRole(['HR Manager']);
 require_once '../includes/functions.php';
+// ─── Handle DOWNLOAD SAMPLE CSV ──────────────────────────
+if (isset($_GET['download_sample'])) {
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename=branch_import_sample.csv');
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['Branch Name', 'Location']);
+    
+    // Attempt to fetch the Main Office as a sample
+    $sample_res = $conn->query("SELECT branch_name, location FROM branches WHERE branch_name LIKE '%Main Office%' LIMIT 1");
+    $sample = $sample_res->fetch_assoc();
+    
+    if (!$sample) {
+        // Fallback sample if database is empty
+        $sample = [
+            'branch_name' => 'Raquel Pawnshop Main Office',
+            'location'    => 'RGC Building, Diversion Road, Tayabas City'
+        ];
+    }
+    
+    fputcsv($output, [$sample['branch_name'], $sample['location']]);
+    fclose($output);
+    exit;
+}
+
 
 // ─── Handle ADD ──────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -83,6 +107,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!$is_header) {
                     $name = trim($header[0] ?? '');
                     $location = trim($header[1] ?? '');
+                    
+                    // Handle special characters (e.g. 'ñ') by converting to UTF-8
+                    $name = mb_convert_encoding($name, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+                    $location = mb_convert_encoding($location, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+
                     if ($name !== '' && $location !== '') {
                         $stmt->bind_param("ss", $name, $location);
                         $stmt->execute();
@@ -95,6 +124,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 while (($data = fgetcsv($handle, 1000, ',')) !== FALSE) {
                     $name = trim($data[0] ?? '');
                     $location = trim($data[1] ?? '');
+
+                    // Handle special characters (e.g. 'ñ') by converting to UTF-8
+                    $name = mb_convert_encoding($name, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
+                    $location = mb_convert_encoding($location, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252');
 
                     if ($name !== '' && $location !== '') {
                         $stmt->bind_param("ss", $name, $location);
@@ -383,7 +416,6 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
 </div>
 
 <?php require_once '../includes/footer.php'; ?>
-
 <!-- ─── Import Branch Modal ─────────────────────────────────── -->
 <div class="modal fade" id="importBranchModal" tabindex="-1">
     <div class="modal-dialog">
@@ -395,17 +427,16 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info small">
-                        <p class="mb-1"><strong>Expected CSV Format:</strong></p>
-                        <ul class="mb-2">
-                            <li>Column 1: <strong>Branch Name</strong></li>
-                            <li>Column 2: <strong>Location</strong></li>
-                        </ul>
-                        <p class="mb-0 text-muted">The first row will be considered a header and skipped if it contains column labels.</p>
-                    </div>
+                    <p class="small text-muted mb-3">Upload a CSV file to bulk import branch records. Ensure your file matches the system's exact column format.</p>
+
                     <div class="mb-3">
-                        <label class="form-label">CSV File <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control" name="csv_file" accept=".csv" required>
+                        <label class="form-label fw-bold">Select CSV File</label>
+                        <input class="form-control" type="file" name="csv_file" accept=".csv" required>
+                    </div>
+
+                    <div class="alert alert-info py-2 small mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Need the format? <a href="?download_sample=1" class="alert-link">Download the sample template</a>.
                     </div>
                 </div>
                 <div class="modal-footer">

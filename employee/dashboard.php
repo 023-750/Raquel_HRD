@@ -9,10 +9,12 @@ $employee_id = (int)($_SESSION['employee_id'] ?? 0);
 $emp_stmt = $conn->prepare("
     SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.profile_picture,
            d.department_name, b.branch_name, e.hire_date,
-           e.employment_status, e.employment_type
+           e.employment_status, e.employment_type,
+           rc.rank_name
     FROM employees e
     LEFT JOIN departments d ON e.department_id = d.department_id
     LEFT JOIN branches b    ON e.branch_id    = b.branch_id
+    LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
     WHERE e.employee_id = ?
 ");
 $emp_stmt->bind_param("i", $employee_id);
@@ -35,6 +37,7 @@ require_once '../includes/header.php';
                 <h2 class="text-white fw-bold mb-1 mt-1">Hello, <?php echo e($emp['first_name']??'Employee'); ?>!</h2>
                 <p class="mb-0 text-white-50 small">
                     <i class="fas fa-briefcase me-1"></i><?php echo e($emp['job_title']??'—'); ?>
+                    <?php if(!empty($emp['rank_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['rank_name']); ?><?php endif; ?>
                     <?php if(!empty($emp['department_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['department_name']); ?><?php endif; ?>
                     <?php if(!empty($emp['branch_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['branch_name']); ?><?php endif; ?>
                 </p>
@@ -71,6 +74,7 @@ require_once '../includes/header.php';
       <div class="card-body">
         <table class="table table-borderless table-sm mb-0">
           <tr><td class="company-id-text">Company ID</td><td><strong class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></strong></td></tr>
+          <tr><td class="text-muted">Rank</td><td><span class="rank-badge"><?php echo e($emp['rank_name']??'—'); ?></span></td></tr>
           <tr><td class="text-muted">Full Name</td><td><strong><?php echo e(trim(($emp['first_name']??'').' '.($emp['last_name']??''))); ?></strong></td></tr>
           <tr><td class="text-muted">Position</td><td><?php echo e($emp['job_title']??'—'); ?></td></tr>
           <tr><td class="text-muted">Department</td><td><?php echo e($emp['department_name']??'—'); ?></td></tr>

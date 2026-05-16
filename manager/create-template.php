@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $template_name = trim($_POST['template_name'] ?? '');
     $description = trim($_POST['description'] ?? '');
-    $target_position = trim($_POST['target_position'] ?? '');
+    $target_department = trim($_POST['target_department'] ?? '');
     $evaluation_type = $_POST['evaluation_type'] ?? 'Annual';
     $kra_weight = floatval($_POST['kra_weight'] ?? 80);
     $behavior_weight = floatval($_POST['behavior_weight'] ?? 20);
@@ -45,8 +45,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Insert template
-    $stmt = $conn->prepare("INSERT INTO evaluation_templates (template_name, description, target_position, evaluation_type, kra_weight, behavior_weight, form_code, revision_date, effective_date_form, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)");
-    $stmt->bind_param("ssssddsssi", $template_name, $description, $target_position, $evaluation_type, $kra_weight, $behavior_weight, $form_code, $revision_date, $effective_date_form, $_SESSION['user_id']);
+    $stmt = $conn->prepare("INSERT INTO evaluation_templates (template_name, description, target_department, evaluation_type, kra_weight, behavior_weight, form_code, revision_date, effective_date_form, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)");
+    $stmt->bind_param("sssssddsssi", $template_name, $description, $target_department, $evaluation_type, $kra_weight, $behavior_weight, $form_code, $revision_date, $effective_date_form, $_SESSION['user_id']);
     $stmt->execute();
     $template_id = $stmt->insert_id;
     $stmt->close();
@@ -279,9 +279,9 @@ require_once '../includes/header.php';
                 </select>
             </div>
             <div class="col-md-3 mb-3">
-                <label class="form-label">Target Department <small class="text-muted">(optional)</small></label>
-                <select class="form-select" name="target_position">
-                    <option value="All Positions">All Positions</option>
+                <label class="form-label">Target Department</label>
+                <select class="form-select" name="target_department">
+                    <option value="All Departments">All Departments</option>
                     <?php foreach ($departments as $dept): ?>
                         <option value="<?php echo e($dept); ?>"><?php echo e($dept); ?></option>
                     <?php endforeach; ?>
@@ -289,7 +289,7 @@ require_once '../includes/header.php';
             </div>
         </div>
         <div class="row mb-3">
-            <div class="col-12 mb-3">
+            <div class="col-md-12 mb-3">
                 <label class="form-label">Description</label>
                 <textarea class="form-control" name="description" rows="2" placeholder="Brief description of this evaluation template..."></textarea>
             </div>
@@ -601,7 +601,7 @@ function collectDraft() {
     return {
         template_name: document.querySelector('[name="template_name"]')?.value || '',
         description: document.querySelector('[name="description"]')?.value || '',
-        target_position: document.querySelector('[name="target_position"]')?.value || '',
+        target_department: document.querySelector('[name="target_department"]')?.value || '',
         evaluation_type: document.querySelector('[name="evaluation_type"]')?.value || '',
         kra_weight: document.getElementById('kraWeight')?.value || '80',
         behavior_weight: document.getElementById('behaviorWeight')?.value || '20',
@@ -638,7 +638,7 @@ function restoreDraft(draft) {
     const setVal = (sel, val) => { const el = document.querySelector(sel); if (el) el.value = val; };
     setVal('[name="template_name"]', draft.template_name);
     setVal('[name="description"]', draft.description);
-    setVal('[name="target_position"]', draft.target_position);
+    setVal('[name="target_department"]', draft.target_department);
     setVal('[name="evaluation_type"]', draft.evaluation_type);
     setVal('[name="form_code"]', draft.form_code);
     setVal('[name="revision_date"]', draft.revision_date);

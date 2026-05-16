@@ -18,78 +18,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
     if (!$file)
         redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Could not read the uploaded file.');
 
-    // Skip header
-    fgetcsv($file);
+    // Get headers
+    $headers = fgetcsv($file);
+    if (!$headers) {
+        fclose($file);
+        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'CSV file is empty.');
+    }
 
-    $success = 0;
+    // Map headers to indices
+    $headerMap = array_flip(array_map('trim', $headers));
+
+    $created = 0;
+    $updated = 0;
     $skipped = 0;
+    $errors = [];
+
+    $allowed_statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
 
     while (($row = fgetcsv($file)) !== false) {
-        // Minimum required columns (basic info)
-        if (count($row) < 10) {
-            $skipped++;
-            continue;
-        }
+        if (empty(array_filter($row))) continue;
 
-        $v = array_pad(array_map('trim', $row), 74, '');
+        $getV = function($key, $idx = null) use ($row, $headerMap) {
+            if (isset($headerMap[$key])) {
+                return trim($row[$headerMap[$key]] ?? '');
+            }
+            if ($idx !== null) {
+                return trim($row[$idx] ?? '');
+            }
+            return '';
+        };
 
-        // Basic mapping for CSV
-        $first_name = $v[0];
-        $last_name = $v[1];
-        $middle_name = $v[2];
-        $name_extension = $v[3];
+        $first_name = $getV('First Name', 0);
+        $last_name = $getV('Last Name', 1);
+        $middle_name = $getV('Middle Name', 2);
+        $name_extension = $getV('Extension', 3);
+        $employee_code = $getV('Company ID', 39);
+        
+        $dobRaw = $getV('Birthday', 4);
         $dob = null;
-        if (!empty($v[4])) {
-            $d1 = DateTime::createFromFormat('m/d/Y', $v[4]);
-            if ($d1)
-                $dob = $d1->format('Y-m-d');
-            else
-                $dob = $v[4];
+        if (!empty($dobRaw)) {
+            $d1 = DateTime::createFromFormat('m/d/Y', $dobRaw) ?: DateTime::createFromFormat('Y-m-d', $dobRaw);
+            if ($d1) $dob = $d1->format('Y-m-d');
+            else $dob = $dobRaw;
         }
-        $pob = $v[5];
-        $gender = $v[6];
-        $civil_status = $v[7];
+
+        $pob = $getV('Birthplace', 5);
+        $gender = $getV('Gender', 6);
+        $civil_status = $getV('Civil Status', 7);
+        
+        $hireDateRaw = $getV('Hire Date', 33);
         $hd = null;
-        if (!empty($v[65])) {
-            $d2 = DateTime::createFromFormat('m/d/Y', $v[65]);
-            if ($d2)
-                $hd = $d2->format('Y-m-d');
-            else
-                $hd = $v[65];
+        if (!empty($hireDateRaw)) {
+            $d2 = DateTime::createFromFormat('m/d/Y', $hireDateRaw) ?: DateTime::createFromFormat('Y-m-d', $hireDateRaw);
+            if ($d2) $hd = $d2->format('Y-m-d');
+            else $hd = $hireDateRaw;
         }
-        $job_title = $v[66];
-        $dept = $v[67];
-        $emp_status = $v[69];
-        $emp_type = $v[70];
 
-        if (empty($first_name) || empty($last_name) || empty($hd) || empty($job_title)) {
+        $job_title_name = $getV('Job Title', 34);
+        $dept_name = $getV('Department', 35);
+        $branch_name = $getV('Branch', 36);
+        $emp_status = $getV('Employment Status', 37) ?: 'Regular';
+        $emp_type = $getV('Employment Type', 38) ?: 'Full-time';
+
+        // Validate Status against ENUM
+        $foundStatus = false;
+        foreach($allowed_statuses as $as) {
+            if (strcasecmp($as, $emp_status) === 0) {
+                $emp_status = $as;
+                $foundStatus = true;
+                break;
+            }
+        }
+        if (!$foundStatus) $emp_status = 'Regular';
+
+        if (empty($first_name) || empty($last_name) || empty($hd) || empty($job_title_name)) {
             $skipped++;
+            $errors[] = "Row ($first_name $last_name): Missing required fields.";
             continue;
         }
 
-        // Dup check
-        $dc = $conn->prepare("SELECT employee_id FROM employees WHERE first_name = ? AND last_name = ?");
-        $dc->bind_param("ss", $first_name, $last_name);
-        $dc->execute();
-        $dr = $dc->get_result();
-        $dc->close();
-        if ($dr->num_rows > 0) {
-            $skipped++;
-            continue;
-        }
-
-        // Department lookup/creation
-        $did = null;
-        if (!empty($v[67])) {
-            $dc = $conn->prepare("SELECT department_id FROM departments WHERE department_name = ?");
-            $dc->bind_param("s", $v[67]);
+        $existing_id = null;
+        if (!empty($employee_code)) {
+            $dc = $conn->prepare("SELECT employee_id FROM employees WHERE employee_code = ?");
+            $dc->bind_param("s", $employee_code);
             $dc->execute();
             $dr = $dc->get_result();
-            if ($d = $dr->fetch_assoc()) {
-                $did = $d['department_id'];
-            } else {
+            if ($d = $dr->fetch_assoc()) $existing_id = $d['employee_id'];
+            $dc->close();
+        }
+        if (!$existing_id) {
+            $dc = $conn->prepare("SELECT employee_id FROM employees WHERE first_name = ? AND last_name = ?");
+            $dc->bind_param("ss", $first_name, $last_name);
+            $dc->execute();
+            $dr = $dc->get_result();
+            if ($d = $dr->fetch_assoc()) $existing_id = $d['employee_id'];
+            $dc->close();
+        }
+
+        $did = null;
+        if (!empty($dept_name)) {
+            $dc = $conn->prepare("SELECT department_id FROM departments WHERE department_name = ?");
+            $dc->bind_param("s", $dept_name);
+            $dc->execute();
+            $dr = $dc->get_result();
+            if ($d = $dr->fetch_assoc()) $did = $d['department_id'];
+            else {
                 $di = $conn->prepare("INSERT INTO departments (department_name, description) VALUES (?, 'Imported via CSV')");
-                $di->bind_param("s", $v[67]);
+                $di->bind_param("s", $dept_name);
                 $di->execute();
                 $did = $di->insert_id;
                 $di->close();
@@ -97,18 +132,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $dc->close();
         }
 
-        // Branch
+        $job_title_id = null;
+        if (!empty($job_title_name)) {
+            $jc = $conn->prepare("SELECT job_title_id FROM job_titles WHERE job_title = ? AND (department_id = ? OR department_id IS NULL)");
+            $jc->bind_param("si", $job_title_name, $did);
+            $jc->execute();
+            $jr = $jc->get_result();
+            if ($j = $jr->fetch_assoc()) $job_title_id = $j['job_title_id'];
+            $jc->close();
+        }
+
         $bid = null;
-        if (!empty($v[68])) {
+        if (!empty($branch_name)) {
             $bc = $conn->prepare("SELECT branch_id FROM branches WHERE branch_name = ?");
-            $bc->bind_param("s", $v[68]);
+            $bc->bind_param("s", $branch_name);
             $bc->execute();
             $br = $bc->get_result();
-            if ($b = $br->fetch_assoc()) {
-                $bid = $b['branch_id'];
-            } else {
+            if ($b = $br->fetch_assoc()) $bid = $b['branch_id'];
+            else {
                 $bi = $conn->prepare("INSERT INTO branches (branch_name, location) VALUES (?, 'TBD')");
-                $bi->bind_param("s", $v[68]);
+                $bi->bind_param("s", $branch_name);
                 $bi->execute();
                 $bid = $bi->insert_id;
                 $bi->close();
@@ -118,66 +161,146 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
 
         $conn->begin_transaction();
         try {
-            $stmt = $conn->prepare("INSERT INTO employees (first_name, last_name, middle_name, name_extension, date_of_birth, place_of_birth, gender, civil_status, hire_date, job_title, department_id, branch_id, employment_status, employment_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("ssssssssssiiss", $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title, $did, $bid, $emp_status, $emp_type);
-            $stmt->execute();
-            $eid = $stmt->insert_id;
-            $stmt->close();
+            if ($existing_id) {
+                $stmt = $conn->prepare("UPDATE employees SET employee_code=?, first_name=?, last_name=?, middle_name=?, name_extension=?, date_of_birth=?, place_of_birth=?, gender=?, civil_status=?, hire_date=?, job_title=?, job_title_id=?, department_id=?, branch_id=?, employment_status=?, employment_type=? WHERE employee_id=?");
+                $stmt->bind_param("sssssssssssiiissi", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $bid, $emp_status, $emp_type, $existing_id);
+                $stmt->execute();
+                $eid = $existing_id;
+                $stmt->close();
+                $updated++;
+            } else {
+                $stmt = $conn->prepare("INSERT INTO employees (employee_code, first_name, last_name, middle_name, name_extension, date_of_birth, place_of_birth, gender, civil_status, hire_date, job_title, job_title_id, department_id, branch_id, employment_status, employment_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                $stmt->bind_param("sssssssssssiiiss", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $bid, $emp_status, $emp_type);
+                $stmt->execute();
+                $eid = $stmt->insert_id;
+                $stmt->close();
+                $created++;
+            }
 
-            // Minimal details for CSV import
+            // Employee Details
+            $h_val = $getV('Height (m)', 8);
+            $w_val = $getV('Weight (kg)', 9);
+            $bt = $getV('Blood Type', 10);
+            $cz = $getV('Citizenship', 11) ?: 'Filipino';
+            $conn->query("DELETE FROM employee_details WHERE employee_id = $eid");
             $stmt = $conn->prepare("INSERT INTO employee_details (employee_id, height_m, weight_kg, blood_type, citizenship) VALUES (?,?,?,?,?)");
-            $h = !empty($v[8]) ? (float) $v[8] : null;
-            $w = !empty($v[9]) ? (float) $v[9] : null;
-            $stmt->bind_param("iddss", $eid, $h, $w, $v[10], $v[11]);
+            $h_f = !empty($h_val) ? (float)$h_val : null;
+            $w_f = !empty($w_val) ? (float)$w_val : null;
+            $stmt->bind_param("iddss", $eid, $h_f, $w_f, $bt, $cz);
             $stmt->execute();
             $stmt->close();
 
+            // Govt IDs
+            $sss = $getV('SSS No', 12);
+            $ph = $getV('PhilHealth No', 13);
+            $pag = $getV('Pag-IBIG No', 14);
+            $tin = $getV('TIN No', 15);
+            $conn->query("DELETE FROM employee_government_ids WHERE employee_id = $eid");
             $stmt = $conn->prepare("INSERT INTO employee_government_ids (employee_id, sss_number, philhealth_number, pagibig_number, tin_number) VALUES (?,?,?,?,?)");
-            $stmt->bind_param("issss", $eid, $v[12], $v[13], $v[14], $v[15]);
+            $stmt->bind_param("issss", $eid, $sss, $ph, $pag, $tin);
             $stmt->execute();
             $stmt->close();
 
+            // Contacts
+            $tel = $getV('Telephone No', 30);
+            $mob = $getV('Mobile No', 31);
+            $eml = $getV('Email', 32);
+            $conn->query("DELETE FROM employee_contacts WHERE employee_id = $eid");
             $stmt = $conn->prepare("INSERT INTO employee_contacts (employee_id, telephone_number, mobile_number, personal_email) VALUES (?,?,?,?)");
-            $stmt->bind_param("isss", $eid, $v[30], $v[31], $v[32]);
+            $stmt->bind_param("isss", $eid, $tel, $mob, $eml);
             $stmt->execute();
             $stmt->close();
 
             // Addresses
-            $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Residential', ?,?,?,?,?,?,?)");
-            $stmt->bind_param("isssssss", $eid, $v[16], $v[17], $v[18], $v[19], $v[20], $v[21], $v[22]);
-            $stmt->execute();
-            $stmt->close();
-            $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Permanent', ?,?,?,?,?,?,?)");
-            $stmt->bind_param("isssssss", $eid, $v[23], $v[24], $v[25], $v[26], $v[27], $v[28], $v[29]);
-            $stmt->execute();
-            $stmt->close();
+            $conn->query("DELETE FROM employee_addresses WHERE employee_id = $eid");
+            $res_h = $getV('Residential House No', 16);
+            $res_s = $getV('Residential Street', 17);
+            $res_v = $getV('Residential Subdivision', 18);
+            $res_b = $getV('Residential Barangay', 19);
+            $res_c = $getV('Residential City', 20);
+            $res_p = $getV('Residential Province', 21);
+            $res_z = $getV('Residential Zip Code', 22);
+            if (!empty($res_s) || !empty($res_c)) {
+                $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Residential', ?,?,?,?,?,?,?)");
+                $stmt->bind_param("isssssss", $eid, $res_h, $res_s, $res_v, $res_b, $res_c, $res_p, $res_z);
+                $stmt->execute();
+                $stmt->close();
+            }
+            $per_h = $getV('Permanent House No', 23);
+            $per_s = $getV('Permanent Street', 24);
+            $per_v = $getV('Permanent Subdivision', 25);
+            $per_b = $getV('Permanent Barangay', 26);
+            $per_c = $getV('Permanent City', 27);
+            $per_p = $getV('Permanent Province', 28);
+            $per_z = $getV('Permanent Zip Code', 29);
+            if (!empty($per_s) || !empty($per_c)) {
+                $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Permanent', ?,?,?,?,?,?,?)");
+                $stmt->bind_param("isssssss", $eid, $per_h, $per_s, $per_v, $per_b, $per_c, $per_p, $per_z);
+                $stmt->execute();
+                $stmt->close();
+            }
 
             // Emergency
-            $stmt = $conn->prepare("INSERT INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES (?,?,?,?)");
-            $stmt->bind_param("isss", $eid, $v[71], $v[72], $v[73]);
-            $stmt->execute();
-            $stmt->close();
+            $ec_n = $getV('Emergency Contact Name', 40);
+            $ec_r = $getV('Emergency Contact Relationship', 41);
+            $ec_p = $getV('Emergency Contact Number', 42);
+            $conn->query("DELETE FROM employee_emergency_contacts WHERE employee_id = $eid");
+            if (!empty($ec_n)) {
+                $stmt = $conn->prepare("INSERT INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES (?,?,?,?)");
+                $stmt->bind_param("isss", $eid, $ec_n, $ec_r, $ec_p);
+                $stmt->execute();
+                $stmt->close();
+            }
+
+            // Family
+            $spouse_n = $getV('Spouse Name', 43);
+            $spouse_o = $getV('Spouse Occupation', 44);
+            $father_n = $getV('Father Name', 45);
+            $father_o = $getV('Father Occupation', 46);
+            $mother_n = $getV('Mother Maiden Name', 47);
+            $mother_o = $getV('Mother Occupation', 48);
+            $conn->query("DELETE FROM employee_family WHERE employee_id = $eid");
+            if (!empty($spouse_n)) {
+                $stmt = $conn->prepare("INSERT INTO employee_family (employee_id, member_type, first_name, occupation) VALUES (?, 'Spouse', ?, ?)");
+                $stmt->bind_param("iss", $eid, $spouse_n, $spouse_o);
+                $stmt->execute();
+                $stmt->close();
+            }
+            if (!empty($father_n)) {
+                $stmt = $conn->prepare("INSERT INTO employee_family (employee_id, member_type, first_name, occupation) VALUES (?, 'Father', ?, ?)");
+                $stmt->bind_param("iss", $eid, $father_n, $father_o);
+                $stmt->execute();
+                $stmt->close();
+            }
+            if (!empty($mother_n)) {
+                $stmt = $conn->prepare("INSERT INTO employee_family (employee_id, member_type, first_name, occupation) VALUES (?, 'Mother', ?, ?)");
+                $stmt->bind_param("iss", $eid, $mother_n, $mother_o);
+                $stmt->execute();
+                $stmt->close();
+            }
 
             $conn->commit();
-            logAudit($conn, $_SESSION['user_id'], 'CREATE', 'Employee', $eid, "Imported employee via CSV: $first_name $last_name");
-            $success++;
+            logAudit($conn, $_SESSION['user_id'], ($existing_id ? 'UPDATE' : 'CREATE'), 'Employee', $eid, "Imported/Updated via CSV: $first_name $last_name");
         } catch (Exception $e) {
             $conn->rollback();
-            // error_log("CSV Import error: " . $e->getMessage());
+            $errors[] = "Row ($first_name $last_name): " . $e->getMessage();
             $skipped++;
         }
     }
     fclose($file);
 
-    if ($success > 0) {
-        $msg = "Successfully imported $success employee(s).";
-        if ($skipped > 0)
-            $msg .= " Skipped $skipped row(s) due to errors or duplicates.";
+    if ($created > 0 || $updated > 0) {
+        $msg = "Success! Created: $created, Updated: $updated.";
+        if ($skipped > 0) $msg .= " Skipped $skipped rows.";
         redirectWith(BASE_URL . '/manager/employees.php', 'success', $msg);
     } else {
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', "Failed to import employees. ($skipped rows skipped)");
+        $err = "No records were imported. ($skipped rows skipped) Latest error: " . end($errors);
+        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', $err);
     }
 }
+
+
+
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
     require_once '../includes/functions.php';
@@ -730,7 +853,12 @@ require_once '../includes/header.php';
 $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
 $departments_result = $conn->query("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name");
 $departments = $departments_result ? $departments_result->fetch_all(MYSQLI_ASSOC) : [];
-$job_titles_result = $conn->query("SELECT job_title_id, job_title, department_id FROM job_titles WHERE is_active = 1 ORDER BY job_title");
+$job_titles_result = $conn->query("
+    SELECT job_title_id, job_title, department_id, rank_category_id, is_head, reports_to
+    FROM job_titles
+    WHERE is_active = 1
+    ORDER BY department_id, is_head DESC, job_title
+");
 $jobTitles = $job_titles_result ? $job_titles_result->fetch_all(MYSQLI_ASSOC) : [];
 
 $stepLabels = [
@@ -749,15 +877,29 @@ $stepLabels = [
 ];
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <p class="text-muted mb-0">Fill out the personal data sheet below</p>
-    <div>
-        <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#importModal">
-            <i class="fas fa-file-csv me-2"></i>Import Custom CSV
-        </button>
-        <!-- Back button removed as requested -->
+<div class="page-hero fadeup mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+        <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Employees</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-user-plus me-2" style="color:#BD9414;"></i>Add New Employee</h4>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importModal" style="background: linear-gradient(135deg, #28a745 0%, #218838 100%); border: none; padding: .5rem 1.25rem; border-radius: 8px; font-weight: 500; color: #fff;">
+                <i class="fas fa-file-csv me-2"></i>Import Custom CSV
+            </button>
+        </div>
     </div>
 </div>
+
+
+
+
+
+
+
+
+
+
 
 <div class="content-card">
     <div class="card-header">

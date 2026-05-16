@@ -85,7 +85,6 @@ $kra_total_weight = array_sum(array_map(fn($row) => (float) $row['weight'], $kra
 $behavior_total_weight = array_sum(array_map(fn($row) => (float) $row['weight'], $behavior_criteria));
 $kra_weight = (float) ($template['kra_weight'] ?? 80);
 $behavior_weight = (float) ($template['behavior_weight'] ?? 20);
-$target_position = $template['target_position'] ?: 'General / All Positions';
 $form_code = $template['form_code'] ?: 'Not specified';
 
 require_once '../includes/header.php';
@@ -301,8 +300,8 @@ require_once '../includes/header.php';
 
                     <div class="meta-grid mb-3">
                         <div class="meta-item">
-                            <span>Target Position</span>
-                            <strong><?php echo e($target_position); ?></strong>
+                            <span>Target Department</span>
+                            <strong><?php echo e($template['target_department'] ?: 'All Departments'); ?></strong>
                         </div>
                         <div class="meta-item">
                             <span>Evaluation Type</span>
