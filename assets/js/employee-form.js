@@ -355,7 +355,8 @@ function getChangeFieldLabel(name) {
         emergency_contact_relationship: 'Emergency Contact Relationship',
         emergency_contact_number: 'Emergency Contact Number',
         contract_start_date: 'Contract Start Date',
-        contract_end_date: 'Contract End Date'
+        contract_end_date: 'Contract End Date',
+        profile_picture: 'Profile Picture'
     };
 
     if (directLabels[normalized]) {
@@ -385,7 +386,7 @@ function shouldIgnoreComparisonField(element) {
     const type = (element.type || '').toLowerCase();
 
     if (!name || element.disabled) return true;
-    if (['submit', 'button', 'file', 'image', 'reset'].includes(type)) return true;
+    if (['submit', 'button', 'image', 'reset'].includes(type)) return true;
     if (['current_step', 'return_to', 'quick_save'].includes(name)) return true;
 
     return false;
@@ -407,6 +408,20 @@ function getElementComparisonValue(element) {
             raw: element.checked ? String(element.value || '').trim() : '',
             display: element.checked ? String(element.value || '').trim() : ''
         };
+    }
+
+    if (type === 'file') {
+        const files = Array.from(element.files || []);
+        if (files.length === 0) {
+            return { raw: '', display: '' };
+        }
+
+        const raw = files
+            .map((file) => `${file.name}:${file.size}:${file.lastModified}`)
+            .join('|');
+        const display = files.map((file) => file.name).join(', ');
+
+        return { raw, display };
     }
 
     if (tagName === 'select') {

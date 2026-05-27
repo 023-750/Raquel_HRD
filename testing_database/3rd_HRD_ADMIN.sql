@@ -14,8 +14,4 @@ REPLACE INTO employee_contacts (employee_id, personal_email) VALUES
 (101, 'hr_manager@example.com');
 
 
-REPLACE INTO users (user_id, employee_id, username, email, full_name, password_hash, role, branch_id, is_active, created_at) VALUES
-(2, 101, 'elena.delgado', 'hr_manager@example.com', 'Elena Delgado', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'HR Manager', 102, 1, NOW());
-
-
 SET FOREIGN_KEY_CHECKS = 1;

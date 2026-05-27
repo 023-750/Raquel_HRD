@@ -198,70 +198,6 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
 
 <style>
     @media (max-width: 768px) {
-        .table-responsive {
-            border: none;
-        }
-        #branchTable {
-            border: none;
-        }
-        #branchTable thead {
-            display: none;
-        }
-        #branchTable tbody {
-            background: transparent;
-        }
-        #branchTable tr {
-            display: block;
-            background: #fff;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            padding: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            border: 1px solid #f0f0f0;
-            position: relative;
-        }
-        #branchTable td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: none;
-            padding: 10px 0;
-            text-align: right;
-            font-size: 0.9rem;
-        }
-        #branchTable td::before {
-            content: attr(data-label);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            text-align: left;
-        }
-        /* Branch Name Highlight */
-        #branchTable td:nth-child(1) {
-            justify-content: flex-start;
-            padding-top: 5px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #f5f5f5;
-        }
-        #branchTable td:nth-child(1)::before {
-            display: none;
-        }
-        #branchTable td:nth-child(1) strong {
-            font-size: 1.1rem;
-            color: var(--primary-blue);
-        }
-        /* Action buttons grouping */
-        #branchTable td:last-child {
-            justify-content: flex-end;
-            gap: 10px;
-            border-top: 1px solid #f5f5f5;
-            margin-top: 10px;
-            padding-bottom: 5px;
-        }
-        #branchTable td:last-child::before {
-            display: none;
-        }
         #paginationWrapper {
             flex-direction: column;
             gap: 15px;
@@ -344,7 +280,8 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
         </div>
     </div>
     <div class="cc-body p-0">
-        <div class="table-responsive">
+        <!-- Desktop Table (hidden on mobile) -->
+        <div class="table-responsive d-none d-md-block">
             <table class="table table-hover" id="branchTable">
                 <thead>
                     <tr>
@@ -406,6 +343,55 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile Card List (visible only on mobile) -->
+        <div class="mobile-list-view d-block d-md-none p-3">
+            <div class="student-list">
+                <?php 
+                if ($branch_count === 0): ?>
+                    <div class="text-center py-4 text-muted">No branches found. Add your first branch above.</div>
+                <?php else:
+                    $branches->data_seek(0);
+                    while ($b = $branches->fetch_assoc()): ?>
+                    <div class="student-item" data-branch-id="<?php echo $b['branch_id']; ?>">
+                        <div class="student-avatar">
+                            <div class="rounded-circle text-white d-flex align-items-center justify-content-center"
+                                style="width: 46px; height: 46px; background: var(--primary-light); font-size: 1.2rem; font-weight: bold; border: 2px solid var(--bg-gray); box-shadow: 0 2px 5px rgba(0,0,0,0.08);">
+                                <i class="fas fa-building" style="font-size: 1rem;"></i>
+                            </div>
+                        </div>
+                        <div class="student-info">
+                            <div class="student-name"><?php echo e($b['branch_name']); ?></div>
+                            <div class="student-meta">
+                                <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                <span><?php echo e($b['location']); ?></span>
+                            </div>
+                            <div class="student-meta mt-1">
+                                <span class="badge bg-info">Employees: <?php echo $b['employee_count']; ?></span>
+                                &bull; <span class="badge bg-secondary">Users: <?php echo $b['user_count']; ?></span>
+                            </div>
+                        </div>
+                        <div class="ms-auto text-end d-flex flex-column align-items-end gap-2">
+                            <small class="text-muted" style="font-size: 0.68rem;"><?php echo formatDate($b['created_at']); ?></small>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-xs btn-outline-primary" title="Edit"
+                                    onclick="openEditModal(<?php echo $b['branch_id']; ?>, '<?php echo e(addslashes($b['branch_name'])); ?>', '<?php echo e(addslashes($b['location'])); ?>')"
+                                    data-bs-toggle="modal" data-bs-target="#editBranchModal">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-xs btn-outline-danger" title="Delete"
+                                    onclick="setDeleteTarget(<?php echo $b['branch_id']; ?>, '<?php echo e(addslashes($b['branch_name'])); ?>', <?php echo $b['employee_count'] + $b['user_count']; ?>)"
+                                    data-bs-toggle="modal" data-bs-target="#deleteBranchModal">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endwhile;
+                endif; ?>
+            </div>
+        </div>
+
         <!-- Pagination Controls -->
         <div class="d-flex justify-content-between align-items-center p-3 border-top" id="paginationWrapper">
             <div id="paginationInfo" class="text-muted small"></div>
@@ -612,6 +598,20 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
             }
         });
 
+        // Filter mobile card items
+        const mobileList = document.querySelector(".mobile-list-view .student-list");
+        const allCards = mobileList ? Array.from(mobileList.querySelectorAll(".student-item")) : [];
+        let visibleCards = [];
+        allCards.forEach(card => {
+            const cardText = card.textContent.toLowerCase();
+            const match = filterInput === "" || cardText.includes(filterInput);
+            if (match) {
+                visibleCards.push(card);
+            } else {
+                card.style.display = "none";
+            }
+        });
+
         if (currentSortColumn !== -1) {
             visibleRows.sort((a, b) => {
                 let valA = a.querySelectorAll("td")[currentSortColumn].textContent.trim();
@@ -641,8 +641,14 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
         const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
         const endIdx = startIdx + ITEMS_PER_PAGE;
 
+        // Paginate desktop rows
         visibleRows.forEach((row, index) => {
             row.style.display = (index >= startIdx && index < endIdx) ? "" : "none";
+        });
+
+        // Paginate mobile cards
+        visibleCards.forEach((card, index) => {
+            card.style.display = (index >= startIdx && index < endIdx) ? "" : "none";
         });
 
         updatePaginationUI(visibleRows.length, totalPages);

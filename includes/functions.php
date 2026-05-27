@@ -600,21 +600,7 @@ function getPerformanceLevel($score)
 
 function calculateEvalTotal($kra_subtotal, $behavior_average, $kra_weight = 80, $behavior_weight = 20)
 {
-
-    // ── ORIGINAL FORMULA (additive 80/20 weighted sum) ── COMMENTED OUT ──────────
-
-    // To revert: uncomment the line below and remove / comment the NEW formula line.
-
-    // return round(($kra_subtotal * $kra_weight / 100) + ($behavior_average * $behavior_weight / 100), 2);
-
-    // ─────────────────────────────────────────────────────────────────────────────
-
-
-
-    // NEW FORMULA — weight × rating × average  (÷ 4 keeps result on the 1–4 scale)
-
-    return round(($kra_subtotal * $behavior_average) / 4.0, 2);
-
+    return round(($kra_subtotal * $kra_weight / 100) + ($behavior_average * $behavior_weight / 100), 2);
 }
 
 
@@ -1404,6 +1390,35 @@ function ensureEvaluationWorkflowSchema($conn)
             $conn->query("ALTER TABLE evaluation_criteria ADD COLUMN is_custom TINYINT(1) DEFAULT 0 AFTER sort_order");
         }
 
+        $score_columns = [];
+        $score_cols_result = $conn->query('SHOW COLUMNS FROM evaluation_scores');
+        if ($score_cols_result) {
+            while ($score_col = $score_cols_result->fetch_assoc()) {
+                $score_columns[$score_col['Field']] = true;
+            }
+        }
+
+        $score_optional_columns = [
+            'supervisor_override_score' => "ALTER TABLE evaluation_scores ADD COLUMN supervisor_override_score DECIMAL(5,2) NULL DEFAULT NULL COMMENT 'Score overridden by HR Supervisor' AFTER weighted_score",
+            'supervisor_override_by' => "ALTER TABLE evaluation_scores ADD COLUMN supervisor_override_by INT NULL DEFAULT NULL COMMENT 'User ID of HR Supervisor who overrode' AFTER supervisor_override_score",
+            'supervisor_override_at' => "ALTER TABLE evaluation_scores ADD COLUMN supervisor_override_at DATETIME NULL DEFAULT NULL COMMENT 'When override was made' AFTER supervisor_override_by",
+            'manager_override_score' => "ALTER TABLE evaluation_scores ADD COLUMN manager_override_score DECIMAL(5,2) NULL DEFAULT NULL COMMENT 'Score overridden by HR Manager' AFTER supervisor_override_at",
+            'manager_override_by' => "ALTER TABLE evaluation_scores ADD COLUMN manager_override_by INT NULL DEFAULT NULL COMMENT 'User ID of HR Manager who overrode' AFTER manager_override_score",
+            'manager_override_at' => "ALTER TABLE evaluation_scores ADD COLUMN manager_override_at DATETIME NULL DEFAULT NULL COMMENT 'When manager override was made' AFTER manager_override_by",
+        ];
+
+        foreach ($score_optional_columns as $column => $sql) {
+            if (!isset($score_columns[$column])) {
+                $conn->query($sql);
+            }
+        }
+
+        $conn->query("
+            UPDATE notifications
+            SET link = REPLACE(link, '/staff/my-submissions.php', '/staff/evaluation-history.php')
+            WHERE link LIKE '%/staff/my-submissions.php%'
+        ");
+
         return true;
 
     } catch (mysqli_sql_exception $e) {
@@ -1579,7 +1594,80 @@ function isSupervisorOfEmployee($conn, $supervisor_user_id, $employee_id)
 
 
     return $count > 0;
-
 }
 
+/**
+ * Recalculate evaluation scores (KRA subtotal, Behavior average, total score, performance level)
+ * after a supervisor or manager override.
+ */
+function recalculateEvaluationScores($conn, $evaluation_id)
+{
+    $evaluation_id = (int)$evaluation_id;
+
+    // Fetch the evaluation details (template weight splits)
+    $eval_q = $conn->query("SELECT ev.*, et.kra_weight, et.behavior_weight 
+                            FROM evaluations ev 
+                            LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id 
+                            WHERE ev.evaluation_id = $evaluation_id");
+    
+    if (!$eval_q || $eval_q->num_rows === 0) {
+        return false;
+    }
+    
+    $eval = $eval_q->fetch_assoc();
+    $kra_weight_pct = (float)($eval['kra_weight'] ?? 80);
+    $beh_weight_pct = (float)($eval['behavior_weight'] ?? 20);
+
+    // Fetch all scores for this evaluation
+    $scores_q = $conn->query("SELECT es.*, ec.section, ec.weight 
+                              FROM evaluation_scores es 
+                              JOIN evaluation_criteria ec ON es.criterion_id = ec.criterion_id 
+                              WHERE es.evaluation_id = $evaluation_id");
+
+    $kra_subtotal = 0;
+    $beh_total = 0;
+    $beh_count = 0;
+
+    while ($row = $scores_q->fetch_assoc()) {
+        $score_id = (int)$row['score_id'];
+        
+        // Hierarchy of scores: Manager Override > Supervisor Override > Original Score
+        $effective_score = $row['score_value'];
+        if ($row['supervisor_override_score'] !== null) {
+            $effective_score = (float)$row['supervisor_override_score'];
+        }
+        if ($row['manager_override_score'] !== null) {
+            $effective_score = (float)$row['manager_override_score'];
+        }
+
+        // Keep database up-to-date with active weighted score
+        if ($row['section'] === 'KRA') {
+            $weight = (float)$row['weight'];
+            $weighted = round(($weight / 100) * $effective_score, 2);
+            $kra_subtotal += $weighted;
+            
+            $conn->query("UPDATE evaluation_scores SET weighted_score = $weighted WHERE score_id = $score_id");
+        } else {
+            $beh_total += $effective_score;
+            $beh_count++;
+            
+            $conn->query("UPDATE evaluation_scores SET weighted_score = $effective_score WHERE score_id = $score_id");
+        }
+    }
+
+    $kra_subtotal = round($kra_subtotal, 2);
+    $behavior_average = $beh_count > 0 ? round($beh_total / $beh_count, 2) : 0;
+
+    // Recalculate overall score
+    $total_score = calculateEvalTotal($kra_subtotal, $behavior_average, $kra_weight_pct, $beh_weight_pct);
+    $performance_level = getPerformanceLevel($total_score);
+
+    // Update main evaluations table
+    $stmt = $conn->prepare("UPDATE evaluations SET kra_subtotal = ?, behavior_average = ?, total_score = ?, performance_level = ?, updated_at = NOW() WHERE evaluation_id = ?");
+    $stmt->bind_param("dddsi", $kra_subtotal, $behavior_average, $total_score, $performance_level, $evaluation_id);
+    $result = $stmt->execute();
+    $stmt->close();
+
+    return $result;
+}
 ?>

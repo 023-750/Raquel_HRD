@@ -5,106 +5,607 @@ checkRole(['Employee']);
 require_once '../includes/functions.php';
 
 $employee_id = (int)($_SESSION['employee_id'] ?? 0);
+$user_id     = (int)($_SESSION['user_id']     ?? 0);
 
+// ── Employee core info ──────────────────────────────────────────────────────
 $emp_stmt = $conn->prepare("
-    SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.profile_picture,
-           d.department_name, b.branch_name, e.hire_date,
+    SELECT e.employee_id, e.employee_code, e.first_name, e.last_name,
+           e.job_title, e.profile_picture, e.hire_date,
            e.employment_status, e.employment_type,
+           d.department_name, b.branch_name,
            rc.rank_name
     FROM employees e
-    LEFT JOIN departments d ON e.department_id = d.department_id
-    LEFT JOIN branches b    ON e.branch_id    = b.branch_id
+    LEFT JOIN departments    d  ON e.department_id      = d.department_id
+    LEFT JOIN branches       b  ON e.branch_id          = b.branch_id
     LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
     WHERE e.employee_id = ?
 ");
 $emp_stmt->bind_param("i", $employee_id);
 $emp_stmt->execute();
-$emp = $emp_stmt->get_result()->fetch_assoc();
+$emp = $emp_stmt->get_result()->fetch_assoc() ?? [];
 $emp_stmt->close();
 
+// ── Years of service ────────────────────────────────────────────────────────
+$years_of_service = 0;
+$months_of_service = 0;
+if (!empty($emp['hire_date'])) {
+    $hire = new DateTime($emp['hire_date']);
+    $now  = new DateTime();
+    $diff = $hire->diff($now);
+    $years_of_service  = $diff->y;
+    $months_of_service = $diff->m;
+}
+
+// ── Active / pending evaluations for this employee ──────────────────────────
+$active_eval = null;
+$eval_stmt = $conn->prepare("
+    SELECT ev.evaluation_id, ev.status, ev.evaluation_type,
+           ev.evaluation_period_start, ev.evaluation_period_end,
+           ev.total_score, ev.performance_level,
+           et.template_name AS template_title
+    FROM evaluations ev
+    LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
+    WHERE ev.employee_id = ? AND ev.deleted_at IS NULL
+    ORDER BY ev.created_at DESC
+    LIMIT 1
+");
+$eval_stmt->bind_param("i", $employee_id);
+$eval_stmt->execute();
+$active_eval = $eval_stmt->get_result()->fetch_assoc();
+$eval_stmt->close();
+
+// ── All evaluations count ───────────────────────────────────────────────────
+$total_evals = 0;
+$completed_evals = 0;
+$r = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE employee_id = $employee_id AND deleted_at IS NULL");
+if ($r) $total_evals = (int)$r->fetch_assoc()['c'];
+$r2 = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE employee_id = $employee_id AND status = 'Approved' AND deleted_at IS NULL");
+if ($r2) $completed_evals = (int)$r2->fetch_assoc()['c'];
+
+$pending_template_count = 0;
+$employee_dept = $emp['department_name'] ?? '';
+$pending_templates_stmt = $conn->prepare("
+    SELECT COUNT(*) AS total
+    FROM evaluation_templates et
+    WHERE et.status = 'Active'
+      AND et.deleted_at IS NULL
+      AND (et.target_department IS NULL OR et.target_department = '' OR et.target_department = 'All Departments' OR et.target_department = ?)
+      AND NOT EXISTS (
+          SELECT 1
+          FROM evaluations ev
+          WHERE ev.employee_id = ?
+            AND ev.template_id = et.template_id
+            AND ev.deleted_at IS NULL
+            AND ev.status NOT IN ('Draft', 'Returned', 'Rejected', 'Pending Self-Rating')
+      )
+");
+$pending_templates_stmt->bind_param("si", $employee_dept, $employee_id);
+$pending_templates_stmt->execute();
+$pending_template_count = (int) ($pending_templates_stmt->get_result()->fetch_assoc()['total'] ?? 0);
+$pending_templates_stmt->close();
+
+// ── Latest approved score ───────────────────────────────────────────────────
+$latest_score = null;
+$score_stmt = $conn->prepare("
+    SELECT total_score, performance_level, approved_date
+    FROM evaluations
+    WHERE employee_id = ? AND status = 'Approved' AND deleted_at IS NULL
+    ORDER BY approved_date DESC LIMIT 1
+");
+$score_stmt->bind_param("i", $employee_id);
+$score_stmt->execute();
+$latest_score = $score_stmt->get_result()->fetch_assoc();
+$score_stmt->close();
+
+// ── Career movements ────────────────────────────────────────────────────────
+$career_movements = [];
+$cm_stmt = $conn->prepare("
+    SELECT cm.movement_type, cm.previous_position, cm.new_position,
+           cm.effective_date, cm.approval_status,
+           b.branch_name AS new_branch_name
+    FROM career_movements cm
+    LEFT JOIN branches b ON cm.new_branch_id = b.branch_id
+    WHERE cm.employee_id = ?
+    ORDER BY cm.effective_date DESC
+    LIMIT 5
+");
+$cm_stmt->bind_param("i", $employee_id);
+$cm_stmt->execute();
+$career_movements = $cm_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$cm_stmt->close();
+
+// ── Recent notifications ────────────────────────────────────────────────────
+$recent_notifs = getRecentNotifications($conn, $user_id, 4, 'employee');
+
+// ── Has subordinates? ───────────────────────────────────────────────────────
+$is_supervisor = hasEmployeeSubordinates($conn, $employee_id);
+
+// ── Pending subordinate ratings count ──────────────────────────────────────
+$pending_sub_count = 0;
+if ($is_supervisor) {
+    ensureEmployeesReportsTo($conn);
+    $ps = $conn->query("
+        SELECT COUNT(*) AS total
+        FROM evaluations ev
+        INNER JOIN employees e ON ev.employee_id = e.employee_id
+        WHERE e.reports_to = $employee_id
+          AND ev.status = 'Pending Supervisor'
+          AND ev.deleted_at IS NULL
+    ");
+    if ($ps) $pending_sub_count = (int)$ps->fetch_assoc()['total'];
+}
+
 require_once '../includes/header.php';
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function evalStatusBadge(string $status): string {
+    $map = [
+        'Draft'                    => ['secondary', 'fa-pencil-alt'],
+        'Pending Self-Rating'      => ['warning',   'fa-user-edit'],
+        'Pending Supervisor'       => ['info',      'fa-user-check'],
+        'Pending HR Consolidation' => ['primary',   'fa-layer-group'],
+        'Pending Manager'          => ['primary',   'fa-user-tie'],
+        'Supervisor Confirmed'     => ['success',   'fa-check-double'],
+        'Approved'                 => ['success',   'fa-check-circle'],
+        'Rejected'                 => ['danger',    'fa-times-circle'],
+        'Returned'                 => ['warning',   'fa-undo'],
+    ];
+    [$color, $icon] = $map[$status] ?? ['secondary', 'fa-circle'];
+    return "<span class=\"badge bg-{$color}\"><i class=\"fas {$icon} me-1\"></i>" . htmlspecialchars($status) . "</span>";
+}
+
+function movementIcon(string $type): string {
+    $icons = [
+        'Promotion'   => 'fa-arrow-up text-success',
+        'Transfer'    => 'fa-exchange-alt text-info',
+        'Demotion'    => 'fa-arrow-down text-danger',
+        'Role Change' => 'fa-sync-alt text-warning',
+    ];
+    return $icons[$type] ?? 'fa-circle text-secondary';
+}
 ?>
 
+<!-- ══════════════════════════════════════════════════════════════════════════
+     HERO BANNER
+══════════════════════════════════════════════════════════════════════════ -->
 <div class="page-hero fadeup">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-0 gap-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-4">
         <div class="d-flex align-items-center gap-4 flex-wrap">
-            <img src="<?php echo getEmployeeAvatar($emp['profile_picture']??''); ?>?v=<?php echo time();?>"
-                onclick="viewFullImage('<?php echo getEmployeeAvatar($emp['profile_picture']??''); ?>', '<?php echo e(($emp['first_name']??'') . ' ' . ($emp['last_name']??'')); ?>')"
-                class="cursor-pointer"
-                style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.3); box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s;">
+            <img src="<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>?v=<?php echo time(); ?>"
+                 onclick="viewFullImage('<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>', '<?php echo e(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? '')); ?>')"
+                 class="cursor-pointer"
+                 style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.35);box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .2s;">
             <div>
-                <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">Employee Portal · Welcome</div>
-                <h2 class="text-white fw-bold mb-1 mt-1">Hello, <?php echo e($emp['first_name']??'Employee'); ?>!</h2>
+                <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.55);">Employee Portal · Welcome Back</div>
+                <h2 class="text-white fw-bold mb-1 mt-1" style="font-size:1.6rem;">
+                    <i class="fas fa-user-circle me-1"></i> Hello, <?php echo e(trim(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? ''))); ?>!
+                </h2>
                 <p class="mb-0 text-white-50 small">
-                    <i class="fas fa-briefcase me-1"></i><?php echo e($emp['job_title']??'—'); ?>
-                    <?php if(!empty($emp['rank_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['rank_name']); ?><?php endif; ?>
-                    <?php if(!empty($emp['department_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['department_name']); ?><?php endif; ?>
-                    <?php if(!empty($emp['branch_name'])): ?> &nbsp;•&nbsp; <?php echo e($emp['branch_name']); ?><?php endif; ?>
+                    <i class="fas fa-briefcase me-1"></i><?php echo e($emp['job_title'] ?? '—'); ?>
+                    <?php if (!empty($emp['department_name'])): ?>&nbsp;·&nbsp;<i class="fas fa-sitemap me-1"></i><?php echo e($emp['department_name']); ?><?php endif; ?>
+                    <?php if (!empty($emp['branch_name'])): ?>&nbsp;·&nbsp;<i class="fas fa-map-marker-alt me-1"></i><?php echo e($emp['branch_name']); ?><?php endif; ?>
                 </p>
+                <?php if (!empty($emp['rank_name'])): ?>
+                <p class="mb-0 mt-1">
+                    <span class="badge" style="background:rgba(255,255,255,.18);color:#fff;font-size:.72rem;letter-spacing:.5px;">
+                        <i class="fas fa-layer-group me-1"></i><?php echo e($emp['rank_name']); ?>
+                    </span>
+                    <span class="badge ms-1" style="background:rgba(255,255,255,.18);color:#fff;font-size:.72rem;">
+                        <i class="fas fa-circle me-1" style="font-size:.5rem;"></i><?php echo e($emp['employment_status'] ?? '—'); ?>
+                    </span>
+                </p>
+                <?php endif; ?>
             </div>
         </div>
-        <div class="d-none d-lg-block text-end">
-            <div class="text-white fw-bold" style="font-size: 1.1rem;"><?php echo date('h:i A'); ?></div>
-            <div class="text-white-50 x-small"><?php echo date('l, F d'); ?></div>
+        <div class="text-end d-none d-md-block">
+            <div class="text-white fw-bold" style="font-size:1.8rem;line-height:1;" id="live-time"><?php echo date('h:i A'); ?></div>
+            <div class="text-white-50 small mt-1"><?php echo date('l, F d, Y'); ?></div>
+            <div class="mt-2">
+                <span class="badge" style="background:rgba(255,255,255,.18);color:#fff;font-size:.72rem;">
+                    <i class="fas fa-calendar-alt me-1"></i>
+                    Hired <?php echo formatDate($emp['hire_date'] ?? ''); ?>
+                </span>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="row g-4">
-  <div class="col-lg-8">
-    <div class="content-card mb-4">
-      <div class="card-header"><h5><i class="fas fa-star me-2"></i>360-Degree Self Rating</h5></div>
-      <div class="card-body">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
-          <div>
-            <div class="fw-semibold mb-1">Start your own evaluation</div>
-            <div class="text-muted small">Complete your self-rating here before Supervisor and HR review.</div>
-          </div>
-          <a href="<?php echo BASE_URL; ?>/employee/self-rating.php" class="btn btn-primary">
-            <i class="fas fa-play me-2"></i>Open Self Rating
-          </a>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     STATS ROW
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="row g-3 mb-4 fadeup">
+    <!-- Years of Service -->
+    <div class="col-6 col-md-3">
+        <div class="content-card h-100 text-center" style="padding:1.25rem;">
+            <div style="width:50px;height:50px;background:linear-gradient(135deg, var(--primary-light) 0%, #e0b324 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
+                <i class="fas fa-star text-white" style="font-size:1.1rem;"></i>
+            </div>
+            <div style="font-size:2rem;font-weight:800;line-height:1;color:var(--text-dark);"><?php echo $years_of_service; ?><span style="font-size:1rem;font-weight:500;color:var(--text-muted);"> yr<?php echo $years_of_service != 1 ? 's' : ''; ?></span></div>
+            <?php if ($months_of_service > 0): ?>
+            <div style="font-size:.75rem;color:var(--text-muted);"><?php echo $months_of_service; ?> month<?php echo $months_of_service != 1 ? 's' : ''; ?> more</div>
+            <?php endif; ?>
+            <div class="mt-1" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Years of Service</div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg-4">
-    <div class="content-card mb-4">
-      <div class="card-header"><h5><i class="fas fa-briefcase me-2"></i>My Employment</h5></div>
-      <div class="card-body">
-        <table class="table table-borderless table-sm mb-0">
-          <tr><td class="company-id-text">Company ID</td><td><strong class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></strong></td></tr>
-          <tr><td class="text-muted">Rank</td><td><span class="rank-badge"><?php echo e($emp['rank_name']??'—'); ?></span></td></tr>
-          <tr><td class="text-muted">Full Name</td><td><strong><?php echo e(trim(($emp['first_name']??'').' '.($emp['last_name']??''))); ?></strong></td></tr>
-          <tr><td class="text-muted">Position</td><td><?php echo e($emp['job_title']??'—'); ?></td></tr>
-          <tr><td class="text-muted">Department</td><td><?php echo e($emp['department_name']??'—'); ?></td></tr>
-          <tr><td class="text-muted">Branch</td><td><?php echo e($emp['branch_name']??'—'); ?></td></tr>
-          <tr><td class="text-muted">Hired</td><td><?php echo formatDate($emp['hire_date']??''); ?></td></tr>
-          <tr><td class="text-muted">Status</td><td><?php echo e($emp['employment_status']??'—'); ?></td></tr>
-          <tr><td class="text-muted">Type</td><td><?php echo e($emp['employment_type']??'—'); ?></td></tr>
-        </table>
-        <div class="mt-3">
-          <a href="<?php echo BASE_URL; ?>/employee/my-employment.php" class="btn btn-primary w-100">
-            <i class="fas fa-eye me-2"></i>View Full Employment Info
-          </a>
-        </div>
-      </div>
     </div>
 
-    <div class="content-card h-100">
-      <div class="card-header"><h5><i class="fas fa-user-check me-2"></i>Self-Service Notes</h5></div>
-      <div class="card-body">
-        <div class="alert alert-light border mb-3">
-          <div class="fw-semibold mb-1">Official Employment Information</div>
-          <div class="small text-muted">Use <strong>My Employment</strong> to review your official employment details.</div>
+    <!-- Total Evaluations -->
+    <div class="col-6 col-md-3">
+        <div class="content-card h-100 text-center" style="padding:1.25rem;">
+            <div style="width:50px;height:50px;background:linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
+                <i class="fas fa-clipboard-list text-white" style="font-size:1.1rem;"></i>
+            </div>
+            <div style="font-size:2rem;font-weight:800;line-height:1;color:var(--text-dark);"><?php echo $total_evals; ?></div>
+            <div style="font-size:.75rem;color:var(--text-muted);"><?php echo $completed_evals; ?> approved · <?php echo $pending_template_count; ?> pending</div>
+            <div class="mt-1" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Total Evaluations</div>
         </div>
-        <div class="alert alert-light border mb-0">
-          <div class="fw-semibold mb-1">360-Degree Self-Rating</div>
-          <div class="small text-muted">Use <strong>Self Rating</strong> to encode and submit your employee self-evaluation.</div>
-        </div>
-      </div>
     </div>
-  </div>
+
+    <!-- Latest Score -->
+    <div class="col-6 col-md-3">
+        <div class="content-card h-100 text-center" style="padding:1.25rem;">
+            <div style="width:50px;height:50px;background:linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-light) 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
+                <i class="fas fa-chart-line text-white" style="font-size:1.1rem;"></i>
+            </div>
+            <?php if ($latest_score): ?>
+                <div style="font-size:2rem;font-weight:800;line-height:1;color:var(--text-dark);"><?php echo number_format((float)$latest_score['total_score'], 1); ?></div>
+                <div style="font-size:.75rem;color:var(--text-muted);"><?php echo e($latest_score['performance_level'] ?? '—'); ?></div>
+            <?php else: ?>
+                <div style="font-size:1.4rem;font-weight:700;line-height:1;color:var(--text-muted);">N/A</div>
+                <div style="font-size:.75rem;color:var(--text-muted);">No approved score yet</div>
+            <?php endif; ?>
+            <div class="mt-1" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Latest Score</div>
+        </div>
+    </div>
+
+    <!-- Career Movements -->
+    <div class="col-6 col-md-3">
+        <div class="content-card h-100 text-center" style="padding:1.25rem;">
+            <div style="width:50px;height:50px;background:linear-gradient(135deg, var(--accent) 0%, #b31218 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
+                <i class="fas fa-route text-white" style="font-size:1.1rem;"></i>
+            </div>
+            <div style="font-size:2rem;font-weight:800;line-height:1;color:var(--text-dark);"><?php echo count($career_movements); ?></div>
+            <div style="font-size:.75rem;color:var(--text-muted);">recorded movements</div>
+            <div class="mt-1" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Career Movements</div>
+        </div>
+    </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MAIN BODY — 2 columns
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="row g-4 fadeup">
+
+    <!-- LEFT COL ─────────────────────────────────────────────────────────── -->
+    <div class="col-lg-6">
+
+        <!-- Current Evaluation Status -->
+        <div class="content-card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-clipboard-check me-2"></i>My Evaluation Status</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="<?php echo BASE_URL; ?>/employee/self-rating.php" class="badge bg-warning text-dark text-decoration-none">
+                        <?php echo $pending_template_count; ?> pending
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <?php if ($active_eval): ?>
+                <div style="background:var(--bg-gray);border-radius:12px;padding:1.25rem;" class="mb-3">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <div class="fw-bold mb-1"><?php echo e($active_eval['template_title'] ?? 'Evaluation'); ?></div>
+                            <div class="text-muted small mb-2">
+                                <i class="fas fa-tag me-1"></i><?php echo e($active_eval['evaluation_type'] ?? '—'); ?>
+                                <?php if (!empty($active_eval['evaluation_period_start'])): ?>
+                                &nbsp;·&nbsp;
+                                <i class="fas fa-calendar me-1"></i>
+                                <?php echo formatDate($active_eval['evaluation_period_start']); ?> – <?php echo formatDate($active_eval['evaluation_period_end'] ?? ''); ?>
+                                <?php endif; ?>
+                            </div>
+                            <?php echo evalStatusBadge($active_eval['status'] ?? 'Draft'); ?>
+                        </div>
+                        <?php if (!empty($active_eval['total_score'])): ?>
+                        <div class="text-end">
+                            <div style="font-size:2rem;font-weight:800;color:var(--primary-blue);line-height:1;"><?php echo number_format((float)$active_eval['total_score'], 1); ?></div>
+                            <div class="text-muted" style="font-size:.75rem;"><?php echo e($active_eval['performance_level'] ?? ''); ?></div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if (in_array($active_eval['status'], ['Pending Self-Rating', 'Draft'])): ?>
+                    <div class="mt-3">
+                        <a href="<?php echo BASE_URL; ?>/employee/self-rating.php" class="btn btn-primary btn-sm">
+                            <i class="fas fa-play me-1"></i>Continue Self Rating
+                        </a>
+                    </div>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Workflow Progress Bar -->
+                <?php
+                $workflow_steps = ['Pending Self-Rating', 'Pending Supervisor', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                $workflow_labels = ['Pending Self-Rating', 'Pending Supervisor', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                $current_status = $active_eval['status'] ?? '';
+                $status_step_map = [
+                    'Draft' => 0,
+                    'Returned' => 0,
+                    'Pending Self-Rating' => 0,
+                    'Pending Supervisor' => 1,
+                    'Supervisor Confirmed' => 2,
+                    'Pending HR Consolidation' => 2,
+                    'Pending Manager' => 3,
+                    'Approved' => 4,
+                    'Rejected' => 4,
+                ];
+                $step_index = $status_step_map[$current_status] ?? null;
+                if ($step_index === null) {
+                    $step_index = array_search($current_status, $workflow_steps, true);
+                }
+                if ($step_index === false || $step_index === null) {
+                    $step_index = ($current_status === 'Approved') ? 4 : 0;
+                }
+                $progress_pct = round(($step_index / (count($workflow_steps) - 1)) * 100);
+                ?>
+                <div class="mt-2">
+                    <div class="d-flex justify-content-between mb-1" style="font-size:.65rem;color:var(--text-muted);">
+                        <?php foreach ($workflow_labels as $label): ?>
+                        <span><?php echo e($label); ?></span>
+                        <?php endforeach; ?>
+                    </div>
+                    <div class="progress" style="height:8px;border-radius:10px;">
+                        <div class="progress-bar bg-primary" style="width:<?php echo $progress_pct; ?>%;border-radius:10px;transition:width .6s;"></div>
+                    </div>
+                </div>
+
+                <?php else: ?>
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox" style="font-size:2.5rem;opacity:.2;"></i>
+                    <p class="text-muted mt-3 mb-0">No active evaluation assigned.</p>
+                    <p class="text-muted small">Your HR will assign one when it's time.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Employment Snapshot -->
+        <div class="content-card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-id-badge me-2"></i>Employment Snapshot</h5>
+                <a href="<?php echo BASE_URL; ?>/employee/my-employment.php" class="btn btn-sm btn-outline-primary">Full Details</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-borderless table-sm mb-0" style="font-size:.85rem;">
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td class="text-muted px-3 py-2" style="width:40%;">Company ID</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo e(getEmployeeDisplayId($emp)); ?></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td class="text-muted px-3 py-2">Full Name</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo e(trim(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? ''))); ?></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td class="text-muted px-3 py-2">Position</td>
+                        <td class="px-3 py-2"><?php echo e($emp['job_title'] ?? '—'); ?></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td class="text-muted px-3 py-2">Department</td>
+                        <td class="px-3 py-2"><?php echo e($emp['department_name'] ?? '—'); ?></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td class="text-muted px-3 py-2">Branch</td>
+                        <td class="px-3 py-2"><?php echo e($emp['branch_name'] ?? '—'); ?></td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td class="text-muted px-3 py-2">Rank</td>
+                        <td class="px-3 py-2">
+                            <?php if (!empty($emp['rank_name'])): ?>
+                            <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:.72rem;"><?php echo e($emp['rank_name']); ?></span>
+                            <?php else: ?>—<?php endif; ?>
+                        </td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td class="text-muted px-3 py-2">Status</td>
+                        <td class="px-3 py-2">
+                            <?php
+                            $st = $emp['employment_status'] ?? '—';
+                            $stc = in_array($st, ['Regular','Full-time']) ? 'success' : (in_array($st, ['Probationary','OJT','Trainee']) ? 'warning' : 'secondary');
+                            echo "<span class=\"badge bg-{$stc} text-white\" style=\"font-size:.72rem;\">" . e($st) . "</span>";
+                            ?>
+                        </td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border-color);">
+                        <td class="text-muted px-3 py-2">Type</td>
+                        <td class="px-3 py-2"><?php echo e($emp['employment_type'] ?? '—'); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted px-3 py-2">Hire Date</td>
+                        <td class="px-3 py-2"><?php echo formatDate($emp['hire_date'] ?? ''); ?></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+    </div><!-- /LEFT COL -->
+
+    <!-- RIGHT COL ────────────────────────────────────────────────────────── -->
+    <div class="col-lg-6">
+
+        <!-- Career Timeline -->
+        <div class="content-card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-route me-2"></i>Career Timeline</h5>
+                <a href="<?php echo BASE_URL; ?>/employee/career-movement-request.php" class="btn btn-sm btn-outline-primary">Request Movement</a>
+            </div>
+            <div class="card-body">
+                <?php if (!empty($career_movements)): ?>
+                <div class="timeline">
+                    <?php foreach ($career_movements as $i => $cm): ?>
+                    <div class="timeline-item <?php echo $i === 0 ? 'latest' : ''; ?>">
+                        <div class="timeline-icon">
+                            <i class="fas <?php echo movementIcon($cm['movement_type']); ?>" style="font-size:.8rem;"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
+                                <div>
+                                    <span class="fw-semibold"><?php echo e($cm['movement_type']); ?></span>
+                                    <?php if (!empty($cm['previous_position'])): ?>
+                                    <span class="text-muted small"> · From: <?php echo e($cm['previous_position']); ?></span>
+                                    <?php endif; ?>
+                                    <div class="small"><?php echo e($cm['new_position']); ?>
+                                        <?php if (!empty($cm['new_branch_name'])): ?>
+                                        <span class="text-muted">· <?php echo e($cm['new_branch_name']); ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <div style="font-size:.72rem;color:var(--text-muted);"><?php echo formatDate($cm['effective_date']); ?></div>
+                                    <?php
+                                    $statusColors = ['Approved'=>'success','Rejected'=>'danger','Pending'=>'warning'];
+                                    $sc = $statusColors[$cm['approval_status']] ?? 'secondary';
+                                    ?>
+                                    <span class="badge bg-<?php echo $sc; ?>" style="font-size:.65rem;"><?php echo e($cm['approval_status']); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php else: ?>
+                <div class="text-center py-4">
+                    <i class="fas fa-route" style="font-size:2.5rem;opacity:.2;"></i>
+                    <p class="text-muted mt-3 mb-0">No career movements on record.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Recent Notifications -->
+        <div class="content-card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5><i class="fas fa-bell me-2"></i>Recent Notifications</h5>
+                <a href="<?php echo BASE_URL; ?>/employee/notifications.php" class="btn btn-sm btn-outline-primary">All</a>
+            </div>
+            <div class="card-body p-0">
+                <?php if (!empty($recent_notifs)): ?>
+                    <?php foreach ($recent_notifs as $n): ?>
+                    <a href="<?php echo e($n['link'] ?? '#'); ?>"
+                       class="d-flex gap-3 p-3 text-decoration-none <?php echo $n['is_read'] ? '' : 'notif-unread-item'; ?>"
+                       style="border-bottom:1px solid var(--border-color);transition:background .2s;"
+                       onmouseover="this.style.background='var(--bg-gray)'" onmouseout="this.style.background=''">
+                        <div style="width:36px;height:36px;border-radius:50%;background:<?php echo $n['is_read'] ? 'var(--bg-gray)' : 'rgba(67,104,254,.12)'; ?>;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="fas fa-bell" style="font-size:.75rem;color:<?php echo $n['is_read'] ? 'var(--text-muted)' : 'var(--primary-blue)'; ?>;"></i>
+                        </div>
+                        <div style="min-width:0;">
+                            <div class="fw-semibold" style="font-size:.82rem;color:var(--text-dark);"><?php echo e($n['title']); ?></div>
+                            <div class="text-muted" style="font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?php echo e($n['message']); ?></div>
+                            <div style="font-size:.68rem;color:var(--text-muted);margin-top:2px;"><?php echo formatDateTime($n['created_at']); ?></div>
+                        </div>
+                    </a>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                <div class="text-center py-4">
+                    <i class="fas fa-bell-slash" style="font-size:2rem;opacity:.2;"></i>
+                    <p class="text-muted small mt-2 mb-0">No new notifications.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+    </div><!-- /RIGHT COL -->
+</div>
+
+<style>
+/* ── Quick Action Buttons ─────────────────────────────────────────────────── */
+.quick-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: 1rem .5rem;
+    border-radius: 14px;
+    border: 2px solid var(--border-color);
+    background: var(--bg-white);
+    color: var(--text-dark);
+    text-decoration: none;
+    font-size: .78rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all .2s;
+    height: 100%;
+    min-height: 90px;
+}
+.quick-action-btn i {
+    font-size: 1.4rem;
+    color: var(--primary-blue);
+    transition: transform .2s;
+}
+.quick-action-btn:hover {
+    border-color: var(--primary-blue);
+    background: rgba(67,104,254,.05);
+    color: var(--primary-blue);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(67,104,254,.12);
+}
+.quick-action-btn:hover i { transform: scale(1.15); }
+
+/* ── Timeline ─────────────────────────────────────────────────────────────── */
+.timeline { position: relative; padding-left: 2rem; }
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: .85rem;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--border-color);
+}
+.timeline-item {
+    position: relative;
+    margin-bottom: 1.2rem;
+}
+.timeline-item:last-child { margin-bottom: 0; }
+.timeline-icon {
+    position: absolute;
+    left: -2rem;
+    top: .1rem;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--bg-white);
+    border: 2px solid var(--border-color);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1;
+}
+.timeline-item.latest .timeline-icon {
+    border-color: var(--primary-blue);
+    background: rgba(67,104,254,.08);
+}
+.timeline-content {
+    background: var(--bg-gray);
+    border-radius: 10px;
+    padding: .75rem 1rem;
+    transition: background .2s;
+}
+.timeline-content:hover { background: rgba(67,104,254,.05); }
+
+/* ── Unread notification item highlight ─────────────────────────────────── */
+.notif-unread-item { background: rgba(67,104,254,.04); }
+
+/* ── Cursor pointer ─────────────────────────────────────────────────────── */
+.cursor-pointer { cursor: pointer; }
+</style>
+
+<script>
+// Live clock
+function updateClock() {
+    const now = new Date();
+    let h = now.getHours(), m = now.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    const el = document.getElementById('live-time');
+    if (el) el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+setInterval(updateClock, 1000);
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

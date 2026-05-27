@@ -1028,7 +1028,7 @@ $stepLabels = [
 
                     <div class="alert alert-info py-2 small mb-0">
                         <i class="fas fa-info-circle me-1"></i>
-                        Need the format? <a href="<?php echo BASE_URL; ?>/sample_employees.csv" download
+                        Need the format? <a href="<?php echo BASE_URL; ?>/manager/download-sample.php"
                             class="alert-link">Download the sample template</a>.
                     </div>
                 </div>

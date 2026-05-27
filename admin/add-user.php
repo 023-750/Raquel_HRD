@@ -59,8 +59,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email_check->close();
 
         if ($existing_email) {
-            if ($role === 'Employee' && (int)($existing_email['employee_id'] ?? 0) === (int)$employee_id) {
-                $email = 'employee-' . $employee_id . '@portal.raquel.local';
+            // Allow same employee to have both HR and Employee accounts with same email
+            if ((int)($existing_email['employee_id'] ?? 0) === (int)$employee_id) {
+                // Same employee - generate a safe unique email
+                if ($role === 'Employee') {
+                    $email = 'employee-' . $employee_id . '@portal.raquel.local';
+                } else {
+                    $email = strtolower(str_replace(' ', '.', $full_name)) . '-' . $employee_id . '@hr.raquel.local';
+                }
             } else {
                 $errors[] = 'Email is already used by another account.';
             }
@@ -99,13 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Store generated password in session for display (shown once on next page)
-    if ($role === 'Employee') {
-        $_SESSION['new_employee_credentials'] = [
-            'username'  => $username,
-            'password'  => $password,
-            'full_name' => $full_name,
-        ];
-    }
+    $_SESSION['new_employee_credentials'] = [
+        'username'  => $username,
+        'password'  => $password,
+        'full_name' => $full_name,
+    ];
     $stmt = $conn->prepare("INSERT INTO users (employee_id, username, email, password_hash, full_name, role, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("isssssi", $employee_id, $username, $email, $password_hash, $full_name, $role, $branch_id);
 

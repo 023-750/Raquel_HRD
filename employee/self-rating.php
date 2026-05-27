@@ -56,7 +56,7 @@ if (isset($_GET['view']) && is_numeric($_GET['view'])) {
     if ($view_eval) {
         $view_mode = true;
         $selected_template_id = (int) $view_eval['template_id'];
-        $score_rs = $conn->query("SELECT criterion_id, score_value, weighted_score FROM evaluation_scores WHERE evaluation_id = " . (int) $view_eval['evaluation_id']);
+        $score_rs = $conn->query("SELECT criterion_id, score_value, weighted_score, supervisor_override_score, manager_override_score FROM evaluation_scores WHERE evaluation_id = " . (int) $view_eval['evaluation_id']);
         while ($score = $score_rs->fetch_assoc()) {
             $view_scores[(int) $score['criterion_id']] = $score;
         }
@@ -139,6 +139,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($template_id <= 0) {
         $errors[] = 'Please select an evaluation template.';
+    }
+
+    if ($template_id > 0) {
+        $existing_stmt = $conn->prepare("
+            SELECT evaluation_id, status 
+            FROM evaluations 
+            WHERE employee_id = ? 
+              AND template_id = ? 
+              AND status NOT IN ('Draft', 'Returned', 'Rejected', 'Pending Self-Rating')
+              AND deleted_at IS NULL 
+            LIMIT 1
+        ");
+        $existing_stmt->bind_param("ii", $employee_id, $template_id);
+        $existing_stmt->execute();
+        $existing_eval_check = $existing_stmt->get_result()->fetch_assoc();
+        $existing_stmt->close();
+
+        if ($existing_eval_check && $editing_id !== (int)$existing_eval_check['evaluation_id']) {
+            $errors[] = 'You have already submitted a self-rating for this template (Status: ' . $existing_eval_check['status'] . '). Duplicate submissions are not allowed.';
+        }
     }
 
     $template_stmt = $conn->prepare("SELECT template_id, template_name, kra_weight, behavior_weight, evaluation_type, form_code, revision_date, effective_date_form FROM evaluation_templates WHERE template_id = ? AND status = 'Active' LIMIT 1");
@@ -266,9 +286,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Notify employee's immediate supervisor (for 360-degree workflow)
         $supervisor_notified = notifySupervisorOfSelfRating($conn, $employee_id, $eval_id);
 
-        // If no supervisor found, notify HR Supervisor as fallback
+        // If no supervisor found, notify HR Supervisor as fallback (filtered by employee's branch)
         if (!$supervisor_notified) {
-            $hr_supervisors = $conn->query("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
+            $branch_id = (int) ($employee['branch_id'] ?? 0);
+            $hr_supervisors_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND branch_id = ? AND is_active = 1");
+            $hr_supervisors_stmt->bind_param("i", $branch_id);
+            $hr_supervisors_stmt->execute();
+            $hr_supervisors = $hr_supervisors_stmt->get_result();
             while ($hr_sup = $hr_supervisors->fetch_assoc()) {
                 createNotification(
                     $conn,
@@ -278,6 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     BASE_URL . '/supervisor/pending-endorsements.php'
                 );
             }
+            $hr_supervisors_stmt->close();
         }
 
         logAudit($conn, $user_id, 'CREATE', 'Evaluation', $eval_id, 'Submitted employee self-rating');
@@ -294,14 +319,23 @@ $employee_dept = $employee['department_name'] ?? '';
 // Filter templates: show if matches employee's department (with 'All' fallbacks)
 $templates_stmt = $conn->prepare("
     SELECT template_id, template_name, kra_weight, behavior_weight, evaluation_type, target_department
-    FROM evaluation_templates 
-    WHERE status = 'Active' 
+    FROM evaluation_templates et
+    WHERE et.status = 'Active' 
       AND (target_department IS NULL OR target_department = '' OR target_department = 'All Departments' OR target_department = ?)
+      AND NOT EXISTS (
+          SELECT 1
+          FROM evaluations ev
+          WHERE ev.employee_id = ?
+            AND ev.template_id = et.template_id
+            AND ev.deleted_at IS NULL
+            AND ev.status NOT IN ('Draft', 'Returned', 'Rejected', 'Pending Self-Rating')
+      )
     ORDER BY template_name
 ");
-$templates_stmt->bind_param("s", $employee_dept);
+$templates_stmt->bind_param("si", $employee_dept, $employee_id);
 $templates_stmt->execute();
 $templates = $templates_stmt->get_result();
+$available_template_count = (int) $templates->num_rows;
 $templates_stmt->close();
 
 // Fetch selected template details for evaluation type (verify it's accessible to this employee)
@@ -333,6 +367,46 @@ if ($selected_template_id > 0) {
     if (!$selected_template) {
         $selected_template_id = 0;
     }
+
+    // Limit to 1 evaluation per template: Check if employee already has a non-draft evaluation for it
+    if ($selected_template_id > 0 && !$edit_eval && !$view_mode) {
+        $editable_existing_stmt = $conn->prepare("
+            SELECT evaluation_id, status 
+            FROM evaluations 
+            WHERE employee_id = ? 
+              AND template_id = ? 
+              AND status IN ('Returned', 'Pending Self-Rating')
+              AND deleted_at IS NULL 
+            ORDER BY updated_at DESC, evaluation_id DESC
+            LIMIT 1
+        ");
+        $editable_existing_stmt->bind_param("ii", $employee_id, $selected_template_id);
+        $editable_existing_stmt->execute();
+        $editable_existing_eval = $editable_existing_stmt->get_result()->fetch_assoc();
+        $editable_existing_stmt->close();
+
+        if ($editable_existing_eval) {
+            redirectWith(BASE_URL . '/employee/self-rating.php?edit=' . $editable_existing_eval['evaluation_id'], 'info', 'Continuing your existing self-rating.');
+        }
+
+        $existing_stmt = $conn->prepare("
+            SELECT evaluation_id, status 
+            FROM evaluations 
+            WHERE employee_id = ? 
+              AND template_id = ? 
+              AND status NOT IN ('Draft', 'Returned', 'Rejected', 'Pending Self-Rating')
+              AND deleted_at IS NULL 
+            LIMIT 1
+        ");
+        $existing_stmt->bind_param("ii", $employee_id, $selected_template_id);
+        $existing_stmt->execute();
+        $existing_eval_check = $existing_stmt->get_result()->fetch_assoc();
+        $existing_stmt->close();
+
+        if ($existing_eval_check) {
+            redirectWith(BASE_URL . '/employee/self-rating.php', 'danger', 'You have already submitted a self-rating for this template (Status: ' . $existing_eval_check['status'] . '). Duplicate evaluations are not allowed.');
+        }
+    }
 }
 
 $assigned_evaluations = $conn->query("
@@ -347,18 +421,8 @@ $assigned_evaluations = $conn->query("
       AND ev.deleted_at IS NULL
     ORDER BY COALESCE(ev.assigned_at, ev.updated_at, ev.created_at) DESC, ev.evaluation_id DESC
 ");
-
-// Check if employee has completed self-ratings
-$completed_evaluations = $conn->query("
-    SELECT e.evaluation_id, e.evaluation_type, e.status, et.template_name, e.total_score, e.performance_level, e.submitted_date
-    FROM evaluations e
-    LEFT JOIN evaluation_templates et ON e.template_id = et.template_id
-    WHERE e.employee_id = $employee_id 
-      AND e.submitted_by = $user_id
-      AND e.status IN ('Approved', 'Pending Supervisor', 'Pending Manager', 'Pending HR Consolidation')
-      AND e.deleted_at IS NULL
-    ORDER BY e.evaluation_id DESC
-");
+$assigned_pending_count = $assigned_evaluations ? (int) $assigned_evaluations->num_rows : 0;
+$pending_template_count = max($available_template_count, $assigned_pending_count);
 
 $criteria_kra = [];
 $criteria_behavior = [];
@@ -395,6 +459,9 @@ require_once '../includes/header.php';
                     style="color:var(--primary-light);"></i>360-Degree Self Rating</h4>
         </div>
         <div class="d-none d-md-block text-end">
+            <div class="badge bg-warning text-dark mb-2 px-3 py-2">
+                <i class="fas fa-bell me-1"></i><?php echo (int) $pending_template_count; ?> pending template<?php echo $pending_template_count === 1 ? '' : 's'; ?>
+            </div><br>
             <a href="<?php echo BASE_URL; ?>/employee/dashboard.php"
                 class="btn btn-outline-light btn-sm rounded-pill px-3 mb-1">
                 <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
@@ -414,7 +481,7 @@ require_once '../includes/header.php';
     <div class="alert alert-light border-0 shadow-sm py-2 px-3 mb-0"
         style="border-radius: 10px; font-size: 0.85rem; background: #fff;">
         <i class="fas fa-info-circle me-2 text-primary"></i>
-        <span class="text-muted fw-500">Complete your self-rating to provide insights.</span>
+        <span class="text-muted fw-500"><?php echo (int) $pending_template_count; ?> pending template<?php echo $pending_template_count === 1 ? '' : 's'; ?> to assess.</span>
     </div>
 </div>
 
@@ -465,6 +532,27 @@ require_once '../includes/header.php';
                     <h5><i class="fas fa-eye me-2"></i>View Self Rating</h5>
                 </div>
                 <div class="card-body">
+                    <?php if ($view_eval && $view_eval['status'] === 'Returned'): ?>
+                        <div class="alert alert-warning border-0 mb-4 shadow-sm" style="border-radius: 12px; border-left: 5px solid #dc3545 !important;">
+                            <div class="fw-bold text-danger mb-1">
+                                <i class="fas fa-undo me-2"></i>Revision Required (Evaluation Returned)
+                            </div>
+                            <div class="small">
+                                This evaluation has been returned for revision.
+                            </div>
+                            <?php if (!empty($view_eval['supervisor_comments'])): ?>
+                                <div class="mt-2 p-2 bg-white rounded border italic small text-dark">
+                                    <strong>Supervisor Feedback:</strong> <?php echo nl2br(e($view_eval['supervisor_comments'])); ?>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($view_eval['manager_comments'])): ?>
+                                <div class="mt-2 p-2 bg-white rounded border italic small text-dark">
+                                    <strong>HR Manager Feedback:</strong> <?php echo nl2br(e($view_eval['manager_comments'])); ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
                             <label class="form-label text-muted">Employee</label>
@@ -524,11 +612,28 @@ require_once '../includes/header.php';
                                     <tr>
                                         <th>Criterion</th>
                                         <th style="width:110px;">Weight</th>
-                                        <th style="width:160px;">Rating</th>
+                                        <th style="width:250px;">Rating</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($view_criteria_kra as $criterion): ?>
+                                        <?php
+                                        $score_data = $view_scores[(int) $criterion['criterion_id']] ?? null;
+                                        $original_score = $score_data ? (float)$score_data['score_value'] : 0.00;
+                                        $supervisor_override = $score_data && $score_data['supervisor_override_score'] !== null ? (float)$score_data['supervisor_override_score'] : null;
+                                        $manager_override = $score_data && $score_data['manager_override_score'] !== null ? (float)$score_data['manager_override_score'] : null;
+                                        
+                                        $effective_score = $original_score;
+                                        $badge_html = '';
+                                        if ($supervisor_override !== null) {
+                                            $effective_score = $supervisor_override;
+                                            $badge_html = ' <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-shield me-1"></i>Adjusted by Supervisor</span>';
+                                        }
+                                        if ($manager_override !== null) {
+                                            $effective_score = $manager_override;
+                                            $badge_html = ' <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-check me-1"></i>Adjusted by Manager</span>';
+                                        }
+                                        ?>
                                         <tr>
                                             <td>
                                                 <div class="fw-semibold"><?php echo e($criterion['criterion_name']); ?></div>
@@ -538,9 +643,10 @@ require_once '../includes/header.php';
                                             </td>
                                             <td><?php echo e($criterion['weight']); ?>%</td>
                                             <td>
-                                                <span class="badge bg-light text-dark fs-6">
-                                                    <?php echo e($view_scores[(int) $criterion['criterion_id']]['score_value'] ?? '0.00'); ?>
+                                                <span class="badge bg-light text-dark fs-6 fw-bold">
+                                                    <?php echo e(number_format($effective_score, 2)); ?>
                                                 </span>
+                                                <?php echo $badge_html; ?>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -558,11 +664,28 @@ require_once '../includes/header.php';
                                 <thead>
                                     <tr>
                                         <th>Criterion</th>
-                                        <th style="width:160px;">Rating</th>
+                                        <th style="width:250px;">Rating</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($view_criteria_behavior as $criterion): ?>
+                                        <?php
+                                        $score_data = $view_scores[(int) $criterion['criterion_id']] ?? null;
+                                        $original_score = $score_data ? (float)$score_data['score_value'] : 0.00;
+                                        $supervisor_override = $score_data && $score_data['supervisor_override_score'] !== null ? (float)$score_data['supervisor_override_score'] : null;
+                                        $manager_override = $score_data && $score_data['manager_override_score'] !== null ? (float)$score_data['manager_override_score'] : null;
+                                        
+                                        $effective_score = $original_score;
+                                        $badge_html = '';
+                                        if ($supervisor_override !== null) {
+                                            $effective_score = $supervisor_override;
+                                            $badge_html = ' <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-shield me-1"></i>Adjusted by Supervisor</span>';
+                                        }
+                                        if ($manager_override !== null) {
+                                            $effective_score = $manager_override;
+                                            $badge_html = ' <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-check me-1"></i>Adjusted by Manager</span>';
+                                        }
+                                        ?>
                                         <tr>
                                             <td>
                                                 <div class="fw-semibold"><?php echo e($criterion['criterion_name']); ?></div>
@@ -571,14 +694,73 @@ require_once '../includes/header.php';
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <span class="badge bg-light text-dark fs-6">
-                                                    <?php echo e($view_scores[(int) $criterion['criterion_id']]['score_value'] ?? '0.00'); ?>
+                                                <span class="badge bg-light text-dark fs-6 fw-bold">
+                                                    <?php echo e(number_format($effective_score, 2)); ?>
                                                 </span>
+                                                <?php echo $badge_html; ?>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
                             </table>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Developmental Plan -->
+                    <div class="section-premium-label mb-3 mt-4">
+                        <i class="fas fa-seedling"></i>IV. Developmental Plan
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-hover align-middle">
+                            <thead class="small text-muted bg-light">
+                                <tr>
+                                    <th class="ps-3">Area of Improvement</th>
+                                    <th>Support Needed</th>
+                                    <th>Time Frame</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $dev_q = $conn->query("SELECT * FROM evaluation_dev_plans WHERE evaluation_id = " . (int)$view_eval['evaluation_id'] . " ORDER BY sort_order");
+                                if ($dev_q && $dev_q->num_rows > 0):
+                                    while ($dp = $dev_q->fetch_assoc()): ?>
+                                    <tr>
+                                        <td class="ps-3 fw-semibold"><?php echo e($dp['improvement_area']); ?></td>
+                                        <td><?php echo e($dp['support_needed']); ?></td>
+                                        <td><?php echo e($dp['time_frame']); ?></td>
+                                    </tr>
+                                <?php endwhile; else: ?>
+                                    <tr><td colspan="3" class="text-center text-muted small py-3">No developmental plan recorded.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <?php if (!empty($view_eval['supervisor_comments']) || !empty($view_eval['manager_comments'])): ?>
+                        <div class="section-premium-label mb-3 mt-4">
+                            <i class="fas fa-comments"></i>Management Remarks & Justifications
+                        </div>
+                        <div class="row g-3 mb-4">
+                            <?php if (!empty($view_eval['supervisor_comments'])): ?>
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-light rounded-3 border-start border-warning border-4 shadow-sm">
+                                        <div class="fw-bold text-warning small mb-1">
+                                            <i class="fas fa-user-shield me-1"></i>Supervisor Feedback
+                                        </div>
+                                        <p class="mb-0 small text-dark" style="white-space: pre-wrap;"><?php echo e($view_eval['supervisor_comments']); ?></p>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($view_eval['manager_comments'])): ?>
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-light rounded-3 border-start border-success border-4 shadow-sm">
+                                        <div class="fw-bold text-success small mb-1">
+                                            <i class="fas fa-user-check me-1"></i>HR Manager Remarks / Justification
+                                        </div>
+                                        <p class="mb-0 small text-dark" style="white-space: pre-wrap;"><?php echo e($view_eval['manager_comments']); ?></p>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
 
@@ -653,6 +835,28 @@ require_once '../includes/header.php';
                         <?php if ($edit_eval): ?>
                             <input type="hidden" name="edit_id" value="<?php echo (int) $edit_eval['evaluation_id']; ?>">
                         <?php endif; ?>
+
+                        <?php if ($edit_eval && $edit_eval['status'] === 'Returned'): ?>
+                            <div class="alert alert-warning border-0 mb-4 shadow-sm" style="border-radius: 12px; border-left: 5px solid #dc3545 !important;">
+                                <div class="fw-bold text-danger mb-1">
+                                    <i class="fas fa-undo me-2"></i>Revision Required (Evaluation Returned)
+                                </div>
+                                <div class="small mb-2">
+                                    This evaluation has been returned to you for revision. Please review the feedback below and update your self-rating accordingly.
+                                </div>
+                                <?php if (!empty($edit_eval['supervisor_comments'])): ?>
+                                    <div class="mt-2 p-2 bg-white rounded border italic small text-dark">
+                                        <strong>Supervisor Feedback:</strong> <?php echo nl2br(e($edit_eval['supervisor_comments'])); ?>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($edit_eval['manager_comments'])): ?>
+                                    <div class="mt-2 p-2 bg-white rounded border italic small text-dark">
+                                        <strong>HR Manager Feedback:</strong> <?php echo nl2br(e($edit_eval['manager_comments'])); ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endif; ?>
+
                         <?php if ($is_assigned_edit && $edit_eval): ?>
                             <div class="alert alert-primary border-0 mb-4 shadow-sm">
                                 <div class="fw-semibold mb-1"><i class="fas fa-user-check me-2"></i>Assigned by Head</div>
@@ -737,12 +941,15 @@ require_once '../includes/header.php';
                                     <small class="text-muted mt-1 d-block"><i class="fas fa-lock me-1"></i>This template was
                                         assigned by your Head and cannot be changed.</small>
                                 <?php else: ?>
-                                    <select class="form-select" name="template_id"
+                                    <select class="form-select" name="template_id" id="templateSelect"
                                         onchange="if(this.value){ window.location='?template=' + this.value <?php echo $edit_eval ? " + '&edit=" . (int) $edit_eval['evaluation_id'] . "'" : ''; ?>; } else { window.location='self-rating.php'; }"
                                         required>
                                         <option value="">Select Template</option>
                                         <?php while ($template = $templates->fetch_assoc()): ?>
-                                            <option value="<?php echo (int) $template['template_id']; ?>" <?php echo $selected_template_id === (int) $template['template_id'] ? 'selected' : ''; ?>>
+                                            <?php
+                                            $template_label = $template['template_name'] . ' (' . (float) $template['kra_weight'] . '% KRA / ' . (float) $template['behavior_weight'] . '% Behavior)';
+                                            ?>
+                                            <option value="<?php echo (int) $template['template_id']; ?>" title="<?php echo e($template_label); ?>" data-title="<?php echo e($template_label); ?>" <?php echo $selected_template_id === (int) $template['template_id'] ? 'selected' : ''; ?>>
                                                 <?php echo e($template['template_name']); ?>
                                                 (<?php echo (float) $template['kra_weight']; ?>% KRA /
                                                 <?php echo (float) $template['behavior_weight']; ?>% Behavior)
@@ -777,7 +984,7 @@ require_once '../includes/header.php';
                                                 </td>
                                                 <td><?php echo e($criterion['weight']); ?>%</td>
                                                 <td>
-                                                    <input type="number" class="form-control"
+                                                    <input type="number" class="form-control self-rating-input"
                                                         name="kra_scores[<?php echo (int) $criterion['criterion_id']; ?>]" min="0"
                                                         max="4" step="0.01"
                                                         value="<?php echo e($edit_scores[(int) $criterion['criterion_id']] ?? ''); ?>"
@@ -810,7 +1017,7 @@ require_once '../includes/header.php';
                                                     <?php endif; ?>
                                                 </td>
                                                 <td>
-                                                    <input type="number" class="form-control"
+                                                    <input type="number" class="form-control self-rating-input"
                                                         name="beh_scores[<?php echo (int) $criterion['criterion_id']; ?>]" min="0"
                                                         max="4" step="0.01"
                                                         value="<?php echo e($edit_scores[(int) $criterion['criterion_id']] ?? ''); ?>"
@@ -868,7 +1075,7 @@ require_once '../includes/header.php';
 
         <div class="content-card">
             <div class="card-header">
-                <h5><i class="fas fa-history me-2"></i>Recent Self Ratings</h5>
+                <h5><i class="fas fa-history me-2"></i>Recent Evaluations</h5>
             </div>
             <div class="card-body">
                 <?php if ($history->num_rows === 0): ?>
@@ -957,7 +1164,34 @@ require_once '../includes/header.php';
 </div>
 
 <script>
+function clampSelfRatingInput(input) {
+    if (input.value === '') {
+        return;
+    }
+
+    const value = parseFloat(input.value);
+    if (Number.isNaN(value)) {
+        input.value = '';
+        return;
+    }
+
+    if (value > 4) {
+        input.value = '4';
+    } else if (value < 0) {
+        input.value = '0';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.self-rating-input').forEach(input => {
+        input.addEventListener('input', () => clampSelfRatingInput(input));
+        input.addEventListener('change', () => clampSelfRatingInput(input));
+    });
+});
+
 function showReviewModal() {
+    document.querySelectorAll('.self-rating-input').forEach(input => clampSelfRatingInput(input));
+
     const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
     const reviewContent = document.getElementById('reviewContent');
     let html = '';

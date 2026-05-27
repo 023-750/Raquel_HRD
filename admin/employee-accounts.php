@@ -178,7 +178,7 @@ unset($_SESSION['new_employee_credentials']);
         </div>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-md-block">
             <table class="table table-hover" id="portalTable">
                 <thead>
                     <tr>
@@ -263,6 +263,78 @@ unset($_SESSION['new_employee_credentials']);
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile view (Student Check-in Style) -->
+        <div class="mobile-list-view d-block d-md-none">
+            <div class="student-list">
+                <?php $row_number_mob = $offset + 1; ?>
+                <?php if ($employees->num_rows === 0): ?>
+                    <div class="text-center py-4 text-muted">No employees found for the selected department.</div>
+                <?php else: ?>
+                    <?php 
+                    $employees->data_seek(0);
+                    while ($emp = $employees->fetch_assoc()): 
+                        $avatar_num = ($row_number_mob % 6) + 1;
+                        $initials = strtoupper(substr($emp['first_name'] ?? '', 0, 1) . substr($emp['last_name'] ?? '', 0, 1));
+                    ?>
+                        <div class="student-item">
+                            <div class="student-avatar">
+                                <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>?v=<?php echo time(); ?>" alt="Profile" class="avatar-img">
+                            </div>
+                            <div class="student-info">
+                                <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></div>
+                                <div class="student-meta">
+                                    <span class="company-id-text">ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span></span>
+                                    &bull; <span><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
+                                </div>
+                                <div class="student-meta" style="margin-top: 2px;">
+                                    <span><?php echo e($emp['department_name'] ?? 'N/A'); ?></span>
+                                    &bull; <span><?php echo e($emp['branch_name'] ?? 'N/A'); ?></span>
+                                </div>
+                                <div class="student-meta" style="margin-top: 4px;">
+                                    <?php if ($emp['user_id']): ?>
+                                        <span class="badge bg-success">Has Account</span>
+                                        <?php if (!$emp['user_active']): ?>
+                                            <span class="badge bg-danger ms-1">Inactive</span>
+                                        <?php endif; ?>
+                                        <span class="ms-1 text-muted">User: <code><?php echo e($emp['username']); ?></code></span>
+                                    <?php else: ?>
+                                        <span class="badge bg-warning text-dark">No Account</span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($emp['hr_role'])): ?>
+                                        <span class="badge bg-secondary ms-1">HR: <?php echo e($emp['hr_role']); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="ms-auto text-end align-self-center">
+                                <?php if (!$emp['user_id']): ?>
+                                    <button class="btn btn-sm btn-primary"
+                                            onclick="openCreateAccountModal(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>', '<?php echo e(addslashes($emp['personal_email'] ?? '')); ?>', '<?php echo e(addslashes(getEmployeeDisplayId($emp))); ?>')"
+                                            title="Create Account" style="padding: 6px 12px; border-radius: 8px;">
+                                        <i class="fas fa-plus me-1"></i>Create
+                                    </button>
+                                <?php else: ?>
+                                    <?php if (($emp['role'] ?? '') === 'Employee'): ?>
+                                        <a href="employee-portal-user.php?user_id=<?php echo (int)$emp['user_id']; ?>" class="btn btn-sm btn-outline-primary"
+                                           title="Manage Portal" style="padding: 6px 12px; border-radius: 8px;">
+                                            <i class="fas fa-cog me-1"></i>Manage
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="users.php?search=<?php echo urlencode($emp['username']); ?>" class="btn btn-sm btn-outline-warning"
+                                           title="Manage (HR)" style="padding: 6px 12px; border-radius: 8px;">
+                                            <i class="fas fa-user-cog me-1"></i>HR
+                                        </a>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php 
+                        $row_number_mob++;
+                    endwhile; 
+                    ?>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
     <?php if ($total_pages > 1): ?>
         <div class="card-footer bg-white border-0 pt-0">
@@ -300,7 +372,7 @@ unset($_SESSION['new_employee_credentials']);
                     <input type="hidden" name="full_name" id="modal_full_name">
                     <input type="hidden" name="email" id="modal_email">
                     <input type="hidden" name="role" value="Employee">
-                    <input type="hidden" name="redirect" value="employee-accounts.php">
+                    <input type="hidden" name="redirect" value="employee-accounts.php<?php echo $selected_department > 0 ? '?department=' . (int) $selected_department : ''; ?>">
                     
                     <div class="alert alert-info py-2" style="font-size: 0.85rem;">
                         <i class="fas fa-info-circle me-2"></i>Creating a portal account for: <strong id="display_emp_name"></strong>

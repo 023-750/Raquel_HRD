@@ -45,9 +45,9 @@ require_once '../includes/header.php';
                 style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:4px solid rgba(255,255,255,.3); box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s;">
             <div>
                 <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">
-                    Employee Portal · My Profile</div>
+                    Employee Portal · Welcome Back</div>
                 <h2 class="text-white fw-bold mb-1 mt-1">
-                    <?php echo e(trim(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? ''))); ?></h2>
+                    Hello, <?php echo e(trim(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? ''))); ?>!</h2>
                 <p class="mb-2 text-white-50 small">
                     <i class="fas fa-briefcase me-1"></i><?php echo e($emp['job_title'] ?? '—'); ?> &bull;
                     <?php echo e($emp['department_name'] ?? '—'); ?>
@@ -55,7 +55,7 @@ require_once '../includes/header.php';
                 <div class="d-flex flex-wrap gap-2">
                     <span class="badge bg-white text-dark py-1 px-2" style="font-size: 0.7rem;"><i
                             class="fas fa-building me-1 text-primary"></i><?php echo e($emp['branch_name'] ?? 'N/A'); ?></span>
-                    <span class="badge bg-white text-dark py-1 px-2" style="font-size: 0.7rem;"><i
+                    <span class="badge bg-white text-dark py-1 px-2 d-none d-md-inline" style="font-size: 0.7rem;"><i
                             class="fas fa-calendar-alt me-1 text-primary"></i>Hired:
                         <?php echo formatDate($emp['hire_date'] ?? ''); ?></span>
                     <span class="badge bg-white text-dark py-1 px-2" style="font-size: 0.7rem;"><i

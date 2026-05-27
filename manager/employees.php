@@ -266,94 +266,6 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         .filter-group {
             min-width: 140px;
         }
-
-        /* Employee Table Mobile Revamp */
-        #empTable {
-            border: none;
-        }
-
-        #empTable thead {
-            display: none;
-        }
-
-        #empTable tbody {
-            background: transparent;
-        }
-
-        #empTable tr {
-            display: block;
-            background: #fff;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            padding: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            border: 1px solid #f0f0f0;
-            position: relative;
-        }
-
-        #empTable td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: none;
-            padding: 10px 0;
-            text-align: right;
-            font-size: 0.9rem;
-        }
-
-        #empTable td::before {
-            content: attr(data-label);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            text-align: left;
-        }
-
-        /* Name and Avatar Column */
-        #empTable td:nth-child(2) {
-            justify-content: flex-start;
-            padding-top: 5px;
-            margin-bottom: 12px;
-            border-bottom: 1.5px solid #f8f9fa;
-        }
-
-        #empTable td:nth-child(2)::before {
-            display: none;
-        }
-
-        #empTable td:nth-child(2) strong {
-            font-size: 1.1rem;
-            color: var(--primary-blue);
-        }
-
-        #empTable td:nth-child(2) img {
-            width: 45px !important;
-            height: 45px !important;
-            border: 2px solid #fff;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Action buttons grouping */
-        #empTable td:last-child {
-            justify-content: center;
-            gap: 12px;
-            border-top: 1.5px solid #f8f9fa;
-            margin-top: 10px;
-            padding-top: 15px;
-            flex-wrap: wrap;
-        }
-
-        #empTable td:last-child::before {
-            display: none;
-        }
-
-        #empTable td:last-child .btn {
-            padding: 8px 15px;
-            flex: 1;
-            min-width: 40px;
-        }
-
         #paginationWrapper {
             flex-direction: column;
             gap: 15px;
@@ -483,7 +395,8 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         </button>
     </div>
     <div class="cc-body p-0">
-        <div class="table-responsive">
+        <!-- Desktop Table (hidden on mobile) -->
+        <div class="table-responsive d-none d-md-block">
             <table class="table table-hover" id="empTable">
                 <thead>
                     <tr>
@@ -555,6 +468,63 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile Card List (student check-in style, visible only on mobile) -->
+        <div class="mobile-list-view d-block d-md-none p-3">
+            <div class="student-list">
+                <?php
+                $employees->data_seek(0);
+                $mob_count = 0;
+                while ($emp = $employees->fetch_assoc()):
+                    $initials = strtoupper(substr($emp['first_name'] ?? '', 0, 1) . substr($emp['last_name'] ?? '', 0, 1));
+                    $avatar_num = ($mob_count % 6) + 1;
+                    $mob_count++;
+                ?>
+                <div class="student-item"
+                     data-jobtitle="<?php echo e($emp['job_title']); ?>"
+                     data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
+                     data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
+                     data-status="<?php echo e($emp['employment_status']); ?>">
+                        <div class="student-avatar">
+                            <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="avatar-img">
+                        </div>
+                    <div class="student-info" style="flex:1;min-width:0;overflow:hidden;">
+                        <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></div>
+                        <div class="student-meta">
+                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;"><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
+                            &bull; <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo e($emp['department_name'] ?? 'N/A'); ?></span>
+                        </div>
+                        <div class="student-meta" style="margin-top:2px;">
+                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo e($emp['branch_name'] ?? 'N/A'); ?></span>
+                            &bull; <small><?php echo formatDate($emp['hire_date']); ?></small>
+                        </div>
+                    </div>
+                    <div class="d-flex flex-column align-items-end gap-1" style="flex-shrink:0;margin-left:8px;">
+                        <span class="badge <?php echo $emp['is_active'] ? 'bg-success' : 'bg-danger'; ?>" style="white-space:nowrap;font-size:0.68rem;">
+                            <?php echo $emp['employment_status']; ?>
+                        </span>
+                        <div class="d-flex gap-1 flex-wrap justify-content-end">
+                            <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-info" title="View"><i class="fas fa-eye"></i></a>
+                            <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-primary employee-edit-link" data-base-href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" title="Edit"><i class="fas fa-edit"></i></a>
+                            <?php if ($emp['is_active']): ?>
+                            <button class="btn btn-xs btn-outline-warning" title="Deactivate"
+                                onclick="setDeactivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                data-bs-toggle="modal" data-bs-target="#deactivateModal"><i class="fas fa-user-slash"></i></button>
+                            <?php else: ?>
+                            <button class="btn btn-xs btn-outline-success" title="Activate"
+                                onclick="setActivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                data-bs-toggle="modal" data-bs-target="#activateModal"><i class="fas fa-user-check"></i></button>
+                            <?php endif; ?>
+                            <button class="btn btn-xs btn-outline-danger" title="Delete"
+                                onclick="setDeleteTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                data-bs-toggle="modal" data-bs-target="#deleteModal"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <?php endwhile; ?>
+            </div>
+        </div>
+
         <!-- Pagination Controls -->
         <div class="d-flex justify-content-between align-items-center p-3 border-top" id="paginationWrapper">
             <div id="paginationInfo" class="text-muted small"></div>
@@ -790,7 +760,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 
         let visibleRows = [];
 
-        // 1. Filter (text search + dropdown filters)
+        // 1. Filter desktop rows (text search + dropdown filters)
         allRows.forEach(row => {
             const cells = Array.from(row.querySelectorAll("td"));
             if (cells.length > 1) {
@@ -798,7 +768,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                 const rowText = cells.slice(0, 6).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ').toLowerCase();
                 const textMatch = filterInput === "" || rowText.includes(filterInput);
 
-                // Dropdown filters (use data attributes for precise matching)
+                // Dropdown filters
                 const dropdownMatch =
                     (fJobTitle === '' || row.dataset.jobtitle === fJobTitle) &&
                     (fDepartment === '' || row.dataset.department === fDepartment) &&
@@ -815,6 +785,26 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             }
         });
 
+        // Filter mobile card items
+        const mobileList = document.querySelector(".mobile-list-view .student-list");
+        const allCards = mobileList ? Array.from(mobileList.querySelectorAll(".student-item")) : [];
+        let visibleCards = [];
+        allCards.forEach(card => {
+            const cardText = card.textContent.toLowerCase();
+            const textMatch = filterInput === "" || cardText.includes(filterInput);
+            const dropdownMatch =
+                (fJobTitle === '' || card.dataset.jobtitle === fJobTitle) &&
+                (fDepartment === '' || card.dataset.department === fDepartment) &&
+                (fBranch === '' || card.dataset.branch === fBranch) &&
+                (fStatus === '' || card.dataset.status === fStatus);
+
+            if (textMatch && dropdownMatch) {
+                visibleCards.push(card);
+            } else {
+                card.style.display = "none";
+            }
+        });
+
         // 2. Paginate
         const totalPages = Math.ceil(visibleRows.length / ITEMS_PER_PAGE);
         if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
@@ -823,11 +813,21 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
         const endIdx = startIdx + ITEMS_PER_PAGE;
 
+        // Paginate desktop rows
         visibleRows.forEach((row, index) => {
             if (index >= startIdx && index < endIdx) {
                 row.style.display = "";
             } else {
                 row.style.display = "none";
+            }
+        });
+
+        // Paginate mobile cards
+        visibleCards.forEach((card, index) => {
+            if (index >= startIdx && index < endIdx) {
+                card.style.display = "";
+            } else {
+                card.style.display = "none";
             }
         });
 

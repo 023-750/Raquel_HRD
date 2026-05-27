@@ -55,20 +55,6 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         gap: 12px;
     }
 
-    .supervisor-employee-page .employee-toolbar {
-        align-items: center;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .supervisor-employee-page .employee-toolbar .btn {
-        align-items: center;
-        display: inline-flex;
-        gap: 6px;
-        white-space: nowrap;
-    }
-
     .supervisor-employee-page .filter-toolbar {
         padding: 16px 20px;
         background: linear-gradient(135deg, #f8f9fc 0%, #f1f3f8 100%);
@@ -116,7 +102,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
     .supervisor-employee-page .filter-group select:focus {
         outline: none;
         border-color: var(--primary-blue);
-        box-shadow: 0 0 0 3px rgba(var(--primary-rgb, 59, 130, 246), 0.1);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
     .supervisor-employee-page .filter-group select.active-filter {
@@ -218,125 +204,6 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
             width: 100%;
         }
 
-        .supervisor-employee-page .employee-toolbar {
-            align-items: stretch;
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .supervisor-employee-page .employee-toolbar .btn {
-            justify-content: center;
-            width: 100%;
-        }
-
-        .supervisor-employee-page .cc-body {
-            background: transparent;
-        }
-
-        .supervisor-employee-page .table-responsive {
-            overflow-x: visible;
-        }
-
-        .supervisor-employee-page #empTable {
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-
-        .supervisor-employee-page #empTable thead {
-            display: none;
-        }
-
-        .supervisor-employee-page #empTable,
-        .supervisor-employee-page #empTable tbody,
-        .supervisor-employee-page #empTable tr,
-        .supervisor-employee-page #empTable td {
-            display: block;
-            width: 100%;
-        }
-
-        .supervisor-employee-page #empTable tbody tr {
-            background: #fff;
-            border: 1px solid rgba(41, 67, 6, 0.1);
-            border-radius: 15px;
-            box-shadow: 0 8px 24px rgba(12, 32, 8, 0.07);
-            margin-bottom: 14px;
-            overflow: hidden;
-            padding: 8px 14px;
-        }
-
-        .supervisor-employee-page #empTable tbody tr:hover {
-            background: #fff;
-        }
-
-        .supervisor-employee-page #empTable tbody td {
-            align-items: center;
-            border: 0;
-            border-bottom: 1px solid #eef2e8;
-            display: grid;
-            gap: 10px;
-            grid-template-columns: minmax(92px, 34%) minmax(0, 1fr);
-            overflow-wrap: anywhere;
-            padding: 10px 0;
-            text-align: right;
-        }
-
-        .supervisor-employee-page #empTable tbody td::before {
-            color: var(--text-muted);
-            content: attr(data-label);
-            font-size: 0.68rem;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            line-height: 1.2;
-            text-align: left;
-            text-transform: uppercase;
-        }
-
-        .supervisor-employee-page #empTable tbody td:nth-child(2) {
-            border-bottom: 1px solid #e8eee3;
-            display: flex;
-            justify-content: flex-start;
-            padding-bottom: 14px;
-            text-align: left;
-        }
-
-        .supervisor-employee-page #empTable tbody td:nth-child(2)::before,
-        .supervisor-employee-page #empTable tbody td:last-child::before,
-        .supervisor-employee-page #empTable tbody td[colspan]::before {
-            content: none;
-        }
-
-        .supervisor-employee-page #empTable tbody td:nth-child(2) img {
-            height: 46px !important;
-            width: 46px !important;
-        }
-
-        .supervisor-employee-page #empTable tbody td:nth-child(2) strong {
-            color: var(--primary-blue);
-            font-size: 1rem;
-        }
-
-        .supervisor-employee-page #empTable tbody td:last-child {
-            border-bottom: 0;
-            display: flex;
-            gap: 10px;
-            justify-content: stretch;
-            padding-top: 14px;
-        }
-
-        .supervisor-employee-page #empTable tbody td:last-child .btn {
-            align-items: center;
-            display: inline-flex;
-            flex: 1;
-            justify-content: center;
-            min-height: 38px;
-        }
-
-        .supervisor-employee-page #empTable tbody td[colspan] {
-            display: block;
-            padding: 28px 16px;
-            text-align: center;
-        }
-
         .supervisor-employee-page #paginationWrapper {
             background: #fff;
             border: 1px solid #eef2e8;
@@ -351,14 +218,6 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         .supervisor-employee-page #paginationNumbers {
             flex-wrap: wrap;
             justify-content: center;
-        }
-    }
-
-    @media (max-width: 420px) {
-        .supervisor-employee-page #empTable tbody td {
-            grid-template-columns: 1fr;
-            gap: 4px;
-            text-align: left;
         }
     }
 </style>
@@ -427,10 +286,6 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         </div>
     </div>
 
-    <div class="d-none d-md-flex justify-content-between align-items-center mb-4">
-        <p class="text-muted mb-0">Manage employee records</p>
-    </div>
-
     <div class="chart-card fadeup">
         <div class="cc-header">
             <h5 class="d-none d-md-block"><i class="fas fa-users me-2"></i>All Employees</h5>
@@ -440,6 +295,8 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                     placeholder="Search employees...">
             </div>
         </div>
+
+        <!-- Filter Toolbar -->
         <div class="filter-toolbar" id="filterToolbar">
             <div class="filter-group">
                 <label><i class="fas fa-briefcase me-1"></i>Job Title</label>
@@ -478,6 +335,8 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                 </select>
             </div>
         </div>
+
+        <!-- Active Filter Chips -->
         <div class="filter-summary" id="filterSummary">
             <span class="filter-label"><i class="fas fa-filter me-1"></i>Filters:</span>
             <div id="filterChips"></div>
@@ -485,9 +344,11 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                 <i class="fas fa-times me-1"></i>Clear All
             </button>
         </div>
+
         <div class="cc-body p-0">
-            <div class="table-responsive">
-                <table class="table" id="empTable">
+            <!-- Desktop Table (hidden on mobile) -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-hover" id="empTable">
                     <thead>
                         <tr>
                             <th style="width: 50px;">#</th>
@@ -525,8 +386,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                                     <td data-label="Department"><?php echo e($emp['department_name'] ?? 'N/A'); ?></td>
                                     <td data-label="Branch"><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
                                     <td data-label="Status">
-                                        <span
-                                            class="badge <?php echo !empty($emp['is_active']) ? 'bg-success' : 'bg-danger'; ?>">
+                                        <span class="badge <?php echo !empty($emp['is_active']) ? 'bg-success' : 'bg-danger'; ?>">
                                             <?php echo e($emp['employment_status']); ?>
                                         </span>
                                     </td>
@@ -549,6 +409,51 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                     </tbody>
                 </table>
             </div>
+
+            <!-- Mobile Card List (student check-in style, visible only on mobile) -->
+            <div class="mobile-list-view d-block d-md-none p-3">
+                <div class="student-list">
+                    <?php
+                    $employees->data_seek(0);
+                    $mob_count = 0;
+                    while ($emp = $employees->fetch_assoc()):
+                        $initials = strtoupper(substr($emp['first_name'] ?? '', 0, 1) . substr($emp['last_name'] ?? '', 0, 1));
+                        $avatar_num = ($mob_count % 6) + 1;
+                        $mob_count++;
+                    ?>
+                    <div class="student-item"
+                         data-jobtitle="<?php echo e($emp['job_title']); ?>"
+                         data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
+                         data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
+                         data-status="<?php echo e($emp['employment_status']); ?>">
+                        <div class="student-avatar">
+                            <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="avatar-img">
+                        </div>
+                        <div class="student-info">
+                            <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></div>
+                            <div class="student-meta">
+                                <span><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
+                                &bull; <span><?php echo e($emp['department_name'] ?? 'N/A'); ?></span>
+                            </div>
+                            <div class="student-meta" style="margin-top:2px;">
+                                <span><?php echo e($emp['branch_name'] ?? 'N/A'); ?></span>
+                                &bull; <small><?php echo formatDate($emp['hire_date']); ?></small>
+                            </div>
+                        </div>
+                        <div class="ms-auto text-end d-flex flex-column align-items-end gap-2">
+                            <span class="badge <?php echo !empty($emp['is_active']) ? 'bg-success' : 'bg-danger'; ?>">
+                                <?php echo e($emp['employment_status']); ?>
+                            </span>
+                            <div class="d-flex gap-1">
+                                <a href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-info" title="View"><i class="fas fa-eye"></i></a>
+                                <a href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-primary employee-edit-link" data-base-href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" title="Edit"><i class="fas fa-edit"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endwhile; ?>
+                </div>
+            </div>
+
             <!-- Pagination Controls -->
             <div class="d-flex justify-content-between align-items-center p-3 border-top" id="paginationWrapper">
                 <div id="paginationInfo" class="text-muted small"></div>
@@ -669,8 +574,11 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
 
     function renderTable() {
         const tbody = document.querySelector("#empTable tbody");
-        const allRowsArr = Array.from(tbody.querySelectorAll("tr:not(.no-results-row)"));
+        const mobileList = document.querySelector(".mobile-list-view .student-list");
+        const allRows = tbody ? Array.from(tbody.querySelectorAll("tr:not(.no-results-row)")) : [];
+        const allCards = mobileList ? Array.from(mobileList.querySelectorAll(".student-item")) : [];
         const filterInput = document.getElementById('customSearchEmp').value.toLowerCase().trim();
+
         const fJobTitle = document.getElementById('filterJobTitle').value;
         const fDepartment = document.getElementById('filterDepartment').value;
         const fBranch = document.getElementById('filterBranch').value;
@@ -678,8 +586,8 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
 
         let visibleRows = [];
 
-        // 1. Filter (text search + dropdown filters)
-        allRowsArr.forEach(row => {
+        // Filter desktop rows
+        allRows.forEach(row => {
             const cells = Array.from(row.querySelectorAll("td"));
             if (cells.length > 1) {
                 const rowText = cells.slice(0, 6).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ').toLowerCase();
@@ -700,7 +608,20 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
             }
         });
 
-        // 2. Paginate
+        // Filter mobile cards (mirrors desktop)
+        allCards.forEach(card => {
+            const cardText = card.textContent.toLowerCase();
+            const textMatch = filterInput === "" || cardText.includes(filterInput);
+            const dropdownMatch =
+                (fJobTitle === '' || card.dataset.jobtitle === fJobTitle) &&
+                (fDepartment === '' || card.dataset.department === fDepartment) &&
+                (fBranch === '' || card.dataset.branch === fBranch) &&
+                (fStatus === '' || card.dataset.status === fStatus);
+
+            card.style.display = (textMatch && dropdownMatch) ? "" : "none";
+        });
+
+        // Paginate desktop rows
         const totalPages = Math.ceil(visibleRows.length / ITEMS_PER_PAGE);
         if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
         if (currentPage < 1) currentPage = 1;
@@ -709,11 +630,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         const endIdx = startIdx + ITEMS_PER_PAGE;
 
         visibleRows.forEach((row, index) => {
-            if (index >= startIdx && index < endIdx) {
-                row.style.display = "";
-            } else {
-                row.style.display = "none";
-            }
+            row.style.display = (index >= startIdx && index < endIdx) ? "" : "none";
         });
 
         updatePaginationUI(visibleRows.length, totalPages);
@@ -736,13 +653,10 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         info.innerHTML = `Showing ${start} to ${end} of ${totalItems} entries`;
 
         let html = "";
-
-        // Previous Button
         html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
                 <button class="page-link" onclick="goToPage(${currentPage - 1})">Previous</button>
              </li>`;
 
-        // Page Numbers
         let startPage = Math.max(1, currentPage - 2);
         let endPage = Math.min(totalPages, startPage + 4);
         if (endPage - startPage < 4) {
@@ -761,7 +675,6 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
             html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
         }
 
-        // Next Button
         html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
                 <button class="page-link" onclick="goToPage(${currentPage + 1})">Next</button>
              </li>`;
@@ -770,6 +683,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
     }
 
     function handleNoResults(totalItems, filterInput, tbody) {
+        if (!tbody) return;
         const hasDropdownFilter = filterSelects.some(id => document.getElementById(id).value !== '');
         let noResultsRow = tbody.querySelector('.no-results-row.search-empty');
         if (totalItems === 0 && (filterInput !== "" || hasDropdownFilter)) {

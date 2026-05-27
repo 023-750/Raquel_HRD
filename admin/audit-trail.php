@@ -91,7 +91,7 @@ $audit_logs = $conn->query($sql);
         </div>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-md-block">
             <table class="table table-hover" id="auditTable">
                 <thead>
                     <tr>
@@ -135,6 +135,73 @@ $audit_logs = $conn->query($sql);
                     <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile view (Student Check-in Style) -->
+        <div class="mobile-list-view d-block d-md-none">
+            <div class="student-list">
+                <?php if ($audit_logs->num_rows === 0): ?>
+                    <div class="text-center py-4 text-muted">No audit logs found for <?php echo e($role_filters[$selected_role]['label']); ?>.</div>
+                <?php else: ?>
+                    <?php 
+                    $audit_logs->data_seek(0);
+                    while ($log = $audit_logs->fetch_assoc()): 
+                        $avatar_class = 'bg-secondary';
+                        $icon = 'fa-info-circle';
+                        $badge_class = 'bg-secondary';
+                        
+                        switch ($log['action_type']) {
+                            case 'CREATE': 
+                                $avatar_class = 'bg-success'; 
+                                $icon = 'fa-plus'; 
+                                $badge_class = 'bg-success';
+                                break;
+                            case 'UPDATE': 
+                                $avatar_class = 'bg-info'; 
+                                $icon = 'fa-edit'; 
+                                $badge_class = 'bg-info';
+                                break;
+                            case 'DELETE': 
+                                $avatar_class = 'bg-danger'; 
+                                $icon = 'fa-trash'; 
+                                $badge_class = 'bg-danger';
+                                break;
+                            case 'LOGIN': 
+                                $avatar_class = 'bg-primary'; 
+                                $icon = 'fa-sign-in-alt'; 
+                                $badge_class = 'bg-primary';
+                                break;
+                        }
+                    ?>
+                        <div class="student-item" style="align-items: flex-start;">
+                            <div class="student-avatar">
+                                <div class="avatar-placeholder d-flex align-items-center justify-content-center <?php echo $avatar_class; ?>" style="width: 42px; height: 42px; border-radius: 12px; font-size: 15px; color: white;">
+                                    <i class="fas <?php echo $icon; ?>"></i>
+                                </div>
+                            </div>
+                            <div class="student-info">
+                                <div class="student-name" style="font-size: 0.9rem; margin-bottom: 2px;">
+                                    <span class="badge <?php echo $badge_class; ?>"><?php echo e($log['action_type']); ?></span>
+                                    <strong class="ms-1"><?php echo e($log['entity_type']); ?></strong>
+                                    <span class="text-muted" style="font-size: 0.72rem;">#<?php echo $log['log_id']; ?></span>
+                                </div>
+                                <div class="student-meta" style="color: var(--text-dark); font-size: 0.82rem; margin-bottom: 4px; line-height: 1.3;">
+                                    <?php echo e($log['details']); ?>
+                                </div>
+                                <div class="student-meta" style="font-size: 0.78rem;">
+                                    <span>By: <strong><?php echo e($log['full_name'] ?? 'System'); ?></strong> (<?php echo e($log['role'] ?? 'System'); ?>)</span>
+                                </div>
+                                <div class="student-meta" style="font-size: 0.74rem; margin-top: 2px; color: var(--text-muted);">
+                                    <span><i class="far fa-clock me-1"></i><?php echo formatDateTime($log['timestamp']); ?></span>
+                                    &bull; <span><i class="fas fa-desktop me-1"></i><?php echo e($log['ip_address']); ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    <?php 
+                    endwhile; 
+                    ?>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </div>

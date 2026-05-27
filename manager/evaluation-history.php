@@ -6,7 +6,7 @@ require_once '../includes/functions.php';
 require_once '../includes/header.php';
 
 // Fetch evaluation history
-$history = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, d.department_name,
+$history = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.rank_category_id, d.department_name,
     u.full_name as submitted_by_name, u2.full_name as endorsed_by_name, u3.full_name as approved_by_name, et.template_name
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
@@ -116,9 +116,9 @@ while ($row = $history->fetch_assoc()) {
                     <tr>
                         <th class="ps-3" style="cursor: pointer;" onclick="sortTable(0)">Employee <i class="fas fa-sort text-muted ms-1 small"></i></th>
                         <th style="cursor: pointer;" onclick="sortTable(1)">Department <i class="fas fa-sort text-muted ms-1 small"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(3)">Date <i class="fas fa-sort text-muted ms-1 small"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(4)">Score <i class="fas fa-sort text-muted ms-1 small"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(6)">Status <i class="fas fa-sort text-muted ms-1 small"></i></th>
+                        <th style="cursor: pointer;" onclick="sortTable(2)">Date <i class="fas fa-sort text-muted ms-1 small"></i></th>
+                        <th style="cursor: pointer;" onclick="sortTable(3)">Score <i class="fas fa-sort text-muted ms-1 small"></i></th>
+                        <th style="cursor: pointer;" onclick="sortTable(4)">Status <i class="fas fa-sort text-muted ms-1 small"></i></th>
                         <th class="text-end pe-3">Actions</th>
                     </tr>
                 </thead>
@@ -230,10 +230,23 @@ foreach ($all_history as $row):
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="d-flex justify-content-end mb-4 gap-2 d-print-none text-end">
-                        <a href="print-evaluation.php?id=<?php echo $row['evaluation_id']; ?>" target="_blank" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
-                            <i class="fas fa-print me-1"></i>Print Form
-                        </a>
+                    <div class="d-flex justify-content-between align-items-center mb-4 gap-2 d-print-none">
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold btn-edit-ratings" onclick="toggleEditRatings(<?php echo $row['evaluation_id']; ?>)">
+                                <i class="fas fa-edit me-1"></i>Edit Ratings
+                            </button>
+                            <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold btn-save-ratings d-none" onclick="saveRatings(<?php echo $row['evaluation_id']; ?>)">
+                                <i class="fas fa-save me-1"></i>Save Changes
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold btn-cancel-ratings d-none" onclick="toggleEditRatings(<?php echo $row['evaluation_id']; ?>, true)">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </button>
+                        </div>
+                        <div class="text-end">
+                            <a href="print-evaluation.php?id=<?php echo $row['evaluation_id']; ?>" target="_blank" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold">
+                                <i class="fas fa-print me-1"></i>Print Form
+                            </a>
+                        </div>
                     </div>
 
                     <!-- KRA Section -->
@@ -261,8 +274,38 @@ foreach ($all_history as $row):
                                             <?php if($k['description']): ?><div class="text-muted x-small"><?php echo e($k['description']); ?></div><?php endif; ?>
                                         </td>
                                         <td class="text-center"><?php echo $k['weight']; ?>%</td>
-                                        <td class="text-center fw-bold"><?php echo $k['score_value']; ?></td>
-                                        <td class="text-center text-primary fw-bold"><?php echo $k['weighted_score']; ?></td>
+                                        <td class="text-center fw-bold">
+                                            <?php
+                                            $effective_score = $k['score_value'];
+                                            $supervisor_override_score = $k['supervisor_override_score'] ?? null;
+                                            $manager_override_score = $k['manager_override_score'] ?? null;
+                                            $badge_html = '';
+                                            
+                                            if ($supervisor_override_score !== null) {
+                                                $effective_score = $supervisor_override_score;
+                                                
+                                                $sup_name_q = $conn->query("SELECT full_name FROM users WHERE user_id = " . (int)($k['supervisor_override_by'] ?? 0))->fetch_assoc();
+                                                $sup_name = $sup_name_q['full_name'] ?? 'Supervisor';
+                                                $formatted_date = formatDate($k['supervisor_override_at'] ?? '', 'M d, Y h:i A');
+                                                $badge_html .= '<span class="badge-audit ms-2" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Supervisor Override</strong><br>Edited by: ' . e($sup_name) . '<br>On: ' . $formatted_date . '<br>Original: ' . $k['score_value'] . '"><i class="fas fa-user-edit me-1"></i>Sup Override</span>';
+                                            }
+                                            
+                                            if ($manager_override_score !== null) {
+                                                $effective_score = $manager_override_score;
+                                                
+                                                $mgr_name_q = $conn->query("SELECT full_name FROM users WHERE user_id = " . (int)($k['manager_override_by'] ?? 0))->fetch_assoc();
+                                                $mgr_name = $mgr_name_q['full_name'] ?? 'Manager';
+                                                $formatted_date = formatDate($k['manager_override_at'] ?? '', 'M d, Y h:i A');
+                                                $badge_html .= '<span class="badge-audit mgr ms-2" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Manager Override</strong><br>Edited by: ' . e($mgr_name) . '<br>On: ' . $formatted_date . '<br>Original: ' . $k['score_value'] . '"><i class="fas fa-user-shield me-1"></i>Mgr Override</span>';
+                                            }
+                                            ?>
+                                            <span class="score-display"><?php echo number_format($effective_score, 2); ?></span>
+                                            <input type="number" min="1.00" max="4.00" step="0.01" class="form-control form-control-sm score-input d-none text-center mx-auto" 
+                                                   style="width: 75px;" value="<?php echo number_format($effective_score, 2); ?>" 
+                                                   data-score-id="<?php echo $k['score_id']; ?>" data-original-val="<?php echo number_format($effective_score, 2); ?>">
+                                            <?php echo $badge_html; ?>
+                                        </td>
+                                        <td class="text-center text-primary fw-bold weighted-score-display"><?php echo $k['weighted_score']; ?></td>
                                     </tr>
                                 <?php endwhile; ?>
                                 <tr class="bg-light fw-bold border-top">
@@ -296,7 +339,37 @@ foreach ($all_history as $row):
                                             <div class="fw-bold"><?php echo e($b['criterion_name']); ?></div>
                                             <div class="text-muted x-small"><?php echo e($b['kpi_description']); ?></div>
                                         </td>
-                                        <td class="text-center text-primary fw-bold"><?php echo $b['score_value']; ?></td>
+                                        <td class="text-center fw-bold">
+                                            <?php
+                                            $effective_score = $b['score_value'];
+                                            $supervisor_override_score = $b['supervisor_override_score'] ?? null;
+                                            $manager_override_score = $b['manager_override_score'] ?? null;
+                                            $badge_html = '';
+                                            
+                                            if ($supervisor_override_score !== null) {
+                                                $effective_score = $supervisor_override_score;
+                                                
+                                                $sup_name_q = $conn->query("SELECT full_name FROM users WHERE user_id = " . (int)($b['supervisor_override_by'] ?? 0))->fetch_assoc();
+                                                $sup_name = $sup_name_q['full_name'] ?? 'Supervisor';
+                                                $formatted_date = formatDate($b['supervisor_override_at'] ?? '', 'M d, Y h:i A');
+                                                $badge_html .= '<span class="badge-audit ms-2" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Supervisor Override</strong><br>Edited by: ' . e($sup_name) . '<br>On: ' . $formatted_date . '<br>Original: ' . $b['score_value'] . '"><i class="fas fa-user-edit me-1"></i>Sup Override</span>';
+                                            }
+                                            
+                                            if ($manager_override_score !== null) {
+                                                $effective_score = $manager_override_score;
+                                                
+                                                $mgr_name_q = $conn->query("SELECT full_name FROM users WHERE user_id = " . (int)($b['manager_override_by'] ?? 0))->fetch_assoc();
+                                                $mgr_name = $mgr_name_q['full_name'] ?? 'Manager';
+                                                $formatted_date = formatDate($b['manager_override_at'] ?? '', 'M d, Y h:i A');
+                                                $badge_html .= '<span class="badge-audit mgr ms-2" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Manager Override</strong><br>Edited by: ' . e($mgr_name) . '<br>On: ' . $formatted_date . '<br>Original: ' . $b['score_value'] . '"><i class="fas fa-user-shield me-1"></i>Mgr Override</span>';
+                                            }
+                                            ?>
+                                            <span class="score-display"><?php echo number_format($effective_score, 2); ?></span>
+                                            <input type="number" min="1.00" max="4.00" step="0.01" class="form-control form-control-sm score-input d-none text-center mx-auto" 
+                                                   style="width: 75px;" value="<?php echo number_format($effective_score, 2); ?>" 
+                                                   data-score-id="<?php echo $b['score_id']; ?>" data-original-val="<?php echo number_format($effective_score, 2); ?>">
+                                            <?php echo $badge_html; ?>
+                                        </td>
                                     </tr>
                                 <?php endwhile; ?>
                                 <tr class="bg-light fw-bold border-top">
@@ -566,10 +639,153 @@ function handleNoResults(totalItems, filterInput, tbody) {
     }
 }
 
-document.addEventListener("DOMContentLoaded", renderTable);
+document.addEventListener("DOMContentLoaded", function() {
+    renderTable();
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+function toggleEditRatings(evalId, cancel = false) {
+    const modal = document.querySelector(`#reviewModal${evalId}`);
+    if (!modal) return;
+
+    const displays = modal.querySelectorAll('.score-display');
+    const inputs = modal.querySelectorAll('.score-input');
+    const badgeAudits = modal.querySelectorAll('.badge-audit');
+    const editBtn = modal.querySelector('.btn-edit-ratings');
+    const saveBtn = modal.querySelector('.btn-save-ratings');
+    const cancelBtn = modal.querySelector('.btn-cancel-ratings');
+
+    if (cancel) {
+        inputs.forEach(input => {
+            input.value = input.getAttribute('data-original-val');
+            input.classList.remove('is-invalid');
+        });
+    }
+
+    const isEditing = inputs[0].classList.contains('d-none');
+
+    if (isEditing) {
+        displays.forEach(d => d.classList.add('d-none'));
+        badgeAudits.forEach(b => b.classList.add('d-none'));
+        inputs.forEach(i => i.classList.remove('d-none'));
+        
+        editBtn.classList.add('d-none');
+        saveBtn.classList.remove('d-none');
+        cancelBtn.classList.remove('d-none');
+    } else {
+        displays.forEach(d => d.classList.remove('d-none'));
+        badgeAudits.forEach(b => b.classList.remove('d-none'));
+        inputs.forEach(i => i.classList.add('d-none'));
+        
+        editBtn.classList.remove('d-none');
+        saveBtn.classList.add('d-none');
+        cancelBtn.classList.add('d-none');
+    }
+}
+
+function saveRatings(evalId) {
+    const modal = document.querySelector(`#reviewModal${evalId}`);
+    if (!modal) return;
+
+    const inputs = modal.querySelectorAll('.score-input');
+    const ratings = {};
+    let hasError = false;
+
+    inputs.forEach(input => {
+        const val = parseFloat(input.value);
+        const scoreId = input.getAttribute('data-score-id');
+        if (isNaN(val) || val < 1.00 || val > 4.00) {
+            hasError = true;
+            input.classList.add('is-invalid');
+        } else {
+            input.classList.remove('is-invalid');
+            ratings[scoreId] = val;
+        }
+    });
+
+    if (hasError) {
+        alert('Please enter valid ratings between 1.00 and 4.00.');
+        return;
+    }
+
+    const saveBtn = modal.querySelector('.btn-save-ratings');
+    const originalBtnText = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+
+    const formData = new FormData();
+    formData.append('evaluation_id', evalId);
+    for (const [key, value] of Object.entries(ratings)) {
+        formData.append(`ratings[${key}]`, value);
+    }
+
+    fetch('ajax/save-rating.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message || 'An error occurred while saving ratings.');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalBtnText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An unexpected error occurred.');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalBtnText;
+    });
+}
 </script>
 
 <style>
+    .badge-audit {
+        background: rgba(255, 193, 7, 0.15);
+        color: #d39e00;
+        border: 1px solid rgba(255, 193, 7, 0.4);
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        backdrop-filter: blur(4px);
+        margin-left: 5px;
+        vertical-align: middle;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .badge-audit:hover {
+        background: rgba(255, 193, 7, 0.25);
+        transform: translateY(-1px);
+    }
+    .badge-audit.mgr {
+        background: rgba(23, 162, 184, 0.15);
+        color: #17a2b8;
+        border: 1px solid rgba(23, 162, 184, 0.4);
+    }
+    .badge-audit.mgr:hover {
+        background: rgba(23, 162, 184, 0.25);
+    }
+    .score-input {
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #ced4da;
+    }
+    .score-input:focus {
+        background: #fff;
+        border-color: #BD9414;
+        box-shadow: 0 0 0 0.2rem rgba(189, 148, 20, 0.25);
+    }
     .status-stepper .stepper-line {
         position: absolute;
         top: 15px;

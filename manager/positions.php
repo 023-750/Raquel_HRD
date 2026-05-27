@@ -179,50 +179,11 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
         border-bottom: none;
     }
 
-    @media (max-width: 768px) {
-        .table-responsive {
-            border: none;
-        }
-
-        .responsive-position-table thead {
-            display: none;
-        }
-
-        .responsive-position-table tr {
-            display: block;
-            background: #fff;
-            border-radius: 15px;
-            margin-bottom: 18px;
-            padding: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            border: 1px solid #f0f0f0;
-        }
-
-        .responsive-position-table td {
-            display: flex;
-            justify-content: space-between;
-            gap: 1rem;
-            align-items: center;
-            border: none;
-            padding: 9px 0;
-            text-align: right;
-            font-size: 0.9rem;
-        }
-
-        .responsive-position-table td::before {
-            content: attr(data-label);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            text-align: left;
-        }
-
-        .responsive-position-table td:first-child::before,
-        .responsive-position-table td:last-child::before {
-            display: none;
-        }
-    }
+    .student-list { display: flex; flex-direction: column; gap: 12px; }
+    .student-item { background: #fff; border-radius: 12px; padding: 15px; display: flex; align-items: flex-start; gap: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+    .student-name { font-weight: 700; color: var(--primary-blue); margin-bottom: 2px; }
+    .student-meta { font-size: 0.85rem; color: #666; }
+    .btn-xs { padding: 2px 8px; font-size: 0.75rem; }
 </style>
 
 <div class="page-hero fadeup">
@@ -307,7 +268,8 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
             </div>
         </div>
         <div class="cc-body p-0">
-            <div class="table-responsive">
+            <!-- Desktop Table (hidden on mobile) -->
+            <div class="table-responsive d-none d-md-block">
                 <table class="table table-hover responsive-position-table" id="positionTable">
                     <thead>
                         <tr>
@@ -390,6 +352,74 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Mobile Card List (visible only on mobile) -->
+            <div class="mobile-list-view d-block d-md-none p-3">
+                <div class="student-list">
+                    <?php 
+                    if ($positionCount === 0): ?>
+                        <div class="text-center py-4 text-muted">No positions found.</div>
+                    <?php else:
+                        $positions->data_seek(0);
+                        while ($position = $positions->fetch_assoc()): ?>
+                        <div class="student-item" data-position-id="<?php echo $position['job_title_id']; ?>">
+                            <div class="student-avatar">
+                                <div class="rounded-circle text-white d-flex align-items-center justify-content-center"
+                                    style="width: 46px; height: 46px; background: var(--primary-blue); font-size: 1.2rem; font-weight: bold; border: 2px solid var(--bg-gray); box-shadow: 0 2px 5px rgba(0,0,0,0.08);">
+                                    <i class="fas fa-id-badge" style="font-size: 1rem;"></i>
+                                </div>
+                            </div>
+                            <div class="student-info">
+                                <div class="student-name">
+                                    <?php echo e($position['job_title']); ?>
+                                    <?php if ((int) $position['is_head'] === 1): ?>
+                                        <span class="badge bg-primary ms-1" style="font-size: 0.65rem;"><i class="fas fa-crown me-1"></i>Head</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="student-meta">
+                                    <span>Dept: <?php echo e($position['department_name'] ?: 'Unassigned'); ?></span>
+                                    &bull; <span>Rank: <?php echo e($position['rank_name'] ?: 'Unassigned'); ?></span>
+                                </div>
+                                <div class="student-meta mt-1">
+                                    <span>Reports to: <?php echo e($position['reports_to_title'] ?: 'None'); ?></span>
+                                </div>
+                                <div class="student-meta mt-1">
+                                    <span class="badge bg-info">Employees: <?php echo (int) $position['employee_count']; ?></span>
+                                    &bull;
+                                    <span class="badge <?php echo (int) $position['is_active'] === 1 ? 'bg-success' : 'bg-secondary'; ?>">
+                                        <?php echo (int) $position['is_active'] === 1 ? 'Active' : 'Inactive'; ?>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="ms-auto text-end d-flex flex-column align-items-end gap-2">
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-xs btn-outline-primary" data-bs-toggle="modal"
+                                        data-bs-target="#editPositionModal" onclick="openEditPositionModal(
+                                            <?php echo (int) $position['job_title_id']; ?>,
+                                            '<?php echo e(addslashes($position['job_title'])); ?>',
+                                            '<?php echo (int) ($position['department_id'] ?? 0); ?>',
+                                            '<?php echo (int) ($position['rank_category_id'] ?? 0); ?>',
+                                            '<?php echo (int) $position['is_active']; ?>',
+                                            '<?php echo (int) $position['is_head']; ?>',
+                                            '<?php echo (int) ($position['reports_to'] ?? 0); ?>'
+                                        )">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-xs btn-outline-danger" data-bs-toggle="modal"
+                                        data-bs-target="#deletePositionModal" onclick="setDeletePositionTarget(
+                                            <?php echo (int) $position['job_title_id']; ?>,
+                                            '<?php echo e(addslashes($position['job_title'])); ?>',
+                                            <?php echo (int) $position['employee_count']; ?>
+                                        )">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endwhile;
+                    endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -617,13 +647,20 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
     function attachTableSearch(inputId, tableId) {
         const input = document.getElementById(inputId);
         const table = document.getElementById(tableId);
-        if (!input || !table) return;
+        if (!input) return;
 
         input.addEventListener('input', function () {
             const filter = this.value.toLowerCase().trim();
-            const rows = table.querySelectorAll('tbody tr');
-            rows.forEach((row) => {
-                row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+            if (table) {
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach((row) => {
+                    row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+                });
+            }
+            
+            const cards = document.querySelectorAll('.mobile-list-view .student-item');
+            cards.forEach((card) => {
+                card.style.display = card.textContent.toLowerCase().includes(filter) ? '' : 'none';
             });
         });
     }

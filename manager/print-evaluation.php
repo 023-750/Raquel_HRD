@@ -375,9 +375,11 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px;">I. Key Result Areas based on Strategic
               Programs and<br>&nbsp;&nbsp;&nbsp;Regular Job Requirements</td>
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px; text-align:center;">
-              <?php echo $row['kra_weight'] ?? 80; ?>%</td>
+              <?php echo $row['kra_weight'] ?? 80; ?>%
+            </td>
             <td style="border:1px solid #000; padding:3px 6px; text-align:center; font-weight:bold;">
-              <?php echo $row['kra_subtotal']; ?></td>
+              <?php echo $row['kra_subtotal']; ?>
+            </td>
             <td rowspan="3"
               style="border:1px solid #000; padding:6px; text-align:center; font-size:9px; vertical-align:middle;">
               <div style="border-bottom:1px solid #000; margin:0 8px 2px; height:30px;"></div>
@@ -390,9 +392,11 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px;">II. Key Result Areas based on Behavior
               and Values</td>
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px; text-align:center;">
-              <?php echo $row['behavior_weight'] ?? 20; ?>%</td>
+              <?php echo $row['behavior_weight'] ?? 20; ?>%
+            </td>
             <td style="border:1px solid #000; padding:3px 6px; text-align:center; font-weight:bold;">
-              <?php echo $row['behavior_average']; ?></td>
+              <?php echo $row['behavior_average']; ?>
+            </td>
           </tr>
           <tr>
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px; font-weight:bold; text-align:center;">
@@ -400,7 +404,8 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px; text-align:center; font-weight:bold;">
               100%</td>
             <td style="border:1px solid #000; padding:3px 6px; text-align:center; font-weight:bold; color:blue;">
-              <?php echo $row['total_score']; ?></td>
+              <?php echo $row['total_score']; ?>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -441,7 +446,8 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
           </td>
           <td style="border:1px solid #000;"></td>
           <td style="border:1px solid #000; text-align:center; font-weight:bold; padding:3px 6px; font-size:10px;">
-            <?php echo $row['kra_subtotal']; ?></td>
+            <?php echo $row['kra_subtotal']; ?>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -498,32 +504,15 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
       <tbody>
         <?php
         $beh_q = $conn->query("SELECT es.*, ec.criterion_name, ec.kpi_description FROM evaluation_scores es JOIN evaluation_criteria ec ON es.criterion_id = ec.criterion_id WHERE es.evaluation_id = $id AND ec.section = 'Behavior' ORDER BY ec.sort_order");
-        $behavior_map = [
-          'Positive Attitude' => 'Displays positive attitude at work.',
-          'Respect' => 'Shows respect to all people in the organization.',
-          'Accountability' => 'Takes full responsibility of the job including special task or assignment.',
-          'Commitment' => 'Demonstrates strong commitment to the job.',
-          'Teamwork' => 'Works cooperatively with others in achieving the goals.',
-          'Integrity' => 'Exhibits honesty and strong moral uprightness.',
-          'Continuous Improvement' => 'Provides diligent effort to continuously focus on getting better.',
-          'Excellent Client Experience' => 'Delivers the service beyond the expectations of the internal and external clients.'
-        ];
-
-        $beh_scores = [];
-        while ($b = $beh_q->fetch_assoc()) {
-          $beh_scores[$b['criterion_name']] = $b['score_value'];
-        }
-
         $idx = 1;
-        foreach ($behavior_map as $name => $kpi):
-          $score = $beh_scores[$name] ?? '';
+        while ($b = $beh_q->fetch_assoc()):
           ?>
           <tr>
-            <td><?php echo $idx++; ?>. <?php echo e($name); ?></td>
-            <td><?php echo e($kpi); ?></td>
-            <td style="border:1px solid #000; text-align:center; font-weight:bold;"><?php echo $score; ?></td>
+            <td><?php echo $idx++; ?>. <?php echo e($b['criterion_name']); ?></td>
+            <td><?php echo e($b['kpi_description']); ?></td>
+            <td style="border:1px solid #000; text-align:center; font-weight:bold;"><?php echo $b['score_value']; ?></td>
           </tr>
-        <?php endforeach; ?>
+        <?php endwhile; ?>
         <tr style="font-weight:bold;">
           <td colspan="2" style="text-align:right; padding:3px 8px; border:1px solid #000;">Average</td>
           <td style="border:1px solid #000; text-align:center; padding:3px 6px;"><?php echo $row['behavior_average']; ?>
@@ -576,7 +565,7 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
       <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
         <div
           style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
-          <?php echo strtoupper(e($row['submitted_by_name'] ?? '')); ?>
+          <?php echo strtoupper(e($row['employee_name'] ?? '')); ?>
         </div>
         <br>
         <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
@@ -585,7 +574,7 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
 
     <!-- Evaluator's Comments -->
     <div class="comment-box">
-      <div class="label">Evaluator's Comments:</div>
+      <div class="label">HR Supervisor's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['supervisor_comments'])); ?></div>
       <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
         <div
@@ -597,17 +586,30 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
       </div>
     </div>
 
+    <!-- HR Manager's Comments -->
+    <div class="comment-box">
+      <div class="label">HR Manager's Comments:</div>
+      <div class="content"><?php echo nl2br(e($row['manager_comments'])); ?></div>
+      <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
+        <div
+          style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
+          <?php echo strtoupper(e($row['approved_by_name'] ?? '')); ?>
+        </div>
+        <br>
+        <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
+      </div>
+    </div>
+
     <!-- Executives' Signature -->
     <div style="border:1px solid #000; padding:6px 8px 14px; margin-bottom:6px;">
       <div style="font-weight:bold; font-style:italic; font-size:10px; margin-bottom:30px;">Executives' Signature</div>
       <div style="display:flex; justify-content:space-between; padding:0 30px;">
         <div style="text-align:center;">
-          <div style="border-top:1px solid #000; width:140px; margin-bottom:2px;">
-            <?php echo e($row['approved_by_name'] ?? ''); ?></div>
+          <div style="border-top:1px solid #000; width:140px; margin-bottom:2px;">&nbsp;</div>
           <div style="font-size:9px;">Vice President / Manager</div>
         </div>
         <div style="text-align:center;">
-          <div style="border-top:1px solid #000; width:140px; margin-bottom:2px;"></div>
+          <div style="border-top:1px solid #000; width:140px; margin-bottom:2px;">&nbsp;</div>
           <div style="font-size:9px;">President and CEO</div>
         </div>
       </div>

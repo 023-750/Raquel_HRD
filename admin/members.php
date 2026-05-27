@@ -120,7 +120,7 @@ $employees = $conn->query("
         </div>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-md-block">
             <table class="table table-hover" id="membersTable">
                 <thead>
                     <tr>
@@ -163,6 +163,48 @@ $employees = $conn->query("
                     <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile view (Student Check-in Style) -->
+        <div class="mobile-list-view d-block d-md-none">
+            <div class="student-list">
+                <?php $row_number_mob = $offset + 1; ?>
+                <?php if ($employees->num_rows === 0): ?>
+                    <div class="text-center py-4 text-muted">No members found for the selected department.</div>
+                <?php else: ?>
+                    <?php 
+                    $employees->data_seek(0);
+                    while ($emp = $employees->fetch_assoc()): 
+                        $avatar_num = ($row_number_mob % 6) + 1;
+                        $initials = strtoupper(substr($emp['first_name'] ?? '', 0, 1) . substr($emp['last_name'] ?? '', 0, 1));
+                    ?>
+                        <div class="student-item">
+                            <div class="student-avatar">
+                                <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>?v=<?php echo time(); ?>" alt="Profile" class="avatar-img">
+                            </div>
+                            <div class="student-info">
+                                <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name'] . ' ' . $emp['middle_name']); ?></div>
+                                <div class="student-meta">
+                                    <span class="company-id-text">ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span></span>
+                                    &bull; <span><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
+                                </div>
+                                <div class="student-meta" style="margin-top: 2px;">
+                                    <span><?php echo e($emp['department_name'] ?? 'N/A'); ?></span>
+                                    &bull; <span><?php echo e($emp['branch_name'] ?? 'N/A'); ?></span>
+                                </div>
+                            </div>
+                            <div class="ms-auto text-end">
+                                <span class="badge <?php echo $emp['is_active'] ? 'bg-success' : 'bg-danger'; ?>">
+                                    <?php echo $emp['is_active'] ? 'Active' : 'Inactive'; ?>
+                                </span>
+                            </div>
+                        </div>
+                    <?php 
+                        $row_number_mob++;
+                    endwhile; 
+                    ?>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
     <?php if ($total_pages > 1): ?>

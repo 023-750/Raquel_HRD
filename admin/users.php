@@ -34,15 +34,14 @@ $current_page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
 $offset = ($current_page - 1) * $per_page;
 
 // Count only HR system users (Admin or valid HR employees only)
-// Excludes orphaned accounts where employee was deleted (e.employee_id IS NULL)
 $total_users_result = $conn->query("
     SELECT COUNT(*) AS total
     FROM users u
     LEFT JOIN employees e ON u.employee_id = e.employee_id
     LEFT JOIN departments d ON e.department_id = d.department_id
     WHERE (u.role = 'Admin')
-       OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff') 
-           AND e.employee_id IS NOT NULL 
+       OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff')
+           AND e.employee_id IS NOT NULL
            AND d.department_name = 'Human Resources')
 ");
 $total_users = (int) ($total_users_result->fetch_assoc()['total'] ?? 0);
@@ -53,20 +52,17 @@ if ($current_page > $total_pages) {
     $offset = ($current_page - 1) * $per_page;
 }
 
-
-
-// Fetch HR system users (Admin or valid HR employees only)
-// Excludes orphaned accounts where employee was deleted (e.employee_id IS NULL)
+// Fetch HR system users
 $users = $conn->query("
     SELECT u.*, b.branch_name, e.profile_picture, e.job_title, rc.rank_name
-    FROM users u 
-    LEFT JOIN branches b ON u.branch_id = b.branch_id 
-    LEFT JOIN employees e ON u.employee_id = e.employee_id 
+    FROM users u
+    LEFT JOIN branches b ON u.branch_id = b.branch_id
+    LEFT JOIN employees e ON u.employee_id = e.employee_id
     LEFT JOIN departments d ON e.department_id = d.department_id
     LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
     WHERE (u.role = 'Admin')
-       OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff') 
-           AND e.employee_id IS NOT NULL 
+       OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff')
+           AND e.employee_id IS NOT NULL
            AND d.department_name = 'Human Resources')
     ORDER BY u.created_at DESC
     LIMIT $per_page OFFSET $offset
@@ -75,16 +71,16 @@ $users = $conn->query("
 // Fetch branches for the add form
 $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
 
-// Fetch active employees from Human Resources department who don't have an HR/admin account yet
+// Fetch active HR employees who don't have an HR/admin account yet
 $eligible_employees = $conn->query("
     SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, rc.rank_name, ec.personal_email
-    FROM employees e 
+    FROM employees e
     JOIN departments d ON e.department_id = d.department_id
     LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
     LEFT JOIN employee_contacts ec ON e.employee_id = ec.employee_id
     LEFT JOIN users u ON e.employee_id = u.employee_id AND u.role != 'Employee'
-    WHERE u.user_id IS NULL 
-      AND e.is_active = 1 
+    WHERE u.user_id IS NULL
+      AND e.is_active = 1
       AND d.department_name = 'Human Resources'
     ORDER BY e.last_name, e.first_name
 ");
@@ -95,34 +91,33 @@ unset($_SESSION['new_employee_credentials']);
 ?>
 
 <?php if ($new_creds): ?>
-    <!-- Credential Slip Modal (shown once after creating an Employee account) -->
-    <div class="modal fade" id="credentialSlipModal" tabindex="-1" data-bs-backdrop="static">
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="fas fa-key me-2"></i>Employee Credentials</h5>
+<!-- Credential Slip Modal — shown once after creating any account -->
+<div class="modal fade" id="credentialSlipModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-key me-2"></i>Account Credentials</h5>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-1">Account created for:</p>
+                <h5 class="fw-bold"><?php echo e($new_creds['full_name']); ?></h5>
+                <hr>
+                <p class="mb-1"><small class="text-muted">Username</small></p>
+                <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['username']); ?></div>
+                <p class="mb-1"><small class="text-muted">Password</small></p>
+                <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['password']); ?></div>
+                <div class="alert alert-warning py-2 mt-2" style="font-size:.82rem;">
+                    <i class="fas fa-exclamation-triangle me-1"></i>Save and hand these credentials to the user.
+                    This is shown only once.
                 </div>
-                <div class="modal-body text-center">
-                    <p class="mb-1">Account created for:</p>
-                    <h5 class="fw-bold"><?php echo e($new_creds['full_name']); ?></h5>
-                    <hr>
-                    <p class="mb-1"><small class="text-muted">Username (Employee ID)</small></p>
-                    <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['username']); ?></div>
-                    <p class="mb-1"><small class="text-muted">Password</small></p>
-                    <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['password']); ?></div>
-                    <div class="alert alert-warning py-2 mt-2" style="font-size:.82rem;">
-                        <i class="fas fa-exclamation-triangle me-1"></i>Save and hand these credentials to the employee.
-                        This is shown only once.
-                    </div>
-                </div>
-                <div class="modal-footer justify-content-center">
-                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">Got it, I've noted the
-                        credentials</button>
-                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Got it, I've noted the credentials</button>
             </div>
         </div>
     </div>
-    <script>document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());</script>
+</div>
+<script>document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());</script>
 <?php endif; ?>
 
 <!-- Page Header -->
@@ -159,7 +154,7 @@ unset($_SESSION['new_employee_credentials']);
         </div>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <div class="table-responsive d-none d-md-block">
             <table class="table table-hover" id="usersTable">
                 <thead>
                     <tr>
@@ -217,7 +212,7 @@ unset($_SESSION['new_employee_credentials']);
                                         title="Toggle Active/Inactive">
                                         <i class="fas fa-power-off"></i>
                                     </a>
-                                    <!-- Delete — uses Bootstrap modal, no native confirm() -->
+                                    <!-- Delete -->
                                     <button type="button" class="btn btn-sm btn-outline-danger" title="Delete User"
                                         onclick="setDeleteTarget(<?php echo $user['user_id']; ?>, '<?php echo e(addslashes($user['username'])); ?>')"
                                         data-bs-toggle="modal" data-bs-target="#deleteModal">
@@ -232,26 +227,108 @@ unset($_SESSION['new_employee_credentials']);
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile view (Student Check-in Style) -->
+        <div class="mobile-list-view d-block d-md-none">
+            <div class="student-list">
+                <?php $row_number_mob = $offset + 1; ?>
+                <?php if ($users->num_rows === 0): ?>
+                    <div class="text-center py-4 text-muted">No users found.</div>
+                <?php else: ?>
+                    <?php 
+                    $users->data_seek(0);
+                    while ($user = $users->fetch_assoc()): 
+                        $avatar_num = ($row_number_mob % 6) + 1;
+                        // Split full name to get initials
+                        $name_parts = explode(' ', trim($user['full_name'] ?? ''));
+                        $first_part = $name_parts[0] ?? '';
+                        $last_part = end($name_parts);
+                        if ($first_part === $last_part) {
+                            $initials = strtoupper(substr($first_part, 0, 2));
+                        } else {
+                            $initials = strtoupper(substr($first_part, 0, 1) . substr($last_part, 0, 1));
+                        }
+                        if (empty($initials)) $initials = 'US';
+                    ?>
+                        <div class="student-item">
+                            <div class="student-avatar">
+                                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>?v=<?php echo time(); ?>" alt="Profile" class="avatar-img">
+                            </div>
+                            <div class="student-info">
+                                <div class="student-name">
+                                    <?php echo e($user['full_name']); ?>
+                                </div>
+                                <div class="student-meta">
+                                    Username: <code><?php echo e($user['username']); ?></code> &bull; <span class="badge bg-primary"><?php echo e($user['role']); ?></span>
+                                </div>
+                                <div class="student-meta" style="margin-top: 2px;">
+                                    <?php if (!empty($user['job_title'])): ?>
+                                        <span><?php echo e($user['job_title']); ?></span>
+                                        <?php if (!empty($user['rank_name'])): ?>
+                                            <span class="text-muted small">(<?php echo e($user['rank_name']); ?>)</span>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted small">Standalone Account</span>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="student-meta" style="margin-top: 2px;">
+                                    <span>Branch: <?php echo e($user['branch_name'] ?? 'N/A'); ?></span> &bull; <span><?php echo e($user['email']); ?></span>
+                                </div>
+                                <div class="student-meta" style="margin-top: 4px;">
+                                    Status: 
+                                    <span class="badge <?php echo $user['is_active'] ? 'bg-success' : 'bg-danger'; ?>">
+                                        <?php echo $user['is_active'] ? 'Active' : 'Inactive'; ?>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="ms-auto text-end d-flex flex-column gap-2 justify-content-center">
+                                <?php if ($user['user_id'] != $_SESSION['user_id']): ?>
+                                    <div class="d-flex gap-1">
+                                        <!-- Edit -->
+                                        <a href="<?php echo BASE_URL; ?>/admin/edit-user.php?id=<?php echo $user['user_id']; ?>"
+                                            class="btn btn-sm btn-outline-primary" title="Edit User" style="padding: 5px 8px; border-radius: 6px;">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <!-- Toggle Status -->
+                                        <a href="?toggle=<?php echo $user['user_id']; ?>" class="btn btn-sm btn-outline-warning"
+                                            title="Toggle Active/Inactive" style="padding: 5px 8px; border-radius: 6px;">
+                                            <i class="fas fa-power-off"></i>
+                                        </a>
+                                        <!-- Delete -->
+                                        <button type="button" class="btn btn-sm btn-outline-danger" title="Delete User"
+                                            onclick="setDeleteTarget(<?php echo $user['user_id']; ?>, '<?php echo e(addslashes($user['username'])); ?>')"
+                                            data-bs-toggle="modal" data-bs-target="#deleteModal" style="padding: 5px 8px; border-radius: 6px;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                <?php else: ?>
+                                    <small class="text-muted fw-bold">You</small>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php 
+                        $row_number_mob++;
+                    endwhile; 
+                    ?>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
     <?php if ($total_pages > 1): ?>
         <div class="card-footer bg-white border-0 pt-0">
             <nav aria-label="Users pagination">
                 <ul class="pagination pagination-sm justify-content-end mb-0">
-                    <?php $query_params = $_GET;
-                    unset($query_params['page']); ?>
+                    <?php $query_params = $_GET; unset($query_params['page']); ?>
                     <li class="page-item <?php echo $current_page <= 1 ? 'disabled' : ''; ?>">
-                        <a class="page-link"
-                            href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page - 1])); ?>">Previous</a>
+                        <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page - 1])); ?>">Previous</a>
                     </li>
                     <?php for ($p = 1; $p <= $total_pages; $p++): ?>
                         <li class="page-item <?php echo $p === $current_page ? 'active' : ''; ?>">
-                            <a class="page-link"
-                                href="?<?php echo http_build_query(array_merge($query_params, ['page' => $p])); ?>"><?php echo $p; ?></a>
+                            <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $p])); ?>"><?php echo $p; ?></a>
                         </li>
                     <?php endfor; ?>
                     <li class="page-item <?php echo $current_page >= $total_pages ? 'disabled' : ''; ?>">
-                        <a class="page-link"
-                            href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page + 1])); ?>">Next</a>
+                        <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page + 1])); ?>">Next</a>
                     </li>
                 </ul>
             </nav>
@@ -279,12 +356,8 @@ unset($_SESSION['new_employee_credentials']);
                                     data-email="<?php echo e($emp['personal_email']); ?>"
                                     data-rank="<?php echo e($emp['rank_name'] ?? ''); ?>">
                                     <?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?>
-                                    <?php if (!empty($emp['job_title'])): ?>
-                                        - <?php echo e($emp['job_title']); ?>
-                                    <?php endif; ?>
-                                    <?php if (!empty($emp['employee_code'])): ?>
-                                        (<?php echo e($emp['employee_code']); ?>)
-                                    <?php endif; ?>
+                                    <?php if (!empty($emp['job_title'])): ?> - <?php echo e($emp['job_title']); ?><?php endif; ?>
+                                    <?php if (!empty($emp['employee_code'])): ?> (<?php echo e($emp['employee_code']); ?>)<?php endif; ?>
                                 </option>
                             <?php endwhile; ?>
                         </select>
@@ -311,10 +384,8 @@ unset($_SESSION['new_employee_credentials']);
                         <label class="form-label">Branch</label>
                         <select class="form-select" name="branch_id">
                             <option value="">None (Admin)</option>
-                            <?php $branches->data_seek(0);
-                            while ($branch = $branches->fetch_assoc()): ?>
-                                <option value="<?php echo $branch['branch_id']; ?>"><?php echo e($branch['branch_name']); ?>
-                                </option>
+                            <?php $branches->data_seek(0); while ($branch = $branches->fetch_assoc()): ?>
+                                <option value="<?php echo $branch['branch_id']; ?>"><?php echo e($branch['branch_name']); ?></option>
                             <?php endwhile; ?>
                         </select>
                     </div>
@@ -348,8 +419,7 @@ unset($_SESSION['new_employee_credentials']);
             <form method="POST" action="<?php echo BASE_URL; ?>/admin/add-user.php">
                 <div class="modal-body">
                     <div class="alert alert-info py-2 small">
-                        <i class="fas fa-info-circle me-1"></i>Admin accounts are standalone and are not linked to
-                        employee records.
+                        <i class="fas fa-info-circle me-1"></i>Admin accounts are standalone and are not linked to employee records.
                     </div>
                     <input type="hidden" name="role" value="Admin">
                     <input type="hidden" name="redirect" value="users.php">

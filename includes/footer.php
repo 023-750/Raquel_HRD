@@ -1,5 +1,44 @@
 </main><!-- end .main-content -->
 
+<?php 
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'): 
+    $curr_p = $current_page ?? basename($_SERVER['PHP_SELF']);
+    $m_notif_count = $notif_count ?? 0;
+?>
+    <!-- Mobile Bottom Navigation -->
+    <nav class="employee-bottom-nav d-md-none">
+        <a href="<?php echo BASE_URL; ?>/employee/my-employment.php" class="nav-item <?php echo ($curr_p === 'my-employment.php') ? 'active' : ''; ?>">
+            <i class="fas fa-briefcase nav-icon"></i>
+            <span class="nav-label">My Employment</span>
+        </a>
+        <a href="<?php echo BASE_URL; ?>/employee/self-rating.php" class="nav-item <?php echo ($curr_p === 'self-rating.php') ? 'active' : ''; ?>">
+            <div class="position-relative">
+                <i class="fas fa-star nav-icon"></i>
+                <?php
+                    $m_sr_count = $m_pending_template_count ?? 0;
+                    if ($m_sr_count > 0):
+                ?>
+                    <span class="mobile-notif-badge"><?php echo $m_sr_count > 9 ? '9+' : $m_sr_count; ?></span>
+                <?php endif; ?>
+            </div>
+            <span class="nav-label">Self Rating</span>
+        </a>
+        <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php" class="nav-item <?php echo ($curr_p === 'completed-ratings.php') ? 'active' : ''; ?>">
+            <i class="fas fa-clipboard-check nav-icon"></i>
+            <span class="nav-label">Evaluation Status</span>
+        </a>
+        <a href="<?php echo BASE_URL; ?>/employee/notifications.php" class="nav-item <?php echo ($curr_p === 'notifications.php') ? 'active' : ''; ?>">
+            <div class="position-relative">
+                <i class="fas fa-bell nav-icon"></i>
+                <?php if ($m_notif_count > 0): ?>
+                    <span class="mobile-notif-badge"><?php echo $m_notif_count > 9 ? '9+' : $m_notif_count; ?></span>
+                <?php endif; ?>
+            </div>
+            <span class="nav-label">Notifications</span>
+        </a>
+    </nav>
+<?php endif; ?>
+
 <!-- Shared Image View Modal -->
 <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true" style="background-color: rgba(0,0,0,0.85);">
     <div class="modal-dialog modal-dialog-centered modal-lg">

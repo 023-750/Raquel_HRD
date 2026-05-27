@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Insert template
     $stmt = $conn->prepare("INSERT INTO evaluation_templates (template_name, description, target_department, evaluation_type, kra_weight, behavior_weight, form_code, revision_date, effective_date_form, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)");
-    $stmt->bind_param("sssssddsssi", $template_name, $description, $target_department, $evaluation_type, $kra_weight, $behavior_weight, $form_code, $revision_date, $effective_date_form, $_SESSION['user_id']);
+    $stmt->bind_param("ssssddsssi", $template_name, $description, $target_department, $evaluation_type, $kra_weight, $behavior_weight, $form_code, $revision_date, $effective_date_form, $_SESSION['user_id']);
     $stmt->execute();
     $template_id = $stmt->insert_id;
     $stmt->close();
@@ -413,8 +413,8 @@ require_once '../includes/header.php';
                     <i class="fas fa-cloud me-1 text-success"></i><span id="autosaveText">Draft saved</span>
                 </span>
             </div>
-            <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 shadow" id="submitBtn"
-                onclick="clearDraftOnSubmit()">
+            <button type="button" class="btn btn-primary btn-lg rounded-pill px-5 shadow" id="submitBtn"
+                onclick="openFinalizeModal()">
                 <i class="fas fa-save me-2"></i>Finalize &amp; Create Template
             </button>
         </div>
@@ -422,6 +422,62 @@ require_once '../includes/header.php';
 </div>
 
 </form>
+
+<!-- ===== DOUBLE-CHECK / FINALIZE MODAL ===== -->
+<div class="modal fade" id="finalizeModal" tabindex="-1" aria-labelledby="finalizeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:18px;overflow:hidden;">
+            <div class="modal-header border-0 pb-0" style="background:linear-gradient(135deg,#1a237e,#283593);">
+                <div class="d-flex align-items-center gap-3 py-2">
+                    <div style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-clipboard-check fa-lg text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0" id="finalizeModalLabel">Review Before Finalizing</h5>
+                        <div class="text-white-50 small">Double-check your template before it is saved</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="finalizeChecklist"></div>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4 gap-2">
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-arrow-left me-2"></i>Go Back &amp; Fix
+                </button>
+                <button type="button" class="btn btn-success btn-lg rounded-pill px-5 shadow" id="finalizeConfirmBtn" onclick="doFinalSubmit()">
+                    <i class="fas fa-check me-2"></i>Looks Good — Save Template
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== VALIDATION ERROR MODAL ===== -->
+<div class="modal fade" id="validationErrorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:18px;overflow:hidden;">
+            <div class="modal-header border-0" style="background:linear-gradient(135deg,#b71c1c,#c62828);">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-exclamation-triangle fa-lg text-white"></i>
+                    </div>
+                    <h5 class="modal-title text-white fw-bold mb-0">Cannot Save Template</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="validationErrorList"></div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-danger rounded-pill px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-pencil-alt me-2"></i>Fix the Issues
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 let kraCount = 0;
@@ -698,6 +754,128 @@ function discardDraft() {
 
 function clearDraftOnSubmit() {
     localStorage.removeItem(DRAFT_KEY);
+}
+
+// ============================================================
+// DOUBLE-CHECK / FINALIZE MODAL LOGIC
+// ============================================================
+function openFinalizeModal() {
+    const errors = [];
+    const warnings = [];
+    const info = [];
+
+    // --- Validate Template Name ---
+    const tplName = document.querySelector('[name="template_name"]')?.value?.trim();
+    if (!tplName) {
+        errors.push('Template Name is required.');
+    } else {
+        info.push({ icon: 'fa-tag', color: '#1565c0', label: 'Template Name', value: tplName });
+    }
+
+    // --- Validate Master Weight Split ---
+    const kraW = parseFloat(document.getElementById('kraWeight')?.value) || 0;
+    const behW = parseFloat(document.getElementById('behaviorWeight')?.value) || 0;
+    const masterTotal = kraW + behW;
+    if (Math.abs(masterTotal - 100) > 0.01) {
+        errors.push(`Master weight split must equal 100%. Currently: <strong>${masterTotal}%</strong> (KRA: ${kraW}% + Behavior: ${behW}%)`);
+    } else {
+        info.push({ icon: 'fa-balance-scale', color: '#2e7d32', label: 'Master Weight Split', value: `KRA ${kraW}% + Behavior ${behW}% = 100% ✓` });
+    }
+
+    // --- Validate KRA items & weight sum ---
+    const kraRows = document.querySelectorAll('#kraContainer .kra-criterion-row');
+    let kraTotal = 0;
+    let kraHasEmpty = false;
+    kraRows.forEach(row => {
+        const nm = row.querySelector('input[name="kra_name[]"]')?.value?.trim();
+        const wt = parseFloat(row.querySelector('input[name="kra_weight_item[]"]')?.value) || 0;
+        kraTotal += wt;
+        if (!nm) kraHasEmpty = true;
+    });
+
+    if (kraRows.length === 0) {
+        errors.push('At least one KRA item is required.');
+    } else {
+        if (kraHasEmpty) errors.push('All KRA items must have a name.');
+        if (Math.abs(kraTotal - 100) > 0.01) {
+            errors.push(`KRA item weights must total exactly 100%. Currently: <strong>${kraTotal.toFixed(2)}%</strong>. Please adjust your KRA weights.`);
+        } else {
+            info.push({ icon: 'fa-bullseye', color: '#2e7d32', label: 'KRA Items', value: `${kraRows.length} item(s) — weights total 100% ✓` });
+        }
+    }
+
+    // --- Validate Behavior items ---
+    const behRows = document.querySelectorAll('#behaviorContainer .behavior-criterion-row');
+    if (behRows.length === 0) {
+        warnings.push('No behavior/core values items have been added. Consider adding at least one.');
+    } else {
+        info.push({ icon: 'fa-heart', color: '#1565c0', label: 'Behavior Items', value: `${behRows.length} item(s)` });
+    }
+
+    // --- Evaluation type & department ---
+    const evalType = document.querySelector('[name="evaluation_type"]')?.value;
+    const dept = document.querySelector('[name="target_department"]')?.value;
+    if (evalType) info.push({ icon: 'fa-calendar-alt', color: '#6a1b9a', label: 'Evaluation Type', value: evalType });
+    if (dept) info.push({ icon: 'fa-sitemap', color: '#00838f', label: 'Target Department', value: dept });
+
+    // === If there are errors, show validation error modal instead ===
+    if (errors.length > 0) {
+        let html = '<ul class="list-unstyled mb-0">';
+        errors.forEach(e => {
+            html += `<li class="d-flex align-items-start gap-3 mb-3 p-3 rounded" style="background:#fff5f5;border:1.5px solid #ffcdd2;">
+                <i class="fas fa-times-circle text-danger mt-1" style="font-size:1.1rem;"></i>
+                <span>${e}</span></li>`;
+        });
+        html += '</ul>';
+        document.getElementById('validationErrorList').innerHTML = html;
+        const veModal = new bootstrap.Modal(document.getElementById('validationErrorModal'));
+        veModal.show();
+        return;
+    }
+
+    // === Build the checklist for the finalize modal ===
+    let html = '';
+
+    if (warnings.length > 0) {
+        html += '<div class="alert border-0 mb-3" style="background:#fff8e1;border-left:4px solid #ffa000 !important;border-radius:10px;">';
+        html += '<div class="fw-bold text-warning mb-1"><i class="fas fa-exclamation-triangle me-2"></i>Heads Up</div>';
+        warnings.forEach(w => { html += `<div class="small text-dark">${w}</div>`; });
+        html += '</div>';
+    }
+
+    html += '<div class="mb-3" style="font-size:0.85rem;color:#555;">Please review the summary below before saving:</div>';
+    html += '<div class="row g-2">';
+    info.forEach(item => {
+        html += `<div class="col-md-6">
+            <div class="d-flex align-items-center gap-2 p-3 rounded-3" style="background:#f8f9fa;border:1px solid #e9ecef;">
+                <div style="width:36px;height:36px;border-radius:10px;background:${item.color}15;display:flex;align-items:center;justify-content:center;">
+                    <i class="fas ${item.icon}" style="color:${item.color};font-size:0.85rem;"></i>
+                </div>
+                <div>
+                    <div class="text-muted" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.5px;">${item.label}</div>
+                    <div class="fw-semibold small text-dark">${escAttr(item.value)}</div>
+                </div>
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+
+    document.getElementById('finalizeChecklist').innerHTML = html;
+    const modal = new bootstrap.Modal(document.getElementById('finalizeModal'));
+    modal.show();
+}
+
+function doFinalSubmit() {
+    // Hide the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('finalizeModal'));
+    if (modal) modal.hide();
+    // Clear the draft ONLY now that we are actually submitting
+    clearDraftOnSubmit();
+    // Show loading state on confirm button
+    const btn = document.getElementById('finalizeConfirmBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...'; }
+    // Submit the form
+    document.getElementById('templateForm').submit();
 }
 
 // Hook auto-save on any input/change inside the form

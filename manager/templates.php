@@ -50,6 +50,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     redirectWith(BASE_URL . '/manager/templates.php', $failed > 0 ? 'warning' : 'success', $msg);
 }
 
+// Handle broadcast notification
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'broadcast_notification') {
+    $tid = (int)($_POST['template_id'] ?? 0);
+    $custom_title = trim($_POST['notification_title'] ?? '');
+    $custom_message = trim($_POST['notification_message'] ?? '');
+    
+    // Fetch template details
+    $stmt = $conn->prepare("SELECT template_name, target_department, evaluation_type FROM evaluation_templates WHERE template_id = ? AND status = 'Active'");
+    $stmt->bind_param("i", $tid);
+    $stmt->execute();
+    $template = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    
+    if ($template) {
+        $target_dept = $template['target_department'];
+        $eval_type = $template['evaluation_type'];
+        $temp_name = $template['template_name'];
+        
+        $dept_cond = "";
+        if (!empty($target_dept) && $target_dept !== 'All Departments') {
+            $dept_stmt = $conn->prepare("SELECT department_id FROM departments WHERE department_name = ? AND deleted_at IS NULL");
+            $dept_stmt->bind_param("s", $target_dept);
+            $dept_stmt->execute();
+            $dept = $dept_stmt->get_result()->fetch_assoc();
+            $dept_stmt->close();
+            if ($dept) {
+                $dept_id = (int)$dept['department_id'];
+                $dept_cond = " AND e.department_id = $dept_id";
+            }
+        }
+        
+        // Find all active employees who have a portal user account with role='Employee'
+        $query = "
+            SELECT e.employee_id, e.first_name, e.last_name, u.user_id
+            FROM employees e
+            INNER JOIN users u ON e.employee_id = u.employee_id
+            WHERE e.is_active = 1 
+              AND e.deleted_at IS NULL 
+              AND u.role = 'Employee'
+              AND u.is_active = 1
+              $dept_cond
+        ";
+        $employees_res = $conn->query($query);
+        
+        $notified_count = 0;
+        if ($employees_res) {
+            while ($emp = $employees_res->fetch_assoc()) {
+                $uid = (int)$emp['user_id'];
+                $first_name = $emp['first_name'];
+                $last_name = $emp['last_name'];
+                $full_name = $first_name . " " . $last_name;
+                
+                // Replace placeholders in Title and Message
+                // Only replace {name}
+                $title = str_replace('{name}', $full_name, $custom_title);
+                $message = str_replace('{name}', $full_name, $custom_message);
+                
+                $link = BASE_URL . "/employee/self-rating.php";
+                
+                createNotification($conn, $uid, $title, $message, $link);
+                $notified_count++;
+            }
+        }
+        
+        logAudit($conn, $_SESSION['user_id'], 'CREATE', 'Notification', $tid, "Broadcasted custom notifications for template: $temp_name to $notified_count employee(s)");
+        
+        redirectWith(BASE_URL . '/manager/templates.php', 'success', "Notifications successfully broadcasted to $notified_count employee(s) in " . htmlspecialchars($target_dept) . ".");
+    } else {
+        redirectWith(BASE_URL . '/manager/templates.php', 'danger', "Template not found or inactive.");
+    }
+}
+
 require_once '../includes/header.php';
 
 $selected_department = trim($_GET['department'] ?? '');
@@ -271,6 +343,9 @@ $used_template_count = (int) $conn->query("SELECT COUNT(DISTINCT template_id) as
                             <a href="<?php echo BASE_URL; ?>/manager/edit-template.php?id=<?php echo $t['template_id']; ?>" class="btn btn-sm btn-outline-primary flex-fill">
                                 <i class="fas fa-edit me-1"></i>Edit
                             </a>
+                            <button type="button" class="btn btn-sm btn-outline-success flex-fill" onclick="setBroadcastTarget(<?php echo $t['template_id']; ?>, '<?php echo e(addslashes($t['template_name'])); ?>', '<?php echo e(addslashes($t['target_department'])); ?>', '<?php echo e(addslashes($t['evaluation_type'] ?? 'Annual')); ?>')" data-bs-toggle="modal" data-bs-target="#broadcastModal" title="Notify Employees">
+                                <i class="fas fa-paper-plane me-1"></i>Notify
+                            </button>
                             <button type="button" class="btn btn-sm btn-outline-warning" onclick="setArchiveTarget(<?php echo $t['template_id']; ?>, '<?php echo e(addslashes($t['template_name'])); ?>')" data-bs-toggle="modal" data-bs-target="#archiveModal" title="Archive">
                                 <i class="fas fa-archive"></i>
                             </button>
@@ -285,6 +360,60 @@ $used_template_count = (int) $conn->query("SELECT COUNT(DISTINCT template_id) as
     </div>
     </form>
 <?php endif; ?>
+
+<!-- Broadcast Modal -->
+<div class="modal fade" id="broadcastModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="" class="w-100">
+            <input type="hidden" name="action" value="broadcast_notification">
+            <input type="hidden" name="template_id" id="broadcastTemplateId">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                <div class="modal-header text-white border-0 py-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px; background: linear-gradient(135deg, #2e7d32, #4caf50) !important;">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-paper-plane me-2"></i>Customize & Send Notification</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4 px-4">
+                    <div class="text-center mb-3">
+                        <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg, #e8f5e9, #c8e6c9);display:inline-flex;align-items:center;justify-content:center;box-shadow: 0 4px 15px rgba(46, 125, 50, 0.15);">
+                            <i class="fas fa-paper-plane fa-2x text-success" style="transform: rotate(-10deg);"></i>
+                        </div>
+                    </div>
+                    <h5 class="fw-bold mb-2 text-dark text-center">Broadcast Evaluation Alert</h5>
+                    <p class="text-muted small mb-4 text-center">Customize the message before notifying eligible employees about this active evaluation template.</p>
+                    
+                    <div class="card bg-light border-0 mb-3" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="mb-2 d-flex justify-content-between align-items-center">
+                                <span class="text-muted small fw-bold"><i class="fas fa-file-alt me-1 text-success"></i>Template:</span>
+                                <span class="badge bg-success bg-opacity-10 text-success fw-bold px-2 py-1" id="broadcastTemplateName" style="font-size: 0.8rem;"></span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted small fw-bold"><i class="fas fa-users me-1 text-success"></i>Target Group:</span>
+                                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold px-2 py-1" id="broadcastTargetGroup" style="font-size: 0.8rem;"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark"><i class="fas fa-heading me-1 text-success"></i>Notification Title</label>
+                        <input type="text" name="notification_title" id="broadcastTitleInput" class="form-control shadow-sm" style="border-radius: 8px; border: 1px solid #ced4da;" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark"><i class="fas fa-comment-alt me-1 text-success"></i>Notification Message</label>
+                        <textarea name="notification_message" id="broadcastMessageInput" class="form-control shadow-sm" rows="4" style="border-radius: 8px; border: 1px solid #ced4da; resize: none;" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-center border-0 pb-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 py-2" data-bs-dismiss="modal" style="border-radius: 10px;">Cancel</button>
+                    <button type="submit" class="btn btn-success px-4 py-2 text-white shadow-sm" style="border-radius: 10px; background: linear-gradient(135deg, #2e7d32, #4caf50); border: none;">
+                        <i class="fas fa-paper-plane me-2"></i>Send Notifications
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
 <!-- Archive Modal -->
 <div class="modal fade" id="archiveModal" tabindex="-1">
@@ -323,6 +452,19 @@ $used_template_count = (int) $conn->query("SELECT COUNT(DISTINCT template_id) as
 </div>
 
 <script>
+function setBroadcastTarget(id, name, targetDept, evalType) {
+    document.getElementById('broadcastTemplateId').value = id;
+    document.getElementById('broadcastTemplateName').textContent = name;
+    document.getElementById('broadcastTargetGroup').textContent = targetDept || 'All Departments';
+    
+    // Set default customizable title & message values
+    const defaultTitle = "Evaluation Ready: " + name;
+    const defaultMessage = "Hello! {name} the evaluation for " + name + " is ready! you may proceed 360 degree evaluation before it expires!";
+    
+    document.getElementById('broadcastTitleInput').value = defaultTitle;
+    document.getElementById('broadcastMessageInput').value = defaultMessage;
+}
+
 function setArchiveTarget(id, name) {
     document.getElementById('archiveTemplateName').textContent = name;
     document.getElementById('archiveConfirmBtn').href = '?archive=' + id;

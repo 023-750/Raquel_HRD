@@ -11,14 +11,40 @@ $validated_month = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE end
 
 $total_employees = $conn->query("SELECT COUNT(*) as c FROM employees WHERE is_active = 1 AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['c'];
 
-// Fetch recent pending validations
-$pending = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name,
+$pending_rows = [];
+$pending_result = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name,
+    e.job_title, e.profile_picture, et.template_name,
     u.full_name as submitted_by_name
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN users u ON ev.submitted_by = u.user_id
+    LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
     WHERE ev.status = 'Pending Supervisor'
-    ORDER BY ev.submitted_date DESC LIMIT 5");
+    ORDER BY ev.submitted_date DESC");
+while ($row = $pending_result->fetch_assoc()) {
+    $pending_rows[] = $row;
+}
+
+$pending_groups = [];
+foreach ($pending_rows as $row) {
+    $employeeId = (int) ($row['employee_id'] ?? 0);
+    if ($employeeId <= 0) {
+        continue;
+    }
+    if (!isset($pending_groups[$employeeId])) {
+        $pending_groups[$employeeId] = [
+            'employee_id' => $employeeId,
+            'employee_name' => $row['employee_name'] ?? '',
+            'profile_picture' => $row['profile_picture'] ?? '',
+            'submitted_by_name' => $row['submitted_by_name'] ?? '',
+            'evaluations' => [],
+        ];
+    }
+    $pending_groups[$employeeId]['evaluations'][] = $row;
+}
+$pending_groups = array_values($pending_groups);
+$queue_preview_groups = array_slice($pending_groups, 0, 5);
+$queue_employee_count = count($pending_groups);
 ?>
 
 <style>
@@ -112,6 +138,61 @@ $pending = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as 
         padding: 6px 18px;
     }
 
+    .supervisor-dashboard .approval-group-wrap {
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+
+    .supervisor-dashboard .approval-group-header {
+        align-items: center;
+        cursor: pointer;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        padding: 15px;
+        transition: background 0.2s ease;
+    }
+
+    .supervisor-dashboard .approval-group-header:hover {
+        background: #fbfcf8;
+    }
+
+    .supervisor-dashboard .approval-group-header[aria-expanded="true"] .group-chevron {
+        transform: rotate(180deg);
+    }
+
+    .supervisor-dashboard .group-chevron {
+        transition: transform 0.2s ease;
+    }
+
+    .supervisor-dashboard .approval-group-entries {
+        background: #f8faf5;
+        border-top: 1px solid #eef2e8;
+        padding: 0 15px 12px;
+    }
+
+    .supervisor-dashboard .approval-group-entry {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #eef2e8;
+        border-radius: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding: 12px;
+    }
+
+    .supervisor-dashboard .approval-group-entry .entry-template {
+        font-size: 0.82rem;
+        font-weight: 700;
+        min-width: 0;
+    }
+
     .supervisor-dashboard .empty-state-card {
         color: var(--text-muted);
         padding: 42px 20px;
@@ -152,18 +233,26 @@ $pending = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as 
     }
 
     @media (max-width: 768px) {
-        .supervisor-dashboard .approval-item {
+        .supervisor-dashboard .approval-item,
+        .supervisor-dashboard .approval-group-header {
             align-items: stretch;
             flex-direction: column;
         }
 
-        .supervisor-dashboard .approval-item .status-meta {
+        .supervisor-dashboard .approval-item .status-meta,
+        .supervisor-dashboard .approval-group-header .status-meta {
             text-align: left;
         }
 
-        .supervisor-dashboard .approval-item .btn-review {
+        .supervisor-dashboard .approval-item .btn-review,
+        .supervisor-dashboard .approval-group-header .btn-review {
             width: 100%;
             text-align: center;
+        }
+
+        .supervisor-dashboard .approval-group-entry {
+            flex-direction: column;
+            align-items: stretch;
         }
     }
 </style>
@@ -221,44 +310,104 @@ $pending = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as 
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
         <div class="chart-card h-100">
-            <div class="cc-header d-flex justify-content-between align-items-center">
+            <div class="cc-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Validation Queue</h5>
-                <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-sm btn-outline-primary rounded-pill px-3">View All</a>
+                <div class="d-flex align-items-center gap-2">
+                    <?php if ($queue_employee_count > 0): ?>
+                        <span class="badge bg-light text-muted border"><?php echo number_format($queue_employee_count); ?> employee<?php echo $queue_employee_count === 1 ? '' : 's'; ?></span>
+                    <?php endif; ?>
+                    <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-sm btn-outline-primary rounded-pill px-3">View All</a>
+                </div>
             </div>
             <div class="cc-body p-0">
                 <div class="approval-list">
-                    <?php if ($pending->num_rows === 0): ?>
+                    <?php if (empty($queue_preview_groups)): ?>
                         <div class="empty-state-card">
                             <i class="fas fa-clipboard-check"></i>
                             <p class="mb-0">All validations have been processed.</p>
                         </div>
                     <?php else: ?>
-                        <?php while ($row = $pending->fetch_assoc()):
-                            $name_parts = preg_split('/\s+/', trim($row['employee_name'] ?? ''));
+                        <?php foreach ($queue_preview_groups as $group):
+                            $evaluations = $group['evaluations'];
+                            $evalCount = count($evaluations);
+                            $name_parts = preg_split('/\s+/', trim($group['employee_name'] ?? ''));
                             $initials = strtoupper(substr($name_parts[0] ?? 'U', 0, 1) . substr($name_parts[1] ?? '', 0, 1));
-                            $score = (float) ($row['total_score'] ?? 0);
+                            $groupCollapseId = 'dashQueue' . (int) $group['employee_id'];
                         ?>
-                            <div class="approval-item">
-                                <div class="emp-info">
-                                    <div class="avatar-circle"><?php echo e($initials ?: 'U'); ?></div>
-                                    <div class="details">
-                                        <h6><?php echo e($row['employee_name']); ?></h6>
-                                        <span>Submitted by <?php echo e($row['submitted_by_name']); ?></span>
+                            <?php if ($evalCount === 1):
+                                $row = $evaluations[0];
+                                $score = (float) ($row['total_score'] ?? 0);
+                            ?>
+                                <div class="approval-item">
+                                    <div class="emp-info">
+                                        <div class="avatar-circle"><?php echo e($initials ?: 'U'); ?></div>
+                                        <div class="details">
+                                            <h6><?php echo e($group['employee_name']); ?></h6>
+                                            <span><?php echo e($row['template_name'] ?? 'Evaluation'); ?> · Submitted by <?php echo e($row['submitted_by_name']); ?></span>
+                                        </div>
+                                    </div>
+                                    <div class="score-meter d-none d-md-block">
+                                        <span class="score-val"><?php echo $row['total_score']; ?>% Score</span>
+                                        <div class="progress" style="height: 4px;">
+                                            <div class="progress-bar <?php echo ($score >= 80) ? 'bg-success' : (($score >= 60) ? 'bg-primary' : 'bg-warning'); ?>" style="width: <?php echo min(100, max(0, $score)); ?>%;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="status-meta d-none d-sm-block">
+                                        <div class="fw-bold text-dark"><?php echo formatDate($row['submitted_date']); ?></div>
+                                        <div class="x-small">Pending Supervisor</div>
+                                    </div>
+                                    <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-primary btn-review">Review</a>
+                                </div>
+                            <?php else: ?>
+                                <div class="approval-group-wrap">
+                                    <div class="approval-group-header"
+                                         role="button"
+                                         tabindex="0"
+                                         data-bs-toggle="collapse"
+                                         data-bs-target="#<?php echo e($groupCollapseId); ?>"
+                                         aria-expanded="false"
+                                         aria-controls="<?php echo e($groupCollapseId); ?>">
+                                        <div class="emp-info">
+                                            <div class="avatar-circle"><?php echo e($initials ?: 'U'); ?></div>
+                                            <div class="details">
+                                                <h6><?php echo e($group['employee_name']); ?></h6>
+                                                <span><span class="badge bg-primary-subtle text-primary border border-primary-subtle"><?php echo $evalCount; ?> evaluations pending</span></span>
+                                            </div>
+                                        </div>
+                                        <div class="status-meta d-none d-sm-block">
+                                            <div class="fw-bold text-dark">Pending Supervisor</div>
+                                            <div class="x-small">Click to expand</div>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary btn-review" data-bs-toggle="collapse" data-bs-target="#<?php echo e($groupCollapseId); ?>" aria-expanded="false" onclick="event.stopPropagation();">
+                                            <i class="fas fa-chevron-down group-chevron me-1"></i>Show
+                                        </button>
+                                    </div>
+                                    <div class="collapse approval-group-entries" id="<?php echo e($groupCollapseId); ?>">
+                                        <?php foreach ($evaluations as $row):
+                                            $score = (float) ($row['total_score'] ?? 0);
+                                        ?>
+                                            <div class="approval-group-entry">
+                                                <div class="flex-grow-1 min-w-0">
+                                                    <div class="entry-template"><?php echo e($row['template_name'] ?? 'Evaluation'); ?></div>
+                                                    <div class="small text-muted">
+                                                        <?php echo e($row['evaluation_type'] ?? 'Annual'); ?> ·
+                                                        Submitted <?php echo formatDate($row['submitted_date']); ?> ·
+                                                        <?php echo e($row['submitted_by_name']); ?>
+                                                    </div>
+                                                </div>
+                                                <div class="score-meter">
+                                                    <span class="score-val"><?php echo $row['total_score']; ?> / 4</span>
+                                                    <div class="progress" style="height: 4px;">
+                                                        <div class="progress-bar <?php echo ($score >= 3) ? 'bg-success' : (($score >= 2) ? 'bg-primary' : 'bg-warning'); ?>" style="width: <?php echo min(100, max(0, ($score / 4) * 100)); ?>%;"></div>
+                                                    </div>
+                                                </div>
+                                                <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-primary btn-sm btn-review">Review</a>
+                                            </div>
+                                        <?php endforeach; ?>
                                     </div>
                                 </div>
-                                <div class="score-meter d-none d-md-block">
-                                    <span class="score-val"><?php echo $row['total_score']; ?>% Score</span>
-                                    <div class="progress" style="height: 4px;">
-                                        <div class="progress-bar <?php echo ($score >= 80) ? 'bg-success' : (($score >= 60) ? 'bg-primary' : 'bg-warning'); ?>" style="width: <?php echo min(100, max(0, $score)); ?>%;"></div>
-                                    </div>
-                                </div>
-                                <div class="status-meta d-none d-sm-block">
-                                    <div class="fw-bold text-dark"><?php echo formatDate($row['submitted_date']); ?></div>
-                                    <div class="x-small">Pending Supervisor</div>
-                                </div>
-                                <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-primary btn-review">Review</a>
-                            </div>
-                        <?php endwhile; ?>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                         <div class="text-center pb-3">
                             <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="text-decoration-none small text-muted hover-primary">
                                 View all pending validations <i class="fas fa-arrow-right ms-1"></i>

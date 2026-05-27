@@ -72,19 +72,27 @@ function markAllRead() {
 function filterTable(inputId, tableId) {
     const filter = document.getElementById(inputId).value.toLowerCase();
     const table = document.getElementById(tableId);
-    const rows = table.getElementsByTagName('tr');
-
-    for (let i = 1; i < rows.length; i++) {
-        const cells = rows[i].getElementsByTagName('td');
-        let match = false;
-        for (let j = 0; j < cells.length; j++) {
-            if (cells[j].textContent.toLowerCase().includes(filter)) {
-                match = true;
-                break;
+    if (table) {
+        const rows = table.getElementsByTagName('tr');
+        for (let i = 1; i < rows.length; i++) {
+            const cells = rows[i].getElementsByTagName('td');
+            let match = false;
+            for (let j = 0; j < cells.length; j++) {
+                if (cells[j].textContent.toLowerCase().includes(filter)) {
+                    match = true;
+                    break;
+                }
             }
+            rows[i].style.display = match ? '' : 'none';
         }
-        rows[i].style.display = match ? '' : 'none';
     }
+
+    // Also search mobile card list if it exists on the page
+    const mobileCards = document.querySelectorAll('.mobile-list-view .student-item');
+    mobileCards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.setProperty('display', text.includes(filter) ? 'flex' : 'none', 'important');
+    });
 }
 
 /**
@@ -98,6 +106,12 @@ function confirmDelete(message) {
  * Initialize components that need re-binding after PJAX load
  */
 function initDynamicComponents() {
+    document.querySelectorAll('.flash-message-banner').forEach(function (toast) {
+        if (toast.parentElement !== document.body) {
+            document.body.appendChild(toast);
+        }
+    });
+
     // 1. Close alert after 5 seconds
     const alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(function (alert) {

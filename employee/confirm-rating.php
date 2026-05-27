@@ -100,7 +100,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor) {
                 // Update the score
                 $update_score = $conn->prepare("
                     UPDATE evaluation_scores 
-                    SET score_value = ?, weighted_score = ?
+                    SET score_value = ?, weighted_score = ?,
+                        supervisor_override_score = NULL, supervisor_override_by = NULL, supervisor_override_at = NULL,
+                        manager_override_score = NULL, manager_override_by = NULL, manager_override_at = NULL
                     WHERE evaluation_id = ? AND criterion_id = ?
                 ");
                 $weight = (float)($scores[$criterion_id]['weight'] ?? 0);

@@ -90,9 +90,6 @@ switch ($effective_role) {
                 ['icon' => 'fas fa-chart-bar', 'label' => 'Analytics', 'url' => BASE_URL . '/manager/analytics.php', 'page' => 'analytics.php'],
                 ['icon' => 'fas fa-file-pdf', 'label' => 'Reports', 'url' => BASE_URL . '/manager/reports.php', 'page' => 'reports.php'],
             ],
-            'SETTINGS' => [
-                ['icon' => 'fas fa-user-cog', 'label' => 'Profile & Settings', 'url' => BASE_URL . '/manager/profile-settings.php', 'page' => 'profile-settings.php'],
-            ],
         ];
         break;
 
@@ -105,7 +102,6 @@ switch ($effective_role) {
                 ['icon' => 'fas fa-address-book', 'label' => 'Employee Info', 'url' => BASE_URL . '/supervisor/employees.php', 'page' => 'employees.php'],
             ],
             'EVALUATIONS' => [
-                ['icon' => 'fas fa-user-plus', 'label' => 'Assign Evaluation', 'url' => BASE_URL . '/supervisor/assign-evaluation.php', 'page' => 'assign-evaluation.php'],
                 ['icon' => 'fas fa-clipboard-check', 'label' => 'Pending Validations', 'url' => BASE_URL . '/supervisor/pending-endorsements.php', 'page' => 'pending-endorsements.php'],
                 ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/supervisor/evaluation-history.php', 'page' => 'evaluation-history.php'],
             ],
@@ -117,9 +113,6 @@ switch ($effective_role) {
                 ['icon' => 'fas fa-chart-bar', 'label' => 'Branch Analytics', 'url' => BASE_URL . '/supervisor/analytics.php', 'page' => 'analytics.php'],
                 ['icon' => 'fas fa-file-alt', 'label' => 'Reports', 'url' => BASE_URL . '/supervisor/reports.php', 'page' => 'reports.php'],
             ],
-            'SETTINGS' => [
-                ['icon' => 'fas fa-user-cog', 'label' => 'Profile & Settings', 'url' => BASE_URL . '/supervisor/profile-settings.php', 'page' => 'profile-settings.php'],
-            ],
         ];
         break;
 
@@ -128,14 +121,12 @@ switch ($effective_role) {
             'MAIN' => [
                 ['icon' => 'fas fa-tachometer-alt', 'label' => 'Dashboard', 'url' => BASE_URL . '/staff/dashboard.php', 'page' => 'dashboard.php'],
             ],
-            'EVALUATIONS' => [
-                ['icon' => 'fas fa-edit', 'label' => 'Submit Evaluation', 'url' => BASE_URL . '/staff/submit-evaluation.php', 'page' => 'submit-evaluation.php'],
-                ['icon' => 'fas fa-file-alt', 'label' => 'My Drafts', 'url' => BASE_URL . '/staff/my-drafts.php', 'page' => 'my-drafts.php'],
-                ['icon' => 'fas fa-paper-plane', 'label' => 'My Submissions', 'url' => BASE_URL . '/staff/my-submissions.php', 'page' => 'my-submissions.php'],
-                ['icon' => 'fas fa-user-check', 'label' => 'Supervisor Ratings', 'url' => BASE_URL . '/staff/supervisor-ratings.php', 'page' => 'supervisor-ratings.php'],
+            'DIRECTORY' => [
+                ['icon' => 'fas fa-users', 'label' => 'Employee Directory', 'url' => BASE_URL . '/staff/search-employees.php', 'page' => 'search-employees.php'],
             ],
-            'SETTINGS' => [
-                ['icon' => 'fas fa-user-cog', 'label' => 'Profile & Settings', 'url' => BASE_URL . '/staff/profile-settings.php', 'page' => 'profile-settings.php'],
+            'EVALUATIONS' => [
+                ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/staff/evaluation-history.php', 'page' => 'evaluation-history.php'],
+                ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/staff/career-movements.php', 'page' => 'career-movements.php'],
             ],
         ];
         break;
@@ -147,10 +138,42 @@ switch ($effective_role) {
             $is_supervisor_menu = hasEmployeeSubordinates($conn, (int) $_SESSION['employee_id']);
         }
 
+        // Count pending evaluation templates for mobile bottom-nav badge
+        $m_pending_template_count = 0;
+        if (isset($_SESSION['employee_id']) && $conn) {
+            $_hdr_emp_id = (int) $_SESSION['employee_id'];
+            $_hdr_dept_stmt = $conn->prepare("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = ? LIMIT 1");
+            $_hdr_dept_stmt->bind_param("i", $_hdr_emp_id);
+            $_hdr_dept_stmt->execute();
+            $_hdr_dept_row = $_hdr_dept_stmt->get_result()->fetch_assoc();
+            $_hdr_emp_dept = $_hdr_dept_row['department_name'] ?? '';
+            $_hdr_dept_stmt->close();
+
+            $_hdr_pt_stmt = $conn->prepare("
+                SELECT COUNT(*) AS total
+                FROM evaluation_templates et
+                WHERE et.status = 'Active'
+                  AND et.deleted_at IS NULL
+                  AND (et.target_department IS NULL OR et.target_department = '' OR et.target_department = 'All Departments' OR et.target_department = ?)
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM evaluations ev
+                      WHERE ev.employee_id = ?
+                        AND ev.template_id = et.template_id
+                        AND ev.deleted_at IS NULL
+                        AND ev.status NOT IN ('Draft', 'Returned', 'Rejected', 'Pending Self-Rating')
+                  )
+            ");
+            $_hdr_pt_stmt->bind_param("si", $_hdr_emp_dept, $_hdr_emp_id);
+            $_hdr_pt_stmt->execute();
+            $m_pending_template_count = (int) ($_hdr_pt_stmt->get_result()->fetch_assoc()['total'] ?? 0);
+            $_hdr_pt_stmt->close();
+        }
+
         $self_service_menu = [
             ['icon' => 'fas fa-briefcase', 'label' => 'My Employment', 'url' => BASE_URL . '/employee/my-employment.php', 'page' => 'my-employment.php'],
             ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php'],
-            ['icon' => 'fas fa-check-circle', 'label' => 'Completed Ratings', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php'],
+            ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php'],
             ['icon' => 'fas fa-route', 'label' => 'Career Movement Request', 'url' => BASE_URL . '/employee/career-movement-request.php', 'page' => 'career-movement-request.php'],
         ];
 
@@ -197,7 +220,7 @@ switch ($effective_role) {
     </script>
 </head>
 
-<body class="<?php echo $current_dir === 'admin' ? 'admin-area' : ''; ?>">
+<body class="<?php echo ($current_dir === 'admin' ? 'admin-area' : '') . ($effective_role === 'Employee' ? ' role-employee' : ''); ?>">
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -243,7 +266,7 @@ switch ($effective_role) {
     <!-- Top Navbar -->
     <header class="top-navbar">
         <div class="d-flex align-items-center gap-3">
-            <button class="sidebar-toggle" onclick="toggleSidebar()">
+            <button class="sidebar-toggle <?php echo ($effective_role === 'Employee') ? 'd-none d-md-block' : ''; ?>" onclick="toggleSidebar()">
                 <i class="fas fa-bars"></i>
             </button>
             <div class="navbar-logo d-flex align-items-center gap-2">
@@ -255,7 +278,7 @@ switch ($effective_role) {
 
         <div class="nav-right">
             <!-- Notification Bell -->
-            <div class="dropdown">
+            <div class="dropdown <?php echo ($effective_role === 'Employee') ? 'd-none d-md-block' : ''; ?>">
                 <button class="notification-btn" data-bs-toggle="dropdown" aria-expanded="false" id="notificationBtn">
                     <i class="fas fa-bell"></i>
                     <?php if ($notif_count > 0): ?>
@@ -313,7 +336,7 @@ switch ($effective_role) {
             </div>
 
             <!-- User Dropdown -->
-            <div class="dropdown user-dropdown">
+            <div class="dropdown user-dropdown <?php echo ($effective_role === 'Employee') ? 'd-none d-md-block' : ''; ?>">
                 <button class="btn dropdown-toggle" data-bs-toggle="dropdown">
                     <div class="user-avatar">
                         <img src="<?php echo $display_avatar . '?v=' . time(); ?>" alt="Avatar">
@@ -330,6 +353,51 @@ switch ($effective_role) {
                                 class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
                 </ul>
             </div>
+
+            <?php if ($effective_role === 'Employee'): ?>
+                <!-- Mobile Settings Gear Dropdown (shows on mobile only) -->
+                <div class="dropdown d-md-none">
+                    <button class="notification-btn" data-bs-toggle="dropdown" aria-expanded="false" id="mobileGearBtn" style="color: #074B02;">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.08);">
+                        <li>
+                            <span class="dropdown-item-text fw-bold" style="font-size:0.85rem;color:var(--text-muted);">
+                                <i class="fas fa-user-circle me-1"></i><?php echo e($_SESSION['full_name']); ?>
+                            </span>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/dashboard.php">
+                                <i class="fas fa-tachometer-alt me-2" style="width: 20px; text-align: center;"></i>Dashboard
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/career-movement-request.php">
+                                <i class="fas fa-route me-2" style="width: 20px; text-align: center;"></i>Career Movement
+                            </a>
+                        </li>
+                        <?php if (isset($_SESSION['employee_id']) && $conn && hasEmployeeSubordinates($conn, (int)$_SESSION['employee_id'])): ?>
+                            <li>
+                                <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/confirm-rating.php">
+                                    <i class="fas fa-clipboard-check me-2" style="width: 20px; text-align: center;"></i>Confirm Self-Rating
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <li>
+                            <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/profile-settings.php">
+                                <i class="fas fa-user-cog me-2" style="width: 20px; text-align: center;"></i>Change Password
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="<?php echo BASE_URL; ?>/logout.php">
+                                <i class="fas fa-sign-out-alt me-2" style="width: 20px; text-align: center;"></i>Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            <?php endif; ?>
         </div>
     </header>
 

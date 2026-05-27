@@ -96,74 +96,12 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
 ?>
 
 <style>
-    @media (max-width: 768px) {
-        .table-responsive {
-            border: none;
-        }
-        #deptTable {
-            border: none;
-        }
-        #deptTable thead {
-            display: none;
-        }
-        #deptTable tbody {
-            background: transparent;
-        }
-        #deptTable tr {
-            display: block;
-            background: #fff;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            padding: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            border: 1px solid #f0f0f0;
-            position: relative;
-        }
-        #deptTable td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: none;
-            padding: 10px 0;
-            text-align: right;
-            font-size: 0.9rem;
-        }
-        #deptTable td::before {
-            content: attr(data-label);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            text-align: left;
-        }
-        /* Dept Name Highlight */
-        #deptTable td:nth-child(1) {
-            justify-content: flex-start;
-            padding-top: 5px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #f5f5f5;
-        }
-        #deptTable td:nth-child(1)::before {
-            display: none;
-        }
-        #deptTable td:nth-child(1) strong {
-            font-size: 1.1rem;
-            color: var(--primary-blue);
-        }
-        /* Action buttons grouping */
-        #deptTable td:last-child {
-            justify-content: flex-end;
-            gap: 10px;
-            border-top: 1px solid #f5f5f5;
-            margin-top: 10px;
-            padding-bottom: 5px;
-        }
-        #deptTable td:last-child::before {
-            display: none;
-        }
-    }
+    .student-list { display: flex; flex-direction: column; gap: 12px; }
+    .student-item { background: #fff; border-radius: 12px; padding: 15px; display: flex; align-items: flex-start; gap: 12px; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+    .student-name { font-weight: 700; color: var(--primary-blue); margin-bottom: 2px; }
+    .student-meta { font-size: 0.85rem; color: #666; }
+    .btn-xs { padding: 2px 8px; font-size: 0.75rem; }
 </style>
-
 
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
@@ -233,7 +171,8 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
         </div>
     </div>
     <div class="cc-body p-0">
-        <div class="table-responsive">
+        <!-- Desktop Table (hidden on mobile) -->
+        <div class="table-responsive d-none d-md-block">
             <table class="table table-hover" id="deptTable">
                 <thead>
                     <tr>
@@ -305,8 +244,59 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
                         <?php endwhile; ?>
                     <?php endif; ?>
                 </tbody>
-                </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card List (visible only on mobile) -->
+        <div class="mobile-list-view d-block d-md-none p-3">
+            <div class="student-list">
+                <?php 
+                if ($department_count === 0): ?>
+                    <div class="text-center py-4 text-muted">No departments found. Add your first department above.</div>
+                <?php else:
+                    $departments->data_seek(0);
+                    while ($d = $departments->fetch_assoc()): ?>
+                    <div class="student-item" data-department-id="<?php echo $d['department_id']; ?>">
+                        <div class="student-avatar">
+                            <div class="rounded-circle text-white d-flex align-items-center justify-content-center"
+                                style="width: 46px; height: 46px; background: var(--primary-blue); font-size: 1.2rem; font-weight: bold; border: 2px solid var(--bg-gray); box-shadow: 0 2px 5px rgba(0,0,0,0.08);">
+                                <i class="fas fa-sitemap" style="font-size: 1rem;"></i>
+                            </div>
+                        </div>
+                        <div class="student-info">
+                            <div class="student-name"><?php echo e($d['department_name']); ?></div>
+                            <div class="student-meta">
+                                <span><?php echo e($d['description'] ?: 'No description'); ?></span>
+                            </div>
+                            <div class="student-meta mt-1">
+                                <span class="badge bg-info">Employees: <?php echo $d['employee_count']; ?></span>
+                                &bull; 
+                                <?php if ($d['is_active']): ?>
+                                    <span class="badge bg-success">Active</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">Inactive</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="ms-auto text-end d-flex flex-column align-items-end gap-2">
+                            <small class="text-muted" style="font-size: 0.68rem;"><?php echo formatDate($d['created_at']); ?></small>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-xs btn-outline-primary" title="Edit"
+                                    onclick="openEditModal(<?php echo $d['department_id']; ?>, '<?php echo e(addslashes($d['department_name'])); ?>', '<?php echo e(addslashes($d['description'] ?? '')); ?>', <?php echo $d['is_active']; ?>)"
+                                    data-bs-toggle="modal" data-bs-target="#editDeptModal">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-xs btn-outline-danger" title="Delete"
+                                    onclick="setDeleteTarget(<?php echo $d['department_id']; ?>, '<?php echo e(addslashes($d['department_name'])); ?>', <?php echo $d['employee_count']; ?>)"
+                                    data-bs-toggle="modal" data-bs-target="#deleteDeptModal">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endwhile;
+                endif; ?>
+            </div>
         </div>
     </div>
 </div>
@@ -418,13 +408,22 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
         }
     }
 
-    // Basic search
+    // Unified search
     document.getElementById('searchDept').addEventListener('input', function () {
-        let filter = this.value.toLowerCase();
+        let filter = this.value.toLowerCase().trim();
+        
+        // Filter desktop table rows
         let rows = document.querySelectorAll('#deptTable tbody tr');
         rows.forEach(row => {
             let text = row.innerText.toLowerCase();
             row.style.display = text.includes(filter) ? '' : 'none';
+        });
+
+        // Filter mobile card items
+        let cards = document.querySelectorAll('.mobile-list-view .student-item');
+        cards.forEach(card => {
+            let text = card.innerText.toLowerCase();
+            card.style.display = text.includes(filter) ? '' : 'none';
         });
     });
 </script>

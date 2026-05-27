@@ -577,78 +577,82 @@ select option.position-group-label {
     background: #eef5e8;
 }
 
-/* ---------- Windows-style Flash Notifications ---------- */
+/* ---------- Sticky Flash Notifications ---------- */
 .flash-message-banner {
     position: fixed;
-    right: 22px;
-    bottom: 22px;
-    z-index: 2060;
+    right: 24px;
+    top: calc(82px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    left: auto;
+    z-index: 3000;
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    width: min(380px, calc(100vw - 44px));
-    min-height: 92px;
+    align-items: center;
+    gap: 14px;
+    width: min(430px, calc(100vw - 48px));
+    min-height: 86px;
     margin: 0;
-    padding: 14px 46px 14px 14px;
-    color: #f8fafc;
-    background: #202020;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-left: 4px solid #7fb239;
-    border-radius: 0;
-    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.35);
-    animation: flashWinToastIn 0.28s ease-out both;
+    padding: 14px 48px 14px 14px;
+    color: var(--text-dark);
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid #e8eee3;
+    border-left: 5px solid var(--primary-blue);
+    border-radius: 8px;
+    box-shadow: 0 18px 42px rgba(12, 32, 8, 0.16);
+    backdrop-filter: blur(12px);
+    animation: flashToastSlideIn 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
 }
 
 .flash-message-icon {
-    width: 38px;
-    height: 38px;
-    margin-top: 2px;
-    border-radius: 2px;
+    width: 42px;
+    height: 42px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex: 0 0 38px;
-    color: #7fb239;
-    background: rgba(255, 255, 255, 0.08);
-    font-size: 1.05rem;
+    flex: 0 0 42px;
+    color: var(--primary-blue);
+    background: rgba(41, 67, 6, 0.09);
+    font-size: 1.1rem;
 }
 
 .flash-message-copy {
     min-width: 0;
     display: grid;
-    gap: 3px;
+    gap: 4px;
 }
 
 .flash-message-app {
-    color: rgba(248, 250, 252, 0.72);
+    color: var(--primary-blue);
     font-size: 0.74rem;
-    font-weight: 700;
+    font-weight: 800;
     line-height: 1.1;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0;
 }
 
 .flash-message-title {
-    color: #fff;
-    font-size: 0.95rem;
-    font-weight: 700;
+    color: var(--text-dark);
+    font-size: 1rem;
+    font-weight: 800;
     line-height: 1.25;
 }
 
 .flash-message-text {
-    color: rgba(248, 250, 252, 0.82);
+    color: var(--text-muted);
     font-size: 0.9rem;
-    font-weight: 400;
+    font-weight: 500;
     line-height: 1.38;
     overflow-wrap: anywhere;
 }
 
 .flash-message-banner .btn-close {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 12px;
+    right: 12px;
     padding: 8px;
-    opacity: 0.72;
+    filter: none;
+    opacity: 0.45;
 }
 
 .flash-message-banner .btn-close:hover,
@@ -662,6 +666,7 @@ select option.position-group-label {
 
 .flash-message-success .flash-message-icon {
     color: #7fb239;
+    background: rgba(127, 178, 57, 0.13);
 }
 
 .flash-message-danger {
@@ -669,15 +674,17 @@ select option.position-group-label {
 }
 
 .flash-message-danger .flash-message-icon {
-    color: #ff5f6d;
+    color: #e81123;
+    background: rgba(232, 17, 35, 0.1);
 }
 
 .flash-message-warning {
-    border-left-color: #ffb900;
+    border-left-color: #BD9414;
 }
 
 .flash-message-warning .flash-message-icon {
-    color: #ffcf44;
+    color: #BD9414;
+    background: rgba(189, 148, 20, 0.14);
 }
 
 .flash-message-info,
@@ -687,38 +694,67 @@ select option.position-group-label {
 
 .flash-message-info .flash-message-icon,
 .flash-message-primary .flash-message-icon {
-    color: #4db2ff;
+    color: #0078d4;
+    background: rgba(0, 120, 212, 0.1);
 }
 
-@keyframes flashWinToastIn {
+.flash-message-banner.fade {
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.7, 0, 0.84, 0);
+}
+
+.flash-message-banner.fade:not(.show) {
+    opacity: 0;
+    transform: translate3d(56px, 0, 0) scale(0.98);
+}
+
+@keyframes flashToastSlideIn {
     from {
-        transform: translateY(18px);
+        transform: translate3d(64px, 0, 0) scale(0.98);
         opacity: 0;
     }
 
     to {
-        transform: translateY(0);
+        transform: translate3d(0, 0, 0) scale(1);
         opacity: 1;
     }
 }
 
 @media (max-width: 576px) {
     .flash-message-banner {
+        left: 12px;
         right: 12px;
-        bottom: 12px;
-        width: calc(100vw - 24px);
-        gap: 10px;
+        top: calc(14px + env(safe-area-inset-top, 0px));
+        bottom: auto;
+        width: auto;
+        min-height: 78px;
+        gap: 12px;
         padding: 12px 42px 12px 12px;
     }
 
     .flash-message-icon {
-        width: 34px;
-        height: 34px;
-        flex-basis: 34px;
+        width: 38px;
+        height: 38px;
+        flex-basis: 38px;
     }
 
     .flash-message-text {
         font-size: 0.86rem;
+    }
+
+    .flash-message-banner.fade:not(.show) {
+        transform: translate3d(0, -24px, 0) scale(0.98);
+    }
+
+    @keyframes flashToastSlideIn {
+        from {
+            transform: translate3d(0, -24px, 0) scale(0.98);
+            opacity: 0;
+        }
+
+        to {
+            transform: translate3d(0, 0, 0) scale(1);
+            opacity: 1;
+        }
     }
 }
 
@@ -2128,6 +2164,7 @@ body.mobile-sidebar-active .sidebar {
 }
 
 @media (max-width: 991.98px) {
+
     .report-builder-grid,
     .report-summary-grid {
         grid-template-columns: 1fr;
@@ -2135,6 +2172,7 @@ body.mobile-sidebar-active .sidebar {
 }
 
 @media (max-width: 767.98px) {
+
     .report-selected-summary,
     .report-empty-state .card-body,
     .report-filter-actions {
@@ -3720,3 +3758,247 @@ video {
         height: 40px;
     }
 }
+
+/* ==========================================================================
+   Employee Mobile-First Bottom Nav and Redesign (Role-Employee Mobile View)
+   ========================================================================== */
+@media (max-width: 768px) {
+
+    /* Hide sidebar and overlay entirely on mobile for Employee */
+    body.role-employee .sidebar {
+        display: none !important;
+    }
+
+    body.role-employee .sidebar-overlay {
+        display: none !important;
+    }
+
+    /* Shift content and top-navbar to take full width */
+    body.role-employee .top-navbar {
+        left: 0 !important;
+    }
+
+    body.role-employee .main-content {
+        margin-left: 0 !important;
+        /* Extra padding at bottom to prevent footer/sticky nav overlap */
+        padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    /* Adjust page hero padding on mobile for cleaner look */
+    body.role-employee .page-hero {
+        padding: 16px 14px !important;
+        margin-bottom: 16px !important;
+        border-radius: 12px !important;
+    }
+
+    /* Mobile bottom navigation */
+    .employee-bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--bg-white);
+        border-top: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 0px));
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
+        z-index: 1040;
+    }
+
+    .employee-bottom-nav .nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 6px 0;
+        color: var(--text-muted) !important;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        background: transparent;
+        border: none;
+        outline: none;
+    }
+
+    .employee-bottom-nav .nav-item:hover {
+        color: #3B9EFF !important;
+    }
+
+    .employee-bottom-nav .nav-item.active {
+        color: #3B9EFF !important;
+        /* Active tab highlighted in blue */
+    }
+
+    .employee-bottom-nav .nav-icon {
+        font-size: 1.3rem;
+        transition: transform 0.2s ease;
+    }
+
+    .employee-bottom-nav .nav-item.active .nav-icon {
+        transform: scale(1.15);
+    }
+
+    .employee-bottom-nav .nav-label {
+        font-size: 0.7rem;
+        font-weight: 500;
+    }
+
+    .employee-bottom-nav .nav-item.active .nav-label {
+        font-weight: 700;
+    }
+
+    /* Mobile notifications badge */
+    .employee-bottom-nav .mobile-notif-badge {
+        position: absolute;
+        top: -6px;
+        right: -10px;
+        background: var(--danger);
+        color: white;
+        font-size: 0.65rem;
+        min-width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        padding: 0 4px;
+        box-shadow: 0 0 0 2px var(--bg-white);
+    }
+}
+
+/* ---------- Extra Small Button (for mobile card actions) ---------- */
+.btn-xs {
+    padding: 3px 7px;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    border-radius: 5px;
+}
+
+/* ---------- Premium Mobile Card Layout (Student Check-in Style) ---------- */
+.mobile-list-view {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mobile-list-view .student-list {
+    background: var(--bg-white);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.mobile-list-view .student-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    background: var(--bg-white);
+    transition: background-color 0.2s ease;
+    animation: fadeInUp 0.3s ease backwards;
+}
+
+.mobile-list-view .student-item:last-child {
+    border-bottom: none;
+}
+
+.mobile-list-view .student-item:active {
+    background: var(--bg-gray);
+}
+
+.mobile-list-view .student-avatar {
+    position: relative;
+    margin-right: 14px;
+    flex-shrink: 0;
+}
+
+.mobile-list-view .avatar-img {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--bg-gray);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+}
+
+.mobile-list-view .avatar-placeholder {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: white;
+    border: 2px solid var(--bg-gray);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+}
+
+.mobile-list-view .student-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.mobile-list-view .student-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 3px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.mobile-list-view .student-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
+}
+
+.mobile-list-view .student-meta:last-child {
+    margin-bottom: 0;
+}
+
+.mobile-list-view .new-badge {
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    background: linear-gradient(135deg, #BD9414 0%, #294306 100%);
+    color: white;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.mobile-list-view .student-item:nth-child(1) { animation-delay: 0.03s; }
+.mobile-list-view .student-item:nth-child(2) { animation-delay: 0.06s; }
+.mobile-list-view .student-item:nth-child(3) { animation-delay: 0.09s; }
+.mobile-list-view .student-item:nth-child(4) { animation-delay: 0.12s; }
+.mobile-list-view .student-item:nth-child(5) { animation-delay: 0.15s; }
+.mobile-list-view .student-item:nth-child(6) { animation-delay: 0.18s; }
+.mobile-list-view .student-item:nth-child(n+7) { animation-delay: 0.21s; }

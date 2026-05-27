@@ -43,13 +43,39 @@ $total_emp_calc = $total_employees > 0 ? $total_employees : 1;
 $male_count = $conn->query("SELECT COUNT(*) as c FROM employees WHERE gender = 'Male' AND is_active = 1 AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['c'];
 $female_count = $conn->query("SELECT COUNT(*) as c FROM employees WHERE gender = 'Female' AND is_active = 1 AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['c'];
 
-// Fetch pending evaluations (5 most recent)
-$pending_evals_list = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, u.full_name as submitted_by_name
+$pending_rows = [];
+$pending_result = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
+    e.job_title, e.profile_picture, et.template_name, u.full_name AS submitted_by_name
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN users u ON ev.submitted_by = u.user_id
+    LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
     WHERE ev.status = 'Pending Manager'
-    ORDER BY ev.submitted_date DESC LIMIT 5");
+    ORDER BY ev.submitted_date DESC");
+while ($row = $pending_result->fetch_assoc()) {
+    $pending_rows[] = $row;
+}
+
+$pending_groups = [];
+foreach ($pending_rows as $row) {
+    $employeeId = (int) ($row['employee_id'] ?? 0);
+    if ($employeeId <= 0) {
+        continue;
+    }
+    if (!isset($pending_groups[$employeeId])) {
+        $pending_groups[$employeeId] = [
+            'employee_id' => $employeeId,
+            'employee_name' => $row['employee_name'] ?? '',
+            'profile_picture' => $row['profile_picture'] ?? '',
+            'job_title' => $row['job_title'] ?? '',
+            'evaluations' => [],
+        ];
+    }
+    $pending_groups[$employeeId]['evaluations'][] = $row;
+}
+$pending_groups = array_values($pending_groups);
+$queue_preview_groups = array_slice($pending_groups, 0, 5);
+$queue_employee_count = count($pending_groups);
 
 // 1. Performance Distribution Data
 $perf_dist = $conn->query("SELECT performance_level, COUNT(*) as count FROM evaluations WHERE status = 'Approved' AND performance_level IS NOT NULL GROUP BY performance_level");
@@ -59,6 +85,8 @@ while ($row = $perf_dist->fetch_assoc()) {
         $perf_data[$row['performance_level']] = (int) $row['count'];
     }
 }
+$has_queue_content = $queue_employee_count > 0;
+$has_distribution_content = array_sum($perf_data) > 0;
 
 // 2. Evaluation Status Data
 $status_dist = $conn->query("SELECT status, COUNT(*) as count FROM evaluations GROUP BY status");
@@ -191,17 +219,88 @@ while ($row = $age_dist_q->fetch_assoc()) {
         flex: 1;
         min-width: 0;
     }
-    .approval-item .avatar-circle {
+    .approval-item .avatar-circle,
+    .approval-group-header .avatar-circle {
         width: 42px;
         height: 42px;
         border-radius: 12px;
-        background: rgba(41, 67, 6, 0.05);
+        background: rgba(41, 67, 6, 0.08);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
+        font-weight: 800;
         color: var(--primary-blue);
         flex-shrink: 0;
+        overflow: hidden;
+    }
+
+    .approval-item .avatar-circle img,
+    .approval-group-header .avatar-circle img {
+        height: 100%;
+        object-fit: cover;
+        width: 100%;
+    }
+
+    .approval-item .avatar-initials,
+    .approval-group-header .avatar-initials {
+        font-size: 0.85rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .approval-group-wrap {
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+
+    .approval-group-header {
+        align-items: center;
+        cursor: pointer;
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        padding: 15px;
+        transition: background 0.2s ease;
+    }
+
+    .approval-group-header:hover {
+        background: #fbfcf8;
+    }
+
+    .approval-group-header[aria-expanded="true"] .group-chevron {
+        transform: rotate(180deg);
+    }
+
+    .group-chevron {
+        transition: transform 0.2s ease;
+    }
+
+    .approval-group-entries {
+        background: #f8faf5;
+        border-top: 1px solid #eef2e8;
+        padding: 0 15px 12px;
+    }
+
+    .approval-group-entry {
+        align-items: center;
+        background: #fff;
+        border: 1px solid #eef2e8;
+        border-radius: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: space-between;
+        margin-top: 10px;
+        padding: 12px;
+    }
+
+    .approval-group-entry .entry-template {
+        font-size: 0.82rem;
+        font-weight: 700;
+        min-width: 0;
     }
     .approval-item .details {
         min-width: 0;
@@ -316,6 +415,28 @@ while ($row = $age_dist_q->fetch_assoc()) {
     
     /* Responsive Filter Group */
     @media (max-width: 768px) {
+        .approval-item,
+        .approval-group-header {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .approval-item .status-meta,
+        .approval-group-header .status-meta {
+            text-align: left;
+        }
+
+        .approval-item .btn-review,
+        .approval-group-header .btn-review {
+            width: 100%;
+            text-align: center;
+        }
+
+        .approval-group-entry {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
         .filter-group {
             width: 100%;
             overflow-x: auto;
@@ -351,7 +472,7 @@ while ($row = $age_dist_q->fetch_assoc()) {
     }
 </style>
 
-<!-- Statistics Cards (Premium Hero) -->
+<!-- Dashboard Hero -->
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
         <div>
@@ -363,85 +484,268 @@ while ($row = $age_dist_q->fetch_assoc()) {
             <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
         </div>
     </div>
-
     <div class="row g-3">
-        <div class="col-6 col-md-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $total_employees; ?></div>
+                    <div class="stat-label">Total Employees</div>
+                </div>
+                <i class="fas fa-users stat-icon text-white-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $male_count; ?></div>
+                    <div class="stat-label">Male Employees</div>
+                </div>
+                <i class="fas fa-mars stat-icon" style="color:#17a2b8;"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $female_count; ?></div>
+                    <div class="stat-label">Female Employees</div>
+                </div>
+                <i class="fas fa-venus stat-icon" style="color:#e83e8c;"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <a href="branches.php" class="text-decoration-none">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="stat-value"><?php echo $total_employees; ?></div>
-                        <div class="stat-label">Total Employees</div>
+                        <div class="stat-value"><?php echo $total_branches; ?></div>
+                        <div class="stat-label">Total Branches</div>
                     </div>
-                    <i class="fas fa-users stat-icon text-white-50"></i>
+                    <i class="fas fa-building stat-icon text-white-50"></i>
                 </div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value"><?php echo $male_count; ?></div>
-                        <div class="stat-label">Male Employees</div>
-                    </div>
-                    <i class="fas fa-mars stat-icon" style="color:#17a2b8;"></i>
+        </a>
+    </div>
+
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $pending_evals; ?></div>
+                    <div class="stat-label">Pending Evals</div>
                 </div>
+                <i class="fas fa-clock stat-icon" style="color:#ffc107;"></i>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value"><?php echo $female_count; ?></div>
-                        <div class="stat-label">Female Employees</div>
-                    </div>
-                    <i class="fas fa-venus stat-icon" style="color:#e83e8c;"></i>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $new_evals_month; ?></div>
+                    <div class="stat-label">Evals This Month</div>
                 </div>
+                <i class="fas fa-file-alt stat-icon text-white-50"></i>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <a href="branches.php" class="text-decoration-none">
-                <div class="stat-card">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="stat-value"><?php echo $total_branches; ?></div>
-                            <div class="stat-label">Total Branches</div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $avg_score; ?>%</div>
+                    <div class="stat-label">Average Score</div>
+                </div>
+                <i class="fas fa-star stat-icon" style="color:#28a745;"></i>
+            </div>
+        </div>
+    </div>
+    </div>
+</div>
+
+<div class="row manager-dashboard-queue" id="approvalQueueSection">
+    <div class="col-12">
+        <div class="chart-card">
+            <div class="cc-header d-flex justify-content-between align-items-center py-2 flex-wrap gap-2">
+                <ul class="nav nav-tabs cc-header-tabs approval-tabs" id="pendingTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="eval-tab" data-bs-toggle="tab" data-bs-target="#evals"
+                            type="button" role="tab">
+                            Approval Queue
+                            <?php if ($pending_evals > 0): ?>
+                                <span class="badge bg-warning text-dark ms-1"><?php echo $pending_evals; ?></span>
+                            <?php endif; ?>
+                        </button>
+                    </li>
+                </ul>
+                <div class="d-flex align-items-center gap-2">
+                    <?php if ($queue_employee_count > 0): ?>
+                        <span class="badge bg-light text-muted border"><?php echo number_format($queue_employee_count); ?> employee<?php echo $queue_employee_count === 1 ? '' : 's'; ?></span>
+                    <?php endif; ?>
+                    <a href="<?php echo BASE_URL; ?>/manager/pending-approvals.php" class="btn btn-sm btn-link text-decoration-none small">
+                        View Center <i class="fas fa-external-link-alt ms-1" style="font-size: 0.7rem;"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="cc-body p-0">
+                <div class="tab-content" id="pendingTabsContent">
+                    <div class="tab-pane fade show active" id="evals" role="tabpanel">
+                        <div class="approval-list">
+                            <?php if (empty($queue_preview_groups)): ?>
+                                <div class="empty-state-card">
+                                    <i class="fas fa-clipboard-check"></i>
+                                    <p class="mb-0">All evaluations have been processed.</p>
+                                </div>
+                            <?php else: ?>
+                                <?php foreach ($queue_preview_groups as $group):
+                                    $evaluations = $group['evaluations'];
+                                    $evalCount = count($evaluations);
+                                    $name_parts = preg_split('/\s+/', trim($group['employee_name'] ?? ''));
+                                    $initials = strtoupper(substr($name_parts[0] ?? 'U', 0, 1) . substr($name_parts[1] ?? '', 0, 1));
+                                    $avatar_url = getEmployeeAvatar($group['profile_picture'] ?? '');
+                                    $has_photo = !empty($group['profile_picture']) && strpos($avatar_url, '/logo/logo.png') === false;
+                                    $groupCollapseId = 'mgrDashQueue' . (int) $group['employee_id'];
+                                ?>
+                                    <?php if ($evalCount === 1):
+                                        $row = $evaluations[0];
+                                        $score = (float) ($row['total_score'] ?? 0);
+                                        $score_width = min(100, max(0, ($score / 4) * 100));
+                                    ?>
+                                        <div class="approval-item">
+                                            <div class="emp-info">
+                                                <div class="avatar-circle">
+                                                    <?php if ($has_photo): ?>
+                                                        <img src="<?php echo e($avatar_url); ?>?v=<?php echo time(); ?>" alt="<?php echo e($group['employee_name']); ?>">
+                                                    <?php else: ?>
+                                                        <span class="avatar-initials"><?php echo e($initials ?: 'U'); ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="details">
+                                                    <h6><?php echo e($group['employee_name']); ?></h6>
+                                                    <span><?php echo e($row['template_name'] ?? 'Evaluation'); ?> · Endorsed for manager review</span>
+                                                </div>
+                                            </div>
+                                            <div class="score-meter d-none d-md-block">
+                                                <span class="score-val"><?php echo e($row['total_score'] ?? '0.00'); ?> / 4</span>
+                                                <div class="progress" style="height: 4px;">
+                                                    <div class="progress-bar <?php echo ($score >= 3) ? 'bg-success' : (($score >= 2) ? 'bg-primary' : 'bg-warning'); ?>" style="width: <?php echo $score_width; ?>%;"></div>
+                                                </div>
+                                            </div>
+                                            <div class="status-meta d-none d-sm-block">
+                                                <div class="fw-bold text-dark"><?php echo formatDate($row['submitted_date']); ?></div>
+                                                <div class="x-small">Pending Manager</div>
+                                            </div>
+                                            <a href="<?php echo BASE_URL; ?>/manager/pending-approvals.php?review=<?php echo (int) $row['evaluation_id']; ?>" class="btn btn-primary btn-review">Review</a>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="approval-group-wrap">
+                                            <div class="approval-group-header"
+                                                 role="button"
+                                                 tabindex="0"
+                                                 data-bs-toggle="collapse"
+                                                 data-bs-target="#<?php echo e($groupCollapseId); ?>"
+                                                 aria-expanded="false"
+                                                 aria-controls="<?php echo e($groupCollapseId); ?>">
+                                                <div class="emp-info">
+                                                    <div class="avatar-circle">
+                                                        <?php if ($has_photo): ?>
+                                                            <img src="<?php echo e($avatar_url); ?>?v=<?php echo time(); ?>" alt="<?php echo e($group['employee_name']); ?>">
+                                                        <?php else: ?>
+                                                            <span class="avatar-initials"><?php echo e($initials ?: 'U'); ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <div class="details">
+                                                        <h6><?php echo e($group['employee_name']); ?></h6>
+                                                        <span>
+                                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><?php echo $evalCount; ?> evaluations pending</span>
+                                                            <?php if (!empty($group['job_title'])): ?>
+                                                                <span class="text-muted ms-1"><?php echo e($group['job_title']); ?></span>
+                                                            <?php endif; ?>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div class="status-meta d-none d-sm-block">
+                                                    <div class="fw-bold text-dark">Pending Manager</div>
+                                                    <div class="x-small">Click to expand</div>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-primary btn-review" data-bs-toggle="collapse" data-bs-target="#<?php echo e($groupCollapseId); ?>" aria-expanded="false" onclick="event.stopPropagation();">
+                                                    <i class="fas fa-chevron-down group-chevron me-1"></i>Show
+                                                </button>
+                                            </div>
+                                            <div class="collapse approval-group-entries" id="<?php echo e($groupCollapseId); ?>">
+                                                <?php foreach ($evaluations as $row):
+                                                    $score = (float) ($row['total_score'] ?? 0);
+                                                    $score_width = min(100, max(0, ($score / 4) * 100));
+                                                ?>
+                                                    <div class="approval-group-entry">
+                                                        <div class="flex-grow-1 min-w-0">
+                                                            <div class="entry-template"><?php echo e($row['template_name'] ?? 'Evaluation'); ?></div>
+                                                            <div class="small text-muted">
+                                                                <?php echo e($row['evaluation_type'] ?? 'Annual'); ?> ·
+                                                                Submitted <?php echo formatDate($row['submitted_date']); ?>
+                                                            </div>
+                                                        </div>
+                                                        <div class="score-meter">
+                                                            <span class="score-val"><?php echo e($row['total_score'] ?? '0.00'); ?> / 4</span>
+                                                            <div class="progress" style="height: 4px;">
+                                                                <div class="progress-bar <?php echo ($score >= 3) ? 'bg-success' : (($score >= 2) ? 'bg-primary' : 'bg-warning'); ?>" style="width: <?php echo $score_width; ?>%;"></div>
+                                                            </div>
+                                                        </div>
+                                                        <a href="<?php echo BASE_URL; ?>/manager/pending-approvals.php?review=<?php echo (int) $row['evaluation_id']; ?>" class="btn btn-primary btn-sm btn-review">Review</a>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                                <div class="text-center pb-3">
+                                    <a href="<?php echo BASE_URL; ?>/manager/pending-approvals.php" class="text-decoration-none small text-muted hover-primary">
+                                        View all pending evaluations <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            <?php endif; ?>
                         </div>
-                        <i class="fas fa-building stat-icon text-white-50"></i>
                     </div>
-                </div>
-            </a>
-        </div>
-        
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value"><?php echo $pending_evals; ?></div>
-                        <div class="stat-label">Pending Evals</div>
-                    </div>
-                    <i class="fas fa-clock stat-icon" style="color:#ffc107;"></i>
                 </div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value"><?php echo $new_evals_month; ?></div>
-                        <div class="stat-label">Evals This Month</div>
-                    </div>
-                    <i class="fas fa-file-alt stat-icon text-white-50"></i>
+    </div>
+</div>
+
+<!-- PERFORMANCE DISTRIBUTION TABLE ROW -->
+<div class="row g-4 mb-4" id="performanceDistributionDirectorySection">
+    <div class="col-12">
+        <div class="chart-card">
+            <div class="cc-header d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0"><i class="fas fa-th-list me-2 text-success"></i>Performance Distribution Directory</h5>
+                <div class="d-flex gap-2 filter-group">
+                    <button class="perf-filter-btn outstanding active" onclick="filterDistribution('Outstanding', this)">Outstanding</button>
+                    <button class="perf-filter-btn exceeds" onclick="filterDistribution('Exceeds Expectations', this)">Exceeds</button>
+                    <button class="perf-filter-btn meets" onclick="filterDistribution('Meets Expectations', this)">Meets</button>
+                    <button class="perf-filter-btn needs" onclick="filterDistribution('Needs Improvement', this)">Needs Imp.</button>
                 </div>
             </div>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value"><?php echo $avg_score; ?>%</div>
-                        <div class="stat-label">Average Score</div>
-                    </div>
-                    <i class="fas fa-star stat-icon" style="color:#28a745;"></i>
+            <div class="cc-body p-0">
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light sticky-top">
+                            <tr>
+                                <th style="font-size: 0.75rem; font-weight: 700;">EMPLOYEE</th>
+                                <th style="font-size: 0.75rem; font-weight: 700;">BRANCH</th>
+                                <th style="font-size: 0.75rem; font-weight: 700;">SCORE</th>
+                                <th style="font-size: 0.75rem; font-weight: 700;">DATE APPROVED</th>
+                            </tr>
+                        </thead>
+                        <tbody id="distributionTableBody">
+                            <!-- AJAX Content -->
+                            <tr><td colspan="4" class="text-center py-5"><div class="spinner-border spinner-border-sm text-primary"></div> Loading...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -666,117 +970,33 @@ while ($row = $age_dist_q->fetch_assoc()) {
     </div>
 </div>
 
-<!-- PERFORMANCE DISTRIBUTION TABLE ROW -->
-<div class="row g-4 mb-4">
-    <div class="col-12">
-        <div class="chart-card">
-            <div class="cc-header d-flex justify-content-between align-items-center py-3">
-                <h5 class="mb-0"><i class="fas fa-th-list me-2 text-success"></i>Performance Distribution Directory</h5>
-                <div class="d-flex gap-2 filter-group">
-                    <button class="perf-filter-btn outstanding active" onclick="filterDistribution('Outstanding', this)">Outstanding</button>
-                    <button class="perf-filter-btn exceeds" onclick="filterDistribution('Exceeds Expectations', this)">Exceeds</button>
-                    <button class="perf-filter-btn meets" onclick="filterDistribution('Meets Expectations', this)">Meets</button>
-                    <button class="perf-filter-btn needs" onclick="filterDistribution('Needs Improvement', this)">Needs Imp.</button>
-                </div>
-            </div>
-            <div class="cc-body p-0">
-                <div class="table-responsive" style="max-height: 400px;">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="bg-light sticky-top">
-                            <tr>
-                                <th style="font-size: 0.75rem; font-weight: 700;">EMPLOYEE</th>
-                                <th style="font-size: 0.75rem; font-weight: 700;">BRANCH</th>
-                                <th style="font-size: 0.75rem; font-weight: 700;">SCORE</th>
-                                <th style="font-size: 0.75rem; font-weight: 700;">DATE APPROVED</th>
-                            </tr>
-                        </thead>
-                        <tbody id="distributionTableBody">
-                            <!-- AJAX Content -->
-                            <tr><td colspan="4" class="text-center py-5"><div class="spinner-border spinner-border-sm text-primary"></div> Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <!-- Pending Approvals -->
-    <div class="col-12">
-        <div class="chart-card">
-            <div class="cc-header d-flex justify-content-between align-items-center py-2">
-                <ul class="nav nav-tabs cc-header-tabs approval-tabs" id="pendingTabs" role="tablist">
-                    <li class="nav-item">
-                        <button class="nav-link active" id="eval-tab" data-bs-toggle="tab" data-bs-target="#evals"
-                            type="button" role="tab">
-                            Evaluations
-                            <?php if ($pending_evals > 0): ?>
-                                <span class="badge bg-warning text-dark ms-1"><?php echo $pending_evals; ?></span>
-                            <?php endif; ?>
-                        </button>
-                    </li>
-                </ul>
-                <a href="<?php echo BASE_URL; ?>/manager/pending-approvals.php" class="btn btn-sm btn-link text-decoration-none small">
-                    View Center <i class="fas fa-external-link-alt ms-1" style="font-size: 0.7rem;"></i>
-                </a>
-            </div>
-            <div class="cc-body p-0">
-                <div class="tab-content" id="pendingTabsContent">
-                    <!-- Evaluations Tab -->
-                    <div class="tab-pane fade show active" id="evals" role="tabpanel">
-                        <div class="approval-list">
-                            <?php if ($pending_evals_list->num_rows === 0): ?>
-                                <div class="empty-state-card">
-                                    <i class="fas fa-clipboard-check"></i>
-                                    <p class="mb-0">All evaluations have been processed.</p>
-                                </div>
-                            <?php else: ?>
-                                <?php while ($row = $pending_evals_list->fetch_assoc()): 
-                                    $initials = strtoupper(substr($row['employee_name'], 0, 1) . substr(explode(' ', $row['employee_name'])[1] ?? '', 0, 1));
-                                ?>
-                                    <div class="approval-item">
-                                        <div class="emp-info">
-                                            <div class="avatar-circle"><?php echo $initials; ?></div>
-                                            <div class="details">
-                                                <h6><?php echo e($row['employee_name']); ?></h6>
-                                                <span>Submitted by <?php echo e($row['submitted_by_name']); ?></span>
-                                            </div>
-                                        </div>
-                                        <div class="score-meter d-none d-md-block">
-                                            <span class="score-val"><?php echo $row['total_score']; ?>% Score</span>
-                                            <div class="progress" style="height: 4px;">
-                                                <div class="progress-bar <?php echo ($row['total_score'] >= 80) ? 'bg-success' : (($row['total_score'] >= 60) ? 'bg-primary' : 'bg-warning'); ?>" 
-                                                     style="width: <?php echo $row['total_score']; ?>%"></div>
-                                            </div>
-                                        </div>
-                                        <div class="status-meta d-none d-sm-block">
-                                            <div class="fw-bold text-dark"><?php echo formatDate($row['submitted_date']); ?></div>
-                                            <div class="x-small">Pending Manager</div>
-                                        </div>
-                                        <a href="<?php echo BASE_URL; ?>/manager/pending-approvals.php?review=<?php echo $row['evaluation_id']; ?>"
-                                           class="btn btn-primary btn-review">Review</a>
-                                    </div>
-                                <?php endwhile; ?>
-                                <div class="text-center pb-3">
-                                    <a href="<?php echo BASE_URL; ?>/manager/pending-approvals.php" class="text-decoration-none small text-muted hover-primary">
-                                        View all pending evaluations <i class="fas fa-arrow-right ms-1"></i>
-                                    </a>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<div id="dashboardDeferredSections"></div>
 
 <script>
     // User's assigned branch (from session), injected server-side
     const USER_ASSIGNED_BRANCH = <?php echo json_encode($user_branch_name); ?>;
+    const HAS_QUEUE_CONTENT = <?php echo json_encode($has_queue_content); ?>;
+    const HAS_DISTRIBUTION_CONTENT = <?php echo json_encode($has_distribution_content); ?>;
 
     document.addEventListener('DOMContentLoaded', function () {
+        const deferredSectionsHost = document.getElementById('dashboardDeferredSections');
+        const approvalQueueSection = document.getElementById('approvalQueueSection');
+        const performanceDistributionSection = document.getElementById('performanceDistributionDirectorySection');
+
+        if (deferredSectionsHost) {
+            if (!HAS_QUEUE_CONTENT) {
+                if (approvalQueueSection) {
+                    deferredSectionsHost.appendChild(approvalQueueSection);
+                }
+
+                if (performanceDistributionSection) {
+                    deferredSectionsHost.appendChild(performanceDistributionSection);
+                }
+            } else if (!HAS_DISTRIBUTION_CONTENT && performanceDistributionSection) {
+                deferredSectionsHost.appendChild(performanceDistributionSection);
+            }
+        }
+
         // --- Professional Branch Selector Logic ---
         const trigger = document.getElementById('customSelectTrigger');
         const dropdown = document.getElementById('customSelectDropdown');
