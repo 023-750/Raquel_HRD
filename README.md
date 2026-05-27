@@ -1,3 +1,1 @@
-# raquel-hris
-official repo for Raquel Pawnshop HRIS 
-"# raquel-hris-original" 
+# FINAL_RAQUEL_PAWNSHOP_HRD
