@@ -155,22 +155,22 @@ $rankCategories = $rankCategories ?? [
         <div class="col-md-3 mb-3">
             <label class="form-label">SSS No.</label>
             <input type="text" class="form-control" name="sss_number" value="<?php echo $v('sss_number'); ?>" 
-                placeholder="00-0000000-0" pattern="\d{2}-\d{7}-\d{1}" title="Format: 00-0000000-0 (10 digits)">
+                placeholder="00-0000000-0" pattern="\d{2}-\d{7}-\d{1}" title="Format: 00-0000000-0 (10 digits)" inputmode="numeric">
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">PhilHealth No.</label>
             <input type="text" class="form-control" name="philhealth_number" value="<?php echo $v('philhealth_number'); ?>" 
-                placeholder="00-000000000-0" pattern="\d{2}-\d{9}-\d{1}" title="Format: 00-000000000-0 (12 digits)">
+                placeholder="00-000000000-0" pattern="\d{2}-\d{9}-\d{1}" title="Format: 00-000000000-0 (12 digits)" inputmode="numeric">
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">Pag-IBIG No.</label>
             <input type="text" class="form-control" name="pagibig_number" value="<?php echo $v('pagibig_number'); ?>" 
-                placeholder="0000-0000-0000" pattern="\d{4}-\d{4}-\d{4}" title="Format: 0000-0000-0000 (12 digits)">
+                placeholder="0000-0000-0000" pattern="\d{4}-\d{4}-\d{4}" title="Format: 0000-0000-0000 (12 digits)" inputmode="numeric">
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">TIN No.</label>
             <input type="text" class="form-control" name="tin_number" value="<?php echo $v('tin_number'); ?>" 
-                placeholder="000-000-000-000" pattern="\d{3}-\d{3}-\d{3}-\d{3}" title="Format: 000-000-000-000 (9 or 12 digits)">
+                placeholder="000-000-000-000" pattern="\d{3}-\d{3}-\d{3}-\d{3}" title="Format: 000-000-000-000 (9 or 12 digits)" inputmode="numeric">
         </div>
     </div>
 
@@ -255,12 +255,12 @@ $rankCategories = $rankCategories ?? [
         <div class="col-md-4 mb-3">
             <label class="form-label">Telephone No. <span class="text-muted small">(Optional)</span></label>
             <input type="text" class="form-control" name="telephone_number" value="<?php echo $v('telephone_number'); ?>" 
-                placeholder="(042) 000-0000" title="Format: (000) 000-0000">
+                placeholder="(042) 000-0000" title="Format: (000) 000-0000" inputmode="numeric">
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Mobile No.</label>
             <input type="text" class="form-control" name="contact_number" value="<?php echo $v('contact_number'); ?>" 
-                placeholder="09171234567" pattern="\d{11}" title="Format: 11 digits (e.g. 09171234567)">
+                placeholder="09171234567" pattern="\d{11}" title="Format: 11 digits (e.g. 09171234567)" inputmode="numeric">
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Email Address</label>
@@ -353,7 +353,7 @@ $rankCategories = $rankCategories ?? [
     </div>
 
     <div class="form-section-title mt-3"><i class="fas fa-child"></i> Children</div>
-    <div id="childrenContainer">
+    <div id="childrenContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeChildren)): ?>
             <?php foreach ($employeeChildren as $i => $child): ?>
                 <div class="repeater-row">
@@ -379,7 +379,7 @@ $rankCategories = $rankCategories ?? [
             class="fas fa-plus me-1"></i> Add Child</button>
 
     <div class="form-section-title mt-3"><i class="fas fa-users"></i> Siblings</div>
-    <div id="siblingsContainer">
+    <div id="siblingsContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeSiblings)): ?>
             <?php foreach ($employeeSiblings as $i => $sib): ?>
                 <div class="repeater-row">
@@ -411,7 +411,7 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 3: Educational Background ====== -->
 <div class="step-content" id="step3" style="display:none;">
     <div class="form-section-title"><i class="fas fa-graduation-cap"></i> Educational Background</div>
-    <div id="educationContainer">
+    <div id="educationContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeEducation)): ?>
             <?php foreach ($employeeEducation as $edu): ?>
                 <div class="repeater-row">
@@ -470,7 +470,7 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 4: Work Experience ====== -->
 <div class="step-content" id="step4" style="display:none;">
     <div class="form-section-title"><i class="fas fa-briefcase"></i> Work Experience</div>
-    <div id="workContainer">
+    <div id="workContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeWork)): ?>
             <?php foreach ($employeeWork as $w): ?>
                 <div class="repeater-row">
@@ -512,7 +512,7 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 5: Training Programs ====== -->
 <div class="step-content" id="step5" style="display:none;">
     <div class="form-section-title"><i class="fas fa-chalkboard-teacher"></i> Training Programs Attended</div>
-    <div id="trainingContainer">
+    <div id="trainingContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeTrainings)): ?>
             <?php foreach ($employeeTrainings as $t): ?>
                 <div class="repeater-row">
@@ -554,7 +554,7 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 6: Voluntary Work ====== -->
 <div class="step-content" id="step6" style="display:none;">
     <div class="form-section-title"><i class="fas fa-hands-helping"></i> Voluntary Work / Civic Involvement</div>
-    <div id="voluntaryContainer">
+    <div id="voluntaryContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeVoluntary)): ?>
             <?php foreach ($employeeVoluntary as $vol): ?>
                 <div class="repeater-row">
@@ -594,7 +594,7 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 7: Service Eligibility ====== -->
 <div class="step-content" id="step7" style="display:none;">
     <div class="form-section-title"><i class="fas fa-certificate"></i> Service Eligibility / Licenses</div>
-    <div id="eligibilityContainer">
+    <div id="eligibilityContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeEligibility)): ?>
             <?php foreach ($employeeEligibility as $el): ?>
                 <div class="repeater-row">
@@ -635,7 +635,7 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 8: Skills, Recognition & Membership ====== -->
 <div class="step-content" id="step8" style="display:none;">
     <div class="form-section-title"><i class="fas fa-star"></i> Special Skills & Hobbies</div>
-    <div id="skillsContainer">
+    <div id="skillsContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeSkills)): ?>
             <?php foreach ($employeeSkills as $sk): ?>
                 <div class="repeater-row"><button type="button" class="btn-remove-row"
@@ -650,7 +650,7 @@ $rankCategories = $rankCategories ?? [
         Skill</button>
 
     <div class="form-section-title mt-3"><i class="fas fa-award"></i> Non-Academic Distinctions / Recognition</div>
-    <div id="recognitionsContainer">
+    <div id="recognitionsContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeRecognitions)): ?>
             <?php foreach ($employeeRecognitions as $rc): ?>
                 <div class="repeater-row">
@@ -678,7 +678,7 @@ $rankCategories = $rankCategories ?? [
     </button>
 
     <div class="form-section-title mt-3"><i class="fas fa-users-cog"></i> Membership in Organizations</div>
-    <div id="membershipsContainer">
+    <div id="membershipsContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeMemberships)): ?>
             <?php foreach ($employeeMemberships as $mb): ?>
                 <div class="repeater-row"><button type="button" class="btn-remove-row"
@@ -698,7 +698,7 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 9: Assets & Liabilities ====== -->
 <div class="step-content" id="step9" style="display:none;">
     <div class="form-section-title"><i class="fas fa-building"></i> Real Properties</div>
-    <div id="realPropContainer">
+    <div id="realPropContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeRealProps)): ?>
             <?php foreach ($employeeRealProps as $rp): ?>
                 <div class="repeater-row">
@@ -718,7 +718,7 @@ $rankCategories = $rankCategories ?? [
         Real Property</button>
 
     <div class="form-section-title mt-3"><i class="fas fa-car"></i> Personal Properties</div>
-    <div id="personalPropContainer">
+    <div id="personalPropContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeePersonalProps)): ?>
             <?php foreach ($employeePersonalProps as $pp): ?>
                 <div class="repeater-row">
@@ -736,7 +736,7 @@ $rankCategories = $rankCategories ?? [
         Add Personal Property</button>
 
     <div class="form-section-title mt-3"><i class="fas fa-file-invoice-dollar"></i> Liabilities</div>
-    <div id="liabilitiesContainer">
+    <div id="liabilitiesContainer" class="repeater-accordion">
         <?php if ($isEdit && !empty($employeeLiabilities)): ?>
             <?php foreach ($employeeLiabilities as $lb): ?>
                 <div class="repeater-row">
@@ -845,7 +845,7 @@ $rankCategories = $rankCategories ?? [
                 <div class="col-md-3 mb-2">
                     <label class="form-label">Mobile Number</label>
                     <input type="text" class="form-control form-control-sm" name="ref_telephone[]" maxlength="11"
-                        value="<?php echo isset($employeeRefs[$r]) ? e($employeeRefs[$r]['reference_telephone']) : ''; ?>">
+                        value="<?php echo isset($employeeRefs[$r]) ? e($employeeRefs[$r]['reference_telephone']) : ''; ?>" inputmode="numeric">
                 </div>
             </div>
         </div>
@@ -1028,10 +1028,97 @@ $rankCategories = $rankCategories ?? [
             <label class="form-label">Contact Number</label>
             <input type="text" class="form-control" name="emergency_contact_number"
                 value="<?php echo $v('emergency_contact_number'); ?>"
-                placeholder="09171234567" pattern="\d{11}" title="Format: 11 digits (e.g. 09171234567)">
-    </div>
+                placeholder="09171234567" pattern="\d{11}" title="Format: 11 digits (e.g. 09171234567)" inputmode="numeric">
+        </div>
 
-</div>
+        <!-- Summary Cards (populated dynamically by updatePDSSummary() on showStep(12)) -->
+        <div class="row mt-4 pt-3 border-top">
+            <div class="col-md-12">
+                <h5 class="fw-bold text-primary mb-3"><i class="fas fa-clipboard-list me-2"></i>PDS Summary Review</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border border-light shadow-sm">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                <span class="fw-bold text-dark"><i class="fas fa-user-circle me-2 text-primary"></i>Core Identity</span>
+                                <button type="button" onclick="showStep(1)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                            </div>
+                            <div class="card-body py-3">
+                                <div class="row g-2 small">
+                                    <div class="col-5 text-muted">Full Name:</div><div class="col-7 fw-bold" id="sum-name">--</div>
+                                    <div class="col-5 text-muted">Date of Birth:</div><div class="col-7 fw-bold" id="sum-dob">--</div>
+                                    <div class="col-5 text-muted">Gender:</div><div class="col-7 fw-bold" id="sum-gender">--</div>
+                                    <div class="col-5 text-muted">Civil Status:</div><div class="col-7 fw-bold" id="sum-civil">--</div>
+                                    <div class="col-5 text-muted">Mobile No:</div><div class="col-7 fw-bold" id="sum-mobile">--</div>
+                                    <div class="col-5 text-muted">Email Address:</div><div class="col-7 fw-bold text-truncate" id="sum-email">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border border-light shadow-sm">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                <span class="fw-bold text-dark"><i class="fas fa-id-card me-2 text-primary"></i>Government IDs</span>
+                                <button type="button" onclick="showStep(1)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                            </div>
+                            <div class="card-body py-3">
+                                <div class="row g-2 small">
+                                    <div class="col-5 text-muted">SSS No:</div><div class="col-7 fw-bold" id="sum-sss">--</div>
+                                    <div class="col-5 text-muted">PhilHealth No:</div><div class="col-7 fw-bold" id="sum-philhealth">--</div>
+                                    <div class="col-5 text-muted">Pag-IBIG No:</div><div class="col-7 fw-bold" id="sum-pagibig">--</div>
+                                    <div class="col-5 text-muted">TIN No:</div><div class="col-7 fw-bold" id="sum-tin">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border border-light shadow-sm">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                <span class="fw-bold text-dark"><i class="fas fa-history me-2 text-primary"></i>Background</span>
+                                <button type="button" onclick="showStep(2)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                            </div>
+                            <div class="card-body py-3">
+                                <div class="row g-2 small">
+                                    <div class="col-5 text-muted">Children:</div><div class="col-7 fw-bold" id="sum-children">--</div>
+                                    <div class="col-5 text-muted">Siblings:</div><div class="col-7 fw-bold" id="sum-siblings">--</div>
+                                    <div class="col-5 text-muted">Education:</div><div class="col-7 fw-bold" id="sum-education">--</div>
+                                    <div class="col-5 text-muted">Work History:</div><div class="col-7 fw-bold" id="sum-work">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border border-light shadow-sm">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                <span class="fw-bold text-dark"><i class="fas fa-certificate me-2 text-primary"></i>Qualifications</span>
+                                <button type="button" onclick="showStep(7)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                            </div>
+                            <div class="card-body py-3">
+                                <div class="row g-2 small">
+                                    <div class="col-5 text-muted">Eligibility/PRC:</div><div class="col-7 fw-bold" id="sum-eligibility">--</div>
+                                    <div class="col-5 text-muted">Skills:</div><div class="col-7 fw-bold" id="sum-skills">--</div>
+                                    <div class="col-5 text-muted">Recognitions:</div><div class="col-7 fw-bold" id="sum-recognitions">--</div>
+                                    <div class="col-5 text-muted">Properties/Assets:</div><div class="col-7 fw-bold" id="sum-properties">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <div class="card border border-light shadow-sm">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                <span class="fw-bold text-dark"><i class="fas fa-exclamation-triangle me-2 text-primary"></i>Disclosures & Declarations</span>
+                                <button type="button" onclick="showStep(10)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                            </div>
+                            <div class="card-body py-3">
+                                <div class="row g-2 small">
+                                    <div class="col-5 text-muted">Active Declarations:</div><div class="col-7 fw-bold" id="sum-disclosures">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {

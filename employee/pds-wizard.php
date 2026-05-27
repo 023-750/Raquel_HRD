@@ -133,40 +133,50 @@ require_once '../includes/header.php';
     </div>
     
     <!-- Progress Bar -->
-    <div class="pds-progress mb-3">
-      <div id="pdsProgressBar" class="pds-progress-bar" style="width: 8.33%;"></div>
+    <div class="pds-progress-container mb-3">
+      <div class="pds-progress-wrapper">
+        <div id="pdsProgressBar" class="pds-progress-bar" style="width: 8.33%;"></div>
+      </div>
+      <div class="pds-progress-percent" id="pdsProgressPercent">8%</div>
     </div>
 
-    <!-- Step Tabs -->
-    <div id="wizardStepTabs" class="d-flex flex-wrap gap-1 justify-content-center mb-4">
-      <?php
-      $stepLabels = ['Personal','Family','Education','Work Exp.','Trainings','Voluntary','Eligibility','Skills','Assets','Disclosures','References','Submit'];
-      foreach ($stepLabels as $i => $lbl):
-          $n = $i+1;
-      ?>
-        <button type="button"
-                id="tab-step<?php echo $n;?>"
-                onclick="showStep(<?php echo $n;?>)"
-                class="btn btn-sm step-tab px-3"
-                style="min-width:70px; font-size: 0.72rem; border-radius: 20px;">
-          <span class="d-none d-md-inline"><?php echo $n.'. '.$lbl;?></span>
-          <span class="d-md-none"><?php echo $n;?></span>
-        </button>
-      <?php endforeach; ?>
-    </div>
-
-    <!-- Navigation Buttons (Moved here below Title/Progress) -->
-    <div class="d-flex justify-content-center align-items-center gap-3 pt-3 border-top">
-      <button type="button" id="prevBtn" onclick="prevStep()" class="btn btn-outline-secondary px-4 shadow-sm">
-        <i class="fas fa-arrow-left me-2"></i> Back
-      </button>
-      <div class="d-flex gap-2">
-        <button type="button" id="nextBtn" onclick="nextStep()" class="btn btn-primary px-4 shadow-sm">
-          Next Step <i class="fas fa-arrow-right ms-2"></i>
-        </button>
-        <button type="button" id="submitBtn" onclick="submitPDS()" class="btn btn-success px-4 shadow-sm" style="display:none;">
-          <i class="fas fa-check-double me-2"></i> Submit for Review
-        </button>
+    <!-- Portal Tabs -->
+    <div class="portal-tabs">
+      <div class="portal-tab active" id="portal-tab-1" onclick="showPortal(1)">
+        <div class="portal-num">1</div>
+        <div class="portal-label-wrapper">
+          <span class="portal-label">Core Identity</span>
+          <div class="portal-sub-steps" id="portal-sub-1">
+            <!-- Dots injected/updated by JS -->
+          </div>
+        </div>
+      </div>
+      <div class="portal-tab" id="portal-tab-2" onclick="showPortal(2)">
+        <div class="portal-num">2</div>
+        <div class="portal-label-wrapper">
+          <span class="portal-label">Background</span>
+          <div class="portal-sub-steps" id="portal-sub-2">
+            <!-- Dots injected/updated by JS -->
+          </div>
+        </div>
+      </div>
+      <div class="portal-tab" id="portal-tab-3" onclick="showPortal(3)">
+        <div class="portal-num">3</div>
+        <div class="portal-label-wrapper">
+          <span class="portal-label">Qualifications</span>
+          <div class="portal-sub-steps" id="portal-sub-3">
+            <!-- Dots injected/updated by JS -->
+          </div>
+        </div>
+      </div>
+      <div class="portal-tab" id="portal-tab-4" onclick="showPortal(4)">
+        <div class="portal-num">4</div>
+        <div class="portal-label-wrapper">
+          <span class="portal-label">Final</span>
+          <div class="portal-sub-steps" id="portal-sub-4">
+            <!-- Dots injected/updated by JS -->
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -177,6 +187,24 @@ require_once '../includes/header.php';
     <form method="POST" action="" enctype="multipart/form-data" id="pdsWizardForm">
       <input type="hidden" name="action" id="pds_action" value="">
       <?php include '../includes/employee-form-steps.php'; ?>
+
+      <!-- Sticky Wizard Footer -->
+      <div class="wizard-footer mt-4">
+        <button type="button" id="prevBtn" onclick="prevStep()" class="btn btn-outline-secondary px-4 shadow-sm">
+          <i class="fas fa-arrow-left me-2"></i> Back
+        </button>
+        <div class="text-muted small d-none d-md-block" id="wizardProgressLabel">
+          Portal 1 of 4 · Step 1 of 12
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" id="nextBtn" onclick="nextStep()" class="btn btn-primary px-4 shadow-sm">
+            Next Step <i class="fas fa-arrow-right ms-2"></i>
+          </button>
+          <button type="button" id="submitBtn" onclick="submitPDS()" class="btn btn-success px-4 shadow-sm" style="display:none;">
+            <i class="fas fa-check-double me-2"></i> Submit for Review
+          </button>
+        </div>
+      </div>
     </form>
   </div>
 </div>
@@ -188,57 +216,8 @@ require_once '../includes/header.php';
 </button>
 
 <!-- Override Step 12 with Employee-friendly Review & Submit panel -->
+<script src="<?php echo BASE_URL; ?>/assets/js/employee-form.js?v=<?php echo time(); ?>"></script>
 <script>
-// ── Step navigation ───────────────────────────────────────────────────────────
-let currentStep = 1;
-const totalSteps = 12;
-
-function showStep(n) {
-    if (n < 1) n = 1;
-    if (n > totalSteps) n = totalSteps;
-    document.querySelectorAll('.step-content').forEach(el => el.style.display = 'none');
-    const target = document.getElementById('step' + n);
-    if (target) target.style.display = '';
-    currentStep = n;
-
-    // Update step tabs
-    document.querySelectorAll('.step-tab').forEach((btn, i) => {
-        btn.classList.toggle('btn-primary', i + 1 === n);
-        btn.classList.toggle('btn-outline-secondary', i + 1 !== n);
-        btn.classList.remove('btn-outline-primary');
-    });
-
-    // Update progress bar
-    const percent = (n / totalSteps) * 100;
-    const bar = document.getElementById('pdsProgressBar');
-    if (bar) bar.style.width = percent + '%';
-
-    // Update navigation buttons
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-
-    if (prevBtn) prevBtn.style.display = (n === 1) ? 'none' : 'inline-block';
-    if (nextBtn) nextBtn.style.display = (n === totalSteps) ? 'none' : 'inline-block';
-    if (submitBtn) submitBtn.style.display = (n === totalSteps) ? 'inline-block' : 'none';
-
-    window.scrollTo(0, 0);
-}
-
-function nextStep() {
-    if (currentStep < totalSteps) {
-        autoSaveDraft(() => {
-            showStep(currentStep + 1);
-        });
-    }
-}
-
-function prevStep() {
-    if (currentStep > 1) {
-        showStep(currentStep - 1);
-    }
-}
-
 // ── Auto-save via AJAX ────────────────────────────────────────────────────────
 function autoSaveDraft(callback) {
     const saveStatus = document.getElementById('saveStatus');
@@ -285,34 +264,163 @@ function submitPDS() {
     });
 }
 
+function updatePDSSummary() {
+    const getValue = (name, fallback = '<span class="text-muted small">Blank</span>') => {
+        const el = document.querySelector(`[name="${name}"]`);
+        return el && el.value ? el.value : fallback;
+    };
+    
+    // Core Identity
+    const firstName = getValue('first_name');
+    const middleName = getValue('middle_name', '');
+    const lastName = getValue('last_name');
+    const nameExt = getValue('name_extension', '');
+    const name = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}${nameExt ? ' ' + nameExt : ''}`;
+    
+    document.getElementById('sum-name').innerHTML = name;
+    document.getElementById('sum-dob').innerHTML = getValue('date_of_birth');
+    document.getElementById('sum-gender').innerHTML = getValue('gender');
+    document.getElementById('sum-civil').innerHTML = getValue('civil_status');
+    document.getElementById('sum-mobile').innerHTML = getValue('contact_number');
+    document.getElementById('sum-email').innerHTML = getValue('email');
+    
+    // Government IDs
+    document.getElementById('sum-sss').innerHTML = getValue('sss_number');
+    document.getElementById('sum-philhealth').innerHTML = getValue('philhealth_number');
+    document.getElementById('sum-pagibig').innerHTML = getValue('pagibig_number');
+    document.getElementById('sum-tin').innerHTML = getValue('tin_number');
+    
+    // Background (counts)
+    const countRepeaterEntries = (containerId) => {
+        const container = document.getElementById(containerId);
+        return container ? container.querySelectorAll('.repeater-row').length : 0;
+    };
+    document.getElementById('sum-children').innerHTML = countRepeaterEntries('childrenContainer') + ' child(ren)';
+    document.getElementById('sum-siblings').innerHTML = countRepeaterEntries('siblingsContainer') + ' sibling(s)';
+    document.getElementById('sum-education').innerHTML = countRepeaterEntries('educationContainer') + ' education entry(ies)';
+    document.getElementById('sum-work').innerHTML = countRepeaterEntries('workContainer') + ' job entry(ies)';
+    
+    // Qualifications (counts)
+    document.getElementById('sum-eligibility').innerHTML = countRepeaterEntries('eligibilityContainer') + ' license(s)';
+    document.getElementById('sum-skills').innerHTML = countRepeaterEntries('skillsContainer') + ' skill(s)';
+    document.getElementById('sum-recognitions').innerHTML = countRepeaterEntries('recognitionsContainer') + ' recognition(s)';
+    document.getElementById('sum-properties').innerHTML = (countRepeaterEntries('realPropContainer') + countRepeaterEntries('personalPropContainer')) + ' asset(s)';
+    
+    // Disclosures count
+    let activeDisclosures = 0;
+    document.querySelectorAll('#step10 input[type="checkbox"]').forEach(cb => {
+        if (cb.checked) activeDisclosures++;
+    });
+    document.getElementById('sum-disclosures').innerHTML = activeDisclosures + ' active declaration(s)';
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Replace step 12 content with a read-only review + submit screen
     const step12 = document.getElementById('step12');
     if (step12) {
         step12.innerHTML = `
         <div class="text-center py-3 mb-4">
-            <i class="fas fa-clipboard-check fa-3x mb-3" style="color:#3949ab;"></i>
-            <h4 class="fw-bold">Review &amp; Submit</h4>
+            <i class="fas fa-clipboard-check fa-3x mb-3 text-success"></i>
+            <h4 class="fw-bold text-success">Review &amp; Submit</h4>
             <p class="text-muted mb-0">Your PDS has been auto-saved. Please review and submit for HR Manager approval.</p>
         </div>
 
-        <div class="alert alert-info mb-4">
+        <div class="alert alert-info mb-4 py-2 px-3 small border-0 shadow-sm" style="border-radius: 8px;">
             <i class="fas fa-info-circle me-2"></i>
-            <strong>What happens after submission?</strong><br>
-            Your HR Manager will review your Personal Data Sheet, may make corrections, and will either
-            <strong>approve</strong>, <strong>request changes</strong>, or <strong>reject</strong> your submission.
-            You will receive a notification with the outcome.
+            <strong>What happens after submission?</strong> Your HR Manager will review your Personal Data Sheet and will approve, request changes, or reject your submission. You will receive a notification with the outcome.
         </div>
 
-        <div class="alert alert-warning mb-4">
-            <i class="fas fa-lock me-2"></i>
+        <div class="alert alert-warning mb-4 py-2 px-3 small border-0 shadow-sm text-dark" style="border-radius: 8px; background: rgba(189, 148, 20, 0.1);">
+            <i class="fas fa-lock me-2 text-warning"></i>
             Once submitted, you <strong>cannot edit</strong> your PDS until HR responds.
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border border-light shadow-sm">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                        <span class="fw-bold text-dark"><i class="fas fa-user-circle me-2 text-primary"></i>Core Identity</span>
+                        <button type="button" onclick="showStep(1)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                    </div>
+                    <div class="card-body py-3">
+                        <div class="row g-2 small">
+                            <div class="col-5 text-muted">Full Name:</div><div class="col-7 fw-bold" id="sum-name">--</div>
+                            <div class="col-5 text-muted">Date of Birth:</div><div class="col-7 fw-bold" id="sum-dob">--</div>
+                            <div class="col-5 text-muted">Gender:</div><div class="col-7 fw-bold" id="sum-gender">--</div>
+                            <div class="col-5 text-muted">Civil Status:</div><div class="col-7 fw-bold" id="sum-civil">--</div>
+                            <div class="col-5 text-muted">Mobile No:</div><div class="col-7 fw-bold" id="sum-mobile">--</div>
+                            <div class="col-5 text-muted">Email Address:</div><div class="col-7 fw-bold text-truncate" id="sum-email">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border border-light shadow-sm">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                        <span class="fw-bold text-dark"><i class="fas fa-id-card me-2 text-primary"></i>Government IDs</span>
+                        <button type="button" onclick="showStep(1)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                    </div>
+                    <div class="card-body py-3">
+                        <div class="row g-2 small">
+                            <div class="col-5 text-muted">SSS No:</div><div class="col-7 fw-bold" id="sum-sss">--</div>
+                            <div class="col-5 text-muted">PhilHealth No:</div><div class="col-7 fw-bold" id="sum-philhealth">--</div>
+                            <div class="col-5 text-muted">Pag-IBIG No:</div><div class="col-7 fw-bold" id="sum-pagibig">--</div>
+                            <div class="col-5 text-muted">TIN No:</div><div class="col-7 fw-bold" id="sum-tin">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border border-light shadow-sm">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                        <span class="fw-bold text-dark"><i class="fas fa-history me-2 text-primary"></i>Background</span>
+                        <button type="button" onclick="showStep(2)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                    </div>
+                    <div class="card-body py-3">
+                        <div class="row g-2 small">
+                            <div class="col-5 text-muted">Children:</div><div class="col-7 fw-bold" id="sum-children">--</div>
+                            <div class="col-5 text-muted">Siblings:</div><div class="col-7 fw-bold" id="sum-siblings">--</div>
+                            <div class="col-5 text-muted">Education:</div><div class="col-7 fw-bold" id="sum-education">--</div>
+                            <div class="col-5 text-muted">Work History:</div><div class="col-7 fw-bold" id="sum-work">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <div class="card h-100 border border-light shadow-sm">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                        <span class="fw-bold text-dark"><i class="fas fa-certificate me-2 text-primary"></i>Qualifications</span>
+                        <button type="button" onclick="showStep(7)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                    </div>
+                    <div class="card-body py-3">
+                        <div class="row g-2 small">
+                            <div class="col-5 text-muted">Eligibility/PRC:</div><div class="col-7 fw-bold" id="sum-eligibility">--</div>
+                            <div class="col-5 text-muted">Skills:</div><div class="col-7 fw-bold" id="sum-skills">--</div>
+                            <div class="col-5 text-muted">Recognitions:</div><div class="col-7 fw-bold" id="sum-recognitions">--</div>
+                            <div class="col-5 text-muted">Properties/Assets:</div><div class="col-7 fw-bold" id="sum-properties">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-12">
+                <div class="card border border-light shadow-sm">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                        <span class="fw-bold text-dark"><i class="fas fa-exclamation-triangle me-2 text-primary"></i>Disclosures & Declarations</span>
+                        <button type="button" onclick="showStep(10)" class="btn btn-sm btn-link text-decoration-none p-0"><i class="fas fa-edit me-1"></i>Edit</button>
+                    </div>
+                    <div class="card-body py-3">
+                        <div class="row g-2 small">
+                            <div class="col-5 text-muted">Active Declarations:</div><div class="col-7 fw-bold" id="sum-disclosures">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         ${<?php echo json_encode($hr_notes_block); ?>}
     `;
     }
-    showStep(1);
 
     // Show the mini "Back to Top" button after scrolling down.
     const backToTopBtn = document.getElementById('backToTopBtn');
@@ -332,155 +440,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('scroll', toggleBackToTop);
     toggleBackToTop();
 });
-
-<?php // Inline the copy/repeater functions from add-employee.php ?>
-function copyResAddress() {
-    const fields = ['house_no','street','subdivision','barangay','city','province','zip_code'];
-    fields.forEach(f => {
-        const src = document.querySelector('[name="res_'+f+'"]');
-        const dst = document.getElementById('perm_'+f);
-        if (src && dst) dst.value = src.value;
-    });
-}
-
-function addRepeaterRow(containerId, prefix) {
-    const c = document.getElementById(containerId);
-    const div = document.createElement('div');
-    div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="${prefix}_surname[]" placeholder="Surname"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="${prefix}_first_name[]" placeholder="First Name"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="${prefix}_middle_name[]" placeholder="Middle Name"></div>
-            <div class="col-md-3 mb-2"><input type="date" class="form-control form-control-sm" name="${prefix}_dob[]"></div>
-        </div>`;
-    c.appendChild(div);
-}
-
-function addSimpleRow(cid, name, ph) {
-    const c = document.getElementById(cid);
-    const div = document.createElement('div');
-    div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <input type="text" class="form-control form-control-sm" name="${name}[]" placeholder="${ph}">`;
-    c.appendChild(div);
-}
-
-function addEducationRow() {
-    const c = document.getElementById('educationContainer');
-    const div = document.createElement('div'); div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-2 mb-2"><select class="form-select form-select-sm" name="edu_level[]">
-                <option>Elementary</option><option>Secondary</option><option>Vocational</option><option>College</option><option>Graduate Studies</option></select></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_school[]" placeholder="School"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="edu_degree[]" placeholder="Degree/Course"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="edu_from[]"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="edu_to[]"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="edu_year_grad[]" placeholder="Year Grad"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_honors[]" placeholder="Honors"></div>
-        </div>`;
-    c.appendChild(div);
-}
-function addWorkRow() {
-    const c = document.getElementById('workContainer'); const div = document.createElement('div'); div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="work_from[]"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="work_to[]"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_title[]" placeholder="Job Title"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_company[]" placeholder="Company"></div>
-            <div class="col-md-2 mb-2"><input type="number" step="0.01" class="form-control form-control-sm" name="work_salary[]" placeholder="Salary"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_status[]" placeholder="Status"></div>
-            <div class="col-md-4 mb-2"><input type="text" class="form-control form-control-sm" name="work_reason[]" placeholder="Reason for Leaving"></div>
-        </div>`;
-    c.appendChild(div);
-}
-function addTrainingRow() {
-    const c = document.getElementById('trainingContainer'); const div = document.createElement('div'); div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="training_from[]"></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="training_to[]"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="training_title[]" placeholder="Training Title"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="training_type[]" placeholder="Type"></div>
-            <div class="col-md-1 mb-2"><input type="number" class="form-control form-control-sm" name="training_hours[]" placeholder="Hrs"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="training_conducted[]" placeholder="Conducted By"></div>
-        </div>`;
-    c.appendChild(div);
-}
-function addVoluntaryRow() {
-    const c = document.getElementById('voluntaryContainer'); const div = document.createElement('div'); div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-2"><input type="date" class="form-control form-control-sm" name="vol_from[]"></div>
-            <div class="col-md-2"><input type="date" class="form-control form-control-sm" name="vol_to[]"></div>
-            <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="vol_org[]" placeholder="Organization"></div>
-            <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="vol_address[]" placeholder="Address"></div>
-            <div class="col-md-1"><input type="number" class="form-control form-control-sm" name="vol_hours[]" placeholder="Hrs"></div>
-            <div class="col-md-2"><input type="text" class="form-control form-control-sm" name="vol_position[]" placeholder="Position/Nature"></div>
-        </div>`;
-    c.appendChild(div);
-}
-function addEligibilityRow() {
-    const c = document.getElementById('eligibilityContainer'); const div = document.createElement('div'); div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="elig_title[]" placeholder="License/Cert Title"></div>
-            <div class="col-md-2"><input type="date" class="form-control form-control-sm" name="elig_from[]"></div>
-            <div class="col-md-2"><input type="date" class="form-control form-control-sm" name="elig_to[]"></div>
-            <div class="col-md-2"><input type="text" class="form-control form-control-sm" name="elig_number[]" placeholder="License No."></div>
-            <div class="col-md-2"><input type="date" class="form-control form-control-sm" name="elig_exam_date[]"></div>
-            <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="elig_exam_place[]" placeholder="Place of Exam"></div>
-        </div>`;
-    c.appendChild(div);
-}
-function addRealPropertyRow() {
-    const c = document.getElementById('realPropContainer'); const div = document.createElement('div'); div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="rprop_desc[]" placeholder="Description"></div>
-            <div class="col-md-2"><input type="text" class="form-control form-control-sm" name="rprop_kind[]" placeholder="Kind"></div>
-            <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="rprop_location[]" placeholder="Location"></div>
-            <div class="col-md-2"><input type="number" step="0.01" class="form-control form-control-sm" name="rprop_assessed[]" placeholder="Assessed Value"></div>
-            <div class="col-md-2"><input type="number" step="0.01" class="form-control form-control-sm" name="rprop_market[]" placeholder="Market Value"></div>
-        </div>`;
-    c.appendChild(div);
-}
-function addPersonalPropertyRow() {
-    const c = document.getElementById('personalPropContainer'); const div = document.createElement('div'); div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-5"><input type="text" class="form-control form-control-sm" name="pprop_desc[]" placeholder="Description"></div>
-            <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="pprop_year[]" placeholder="Year Acquired"></div>
-            <div class="col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="pprop_cost[]" placeholder="Acquisition Cost"></div>
-        </div>`;
-    c.appendChild(div);
-}
-function addLiabilityRow() {
-    const c = document.getElementById('liabilitiesContainer'); const div = document.createElement('div'); div.className = 'repeater-row';
-    div.innerHTML = `<button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-5"><input type="text" class="form-control form-control-sm" name="liab_nature[]" placeholder="Nature of Liability"></div>
-            <div class="col-md-4"><input type="text" class="form-control form-control-sm" name="liab_creditor[]" placeholder="Creditor"></div>
-            <div class="col-md-3"><input type="number" step="0.01" class="form-control form-control-sm" name="liab_balance[]" placeholder="Balance"></div>
-        </div>`;
-    c.appendChild(div);
-}
-function toggleDetails(cb, divId) {
-    const d = document.getElementById(divId);
-    if (d) d.classList.toggle('show', cb.checked);
-}
-function previewImage(input) {
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        reader.onload = e => {
-            document.getElementById('profilePreview').src = e.target.result;
-            document.getElementById('profilePreviewContainer').style.display = '';
-        };
-        reader.readAsDataURL(input.files[0]);
-    }
-}
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

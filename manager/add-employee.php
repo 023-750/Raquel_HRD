@@ -36,9 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
     $allowed_statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
 
     while (($row = fgetcsv($file)) !== false) {
-        if (empty(array_filter($row))) continue;
+        if (empty(array_filter($row)))
+            continue;
 
-        $getV = function($key, $idx = null) use ($row, $headerMap) {
+        $getV = function ($key, $idx = null) use ($row, $headerMap) {
             if (isset($headerMap[$key])) {
                 return trim($row[$headerMap[$key]] ?? '');
             }
@@ -53,25 +54,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
         $middle_name = $getV('Middle Name', 2);
         $name_extension = $getV('Extension', 3);
         $employee_code = $getV('Company ID', 39);
-        
+
         $dobRaw = $getV('Birthday', 4);
         $dob = null;
         if (!empty($dobRaw)) {
             $d1 = DateTime::createFromFormat('m/d/Y', $dobRaw) ?: DateTime::createFromFormat('Y-m-d', $dobRaw);
-            if ($d1) $dob = $d1->format('Y-m-d');
-            else $dob = $dobRaw;
+            if ($d1)
+                $dob = $d1->format('Y-m-d');
+            else
+                $dob = $dobRaw;
         }
 
         $pob = $getV('Birthplace', 5);
         $gender = $getV('Gender', 6);
         $civil_status = $getV('Civil Status', 7);
-        
+
         $hireDateRaw = $getV('Hire Date', 33);
         $hd = null;
         if (!empty($hireDateRaw)) {
             $d2 = DateTime::createFromFormat('m/d/Y', $hireDateRaw) ?: DateTime::createFromFormat('Y-m-d', $hireDateRaw);
-            if ($d2) $hd = $d2->format('Y-m-d');
-            else $hd = $hireDateRaw;
+            if ($d2)
+                $hd = $d2->format('Y-m-d');
+            else
+                $hd = $hireDateRaw;
         }
 
         $job_title_name = $getV('Job Title', 34);
@@ -82,14 +87,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
 
         // Validate Status against ENUM
         $foundStatus = false;
-        foreach($allowed_statuses as $as) {
+        foreach ($allowed_statuses as $as) {
             if (strcasecmp($as, $emp_status) === 0) {
                 $emp_status = $as;
                 $foundStatus = true;
                 break;
             }
         }
-        if (!$foundStatus) $emp_status = 'Regular';
+        if (!$foundStatus)
+            $emp_status = 'Regular';
 
         if (empty($first_name) || empty($last_name) || empty($hd) || empty($job_title_name)) {
             $skipped++;
@@ -103,7 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $dc->bind_param("s", $employee_code);
             $dc->execute();
             $dr = $dc->get_result();
-            if ($d = $dr->fetch_assoc()) $existing_id = $d['employee_id'];
+            if ($d = $dr->fetch_assoc())
+                $existing_id = $d['employee_id'];
             $dc->close();
         }
         if (!$existing_id) {
@@ -111,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $dc->bind_param("ss", $first_name, $last_name);
             $dc->execute();
             $dr = $dc->get_result();
-            if ($d = $dr->fetch_assoc()) $existing_id = $d['employee_id'];
+            if ($d = $dr->fetch_assoc())
+                $existing_id = $d['employee_id'];
             $dc->close();
         }
 
@@ -121,7 +129,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $dc->bind_param("s", $dept_name);
             $dc->execute();
             $dr = $dc->get_result();
-            if ($d = $dr->fetch_assoc()) $did = $d['department_id'];
+            if ($d = $dr->fetch_assoc())
+                $did = $d['department_id'];
             else {
                 $di = $conn->prepare("INSERT INTO departments (department_name, description) VALUES (?, 'Imported via CSV')");
                 $di->bind_param("s", $dept_name);
@@ -138,7 +147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $jc->bind_param("si", $job_title_name, $did);
             $jc->execute();
             $jr = $jc->get_result();
-            if ($j = $jr->fetch_assoc()) $job_title_id = $j['job_title_id'];
+            if ($j = $jr->fetch_assoc())
+                $job_title_id = $j['job_title_id'];
             $jc->close();
         }
 
@@ -148,7 +158,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $bc->bind_param("s", $branch_name);
             $bc->execute();
             $br = $bc->get_result();
-            if ($b = $br->fetch_assoc()) $bid = $b['branch_id'];
+            if ($b = $br->fetch_assoc())
+                $bid = $b['branch_id'];
             else {
                 $bi = $conn->prepare("INSERT INTO branches (branch_name, location) VALUES (?, 'TBD')");
                 $bi->bind_param("s", $branch_name);
@@ -184,8 +195,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $cz = $getV('Citizenship', 11) ?: 'Filipino';
             $conn->query("DELETE FROM employee_details WHERE employee_id = $eid");
             $stmt = $conn->prepare("INSERT INTO employee_details (employee_id, height_m, weight_kg, blood_type, citizenship) VALUES (?,?,?,?,?)");
-            $h_f = !empty($h_val) ? (float)$h_val : null;
-            $w_f = !empty($w_val) ? (float)$w_val : null;
+            $h_f = !empty($h_val) ? (float) $h_val : null;
+            $w_f = !empty($w_val) ? (float) $w_val : null;
             $stmt->bind_param("iddss", $eid, $h_f, $w_f, $bt, $cz);
             $stmt->execute();
             $stmt->close();
@@ -291,7 +302,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
 
     if ($created > 0 || $updated > 0) {
         $msg = "Success! Created: $created, Updated: $updated.";
-        if ($skipped > 0) $msg .= " Skipped $skipped rows.";
+        if ($skipped > 0)
+            $msg .= " Skipped $skipped rows.";
         redirectWith(BASE_URL . '/manager/employees.php', 'success', $msg);
     } else {
         $err = "No records were imported. ($skipped rows skipped) Latest error: " . end($errors);
@@ -748,14 +760,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
 
         // Recognitions
         if (!empty($_POST['recognition_title'])) {
-            $rcstmt = $conn->prepare("INSERT INTO employee_recognitions (employee_id, recognition_title, issued_by, date_awarded) VALUES (?,?,?,?)");
+            $rcstmt = $conn->prepare("INSERT INTO employee_recognitions (employee_id, recognition_title) VALUES (?,?)");
             foreach ($_POST['recognition_title'] as $i => $rc) {
                 if (empty(trim($rc)))
                     continue;
                 $rt = trim($rc);
                 $rib = trim($_POST['recognition_issued_by'][$i] ?? '');
-                $rd = !empty($_POST['recognition_date'][$i]) ? $_POST['recognition_date'][$i] : null;
-                $rcstmt->bind_param("isss", $new_id, $rt, $rib, $rd);
+                $rd = !empty($_POST['recognition_date'][$i]) ? $_POST['recognition_date'][$i] : '';
+                // Append issued_by and date to title (table only has recognition_title column)
+                if ($rib || $rd) {
+                    $rt .= ' - ' . $rib . ($rd ? ' (' . $rd . ')' : '');
+                }
+                $rcstmt->bind_param("is", $new_id, $rt);
                 $rcstmt->execute();
             }
             $rcstmt->close();
@@ -880,11 +896,14 @@ $stepLabels = [
 <div class="page-hero fadeup mb-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
         <div>
-            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Employees</div>
-            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-user-plus me-2" style="color:#BD9414;"></i>Add New Employee</h4>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR
+                Manager · Employees</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-user-plus me-2" style="color:#BD9414;"></i>Add New
+                Employee</h4>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importModal" style="background: linear-gradient(135deg, #28a745 0%, #218838 100%); border: none; padding: .5rem 1.25rem; border-radius: 8px; font-weight: 500; color: #fff;">
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importModal"
+                style="background: linear-gradient(135deg, #28a745 0%, #218838 100%); border: none; padding: .5rem 1.25rem; border-radius: 8px; font-weight: 500; color: #fff;">
                 <i class="fas fa-file-csv me-2"></i>Import Custom CSV
             </button>
         </div>
@@ -908,26 +927,64 @@ $stepLabels = [
     <div class="card-body">
         <form method="POST" action="" id="addEmployeeForm" enctype="multipart/form-data" data-is-edit="false">
             <!-- Wizard Header / Progress (matches Employee PDS wizard UX) -->
-            <div class="pds-progress mb-3">
-                <div id="pdsProgressBar" class="pds-progress-bar" style="width: 8.33%;"></div>
+            <div class="pds-progress-container mb-3">
+                <div class="pds-progress-wrapper">
+                    <div id="pdsProgressBar" class="pds-progress-bar" style="width: 8.33%;"></div>
+                </div>
+                <div class="pds-progress-percent" id="pdsProgressPercent">8%</div>
             </div>
 
-            <div id="wizardStepTabs" class="d-flex flex-wrap gap-1 justify-content-center mb-4">
-                <?php foreach ($stepLabels as $num => $label): ?>
-                    <button type="button" id="tab-step<?php echo (int) $num; ?>" onclick="showStep(<?php echo (int) $num; ?>)"
-                        class="btn btn-sm step-tab px-3 btn-outline-secondary"
-                        style="min-width:70px; font-size: 0.72rem; border-radius: 20px;">
-                        <span class="d-none d-md-inline"><?php echo (int) $num . '. ' . e($label); ?></span>
-                        <span class="d-md-none"><?php echo (int) $num; ?></span>
-                    </button>
-                <?php endforeach; ?>
+            <!-- Portal Tabs -->
+            <div class="portal-tabs">
+                <div class="portal-tab active" id="portal-tab-1" onclick="showPortal(1)">
+                    <div class="portal-num">1</div>
+                    <div class="portal-label-wrapper">
+                        <span class="portal-label">Core Identity</span>
+                        <div class="portal-sub-steps" id="portal-sub-1">
+                            <!-- Dots injected/updated by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="portal-tab" id="portal-tab-2" onclick="showPortal(2)">
+                    <div class="portal-num">2</div>
+                    <div class="portal-label-wrapper">
+                        <span class="portal-label">Background</span>
+                        <div class="portal-sub-steps" id="portal-sub-2">
+                            <!-- Dots injected/updated by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="portal-tab" id="portal-tab-3" onclick="showPortal(3)">
+                    <div class="portal-num">3</div>
+                    <div class="portal-label-wrapper">
+                        <span class="portal-label">Qualifications</span>
+                        <div class="portal-sub-steps" id="portal-sub-3">
+                            <!-- Dots injected/updated by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="portal-tab" id="portal-tab-4" onclick="showPortal(4)">
+                    <div class="portal-num">4</div>
+                    <div class="portal-label-wrapper">
+                        <span class="portal-label">Final</span>
+                        <div class="portal-sub-steps" id="portal-sub-4">
+                            <!-- Dots injected/updated by JS -->
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="d-flex justify-content-center align-items-center gap-3 pt-3 border-top mb-4">
+            <?php include __DIR__ . '/../includes/employee-form-steps.php'; ?>
+
+            <!-- Sticky Wizard Footer -->
+            <div class="wizard-footer mt-4">
                 <button type="button" id="prevBtn" onclick="prevStep()" class="btn btn-outline-secondary px-4 shadow-sm"
                     style="display:none;">
                     <i class="fas fa-arrow-left me-2"></i>Back
                 </button>
+                <div class="text-muted small d-none d-md-block" id="wizardProgressLabel">
+                    Portal 1 of 4 · Step 1 of 12
+                </div>
                 <div class="d-flex gap-2">
                     <button type="button" id="nextBtn" onclick="nextStep()" class="btn btn-primary px-4 shadow-sm">
                         Next <i class="fas fa-arrow-right ms-2"></i>
@@ -938,65 +995,11 @@ $stepLabels = [
                 </div>
             </div>
 
-            <?php include __DIR__ . '/../includes/employee-form-steps.php'; ?>
-
         </form>
     </div>
 </div>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/employee-form.js?v=<?php echo time(); ?>"></script>
-<script>
-    function updateWizardUI(step) {
-        step = parseInt(step, 10) || 1;
-
-        // Step tabs
-        const tabs = document.querySelectorAll('#wizardStepTabs .step-tab');
-        tabs.forEach((btn, idx) => {
-            const n = idx + 1;
-            btn.classList.toggle('btn-primary', n === step);
-            btn.classList.toggle('btn-outline-secondary', n !== step);
-        });
-
-        // Progress bar
-        const bar = document.getElementById('pdsProgressBar');
-        if (bar) bar.style.width = ((step / 12) * 100) + '%';
-
-        // Nav buttons
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const submitBtn = document.getElementById('submitBtn');
-        if (prevBtn) prevBtn.style.display = (step === 1) ? 'none' : 'inline-block';
-        if (nextBtn) nextBtn.style.display = (step === 12) ? 'none' : 'inline-block';
-        if (submitBtn) submitBtn.style.display = (step === 12) ? 'inline-block' : 'none';
-    }
-
-    function getCurrentStep() {
-        const input = document.getElementById('currentStepInput');
-        const val = input ? parseInt(input.value, 10) : 1;
-        return isNaN(val) ? 1 : val;
-    }
-
-    function nextStep() {
-        const s = getCurrentStep();
-        if (s < 12) showStep(s + 1);
-    }
-
-    function prevStep() {
-        const s = getCurrentStep();
-        if (s > 1) showStep(s - 1);
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const originalShowStep = window.showStep;
-        if (typeof originalShowStep === 'function') {
-            window.showStep = function (step) {
-                originalShowStep(step);
-                updateWizardUI(step);
-            };
-        }
-        updateWizardUI(getCurrentStep());
-    });
-</script>
 
 <!-- Back to Top Button -->
 <button type="button" id="backToTop" onclick="scrollToTop()" title="Back to Top">

@@ -4,24 +4,132 @@
 
 const TOTAL_STEPS = 12;
 
-function showStep(step) {
-    document.querySelectorAll('.step-content').forEach(el => el.style.display = 'none');
-    document.querySelectorAll('.step-wizard .step').forEach(el => {
-        el.classList.remove('active', 'completed');
-    });
-    const target = document.getElementById('step' + step);
-    if (target) target.style.display = 'block';
-    for (let i = 1; i <= TOTAL_STEPS; i++) {
-        const label = document.getElementById('step' + i + 'Label');
-        if (label) {
-            if (i < step) label.classList.add('completed');
-            else if (i === step) label.classList.add('active');
+const PORTAL_MAP = [
+  { id: 1, label: 'Core Identity',    steps: [1] },
+  { id: 2, label: 'Background',       steps: [2, 3, 4, 5, 6] },
+  { id: 3, label: 'Qualifications',   steps: [7, 8, 9, 10] },
+  { id: 4, label: 'Final',            steps: [11, 12] }
+];
+
+function showPortal(portalId) {
+    const currentStep = getCurrentStep();
+    const activePortal = PORTAL_MAP.find(p => p.steps.includes(currentStep));
+    const targetPortal = PORTAL_MAP.find(p => p.id === portalId);
+    
+    if (targetPortal) {
+        let nextStepToShow = targetPortal.steps[0];
+        
+        // If they clicked the portal they are already on, go to the next step within that portal!
+        if (activePortal && activePortal.id === portalId) {
+            const currentIndex = activePortal.steps.indexOf(currentStep);
+            if (currentIndex !== -1 && currentIndex < activePortal.steps.length - 1) {
+                nextStepToShow = activePortal.steps[currentIndex + 1];
+            } else {
+                // If it's the last step of this portal, go to the first step of the next portal (if any)
+                const nextPortal = PORTAL_MAP.find(p => p.id === portalId + 1);
+                if (nextPortal) {
+                    nextStepToShow = nextPortal.steps[0];
+                } else {
+                    return; // No next portal, do nothing
+                }
+            }
+        }
+        
+        if (typeof autoSaveDraft === 'function') {
+            autoSaveDraft(() => {
+                showStep(nextStepToShow);
+            });
+        } else {
+            showStep(nextStepToShow);
         }
     }
-    // Scroll wizard to show active step
-    const activeLabel = document.getElementById('step' + step + 'Label');
-    if (activeLabel) activeLabel.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    
+}
+
+function getCurrentStep() {
+    const input = document.getElementById('currentStepInput');
+    const val = input ? parseInt(input.value, 10) : 1;
+    return isNaN(val) ? 1 : val;
+}
+
+function nextStep() {
+    const s = getCurrentStep();
+    if (s < TOTAL_STEPS) {
+        if (typeof autoSaveDraft === 'function') {
+            autoSaveDraft(() => {
+                showStep(s + 1);
+            });
+        } else {
+            showStep(s + 1);
+        }
+    }
+}
+
+function prevStep() {
+    const s = getCurrentStep();
+    if (s > 1) {
+        showStep(s - 1);
+    }
+}
+
+function showStep(step) {
+    step = parseInt(step, 10) || 1;
+    if (step < 1) step = 1;
+    if (step > TOTAL_STEPS) step = TOTAL_STEPS;
+
+    // Show/hide step content divs
+    document.querySelectorAll('.step-content').forEach(el => el.style.display = 'none');
+    const target = document.getElementById('step' + step);
+    if (target) target.style.display = 'block';
+
+    // Find active portal
+    const activePortal = PORTAL_MAP.find(p => p.steps.includes(step));
+    const activePortalId = activePortal ? activePortal.id : 1;
+
+    // Update portal tab UI classes
+    PORTAL_MAP.forEach(p => {
+        const tabEl = document.getElementById('portal-tab-' + p.id);
+        if (tabEl) {
+            tabEl.classList.remove('active', 'completed');
+            if (p.id === activePortalId) {
+                tabEl.classList.add('active');
+            } else if (step > p.steps[p.steps.length - 1]) {
+                tabEl.classList.add('completed');
+            }
+        }
+        
+        // Render sub-step dots
+        const dotsContainer = document.getElementById('portal-sub-' + p.id);
+        if (dotsContainer) {
+            dotsContainer.innerHTML = '';
+            p.steps.forEach(s => {
+                const dot = document.createElement('span');
+                dot.className = 'portal-sub-dot';
+                if (s === step) {
+                    dot.classList.add('active');
+                } else if (step > s) {
+                    dot.classList.add('completed');
+                }
+                
+                // Add tooltip title for easier hover understanding
+                dot.title = `Step ${s}`;
+                
+                // Make the dot clickable
+                dot.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevents triggering the outer portal-tab onclick
+                    if (typeof autoSaveDraft === 'function') {
+                        autoSaveDraft(() => {
+                            showStep(s);
+                        });
+                    } else {
+                        showStep(s);
+                    }
+                });
+                
+                dotsContainer.appendChild(dot);
+            });
+        }
+    });
+
     // Sync with hidden input for form persistence
     const stepInput = document.getElementById('currentStepInput');
     if (stepInput) stepInput.value = step;
@@ -31,7 +139,211 @@ function showStep(step) {
     url.searchParams.set('step', step);
     window.history.pushState({}, '', url);
 
+    // Update progress bar
+    const percent = (step / TOTAL_STEPS) * 100;
+    const bar = document.getElementById('pdsProgressBar');
+    if (bar) bar.style.width = percent + '%';
+    const percentLabel = document.getElementById('pdsProgressPercent');
+    if (percentLabel) percentLabel.textContent = Math.round(percent) + '%';
+
+    // Update label in sticky footer
+    const progressLabel = document.getElementById('wizardProgressLabel');
+    if (progressLabel && activePortal) {
+        const stepIndexInPortal = activePortal.steps.indexOf(step) + 1;
+        const totalStepsInPortal = activePortal.steps.length;
+        progressLabel.textContent = `${activePortal.label} · Step ${stepIndexInPortal} of ${totalStepsInPortal}`;
+    }
+
+    // Update navigation buttons
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (prevBtn) prevBtn.style.display = (step === 1) ? 'none' : 'inline-block';
+    if (nextBtn) nextBtn.style.display = (step === TOTAL_STEPS) ? 'none' : 'inline-block';
+    if (submitBtn) submitBtn.style.display = (step === TOTAL_STEPS) ? 'inline-block' : 'none';
+
+    // Ensure has-wizard-footer class is added to body to prevent content overlapping
+    document.body.classList.add('has-wizard-footer');
+
+    if (step === 12 && typeof updatePDSSummary === 'function') {
+        updatePDSSummary();
+    }
+
+    // Scroll page to top smoothly
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Mobile Accordion Repeater Helper ─────────────────────────────────────────
+function updateRepeaterSummary(row) {
+    let bar = row.querySelector('.repeater-summary-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'repeater-summary-bar';
+        bar.addEventListener('click', (e) => {
+            if (window.innerWidth <= 768) {
+                const isExpanded = row.classList.contains('expanded');
+                
+                // Collapse all other rows in this container
+                const container = row.closest('.repeater-accordion');
+                if (container) {
+                    container.querySelectorAll('.repeater-row').forEach(r => {
+                        r.classList.remove('expanded');
+                    });
+                }
+                
+                if (!isExpanded) {
+                    row.classList.add('expanded');
+                }
+            }
+        });
+        row.insertBefore(bar, row.firstChild);
+    }
+    
+    const values = [];
+    const inputs = Array.from(row.querySelectorAll('input:not([type="hidden"]), select'));
+    inputs.forEach(input => {
+        let val = input.value;
+        if (val && val.trim() !== '') {
+            if (input.tagName === 'SELECT') {
+                const selectedOpt = input.options[input.selectedIndex];
+                if (selectedOpt && selectedOpt.text) {
+                    val = selectedOpt.text;
+                }
+            }
+            if (!values.includes(val)) {
+                values.push(val);
+            }
+        }
+    });
+    
+    let summaryText = values.slice(0, 3).join(' - ');
+    if (!summaryText || summaryText.trim() === '') {
+        summaryText = 'New Entry (Tap to edit)';
+    }
+    bar.textContent = summaryText;
+}
+
+function initRepeaterAccordions() {
+    const handleNewRow = (row) => {
+        if (!row.classList.contains('repeater-row')) return;
+        updateRepeaterSummary(row);
+        row.addEventListener('input', () => updateRepeaterSummary(row));
+        row.addEventListener('change', () => updateRepeaterSummary(row));
+    };
+
+    document.querySelectorAll('.repeater-accordion .repeater-row').forEach(row => {
+        handleNewRow(row);
+    });
+
+    document.querySelectorAll('.repeater-accordion').forEach(container => {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                mutation.addedNodes.forEach(node => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        if (node.classList.contains('repeater-row')) {
+                            handleNewRow(node);
+                            if (window.innerWidth <= 768) {
+                                container.querySelectorAll('.repeater-row').forEach(r => {
+                                    r.classList.remove('expanded');
+                                });
+                                node.classList.add('expanded');
+                            }
+                        } else {
+                            node.querySelectorAll('.repeater-row').forEach(subRow => {
+                                handleNewRow(subRow);
+                            });
+                        }
+                    }
+                });
+            });
+        });
+        observer.observe(container, { childList: true, subtree: true });
+    });
+}
+
+function updatePDSSummary() {
+    const getValue = (name, fallback = '<span class="text-muted small">Blank</span>') => {
+        const el = document.querySelector(`[name="${name}"]`);
+        return el && el.value ? el.value : fallback;
+    };
+    
+    // Core Identity
+    const firstName = getValue('first_name');
+    const middleName = getValue('middle_name', '');
+    const lastName = getValue('last_name');
+    const nameExt = getValue('name_extension', '');
+    const name = `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}${nameExt ? ' ' + nameExt : ''}`;
+    
+    const sumNameEl = document.getElementById('sum-name');
+    if (sumNameEl) sumNameEl.innerHTML = name;
+    
+    const sumDobEl = document.getElementById('sum-dob');
+    if (sumDobEl) sumDobEl.innerHTML = getValue('date_of_birth');
+    
+    const sumGenderEl = document.getElementById('sum-gender');
+    if (sumGenderEl) sumGenderEl.innerHTML = getValue('gender');
+    
+    const sumCivilEl = document.getElementById('sum-civil');
+    if (sumCivilEl) sumCivilEl.innerHTML = getValue('civil_status');
+    
+    const sumMobileEl = document.getElementById('sum-mobile');
+    if (sumMobileEl) sumMobileEl.innerHTML = getValue('contact_number');
+    
+    const sumEmailEl = document.getElementById('sum-email');
+    if (sumEmailEl) sumEmailEl.innerHTML = getValue('email');
+    
+    // Government IDs
+    const sumSssEl = document.getElementById('sum-sss');
+    if (sumSssEl) sumSssEl.innerHTML = getValue('sss_number');
+    
+    const sumPhilhealthEl = document.getElementById('sum-philhealth');
+    if (sumPhilhealthEl) sumPhilhealthEl.innerHTML = getValue('philhealth_number');
+    
+    const sumPagibigEl = document.getElementById('sum-pagibig');
+    if (sumPagibigEl) sumPagibigEl.innerHTML = getValue('pagibig_number');
+    
+    const sumTinEl = document.getElementById('sum-tin');
+    if (sumTinEl) sumTinEl.innerHTML = getValue('tin_number');
+    
+    // Background (counts)
+    const countRepeaterEntries = (containerId) => {
+        const container = document.getElementById(containerId);
+        return container ? container.querySelectorAll('.repeater-row').length : 0;
+    };
+    
+    const sumChildrenEl = document.getElementById('sum-children');
+    if (sumChildrenEl) sumChildrenEl.innerHTML = countRepeaterEntries('childrenContainer') + ' child(ren)';
+    
+    const sumSiblingsEl = document.getElementById('sum-siblings');
+    if (sumSiblingsEl) sumSiblingsEl.innerHTML = countRepeaterEntries('siblingsContainer') + ' sibling(s)';
+    
+    const sumEducationEl = document.getElementById('sum-education');
+    if (sumEducationEl) sumEducationEl.innerHTML = countRepeaterEntries('educationContainer') + ' education entry(ies)';
+    
+    const sumWorkEl = document.getElementById('sum-work');
+    if (sumWorkEl) sumWorkEl.innerHTML = countRepeaterEntries('workContainer') + ' job entry(ies)';
+    
+    // Qualifications (counts)
+    const sumEligEl = document.getElementById('sum-eligibility');
+    if (sumEligEl) sumEligEl.innerHTML = countRepeaterEntries('eligibilityContainer') + ' license(s)';
+    
+    const sumSkillsEl = document.getElementById('sum-skills');
+    if (sumSkillsEl) sumSkillsEl.innerHTML = countRepeaterEntries('skillsContainer') + ' skill(s)';
+    
+    const sumRecEl = document.getElementById('sum-recognitions');
+    if (sumRecEl) sumRecEl.innerHTML = countRepeaterEntries('recognitionsContainer') + ' recognition(s)';
+    
+    const sumPropEl = document.getElementById('sum-properties');
+    if (sumPropEl) sumPropEl.innerHTML = (countRepeaterEntries('realPropContainer') + countRepeaterEntries('personalPropContainer')) + ' asset(s)';
+    
+    // Disclosures count
+    let activeDisclosures = 0;
+    document.querySelectorAll('#step10 input[type="checkbox"]').forEach(cb => {
+        if (cb.checked) activeDisclosures++;
+    });
+    const sumDiscEl = document.getElementById('sum-disclosures');
+    if (sumDiscEl) sumDiscEl.innerHTML = activeDisclosures + ' active declaration(s)';
 }
 
 // Copy residential address to permanent
@@ -543,18 +855,19 @@ function getChangeConfirmationModal() {
 
 // Automatically navigate to the step containing an invalid required field
 document.addEventListener("DOMContentLoaded", function () {
+    // Initialize repeater accordions for mobile view
+    initRepeaterAccordions();
+
     // Handle URL-based step navigation
     const urlParams = new URLSearchParams(window.location.search);
-    const employeeForm = document.getElementById('addEmployeeForm') || document.getElementById('editEmployeeForm');
+    const employeeForm = document.getElementById('addEmployeeForm') || document.getElementById('editEmployeeForm') || document.getElementById('pdsWizardForm');
     const urlStep = urlParams.get('step');
     if (urlStep) {
         showStep(parseInt(urlStep));
     } else {
-        // Fallback to hidden input value (for error reloads)
         const stepInput = document.getElementById('currentStepInput');
-        if (stepInput && stepInput.value > 1) {
-            showStep(parseInt(stepInput.value));
-        }
+        const defaultStep = stepInput ? parseInt(stepInput.value, 10) : 1;
+        showStep(isNaN(defaultStep) ? 1 : defaultStep);
     }
 
     if (employeeForm) {
@@ -662,8 +975,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const initialComparisonSnapshot = (employeeForm && isEdit) ? serializeFormForComparison(employeeForm) : null;
     let allowEditSubmit = false;
 
-    // Run for both Add and Edit pages
-    if (employeeForm) {
+    // Run for both Add and Edit pages (exclude PDS Wizard as it uses server-side draft)
+    const isPdsWizard = !!document.getElementById('pdsWizardForm');
+    if (employeeForm && !isPdsWizard) {
         let isSaving = false;
         let isSubmitting = false;
 

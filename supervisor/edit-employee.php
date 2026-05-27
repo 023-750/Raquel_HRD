@@ -720,32 +720,71 @@ $stepLabels = [
 
 <div class="content-card">
     <div class="card-header">
-        <h5><i class="fas fa-user-edit me-2"></i>Edit: <?php echo e($emp['first_name'] . ' ' . $emp['last_name']); ?>
-        </h5>
+        <h5><i class="fas fa-user-edit me-2"></i>Edit: <?php echo e($emp['first_name'] . ' ' . $emp['last_name']); ?></h5>
     </div>
     <div class="card-body">
         <form method="POST" action="" id="editEmployeeForm" enctype="multipart/form-data" data-is-edit="true">
             <input type="hidden" name="return_to" value="<?php echo e($return_to); ?>">
-            <div class="pds-progress mb-3">
-                <div id="pdsProgressBar" class="pds-progress-bar" style="width: 8.33%;"></div>
+            
+            <!-- Wizard Header / Progress (matches Employee PDS wizard UX) -->
+            <div class="pds-progress-container mb-3">
+                <div class="pds-progress-wrapper">
+                    <div id="pdsProgressBar" class="pds-progress-bar" style="width: 8.33%;"></div>
+                </div>
+                <div class="pds-progress-percent" id="pdsProgressPercent">8%</div>
             </div>
 
-            <div id="wizardStepTabs" class="d-flex flex-wrap gap-1 justify-content-center mb-4">
-                <?php foreach ($stepLabels as $num => $label): ?>
-                    <button type="button" id="tab-step<?php echo (int) $num; ?>" onclick="showStep(<?php echo (int) $num; ?>)"
-                        class="btn btn-sm step-tab px-3 btn-outline-secondary"
-                        style="min-width:70px; font-size: 0.72rem; border-radius: 20px;">
-                        <span class="d-none d-md-inline"><?php echo (int) $num . '. ' . e($label); ?></span>
-                        <span class="d-md-none"><?php echo (int) $num; ?></span>
-                    </button>
-                <?php endforeach; ?>
+            <!-- Portal Tabs -->
+            <div class="portal-tabs">
+                <div class="portal-tab active" id="portal-tab-1" onclick="showPortal(1)">
+                    <div class="portal-num">1</div>
+                    <div class="portal-label-wrapper">
+                        <span class="portal-label">Core Identity</span>
+                        <div class="portal-sub-steps" id="portal-sub-1">
+                            <!-- Dots injected/updated by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="portal-tab" id="portal-tab-2" onclick="showPortal(2)">
+                    <div class="portal-num">2</div>
+                    <div class="portal-label-wrapper">
+                        <span class="portal-label">Background</span>
+                        <div class="portal-sub-steps" id="portal-sub-2">
+                            <!-- Dots injected/updated by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="portal-tab" id="portal-tab-3" onclick="showPortal(3)">
+                    <div class="portal-num">3</div>
+                    <div class="portal-label-wrapper">
+                        <span class="portal-label">Qualifications</span>
+                        <div class="portal-sub-steps" id="portal-sub-3">
+                            <!-- Dots injected/updated by JS -->
+                        </div>
+                    </div>
+                </div>
+                <div class="portal-tab" id="portal-tab-4" onclick="showPortal(4)">
+                    <div class="portal-num">4</div>
+                    <div class="portal-label-wrapper">
+                        <span class="portal-label">Final</span>
+                        <div class="portal-sub-steps" id="portal-sub-4">
+                            <!-- Dots injected/updated by JS -->
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="d-flex justify-content-center align-items-center gap-3 pt-3 border-top mb-4">
+            <?php include __DIR__ . '/../includes/employee-form-steps.php'; ?>
+
+            <!-- Sticky Wizard Footer -->
+            <div class="wizard-footer mt-4">
                 <button type="button" id="prevBtn" onclick="prevStep()" class="btn btn-outline-secondary px-4 shadow-sm"
                     style="display:none;">
                     <i class="fas fa-arrow-left me-2"></i>Back
                 </button>
+                <div class="text-muted small d-none d-md-block" id="wizardProgressLabel">
+                    Portal 1 of 4 · Step 1 of 12
+                </div>
                 <div class="d-flex gap-2">
                     <button type="button" id="nextBtn" onclick="nextStep()" class="btn btn-primary px-4 shadow-sm">
                         Next <i class="fas fa-arrow-right ms-2"></i>
@@ -755,61 +794,18 @@ $stepLabels = [
                     </button>
                 </div>
             </div>
-
-            <?php include __DIR__ . '/../includes/employee-form-steps.php'; ?>
         </form>
     </div>
 </div>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/employee-form.js?v=<?php echo time(); ?>"></script>
 <script>
-    function updateWizardUI(step) {
-        step = parseInt(step, 10) || 1;
-
-        const tabs = document.querySelectorAll('#wizardStepTabs .step-tab');
-        tabs.forEach((btn, idx) => {
-            const n = idx + 1;
-            btn.classList.toggle('btn-primary', n === step);
-            btn.classList.toggle('btn-outline-secondary', n !== step);
-        });
-
-        const bar = document.getElementById('pdsProgressBar');
-        if (bar) bar.style.width = ((step / 12) * 100) + '%';
-
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const submitBtn = document.getElementById('submitBtn');
-        if (prevBtn) prevBtn.style.display = (step === 1) ? 'none' : 'inline-block';
-        if (nextBtn) nextBtn.style.display = (step === 12) ? 'none' : 'inline-block';
-        if (submitBtn) submitBtn.style.display = (step === 12) ? 'inline-block' : 'none';
-    }
-
-    function getCurrentStep() {
-        const input = document.getElementById('currentStepInput');
-        const val = input ? parseInt(input.value, 10) : 1;
-        return isNaN(val) ? 1 : val;
-    }
-
-    function nextStep() {
-        const s = getCurrentStep();
-        if (s < 12) showStep(s + 1);
-    }
-
-    function prevStep() {
-        const s = getCurrentStep();
-        if (s > 1) showStep(s - 1);
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const originalShowStep = window.showStep;
-        if (typeof originalShowStep === 'function') {
-            window.showStep = function (step) {
-                originalShowStep(step);
-                updateWizardUI(step);
-            };
-        }
-        updateWizardUI(getCurrentStep());
-    });
+// Auto-execute step on load if specified in URL
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const step = parseInt(urlParams.get('step'), 10) || 1;
+    showStep(step);
+});
 </script>
 
 <!-- Back to Top Button -->
