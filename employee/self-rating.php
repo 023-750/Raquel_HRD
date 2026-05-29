@@ -224,7 +224,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $total_score = calculateEvalTotal($kra_subtotal, $behavior_average, $kra_weight_pct, $beh_weight_pct);
     $performance_level = getPerformanceLevel($total_score);
-    $has_supervisor = (getEmployeeSupervisor($conn, $employee_id) !== null);
+    $supervisor = getEmployeeSupervisor($conn, $employee_id);
+    $has_supervisor = ($supervisor !== null && !empty($supervisor['user_id']));
     if ($is_assigned_submission) {
         $status = ($action === 'submit') ? ($has_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation') : 'Pending Self-Rating';
     } else {

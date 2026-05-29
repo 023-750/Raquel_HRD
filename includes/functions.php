@@ -1712,7 +1712,11 @@ function getDeptManagerOfEmployee($conn, $employee_id)
     }
     
     // Get supervisor's supervisor -> Dept Manager
-    return getEmployeeSupervisor($conn, $supervisor_id);
+    $manager = getEmployeeSupervisor($conn, $supervisor_id);
+    if (!$manager || empty($manager['user_id'])) {
+        return null;
+    }
+    return $manager;
 }
 
 /**

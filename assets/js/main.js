@@ -110,6 +110,13 @@ function initDynamicComponents() {
         if (toast.parentElement !== document.body) {
             document.body.appendChild(toast);
         }
+        if (!toast.dataset.animated) {
+            toast.dataset.animated = 'true';
+            toast.classList.remove('show');
+            // Force a layout reflow
+            void toast.offsetWidth;
+            toast.classList.add('show');
+        }
     });
 
     // 1. Close alert after 5 seconds

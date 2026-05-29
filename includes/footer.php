@@ -23,6 +23,36 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
             </div>
             <span class="nav-label">Self Rating</span>
         </a>
+        <?php 
+        $is_sup = false;
+        if (isset($_SESSION['employee_id']) && $conn) {
+            $is_sup = hasEmployeeSubordinates($conn, (int)$_SESSION['employee_id']);
+        }
+        if ($is_sup):
+            $m_confirm_count = 0;
+            $_hdr_sup_id = (int)$_SESSION['employee_id'];
+            $_hdr_conf_stmt = $conn->query("
+                SELECT COUNT(*) AS total
+                FROM evaluations ev
+                INNER JOIN employees e ON ev.employee_id = e.employee_id
+                WHERE e.reports_to = $_hdr_sup_id
+                  AND ev.status IN ('Pending Dept Supervisor', 'Pending Supervisor')
+                  AND ev.deleted_at IS NULL
+            ");
+            if ($_hdr_conf_stmt) {
+                $m_confirm_count = (int)$_hdr_conf_stmt->fetch_assoc()['total'];
+            }
+        ?>
+            <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" class="nav-item <?php echo ($curr_p === 'confirm-rating.php') ? 'active' : ''; ?>">
+                <div class="position-relative">
+                    <i class="fas fa-tasks nav-icon"></i>
+                    <?php if ($m_confirm_count > 0): ?>
+                        <span class="mobile-notif-badge"><?php echo $m_confirm_count > 9 ? '9+' : $m_confirm_count; ?></span>
+                    <?php endif; ?>
+                </div>
+                <span class="nav-label">Confirm Ratings</span>
+            </a>
+        <?php endif; ?>
         <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php" class="nav-item <?php echo ($curr_p === 'completed-ratings.php') ? 'active' : ''; ?>">
             <i class="fas fa-clipboard-check nav-icon"></i>
             <span class="nav-label">Evaluation Status</span>

@@ -89,6 +89,7 @@ switch ($effective_role) {
             'ANALYTICS' => [
                 ['icon' => 'fas fa-chart-bar', 'label' => 'Analytics', 'url' => BASE_URL . '/manager/analytics.php', 'page' => 'analytics.php'],
                 ['icon' => 'fas fa-file-pdf', 'label' => 'Reports', 'url' => BASE_URL . '/manager/reports.php', 'page' => 'reports.php'],
+                ['icon' => 'fas fa-clipboard-list', 'label' => 'Audit Trail', 'url' => BASE_URL . '/manager/audit-trail.php', 'page' => 'audit-trail.php'],
             ],
         ];
         break;
@@ -112,6 +113,7 @@ switch ($effective_role) {
             'ANALYTICS' => [
                 ['icon' => 'fas fa-chart-bar', 'label' => 'Branch Analytics', 'url' => BASE_URL . '/supervisor/analytics.php', 'page' => 'analytics.php'],
                 ['icon' => 'fas fa-file-alt', 'label' => 'Reports', 'url' => BASE_URL . '/supervisor/reports.php', 'page' => 'reports.php'],
+                ['icon' => 'fas fa-clipboard-list', 'label' => 'My Audit Trail', 'url' => BASE_URL . '/supervisor/audit-trail.php', 'page' => 'audit-trail.php'],
             ],
         ];
         break;
@@ -390,6 +392,13 @@ switch ($effective_role) {
                             <li>
                                 <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/confirm-rating.php">
                                     <i class="fas fa-clipboard-check me-2" style="width: 20px; text-align: center;"></i>Confirm Self-Rating
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <?php if (isset($_SESSION['employee_id']) && $conn && isDeptManagerRole($conn, (int)$_SESSION['employee_id'])): ?>
+                            <li>
+                                <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php">
+                                    <i class="fas fa-user-shield me-2" style="width: 20px; text-align: center;"></i>Dept Manager Review
                                 </a>
                             </li>
                         <?php endif; ?>

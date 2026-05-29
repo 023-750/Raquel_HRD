@@ -537,6 +537,14 @@ require_once '../includes/header.php';
         border-top: 6px solid #0ea5e9 !important;
         box-shadow: 0 15px 30px -5px rgba(15, 23, 42, 0.45), 0 0 15px rgba(14, 165, 233, 0.25) !important;
     }
+    
+    .final-grade-card .grade-table tbody tr td,
+    .final-grade-card .grade-table thead tr th {
+        background-color: transparent !important;
+        background: transparent !important;
+        color: #ffffff !important;
+    }
+
     .final-grade-card,
     .final-grade-card th,
     .final-grade-card td,
@@ -556,10 +564,8 @@ require_once '../includes/header.php';
     }
     .final-grade-card .grade-table th,
     .final-grade-card .grade-table td {
-        color: rgba(255,255,255,.9) !important;
         border-color: rgba(255,255,255,.15) !important;
         font-size: .88rem !important;
-        background: transparent !important;
         background-color: transparent !important;
         --bs-table-bg: transparent !important;
         --bs-table-color: #ffffff !important;
@@ -602,9 +608,151 @@ require_once '../includes/header.php';
             border-bottom: 1px dashed rgba(255, 255, 255, 0.2) !important;
             padding-bottom: 1.5rem !important;
             margin-bottom: 0.5rem !important;
+            border-top: none !important;
         }
         .final-grade-value {
             font-size: 3.5rem !important;
+        }
+
+        /* Hide table headers */
+        #kraTable thead, #behTable thead {
+            display: none !important;
+        }
+        
+        /* Make table and body block */
+        #kraTable, #behTable, 
+        #kraTable tbody, #behTable tbody {
+            display: block !important;
+            width: 100% !important;
+        }
+        
+        /* Make each row a card */
+        #kraTable tr.kra-row, #behTable tr.beh-row {
+            display: block !important;
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 14px !important;
+            padding: 16px !important;
+            margin-bottom: 16px !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.02) !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        #kraTable tr.kra-row.score-changed, #behTable tr.beh-row.score-changed {
+            background: #fffdf5 !important;
+            border-left: 5px solid #f59e0b !important;
+        }
+        
+        /* Make table cells act as row items inside the card */
+        #kraTable tr.kra-row td, #behTable tr.beh-row td {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 8px 0 !important;
+            border: none !important;
+            width: 100% !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            background: transparent !important;
+        }
+        
+        /* The first cell (Criterion name/description) should be full width block at the top of the card */
+        #kraTable tr.kra-row td:first-child, #behTable tr.beh-row td:first-child {
+            display: block !important;
+            padding-top: 0 !important;
+            padding-bottom: 12px !important;
+            border-bottom: 1.5px solid #e2e8f0 !important;
+            margin-bottom: 8px !important;
+            text-align: left !important;
+        }
+        
+        #kraTable tr.kra-row td:first-child::before, #behTable tr.beh-row td:first-child::before {
+            display: none !important;
+        }
+        
+        /* The last cell in the card doesn't need a bottom border */
+        #kraTable tr.kra-row td:last-child, #behTable tr.beh-row td:last-child {
+            border-bottom: none !important;
+            padding-bottom: 0 !important;
+        }
+        
+        /* Add labels on mobile via data-label */
+        #kraTable tr.kra-row td[data-label]::before, #behTable tr.beh-row td[data-label]::before {
+            content: attr(data-label) !important;
+            font-weight: 700 !important;
+            color: #64748b !important;
+            font-size: 0.75rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+        }
+        
+        /* Adjust input sizing and interaction on mobile */
+        .kra-input, .beh-input {
+            max-width: 110px !important;
+            height: 38px !important;
+            font-size: 0.95rem !important;
+            border-radius: 8px !important;
+            padding: 4px 8px !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+            border: 1.5px solid #cbd5e1 !important;
+        }
+        
+        /* Table footer totals as a card too */
+        #kraTable tfoot, #behTable tfoot,
+        #kraTable tfoot tr, #behTable tfoot tr {
+            display: block !important;
+            width: 100% !important;
+        }
+        
+        #kraTable tfoot tr.total-row, #behTable tfoot tr.total-row {
+            background: #e0f2fe !important;
+            border: 1px solid #bae6fd !important;
+            border-radius: 10px !important;
+            padding: 12px 16px !important;
+            margin-top: 8px !important;
+        }
+        
+        #kraTable tfoot tr.total-row td, #behTable tfoot tr.total-row td {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 4px 0 !important;
+            width: 100% !important;
+            font-size: 0.9rem !important;
+        }
+        
+        #kraTable tfoot tr.total-row td:first-child,
+        #behTable tfoot tr.total-row td:first-child {
+            display: none !important; /* Hide the colspan cell */
+        }
+        
+        #kraTable tfoot tr.total-row td#kraTotal, #behTable tfoot tr.total-row td#behAvg {
+            font-size: 1.1rem !important;
+            font-weight: 900 !important;
+            color: #0369a1 !important;
+        }
+        
+        #kraTable tfoot tr.total-row td#kraTotal::before {
+            content: "KRA Final Score:" !important;
+            color: #0369a1 !important;
+            font-weight: 700 !important;
+            font-size: 0.8rem !important;
+            text-transform: uppercase !important;
+        }
+        
+        #behTable tfoot tr.total-row td#behAvg::before {
+            content: "Behavior Final Avg:" !important;
+            color: #0369a1 !important;
+            font-weight: 700 !important;
+            font-size: 0.8rem !important;
+            text-transform: uppercase !important;
+        }
+        
+        .change-badge {
+            margin-left: 0 !important;
+            margin-top: 4px !important;
+            font-size: 0.68rem !important;
         }
     }
     </style>
@@ -681,13 +829,13 @@ require_once '../includes/header.php';
                                                         <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="text-center fw-semibold"><?php echo e($weight); ?>%</td>
-                                                <td class="text-center">
+                                                <td class="text-center fw-semibold" data-label="Weight"><?php echo e($weight); ?>%</td>
+                                                <td class="text-center" data-label="Employee Rating">
                                                     <span class="badge bg-light text-dark fs-6 orig-val">
                                                         <?php echo number_format($orig, 2); ?>
                                                     </span>
                                                 </td>
-                                                <td class="text-center">
+                                                <td class="text-center" data-label="Your Rating">
                                                     <div class="d-flex flex-column align-items-center">
                                                         <input type="number" class="form-control kra-input" 
                                                                name="kra_scores[<?php echo (int)$criterion['criterion_id']; ?>]"
@@ -701,7 +849,7 @@ require_once '../includes/header.php';
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td class="weighted-cell text-end fw-semibold text-primary">
+                                                <td class="weighted-cell text-end fw-semibold text-primary" data-label="Weighted Score">
                                                     <?php echo number_format($weighted_orig, 2); ?>
                                                 </td>
                                             </tr>
@@ -748,12 +896,12 @@ require_once '../includes/header.php';
                                                         <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="text-center">
+                                                <td class="text-center" data-label="Employee Rating">
                                                     <span class="badge bg-light text-dark fs-6 orig-val">
                                                         <?php echo number_format($orig, 2); ?>
                                                     </span>
                                                 </td>
-                                                <td class="text-center">
+                                                <td class="text-center" data-label="Your Rating">
                                                     <div class="d-flex flex-column align-items-center">
                                                         <input type="number" class="form-control beh-input" 
                                                                name="beh_scores[<?php echo (int)$criterion['criterion_id']; ?>]"

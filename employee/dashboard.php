@@ -129,7 +129,7 @@ if ($is_supervisor) {
         FROM evaluations ev
         INNER JOIN employees e ON ev.employee_id = e.employee_id
         WHERE e.reports_to = $employee_id
-          AND ev.status = 'Pending Supervisor'
+          AND ev.status IN ('Pending Dept Supervisor', 'Pending Supervisor')
           AND ev.deleted_at IS NULL
     ");
     if ($ps) $pending_sub_count = (int)$ps->fetch_assoc()['total'];
@@ -142,6 +142,8 @@ function evalStatusBadge(string $status): string {
     $map = [
         'Draft'                    => ['secondary', 'fa-pencil-alt'],
         'Pending Self-Rating'      => ['warning',   'fa-user-edit'],
+        'Pending Dept Supervisor'  => ['warning text-dark', 'fa-user-check'],
+        'Pending Dept Manager'     => ['info text-dark', 'fa-user-tie'],
         'Pending Supervisor'       => ['info',      'fa-user-check'],
         'Pending HR Consolidation' => ['primary',   'fa-layer-group'],
         'Pending Manager'          => ['primary',   'fa-user-tie'],
@@ -324,26 +326,28 @@ function movementIcon(string $type): string {
 
                 <!-- Workflow Progress Bar -->
                 <?php
-                $workflow_steps = ['Pending Self-Rating', 'Pending Supervisor', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
-                $workflow_labels = ['Pending Self-Rating', 'Pending Supervisor', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                $workflow_steps = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                $workflow_labels = ['Self-Rating', 'Dept Supervisor', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
                 $current_status = $active_eval['status'] ?? '';
                 $status_step_map = [
                     'Draft' => 0,
                     'Returned' => 0,
                     'Pending Self-Rating' => 0,
+                    'Pending Dept Supervisor' => 1,
                     'Pending Supervisor' => 1,
-                    'Supervisor Confirmed' => 2,
-                    'Pending HR Consolidation' => 2,
-                    'Pending Manager' => 3,
-                    'Approved' => 4,
-                    'Rejected' => 4,
+                    'Pending Dept Manager' => 2,
+                    'Supervisor Confirmed' => 3,
+                    'Pending HR Consolidation' => 3,
+                    'Pending Manager' => 4,
+                    'Approved' => 5,
+                    'Rejected' => 5,
                 ];
                 $step_index = $status_step_map[$current_status] ?? null;
                 if ($step_index === null) {
                     $step_index = array_search($current_status, $workflow_steps, true);
                 }
                 if ($step_index === false || $step_index === null) {
-                    $step_index = ($current_status === 'Approved') ? 4 : 0;
+                    $step_index = ($current_status === 'Approved') ? 5 : 0;
                 }
                 $progress_pct = round(($step_index / (count($workflow_steps) - 1)) * 100);
                 ?>

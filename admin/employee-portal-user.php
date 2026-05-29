@@ -131,148 +131,239 @@ require_once '../includes/header.php';
 <?php if ($new_creds): ?>
 <!-- Credential Slip Modal -->
 <div class="modal fade" id="credentialSlipModal" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title"><i class="fas fa-key me-2"></i>Employee Credentials</h5>
-      </div>
-      <div class="modal-body text-center">
-        <p class="mb-1">Account updated for:</p>
-        <h5 class="fw-bold"><?php echo e($new_creds['full_name']); ?></h5>
-        <hr>
-        <p class="mb-1"><small class="text-muted">Username</small></p>
-        <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['username']); ?></div>
-        <p class="mb-1"><small class="text-muted">Password</small></p>
-        <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['password']); ?></div>
-        <div class="alert alert-warning py-2 mt-2" style="font-size:.82rem;">
-          <i class="fas fa-exclamation-triangle me-1"></i>Save and hand these credentials to the employee.
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
+    <div class="modal-content creds-modal-content">
+      <div class="creds-modal-header">
+        <div class="creds-icon-ring">
+          <i class="fas fa-shield-alt"></i>
         </div>
+        <h5 class="modal-title">Employee Credentials</h5>
       </div>
-      <div class="modal-footer justify-content-center">
-        <button type="button" class="btn btn-success" data-bs-dismiss="modal">I've noted the credentials</button>
+      <div class="modal-body text-center px-4 pt-3 pb-4">
+        <p class="text-muted small mb-1">Account updated for:</p>
+        <h5 class="fw-bold mb-3" style="color: var(--primary-blue);"><?php echo e($new_creds['full_name']); ?></h5>
+        
+        <div class="creds-card-box">
+          <div class="creds-field-group">
+            <div class="creds-field-label">Username</div>
+            <div class="creds-input-wrapper">
+              <div class="creds-value-display" id="display_username"><?php echo e($new_creds['username']); ?></div>
+              <button type="button" class="creds-copy-btn" onclick="copyCredValue(this, '<?php echo e(addslashes($new_creds['username'])); ?>')" title="Copy Username">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="creds-field-group">
+            <div class="creds-field-label">Temporary Password</div>
+            <div class="creds-input-wrapper">
+              <div class="creds-value-display" id="display_password"><?php echo e($new_creds['password']); ?></div>
+              <button type="button" class="creds-copy-btn" onclick="copyCredValue(this, '<?php echo e(addslashes($new_creds['password'])); ?>')" title="Copy Password">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="creds-warning-callout mb-3">
+          <i class="fas fa-exclamation-circle"></i>
+          <div>Save and hand these credentials securely to the employee. This slip will not be shown again.</div>
+        </div>
+        
+        <button type="button" class="btn btn-primary w-100 py-2.5 mt-2 fw-bold" style="border-radius: 10px; background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark)); border: none;" data-bs-dismiss="modal">
+          I've Noted the Credentials
+        </button>
       </div>
     </div>
   </div>
 </div>
-<script>document.addEventListener('DOMContentLoaded',()=>new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());</script>
+<script>
+function copyCredValue(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const icon = btn.querySelector('i');
+        icon.className = 'fas fa-check';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            icon.className = 'far fa-copy';
+            btn.classList.remove('copied');
+        }, 1500);
+    });
+}
+document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());
+</script>
 <?php endif; ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <div>
-        <h4 class="mb-0">Employee Portal Account</h4>
-        <small class="text-muted">Manage credentials for non-HR employees</small>
+<!-- ═══════════════════════════════════════════
+     Page Header
+═══════════════════════════════════════════ -->
+<div class="epu-page-header">
+    <div class="epu-page-header-left">
+        <a href="<?php echo BASE_URL; ?>/admin/employee-accounts.php" class="epu-back-btn">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <div>
+            <h4 class="epu-page-title">Employee Portal Account</h4>
+            <p class="epu-page-subtitle">Manage login credentials for non-HR portal access</p>
+        </div>
     </div>
-    <a href="<?php echo BASE_URL; ?>/admin/employee-accounts.php" class="btn btn-outline-secondary">
-        <i class="fas fa-arrow-left me-2"></i>Back to Portal Accounts
-    </a>
+    <div class="epu-status-pill <?php echo !empty($user['is_active']) ? 'active' : 'inactive'; ?>">
+        <i class="fas fa-<?php echo !empty($user['is_active']) ? 'check-circle' : 'ban'; ?>"></i>
+        <?php echo !empty($user['is_active']) ? 'Account Active' : 'Account Inactive'; ?>
+    </div>
 </div>
 
-<div class="content-card">
-    <div class="card-header">
-        <h5><i class="fas fa-id-card me-2"></i><?php echo e($user['last_name'] . ', ' . $user['first_name']); ?></h5>
-    </div>
-    <div class="card-body">
-        <div class="row g-3 align-items-center mb-3">
-            <div class="col-auto">
-                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>?v=<?php echo time(); ?>"
-                     alt="Profile" class="rounded-circle" style="width:64px;height:64px;object-fit:cover;">
-            </div>
-            <div class="col">
-                <div class="fw-bold"><?php echo e($user['job_title'] ?? ''); ?></div>
-                <div class="text-muted small"><?php echo e($user['branch_name'] ?? ''); ?> &bull; <span class="company-id-text">Company ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($user)); ?></span></span></div>
-            </div>
-            <div class="col-auto">
-                <?php if (!empty($user['is_active'])): ?>
-                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Active</span>
-                <?php else: ?>
-                    <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Inactive</span>
+<!-- ═══════════════════════════════════════════
+     Profile Hero Card
+═══════════════════════════════════════════ -->
+<div class="page-hero fadeup">
+    <div class="d-flex align-items-center gap-4 flex-wrap">
+        <div class="epu-avatar-wrap">
+            <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>?v=<?php echo time(); ?>"
+                 alt="Profile" class="epu-avatar">
+            <span class="epu-avatar-dot <?php echo !empty($user['is_active']) ? 'online' : 'offline'; ?>"></span>
+        </div>
+        <div class="epu-hero-info">
+            <h3 class="epu-hero-name" style="color: #ffffff; font-weight: 800; font-size: 1.35rem; margin: 0 0 4px;"><?php echo e($user['last_name'] . ', ' . $user['first_name']); ?></h3>
+            <p class="epu-hero-role" style="color: rgba(255,255,255,0.75); font-size: 0.85rem; margin: 0 0 12px;"><?php echo e($user['job_title'] ?? 'Employee'); ?></p>
+            <div class="epu-hero-meta">
+                <?php if (!empty($user['branch_name'])): ?>
+                <span class="epu-meta-chip"><i class="fas fa-building"></i><?php echo e($user['branch_name']); ?></span>
                 <?php endif; ?>
+                <span class="epu-meta-chip"><i class="fas fa-id-badge"></i><?php echo e(getEmployeeDisplayId($user)); ?></span>
+                <span class="epu-meta-chip"><i class="fas fa-user"></i><?php echo e($user['username']); ?></span>
             </div>
         </div>
+    </div>
+</div>
 
-        <form method="POST">
-            <div class="row g-3">
+<!-- ═══════════════════════════════════════════
+     Edit Credentials Card
+═══════════════════════════════════════════ -->
+<div class="epu-form-card fadeup-1">
+    <div class="epu-form-card-header">
+        <div class="epu-form-card-icon"><i class="fas fa-key"></i></div>
+        <div>
+            <h6 class="epu-form-card-title">Portal Credentials</h6>
+            <p class="epu-form-card-subtitle">Update username, password, or account status</p>
+        </div>
+    </div>
+    <div class="epu-form-card-body">
+        <form method="POST" id="updatePortalForm">
+            <div class="row g-4">
                 <div class="col-md-6">
-                    <label class="form-label">Portal Username</label>
-                    <div class="input-group">
-                        <input type="text" class="form-control" name="username" id="portal_username"
+                    <label class="epu-field-label" for="portal_username">Portal Username</label>
+                    <div class="epu-input-group">
+                        <span class="epu-input-prefix"><i class="fas fa-at"></i></span>
+                        <input type="text" class="epu-form-control" name="username" id="portal_username"
                                value="<?php echo e($user['username']); ?>" required>
-                        <button type="button" class="btn btn-outline-secondary" onclick="setUsernameToEmployeeId()">
-                            Use <?php echo e(getEmployeeDisplayId($user)); ?>
+                        <button type="button" class="epu-input-action" onclick="setUsernameToEmployeeId()"
+                                title="Use Employee ID as username">
+                            <i class="fas fa-id-card"></i>
                         </button>
                     </div>
-                    <div class="form-text">You can use a custom Employee Portal username. Employee ID is suggested.</div>
+                    <div class="epu-field-hint">Employee ID is suggested, but you can use any unique username.</div>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Reset Password <small class="text-muted">(optional)</small></label>
-                    <div class="input-group">
-                        <input type="password" class="form-control" name="password" id="portal_password" minlength="6" placeholder="Leave blank to keep current">
-                        <button type="button" class="btn btn-outline-secondary" onclick="generatePassword()">
-                            <i class="fas fa-random"></i>
+                    <label class="epu-field-label" for="portal_password">
+                        New Password <span class="epu-optional-tag">optional</span>
+                    </label>
+                    <div class="epu-input-group">
+                        <span class="epu-input-prefix"><i class="fas fa-lock"></i></span>
+                        <input type="password" class="epu-form-control" name="password" id="portal_password"
+                               minlength="6" placeholder="Leave blank to keep current">
+                        <button type="button" class="epu-input-action" onclick="generatePassword()" title="Generate random password">
+                            <i class="fas fa-dice"></i>
+                        </button>
+                        <button type="button" class="epu-input-action" onclick="togglePasswordView()" id="togglePwBtn" title="Show/hide password">
+                            <i class="fas fa-eye" id="togglePwIcon"></i>
                         </button>
                     </div>
-                    <div class="form-text">Minimum 6 characters.</div>
+                    <div class="epu-field-hint">Minimum 6 characters. Use the dice to auto-generate.</div>
                 </div>
             </div>
 
-            <div class="mt-3">
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="isActive" name="is_active" <?php echo !empty($user['is_active']) ? 'checked' : ''; ?>>
-                    <label class="form-check-label" for="isActive">Account is active</label>
+            <div class="epu-switch-row">
+                <div class="epu-switch-info">
+                    <i class="fas fa-toggle-on epu-switch-icon"></i>
+                    <div>
+                        <div class="epu-switch-label">Account Status</div>
+                        <div class="epu-switch-desc">Disable to block portal login without deleting the account</div>
+                    </div>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="isActive" name="is_active"
+                           <?php echo !empty($user['is_active']) ? 'checked' : ''; ?> style="width:2.5em;height:1.4em;cursor:pointer;">
+                    <label class="form-check-label visually-hidden" for="isActive">Account is active</label>
                 </div>
             </div>
 
-            <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="<?php echo BASE_URL; ?>/admin/employee-accounts.php" class="btn btn-secondary">
-                    Cancel
+            <div class="epu-form-actions">
+                <a href="<?php echo BASE_URL; ?>/admin/employee-accounts.php" class="epu-btn-cancel">
+                    <i class="fas fa-times me-2"></i>Cancel
                 </a>
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="epu-btn-save">
                     <i class="fas fa-save me-2"></i>Save Changes
                 </button>
             </div>
         </form>
+    </div>
+</div>
 
-        <hr class="my-4">
-
-        <div class="alert alert-warning py-2" style="font-size:0.9rem;">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            Deleting this account may also delete related portal records (e.g., PDS submissions) due to database constraints.
+<!-- ═══════════════════════════════════════════
+     Danger Zone Card
+═══════════════════════════════════════════ -->
+<div class="epu-danger-card fadeup-2">
+    <div class="epu-danger-card-inner">
+        <div class="epu-danger-icon-wrap"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="epu-danger-info">
+            <h6 class="epu-danger-title">Delete Portal Account</h6>
+            <p class="epu-danger-desc">This action is irreversible. Deleting may also remove related portal records (e.g., PDS submissions) due to database constraints.</p>
         </div>
-
-        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deletePortalModal">
-            <i class="fas fa-trash me-2"></i>Delete Portal Account
+        <button type="button" class="epu-btn-delete" data-bs-toggle="modal" data-bs-target="#deletePortalModal">
+            <i class="fas fa-trash-alt me-2"></i>Delete Account
         </button>
     </div>
 </div>
 
-<!-- Delete Modal -->
+<!-- ═══════════════════════════════════════════
+     Delete Confirmation Modal
+═══════════════════════════════════════════ -->
 <div class="modal fade" id="deletePortalModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="fas fa-trash me-2 text-danger"></i>Delete Portal Account</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+    <div class="modal-content epu-delete-modal-content">
+      <div class="epu-delete-modal-header">
+        <div class="epu-delete-modal-icon"><i class="fas fa-trash-alt"></i></div>
+        <h5 class="epu-delete-modal-title">Delete Portal Account</h5>
+        <p class="epu-delete-modal-sub">This action cannot be undone.</p>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="position:absolute;top:16px;right:18px;"></button>
       </div>
-      <div class="modal-body">
-        <p class="mb-2">This will permanently delete the Employee Portal account:</p>
-        <div class="alert alert-light border mb-3">
-          <div><strong><?php echo e($user['last_name'] . ', ' . $user['first_name']); ?></strong></div>
-          <div class="text-muted small">Username: <code><?php echo e($user['username']); ?></code></div>
+      <div class="epu-delete-modal-body">
+        <div class="epu-delete-target-card">
+            <div class="epu-delete-target-avatar">
+                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>" alt="">
+            </div>
+            <div>
+                <div class="epu-delete-target-name"><?php echo e($user['last_name'] . ', ' . $user['first_name']); ?></div>
+                <div class="epu-delete-target-user"><i class="fas fa-at me-1"></i><?php echo e($user['username']); ?></div>
+            </div>
         </div>
 
-        <div class="mb-2">
-          <label class="form-label">Type <code>DELETE</code> to confirm</label>
-          <input type="text" class="form-control" id="confirm_delete" form="deletePortalForm" name="confirm_delete" autocomplete="off">
-        </div>
-        <div class="form-text">This cannot be undone.</div>
+        <label class="epu-delete-confirm-label">
+            Type <strong>DELETE</strong> to confirm
+        </label>
+        <input type="text" class="epu-delete-confirm-input" id="confirm_delete"
+               form="deletePortalForm" name="confirm_delete" autocomplete="off"
+               placeholder="DELETE">
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+      <div class="epu-delete-modal-footer">
+        <button type="button" class="epu-btn-cancel" data-bs-dismiss="modal">
+            <i class="fas fa-times me-2"></i>Cancel
+        </button>
         <form method="POST" id="deletePortalForm" class="d-inline">
           <input type="hidden" name="action" value="delete_portal_user">
-          <button type="submit" class="btn btn-danger">
-            <i class="fas fa-trash me-2"></i>Delete
+          <button type="submit" class="epu-btn-delete-confirm">
+            <i class="fas fa-trash-alt me-2"></i>Delete Account
           </button>
         </form>
       </div>
@@ -283,6 +374,18 @@ require_once '../includes/header.php';
 <script>
 function setUsernameToEmployeeId() {
     document.getElementById('portal_username').value = '<?php echo e(getEmployeeDisplayId($user)); ?>';
+}
+
+function togglePasswordView() {
+    const input = document.getElementById('portal_password');
+    const icon  = document.getElementById('togglePwIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
 }
 
 function generatePassword() {

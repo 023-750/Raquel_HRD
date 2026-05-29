@@ -113,30 +113,66 @@ unset($_SESSION['new_employee_credentials']);
 <?php if ($new_creds): ?>
 <!-- Credential Slip Modal -->
 <div class="modal fade" id="credentialSlipModal" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header bg-success text-white">
-        <h5 class="modal-title"><i class="fas fa-key me-2"></i>Employee Credentials</h5>
-      </div>
-      <div class="modal-body text-center">
-        <p class="mb-1">Account created for:</p>
-        <h5 class="fw-bold"><?php echo e($new_creds['full_name']); ?></h5>
-        <hr>
-        <p class="mb-1"><small class="text-muted">Username</small></p>
-        <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['username']); ?></div>
-        <p class="mb-1"><small class="text-muted">Password</small></p>
-        <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['password']); ?></div>
-        <div class="alert alert-warning py-2 mt-2" style="font-size:.82rem;">
-          <i class="fas fa-exclamation-triangle me-1"></i>Save and hand these credentials to the employee.
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
+    <div class="modal-content creds-modal-content">
+      <div class="creds-modal-header">
+        <div class="creds-icon-ring">
+          <i class="fas fa-shield-alt"></i>
         </div>
+        <h5 class="modal-title">Employee Credentials</h5>
       </div>
-      <div class="modal-footer justify-content-center">
-        <button type="button" class="btn btn-success" data-bs-dismiss="modal">I've noted the credentials</button>
+      <div class="modal-body text-center px-4 pt-3 pb-4">
+        <p class="text-muted small mb-1">Account created for:</p>
+        <h5 class="fw-bold mb-3" style="color: var(--primary-blue);"><?php echo e($new_creds['full_name']); ?></h5>
+        
+        <div class="creds-card-box">
+          <div class="creds-field-group">
+            <div class="creds-field-label">Username</div>
+            <div class="creds-input-wrapper">
+              <div class="creds-value-display" id="display_username"><?php echo e($new_creds['username']); ?></div>
+              <button type="button" class="creds-copy-btn" onclick="copyCredValue(this, '<?php echo e(addslashes($new_creds['username'])); ?>')" title="Copy Username">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="creds-field-group">
+            <div class="creds-field-label">Temporary Password</div>
+            <div class="creds-input-wrapper">
+              <div class="creds-value-display" id="display_password"><?php echo e($new_creds['password']); ?></div>
+              <button type="button" class="creds-copy-btn" onclick="copyCredValue(this, '<?php echo e(addslashes($new_creds['password'])); ?>')" title="Copy Password">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="creds-warning-callout mb-3">
+          <i class="fas fa-exclamation-circle"></i>
+          <div>Save and hand these credentials securely to the employee. This slip will not be shown again.</div>
+        </div>
+        
+        <button type="button" class="btn btn-primary w-100 py-2.5 mt-2 fw-bold" style="border-radius: 10px; background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark)); border: none;" data-bs-dismiss="modal">
+          I've Noted the Credentials
+        </button>
       </div>
     </div>
   </div>
 </div>
-<script>document.addEventListener('DOMContentLoaded',()=>new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());</script>
+<script>
+function copyCredValue(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const icon = btn.querySelector('i');
+        icon.className = 'fas fa-check';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            icon.className = 'far fa-copy';
+            btn.classList.remove('copied');
+        }, 1500);
+    });
+}
+document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());
+</script>
 <?php endif; ?>
 
 <div class="page-hero fadeup">
@@ -360,44 +396,53 @@ unset($_SESSION['new_employee_credentials']);
 
 <!-- Create Account Modal -->
 <div class="modal fade" id="createAccountModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Create Portal Account</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content portal-modal-content">
+            <div class="portal-modal-header d-flex justify-content-between align-items-center">
+                <h5 class="modal-title mb-0"><i class="fas fa-user-plus me-2"></i>Create Portal Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="add-user.php">
-                <div class="modal-body">
+            <form method="POST" action="add-user.php" class="portal-input-group mb-0">
+                <div class="modal-body p-4">
                     <input type="hidden" name="employee_id" id="modal_employee_id">
                     <input type="hidden" name="full_name" id="modal_full_name">
                     <input type="hidden" name="email" id="modal_email">
                     <input type="hidden" name="role" value="Employee">
                     <input type="hidden" name="redirect" value="employee-accounts.php<?php echo $selected_department > 0 ? '?department=' . (int) $selected_department : ''; ?>">
                     
-                    <div class="alert alert-info py-2" style="font-size: 0.85rem;">
-                        <i class="fas fa-info-circle me-2"></i>Creating a portal account for: <strong id="display_emp_name"></strong>
+                    <!-- Employee Badge Info -->
+                    <div class="portal-emp-badge">
+                        <div class="badge-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div class="badge-info">
+                            <div class="badge-label">Creating Portal Account For</div>
+                            <div class="badge-name" id="display_emp_name">Elena Delgado</div>
+                        </div>
                     </div>
 
+                    <!-- Username Field -->
                     <div class="mb-3">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" name="username" id="modal_username" required>
-                        <div class="form-text">Employee ID is suggested, but you can change it.</div>
+                        <label class="form-label-caps">Username</label>
+                        <input type="text" class="form-control" name="username" id="modal_username" placeholder="Enter username" required>
+                        <div class="form-text" style="font-size: 0.76rem; color: #64748b; margin-top: 4px;">Employee ID is suggested, but you can change it.</div>
                     </div>
 
+                    <!-- Password Field with Generate Button -->
                     <div class="mb-3">
-                        <label class="form-label">Password <span class="text-danger">*</span></label>
+                        <label class="form-label-caps">Password <span class="text-danger">*</span></label>
                         <div class="input-group">
-                            <input type="password" class="form-control" name="password" id="modal_password" required minlength="6">
-                            <button class="btn btn-outline-secondary" type="button" onclick="generatePassword()">
-                                <i class="fas fa-random"></i>
+                            <input type="password" class="form-control" name="password" id="modal_password" placeholder="Enter password" required minlength="6" style="border-top-right-radius: 0; border-bottom-right-radius: 0;">
+                            <button class="btn btn-generate" type="button" onclick="generatePassword()" title="Generate Random Password">
+                                <i class="fas fa-random me-1"></i> Generate
                             </button>
                         </div>
-                        <div class="form-text">Minimum 6 characters. Use the random button to generate one.</div>
+                        <div class="form-text" style="font-size: 0.76rem; color: #64748b; margin-top: 4px;">Minimum 6 characters. Use the random button to generate one.</div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Create Account</button>
+                <div class="modal-footer p-3 bg-light border-0 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary px-3 py-2 fw-semibold" style="border-radius: 8px; font-size: 0.85rem;" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold" style="border-radius: 8px; font-size: 0.85rem; background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark)); border: none;"><i class="fas fa-save me-1.5"></i>Create Account</button>
                 </div>
             </form>
         </div>

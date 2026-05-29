@@ -1,11 +1,8 @@
-# FINAL_RAQUEL_PAWNSHOP_HRD
+To-Do List for May 30 2026
 
+- print anomaly http://localhost/raquel-hris/manager/print-evaluation.php?id=2 it shows the employee input instead of final modification by HR Manager
 
-may 28 2026 Tasks:
-- test the flow of the employee evaluation for branch manager 
-- check if the  ratings are correct when saving and endorsing
-- when manager is endorsing the rating, it should update the status to 3, and  add the manager comment and recommendation
+- Evaluation Details same location view button on http://localhost/raquel-hris/manager/evaluation-history.php
+overal aesthetic design seems off modernize it
 
-may 29 2026 Tasks:
-- check if the ratings are correct when saving and endorsing for the branch manager
-- when manager is endorsing the rating, it should update the status to 3, and  add the manager comment and recommendation
+- employee template should be rejected by immediate head / manager >> hr supervisor >> manager TEST!

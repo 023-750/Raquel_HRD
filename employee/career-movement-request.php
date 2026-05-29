@@ -75,11 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_supervisor) {
         $insert = $conn->prepare("
             INSERT INTO career_movements 
             (employee_id, movement_type, previous_position, new_position, previous_branch_id, new_branch_id, 
-             effective_date, reason, logged_by, approval_status, initiated_by_name, initiated_by_role, initiated_via, request_source, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, 'Area Supervisor', 'Employee Portal', 'Employee Portal', NOW())
+             effective_date, reason, logged_by, approval_status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())
         ");
         $insert->bind_param(
-            "issssissis",
+            "issssisi",
             $employee_id,
             $movement_type,
             $previous_position,
@@ -88,8 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_supervisor) {
             $new_branch_id,
             $effective_date,
             $reason,
-            $user_id,
-            $supervisor_name
+            $user_id
         );
 
         if ($insert->execute()) {
@@ -135,7 +134,7 @@ if ($is_supervisor) {
         FROM career_movements cm
         JOIN employees e ON cm.employee_id = e.employee_id
         LEFT JOIN branches b ON cm.new_branch_id = b.branch_id
-        WHERE cm.logged_by = ? AND cm.request_source = 'Employee Portal'
+        WHERE cm.logged_by = ?
         ORDER BY cm.created_at DESC
         LIMIT 10
     ");

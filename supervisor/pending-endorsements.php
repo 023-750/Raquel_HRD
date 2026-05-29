@@ -306,7 +306,7 @@ $staff_options = supervisorPendingRows(
      FROM evaluations ev
      INNER JOIN employees e ON ev.employee_id = e.employee_id
      INNER JOIN users u ON ev.submitted_by = u.user_id
-     WHERE ev.status = 'Pending Supervisor'
+     WHERE ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
        AND e.is_active = 1
        AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
      ORDER BY u.full_name"

@@ -93,31 +93,66 @@ unset($_SESSION['new_employee_credentials']);
 <?php if ($new_creds): ?>
 <!-- Credential Slip Modal — shown once after creating any account -->
 <div class="modal fade" id="credentialSlipModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="fas fa-key me-2"></i>Account Credentials</h5>
-            </div>
-            <div class="modal-body text-center">
-                <p class="mb-1">Account created for:</p>
-                <h5 class="fw-bold"><?php echo e($new_creds['full_name']); ?></h5>
-                <hr>
-                <p class="mb-1"><small class="text-muted">Username</small></p>
-                <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['username']); ?></div>
-                <p class="mb-1"><small class="text-muted">Password</small></p>
-                <div class="alert alert-light border fs-5 fw-bold py-2"><?php echo e($new_creds['password']); ?></div>
-                <div class="alert alert-warning py-2 mt-2" style="font-size:.82rem;">
-                    <i class="fas fa-exclamation-triangle me-1"></i>Save and hand these credentials to the user.
-                    This is shown only once.
-                </div>
-            </div>
-            <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Got it, I've noted the credentials</button>
-            </div>
+  <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
+    <div class="modal-content creds-modal-content">
+      <div class="creds-modal-header">
+        <div class="creds-icon-ring">
+          <i class="fas fa-shield-alt"></i>
         </div>
+        <h5 class="modal-title">Account Credentials</h5>
+      </div>
+      <div class="modal-body text-center px-4 pt-3 pb-4">
+        <p class="text-muted small mb-1">Account created successfully for:</p>
+        <h5 class="fw-bold mb-3" style="color: var(--primary-blue);"><?php echo e($new_creds['full_name']); ?></h5>
+        
+        <div class="creds-card-box">
+          <div class="creds-field-group">
+            <div class="creds-field-label">Username</div>
+            <div class="creds-input-wrapper">
+              <div class="creds-value-display" id="display_username"><?php echo e($new_creds['username']); ?></div>
+              <button type="button" class="creds-copy-btn" onclick="copyCredValue(this, '<?php echo e(addslashes($new_creds['username'])); ?>')" title="Copy Username">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="creds-field-group">
+            <div class="creds-field-label">Temporary Password</div>
+            <div class="creds-input-wrapper">
+              <div class="creds-value-display" id="display_password"><?php echo e($new_creds['password']); ?></div>
+              <button type="button" class="creds-copy-btn" onclick="copyCredValue(this, '<?php echo e(addslashes($new_creds['password'])); ?>')" title="Copy Password">
+                <i class="far fa-copy"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="creds-warning-callout mb-3">
+          <i class="fas fa-exclamation-circle"></i>
+          <div>Save and hand these credentials securely to the user. This slip will not be shown again.</div>
+        </div>
+        
+        <button type="button" class="btn btn-primary w-100 py-2.5 mt-2 fw-bold" style="border-radius: 10px; background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark)); border: none;" data-bs-dismiss="modal">
+          I've Noted the Credentials
+        </button>
+      </div>
     </div>
+  </div>
 </div>
-<script>document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());</script>
+<script>
+function copyCredValue(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const icon = btn.querySelector('i');
+        icon.className = 'fas fa-check';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            icon.className = 'far fa-copy';
+            btn.classList.remove('copied');
+        }, 1500);
+    });
+}
+document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document.getElementById('credentialSlipModal')).show());
+</script>
 <?php endif; ?>
 
 <!-- Page Header -->
