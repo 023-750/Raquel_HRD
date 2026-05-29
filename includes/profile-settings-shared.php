@@ -155,8 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Determine the current avatar
 $current_avatar = '';
-if ($linked_employee && !empty($linked_employee['profile_picture']) && file_exists(__DIR__ . '/../assets/img/employees/' . $linked_employee['profile_picture'])) {
-    $current_avatar = BASE_URL . '/assets/img/employees/' . $linked_employee['profile_picture'];
+if ($linked_employee && !empty($linked_employee['profile_picture'])) {
+    $current_avatar = getEmployeeAvatar($linked_employee['profile_picture']);
 } else {
     $role_img = 'staff.png';
     if ($_SESSION['role'] === 'HR Manager') $role_img = 'manager.png';

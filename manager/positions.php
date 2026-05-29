@@ -280,7 +280,7 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                             <th>Direct Report</th>
                             <th>Employees</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            <th style="min-width: 120px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -326,26 +326,28 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                                         </span>
                                     </td>
                                     <td data-label="Actions">
-                                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
-                                            data-bs-target="#editPositionModal" onclick="openEditPositionModal(
-                                                <?php echo (int) $position['job_title_id']; ?>,
-                                                '<?php echo e(addslashes($position['job_title'])); ?>',
-                                                '<?php echo (int) ($position['department_id'] ?? 0); ?>',
-                                                '<?php echo (int) ($position['rank_category_id'] ?? 0); ?>',
-                                                '<?php echo (int) $position['is_active']; ?>',
-                                                '<?php echo (int) $position['is_head']; ?>',
-                                                '<?php echo (int) ($position['reports_to'] ?? 0); ?>'
-                                            )">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
-                                            data-bs-target="#deletePositionModal" onclick="setDeletePositionTarget(
-                                                <?php echo (int) $position['job_title_id']; ?>,
-                                                '<?php echo e(addslashes($position['job_title'])); ?>',
-                                                <?php echo (int) $position['employee_count']; ?>
-                                            )">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        <div class="d-flex gap-1 align-items-center flex-nowrap">
+                                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                                data-bs-target="#editPositionModal" onclick="openEditPositionModal(
+                                                    <?php echo (int) $position['job_title_id']; ?>,
+                                                    '<?php echo e(addslashes($position['job_title'])); ?>',
+                                                    '<?php echo (int) ($position['department_id'] ?? 0); ?>',
+                                                    '<?php echo (int) ($position['rank_category_id'] ?? 0); ?>',
+                                                    '<?php echo (int) $position['is_active']; ?>',
+                                                    '<?php echo (int) $position['is_head']; ?>',
+                                                    '<?php echo (int) ($position['reports_to'] ?? 0); ?>'
+                                                )">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+                                                data-bs-target="#deletePositionModal" onclick="setDeletePositionTarget(
+                                                    <?php echo (int) $position['job_title_id']; ?>,
+                                                    '<?php echo e(addslashes($position['job_title'])); ?>',
+                                                    <?php echo (int) $position['employee_count']; ?>
+                                                )">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
@@ -662,6 +664,9 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
             cards.forEach((card) => {
                 card.style.display = card.textContent.toLowerCase().includes(filter) ? '' : 'none';
             });
+
+            // Re-apply zebra striping after filtering
+            applyZebraStriping('#positionTable');
         });
     }
 

@@ -151,7 +151,7 @@ $finalized_count_q->close();
 
 // Fetch pending evaluations
 $pending = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.profile_picture,
-    u.full_name as submitted_by_name, et.template_name
+    u.full_name as submitted_by_name, et.template_name, et.kra_weight, et.behavior_weight
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN users u ON ev.submitted_by = u.user_id
@@ -320,6 +320,16 @@ $total_pending_all = $pending_count;
         border-color: #BD9414;
         box-shadow: 0 0 0 0.2rem rgba(189, 148, 20, 0.25);
     }
+    
+    /* TOTAL ROWS DESIGN UPGRADE FOR REVIEW CONSOLE */
+    .total-row td {
+        background: #fef3c7 !important;
+        font-weight: 800 !important;
+        border-top: 2px solid #fbbf24 !important;
+        border-bottom: 3px double #fbbf24 !important;
+        color: #92400e !important;
+        font-size: 0.88rem !important;
+    }
 </style>
 
 <div class="row mb-5">
@@ -418,7 +428,7 @@ foreach ($all_pending as $row):
     $initials = strtoupper(substr($row['employee_name'], 0, 1) . substr(explode(' ', $row['employee_name'])[1] ?? '', 0, 1));
     $modal_avatar_url = getEmployeeAvatar($row['profile_picture'] ?? '');
 ?>
-    <div class="modal fade modal-premium" id="reviewModal<?php echo $row['evaluation_id']; ?>" tabindex="-1" aria-hidden="true">
+    <div class="modal fade modal-premium" id="reviewModal<?php echo $row['evaluation_id']; ?>" tabindex="-1" aria-hidden="true" data-kra-weight="<?php echo (float)($row['kra_weight'] ?? 80); ?>" data-behavior-weight="<?php echo (float)($row['behavior_weight'] ?? 20); ?>">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
                 <div class="modal-header">
@@ -474,7 +484,7 @@ foreach ($all_pending as $row):
                             </div>
                         </div>
                         <div class="score-circle">
-                            <div class="val"><?php echo number_format((float)$row['total_score'], 2); ?>/4</div>
+                            <div class="val total-score-val"><?php echo number_format((float)$row['total_score'], 2); ?>/4</div>
                             <div class="lbl">Score</div>
                         </div>
                     </div>
@@ -498,7 +508,7 @@ foreach ($all_pending as $row):
                                 $kra_q = $conn->query("SELECT es.*, ec.criterion_name, ec.description, ec.weight FROM evaluation_scores es JOIN evaluation_criteria ec ON es.criterion_id = ec.criterion_id WHERE es.evaluation_id = {$row['evaluation_id']} AND ec.section = 'KRA' ORDER BY ec.sort_order");
                                 $kra_num = 1;
                                 while ($k = $kra_q->fetch_assoc()): ?>
-                                    <tr>
+                                    <tr class="kra-row" data-weight="<?php echo $k['weight']; ?>">
                                         <td class="ps-3">
                                             <div class="fw-bold">KRA <?php echo $kra_num++; ?>: <?php echo e($k['criterion_name']); ?></div>
                                             <?php if($k['description']): ?><div class="text-muted x-small"><?php echo e($k['description']); ?></div><?php endif; ?>
@@ -533,14 +543,14 @@ foreach ($all_pending as $row):
                                             <?php endif; ?>
                                             <?php echo $badge_html; ?>
                                         </td>
-                                        <td class="text-center text-primary fw-bold"><?php echo $k['weighted_score']; ?></td>
+                                        <td class="weighted-score text-center text-primary fw-bold"><?php echo number_format($k['weighted_score'], 2); ?></td>
                                     </tr>
                                 <?php endwhile; ?>
-                                <tr class="bg-light fw-bold border-top">
+                                <tr class="total-row bg-light fw-bold border-top">
                                     <td class="ps-3">KRA Sub-total</td>
                                     <td class="text-center">100%</td>
                                     <td></td>
-                                    <td class="text-center text-primary"><?php echo $row['kra_subtotal']; ?></td>
+                                    <td class="text-center text-primary kra-subtotal-val"><?php echo number_format($row['kra_subtotal'], 2); ?></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -562,7 +572,7 @@ foreach ($all_pending as $row):
                                 <?php
                                 $beh_q = $conn->query("SELECT es.*, ec.criterion_name, ec.kpi_description FROM evaluation_scores es JOIN evaluation_criteria ec ON es.criterion_id = ec.criterion_id WHERE es.evaluation_id = {$row['evaluation_id']} AND ec.section = 'Behavior' ORDER BY ec.sort_order");
                                 while ($b = $beh_q->fetch_assoc()): ?>
-                                    <tr>
+                                    <tr class="beh-row">
                                         <td class="ps-3">
                                             <div class="fw-bold"><?php echo e($b['criterion_name']); ?></div>
                                             <div class="text-muted x-small"><?php echo e($b['kpi_description']); ?></div>
@@ -598,9 +608,9 @@ foreach ($all_pending as $row):
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
-                                <tr class="bg-light fw-bold border-top">
+                                <tr class="total-row bg-light fw-bold border-top">
                                     <td class="ps-3">Behavior Average</td>
-                                    <td class="text-center text-primary"><?php echo $row['behavior_average']; ?></td>
+                                    <td class="text-center text-primary beh-avg-val"><?php echo number_format($row['behavior_average'], 2); ?></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -774,10 +784,22 @@ foreach ($all_pending as $row):
                     <div class="section-premium-label mb-3 mt-5">
                         <i class="fas fa-comments"></i> V. Remarks & Decisions
                     </div>
-                    <?php if($row['supervisor_comments']): ?>
+                    <?php if(!empty($row['supervisor_comments'])): ?>
                         <div class="mb-3">
-                            <label class="x-small fw-bold text-muted text-uppercase mb-1">Supervisor Remarks</label>
+                            <label class="x-small fw-bold text-muted text-uppercase mb-1">Department Supervisor Remarks</label>
                             <div class="p-3 bg-light rounded-3 border italic small"><?php echo nl2br(e($row['supervisor_comments'])); ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if(!empty($row['dept_manager_comments'])): ?>
+                        <div class="mb-3">
+                            <label class="x-small fw-bold text-muted text-uppercase mb-1">Department Manager Remarks</label>
+                            <div class="p-3 bg-light rounded-3 border italic small"><?php echo nl2br(e($row['dept_manager_comments'])); ?></div>
+                        </div>
+                    <?php endif; ?>
+                    <?php if(!empty($row['evaluator_comments'])): ?>
+                        <div class="mb-3">
+                            <label class="x-small fw-bold text-muted text-uppercase mb-1">HR Supervisor Remarks</label>
+                            <div class="p-3 bg-light rounded-3 border italic small"><?php echo nl2br(e($row['evaluator_comments'])); ?></div>
                         </div>
                     <?php endif; ?>
 
@@ -817,12 +839,18 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('unifiedSearch')?.addEventListener('input', function() {
         const filter = this.value.toLowerCase();
         const activePane = document.querySelector('.tab-pane.active');
+        if (!activePane) return;
         const rows = activePane.querySelectorAll('tbody tr');
         
         rows.forEach(row => {
             const text = row.textContent.toLowerCase();
             row.style.display = text.includes(filter) ? '' : 'none';
         });
+
+        const activeTable = activePane.querySelector('.table');
+        if (activeTable && activeTable.id) {
+            applyZebraStriping('#' + activeTable.id);
+        }
     });
 
     // Handle deep linking for review
@@ -1317,6 +1345,64 @@ function handleApprovalFormSubmit(event, evalId) {
 
     return false;
 }
+
+// Live ratings recalculation for HRD review modals
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.modal-premium').forEach(modal => {
+        const kraWeight = parseFloat(modal.getAttribute('data-kra-weight')) / 100;
+        const behaviorWeight = parseFloat(modal.getAttribute('data-behavior-weight')) / 100;
+
+        const inputs = modal.querySelectorAll('.score-input');
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                // --- KRA Recalculation ---
+                let kraTotal = 0;
+                modal.querySelectorAll('.kra-row').forEach(row => {
+                    const weight = parseFloat(row.getAttribute('data-weight')) / 100;
+                    const inp = row.querySelector('.score-input');
+                    const weightedCell = row.querySelector('.weighted-score');
+                    if (inp) {
+                        const val = parseFloat(inp.value) || 0;
+                        const weighted = val * weight;
+                        kraTotal += weighted;
+                        if (weightedCell) {
+                            weightedCell.textContent = weighted.toFixed(2);
+                        }
+                    }
+                });
+
+                // --- Behavior Recalculation ---
+                let behSum = 0;
+                let behCount = 0;
+                modal.querySelectorAll('.beh-row').forEach(row => {
+                    const inp = row.querySelector('.score-input');
+                    if (inp) {
+                        const val = parseFloat(inp.value) || 0;
+                        behSum += val;
+                        behCount++;
+                    }
+                });
+                const behAvg = behCount > 0 ? (behSum / behCount) : 0;
+
+                // --- Round & Sum ---
+                const kraRounded = Math.round(kraTotal * 100) / 100;
+                const behAvgRounded = Math.round(behAvg * 100) / 100;
+                const finalScore = (kraRounded * kraWeight + behAvgRounded * behaviorWeight);
+                const finalScoreRounded = Math.round(finalScore * 100) / 100;
+
+                // --- Update UI ---
+                const kraSubtotalVal = modal.querySelector('.kra-subtotal-val');
+                if (kraSubtotalVal) kraSubtotalVal.textContent = kraRounded.toFixed(2);
+
+                const behAvgVal = modal.querySelector('.beh-avg-val');
+                if (behAvgVal) behAvgVal.textContent = behAvgRounded.toFixed(2);
+
+                const totalScoreVal = modal.querySelector('.total-score-val');
+                if (totalScoreVal) totalScoreVal.textContent = finalScoreRounded.toFixed(2) + '/4';
+            });
+        });
+    });
+});
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

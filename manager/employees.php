@@ -98,10 +98,40 @@ $employee_active = (int) $conn->query("
 $employee_inactive = max(0, $employee_total - $employee_active);
 
 // Fetch distinct values for filter dropdowns
-$job_titles_res = $conn->query("SELECT DISTINCT job_title FROM employees WHERE job_title IS NOT NULL AND job_title != '' ORDER BY job_title ASC");
+$job_titles_res = $conn->query("
+    SELECT 
+        jt.job_title_id,
+        jt.job_title,
+        d.department_id,
+        d.department_name,
+        rc.rank_name,
+        parent.job_title AS reports_to_title,
+        (
+            SELECT COUNT(*) 
+            FROM employees e 
+            WHERE e.job_title_id = jt.job_title_id
+        ) AS employee_count
+    FROM job_titles jt
+    LEFT JOIN departments d 
+        ON jt.department_id = d.department_id
+    LEFT JOIN rank_categories rc 
+        ON jt.rank_category_id = rc.rank_category_id
+    LEFT JOIN job_titles parent 
+        ON jt.reports_to = parent.job_title_id
+    WHERE jt.job_title IS NOT NULL 
+      AND jt.job_title != ''
+    ORDER BY d.department_name ASC, jt.job_title ASC
+");
 $job_titles = [];
-while ($r = $job_titles_res->fetch_assoc())
-    $job_titles[] = $r['job_title'];
+$job_titles_by_dept = []; // Organize by department
+while ($r = $job_titles_res->fetch_assoc()) {
+    $job_titles[] = $r;
+    $dept_name = $r['department_name'] ?? 'Unassigned';
+    if (!isset($job_titles_by_dept[$dept_name])) {
+        $job_titles_by_dept[$dept_name] = [];
+    }
+    $job_titles_by_dept[$dept_name][] = $r;
+}
 
 $departments_res = $conn->query("SELECT d.department_name FROM departments d ORDER BY d.department_name ASC");
 $departments = [];
@@ -350,8 +380,19 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             <label><i class="fas fa-briefcase me-1"></i>Job Title</label>
             <select id="filterJobTitle">
                 <option value="">All Titles</option>
-                <?php foreach ($job_titles as $jt): ?>
-                    <option value="<?php echo e($jt); ?>"><?php echo e($jt); ?></option>
+                <?php foreach ($job_titles_by_dept as $dept_name => $titles): ?>
+                    <optgroup label="<?php echo e($dept_name); ?>">
+                        <?php foreach ($titles as $jt): ?>
+                            <option value="<?php echo e($jt['job_title']); ?>" 
+                                    data-job-title-id="<?php echo $jt['job_title_id']; ?>" 
+                                    data-department="<?php echo e($jt['department_name'] ?? ''); ?>">
+                                <?php echo e($jt['job_title']); ?>
+                                <?php if ($jt['employee_count'] > 0): ?>
+                                    (<?php echo $jt['employee_count']; ?>)
+                                <?php endif; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </optgroup>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -407,7 +448,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                         <th>Branch</th>
                         <th>Status</th>
                         <th>Hire Date</th>
-                        <th>Actions</th>
+                        <th style="min-width: 170px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -435,33 +476,35 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                             </td>
                             <td data-label="Hire Date"><small><?php echo formatDate($emp['hire_date']); ?></small></td>
                             <td data-label="Actions">
-                                <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
-                                    class="btn btn-sm btn-outline-info" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
-                                    class="btn btn-sm btn-outline-primary employee-edit-link" data-base-href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
-                                    title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <?php if ($emp['is_active']): ?>
-                                    <button type="button" class="btn btn-sm btn-outline-warning" title="Deactivate"
-                                        onclick="setDeactivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
-                                        data-bs-toggle="modal" data-bs-target="#deactivateModal">
-                                        <i class="fas fa-user-slash"></i>
+                                <div class="d-flex gap-1 align-items-center flex-nowrap">
+                                    <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                        class="btn btn-sm btn-outline-info" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                        class="btn btn-sm btn-outline-primary employee-edit-link" data-base-href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                        title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <?php if ($emp['is_active']): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-warning" title="Deactivate"
+                                            onclick="setDeactivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                            data-bs-toggle="modal" data-bs-target="#deactivateModal">
+                                            <i class="fas fa-user-slash"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <button type="button" class="btn btn-sm btn-outline-success" title="Activate"
+                                            onclick="setActivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                            data-bs-toggle="modal" data-bs-target="#activateModal">
+                                            <i class="fas fa-user-check"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" title="Delete Permanently"
+                                        onclick="setDeleteTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                        data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                        <i class="fas fa-trash"></i>
                                     </button>
-                                <?php else: ?>
-                                    <button type="button" class="btn btn-sm btn-outline-success" title="Activate"
-                                        onclick="setActivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
-                                        data-bs-toggle="modal" data-bs-target="#activateModal">
-                                        <i class="fas fa-user-check"></i>
-                                    </button>
-                                <?php endif; ?>
-                                <button type="button" class="btn btn-sm btn-outline-danger" title="Delete Permanently"
-                                    onclick="setDeleteTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
-                                    data-bs-toggle="modal" data-bs-target="#deleteModal">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                </div>
                             </td>
                         </tr>
                     <?php endwhile; ?>
@@ -663,6 +706,16 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             el.value = value;
             el.classList.toggle('active-filter', value !== '');
         });
+        
+        // Apply department filter to job title dropdown on page load
+        const selectedDept = params.get('department') || '';
+        if (selectedDept !== '') {
+            const jobTitleSelect = document.getElementById('filterJobTitle');
+            const optgroups = jobTitleSelect.querySelectorAll('optgroup');
+            optgroups.forEach(group => {
+                group.style.display = group.label === selectedDept ? '' : 'none';
+            });
+        }
     }
 
     function syncFiltersToUrl() {
@@ -688,7 +741,35 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         });
     }
 
-    filterSelects.forEach(id => {
+    // Special handler for Department filter to update Job Title options
+    document.getElementById('filterDepartment').addEventListener('change', function () {
+        const selectedDept = this.value;
+        const jobTitleSelect = document.getElementById('filterJobTitle');
+        const optgroups = jobTitleSelect.querySelectorAll('optgroup');
+        
+        optgroups.forEach(group => {
+            if (selectedDept === '') {
+                // Show all optgroups
+                group.style.display = '';
+            } else {
+                // Show only matching department optgroup
+                group.style.display = group.label === selectedDept ? '' : 'none';
+            }
+        });
+        
+        // Clear job title filter when department changes
+        jobTitleSelect.value = '';
+        jobTitleSelect.classList.remove('active-filter');
+        
+        currentPage = 1;
+        this.classList.toggle('active-filter', this.value !== '');
+        syncFiltersToUrl();
+        renderTable();
+        updateFilterChips();
+    });
+
+    // Regular handlers for other filters
+    ['filterJobTitle', 'filterBranch', 'filterStatus'].forEach(id => {
         document.getElementById(id).addEventListener('change', function () {
             currentPage = 1;
             this.classList.toggle('active-filter', this.value !== '');
@@ -722,6 +803,16 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                 const select = document.getElementById(filterId);
                 select.value = '';
                 select.classList.remove('active-filter');
+                
+                // If removing Department filter, show all Job Title optgroups
+                if (filterId === 'filterDepartment') {
+                    const jobTitleSelect = document.getElementById('filterJobTitle');
+                    const optgroups = jobTitleSelect.querySelectorAll('optgroup');
+                    optgroups.forEach(group => {
+                        group.style.display = '';
+                    });
+                }
+                
                 currentPage = 1;
                 syncFiltersToUrl();
                 renderTable();
@@ -736,6 +827,14 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             el.value = '';
             el.classList.remove('active-filter');
         });
+        
+        // Show all job title optgroups again
+        const jobTitleSelect = document.getElementById('filterJobTitle');
+        const optgroups = jobTitleSelect.querySelectorAll('optgroup');
+        optgroups.forEach(group => {
+            group.style.display = '';
+        });
+        
         currentPage = 1;
         syncFiltersToUrl();
         renderTable();
@@ -814,9 +913,17 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         const endIdx = startIdx + ITEMS_PER_PAGE;
 
         // Paginate desktop rows
+        let visibleCount = 0;
         visibleRows.forEach((row, index) => {
             if (index >= startIdx && index < endIdx) {
                 row.style.display = "";
+                row.classList.remove('odd-row', 'even-row');
+                if (visibleCount % 2 === 0) {
+                    row.classList.add('odd-row');
+                } else {
+                    row.classList.add('even-row');
+                }
+                visibleCount++;
             } else {
                 row.style.display = "none";
             }

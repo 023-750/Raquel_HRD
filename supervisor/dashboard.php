@@ -5,7 +5,7 @@ checkRole(['HR Supervisor']);
 require_once '../includes/header.php';
 
 // Fetch stats
-$pending_validations = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE status = 'Pending Supervisor'")->fetch_assoc()['c'];
+$pending_validations = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE status = 'Pending HR Consolidation'")->fetch_assoc()['c'];
 
 $validated_month = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE endorsed_by = {$_SESSION['user_id']} AND MONTH(endorsed_date) = MONTH(CURRENT_DATE()) AND YEAR(endorsed_date) = YEAR(CURRENT_DATE())")->fetch_assoc()['c'];
 
@@ -19,7 +19,7 @@ $pending_result = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_na
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN users u ON ev.submitted_by = u.user_id
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
-    WHERE ev.status = 'Pending Supervisor'
+    WHERE ev.status = 'Pending HR Consolidation'
     ORDER BY ev.submitted_date DESC");
 while ($row = $pending_result->fetch_assoc()) {
     $pending_rows[] = $row;
@@ -354,7 +354,7 @@ $queue_employee_count = count($pending_groups);
                                     </div>
                                     <div class="status-meta d-none d-sm-block">
                                         <div class="fw-bold text-dark"><?php echo formatDate($row['submitted_date']); ?></div>
-                                        <div class="x-small">Pending Supervisor</div>
+                                        <div class="x-small">Pending Validation</div>
                                     </div>
                                     <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-primary btn-review">Review</a>
                                 </div>
@@ -375,7 +375,7 @@ $queue_employee_count = count($pending_groups);
                                             </div>
                                         </div>
                                         <div class="status-meta d-none d-sm-block">
-                                            <div class="fw-bold text-dark">Pending Supervisor</div>
+                                            <div class="fw-bold text-dark">Pending Validation</div>
                                             <div class="x-small">Click to expand</div>
                                         </div>
                                         <button type="button" class="btn btn-outline-primary btn-review" data-bs-toggle="collapse" data-bs-target="#<?php echo e($groupCollapseId); ?>" aria-expanded="false" onclick="event.stopPropagation();">

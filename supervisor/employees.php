@@ -358,7 +358,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                             <th>Branch</th>
                             <th>Status</th>
                             <th>Hire Date</th>
-                            <th>Actions</th>
+                            <th style="min-width: 100px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -392,16 +392,18 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                                     </td>
                                     <td data-label="Hire Date"><small><?php echo formatDate($emp['hire_date']); ?></small></td>
                                     <td data-label="Actions">
-                                        <a href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
-                                            class="btn btn-sm btn-outline-info" title="View Details">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
-                                            class="btn btn-sm btn-outline-primary employee-edit-link"
-                                            data-base-href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
-                                            title="Edit Employee">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
+                                        <div class="d-flex gap-1 align-items-center flex-nowrap">
+                                            <a href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                                class="btn btn-sm btn-outline-info" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                                class="btn btn-sm btn-outline-primary employee-edit-link"
+                                                data-base-href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                                title="Edit Employee">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
@@ -629,8 +631,20 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
         const endIdx = startIdx + ITEMS_PER_PAGE;
 
+        let visibleCount = 0;
         visibleRows.forEach((row, index) => {
-            row.style.display = (index >= startIdx && index < endIdx) ? "" : "none";
+            if (index >= startIdx && index < endIdx) {
+                row.style.display = "";
+                row.classList.remove('odd-row', 'even-row');
+                if (visibleCount % 2 === 0) {
+                    row.classList.add('odd-row');
+                } else {
+                    row.classList.add('even-row');
+                }
+                visibleCount++;
+            } else {
+                row.style.display = "none";
+            }
         });
 
         updatePaginationUI(visibleRows.length, totalPages);

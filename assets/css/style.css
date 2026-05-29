@@ -528,6 +528,45 @@ a {
     background: #f8fbff;
 }
 
+/* ---------- Custom Employee, Department & Position Table Zebra Striping & Button Alignment ---------- */
+.table tbody tr.odd-row td {
+    background-color: #f4f5f8 !important; /* Subtle professional gray */
+}
+
+.table tbody tr.even-row td {
+    background-color: #ffffff !important; /* Clean premium white */
+}
+
+.table tbody tr.odd-row:hover td,
+.table tbody tr.even-row:hover td {
+    background-color: #eef1f6 !important; /* Hover effect */
+}
+
+/* Fallback zebra striping for raw CSS — white first, then gray */
+.table tbody tr:nth-of-type(odd) td {
+    background-color: #ffffff !important;
+}
+
+.table tbody tr:nth-of-type(even) td {
+    background-color: #f4f5f8 !important;
+}
+
+.table tbody tr:hover td {
+    background-color: #eef1f6 !important;
+}
+
+/* Ensure actions column doesn't wrap and remains in a straight line */
+.table td[data-label="Actions"] {
+    white-space: nowrap !important;
+}
+
+.table td[data-label="Actions"] .d-flex {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
 /* ---------- Company ID Emphasis ---------- */
 .company-id-text {
     color: #294306 !important;
@@ -4300,4 +4339,17 @@ body.has-wizard-footer {
     min-width: 40px;
     text-align: right;
 }
+
+/* ============================================
+   Consistent Premium Total Rows Styling
+   ============================================ */
+.total-row td {
+    background: #fef3c7 !important;
+    font-weight: 800 !important;
+    border-top: 2px solid #fbbf24 !important;
+    border-bottom: 3px double #fbbf24 !important;
+    color: #92400e !important;
+    font-size: 0.88rem !important;
+}
+
 

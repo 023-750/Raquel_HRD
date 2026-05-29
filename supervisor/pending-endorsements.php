@@ -219,7 +219,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
             SET ev.status = 'Pending Manager',
                 ev.endorsed_by = ?,
                 ev.endorsed_date = NOW(),
-                ev.supervisor_comments = ?
+                ev.evaluator_comments = ?
             WHERE ev.evaluation_id = ?
               AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
               AND e.is_active = 1
@@ -246,7 +246,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
             SET ev.status = 'Returned',
                 ev.endorsed_by = ?,
                 ev.endorsed_date = NOW(),
-                ev.supervisor_comments = ?
+                ev.evaluator_comments = ?
             WHERE ev.evaluation_id = ?
               AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
               AND e.is_active = 1
@@ -406,12 +406,14 @@ $all_pending = supervisorPendingRows(
             ev.supervisor_confirmed_date,
             ev.supervisor_altered_scores,
             ev.sent_to_hr_date,
-            ev.status AS eval_status
+            ev.status AS eval_status,
+            dm.full_name AS dept_manager_endorsed_by_name
      FROM evaluations ev
      INNER JOIN employees e ON ev.employee_id = e.employee_id
      LEFT JOIN departments d ON e.department_id = d.department_id
      LEFT JOIN users u ON ev.submitted_by = u.user_id
      LEFT JOIN users sup ON ev.supervisor_confirmed_by = sup.user_id
+     LEFT JOIN users dm ON ev.dept_manager_endorsed_by = dm.user_id
      LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
      $pendingWhere
      ORDER BY 
@@ -1133,7 +1135,7 @@ foreach ($all_pending as $row):
                                         <td class="text-center text-primary fw-bold"><?php echo $k['weighted_score']; ?></td>
                                     </tr>
                                 <?php endwhile; ?>
-                                <tr class="bg-light fw-bold border-top">
+                                <tr class="total-row bg-light fw-bold border-top">
                                     <td class="ps-3">KRA Sub-total</td>
                                     <td class="text-center">100%</td>
                                     <td></td>
@@ -1187,7 +1189,7 @@ foreach ($all_pending as $row):
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
-                                <tr class="bg-light fw-bold border-top">
+                                <tr class="total-row bg-light fw-bold border-top">
                                     <td class="ps-3">Behavior Average</td>
                                     <td class="text-center text-primary"><?php echo $row['behavior_average']; ?></td>
                                 </tr>
@@ -1203,6 +1205,25 @@ foreach ($all_pending as $row):
                     <div class="p-3 bg-light rounded-3 mb-4 border-start border-4 border-primary">
                         <p class="mb-0 text-dark small" style="white-space: pre-wrap;"><?php echo e($row['staff_comments']); ?></p>
                     </div>
+                    <?php endif; ?>
+
+                    <!-- Department Level Comments -->
+                    <?php if (!empty($row['supervisor_comments']) || !empty($row['dept_manager_comments'])): ?>
+                    <div class="section-premium-label mb-3 mt-5">
+                        <i class="fas fa-sitemap"></i> Department-Level Feedback
+                    </div>
+                    <?php if (!empty($row['supervisor_comments'])): ?>
+                    <div class="p-3 bg-light rounded-3 mb-3 border-start border-4 border-warning">
+                        <div class="fw-bold small text-warning mb-1">Department Supervisor Comments (<?php echo e($row['supervisor_confirmed_by_name'] ?? 'Immediate Head'); ?>):</div>
+                        <p class="mb-0 text-dark small" style="white-space: pre-wrap;"><?php echo e($row['supervisor_comments']); ?></p>
+                    </div>
+                    <?php endif; ?>
+                    <?php if (!empty($row['dept_manager_comments'])): ?>
+                    <div class="p-3 bg-light rounded-3 mb-4 border-start border-4 border-info">
+                        <div class="fw-bold small text-info mb-1">Department Manager Comments (<?php echo e($row['dept_manager_endorsed_by_name'] ?? 'Dept Manager'); ?>):</div>
+                        <p class="mb-0 text-dark small" style="white-space: pre-wrap;"><?php echo e($row['dept_manager_comments']); ?></p>
+                    </div>
+                    <?php endif; ?>
                     <?php endif; ?>
 
                     <!-- Career Growth -->

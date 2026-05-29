@@ -311,7 +311,7 @@ foreach ($all_history as $row):
                                         <td class="text-center text-primary fw-bold weighted-score-display"><?php echo $k['weighted_score']; ?></td>
                                     </tr>
                                 <?php endwhile; ?>
-                                <tr class="bg-light fw-bold border-top">
+                                <tr class="total-row bg-light fw-bold border-top">
                                     <td class="ps-3">KRA Sub-total</td>
                                     <td class="text-center">100%</td>
                                     <td></td>
@@ -376,7 +376,7 @@ foreach ($all_history as $row):
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
-                                <tr class="bg-light fw-bold border-top">
+                                <tr class="total-row bg-light fw-bold border-top">
                                     <td class="ps-3">Behavior Average</td>
                                     <td class="text-center text-primary"><?php echo $row['behavior_average']; ?></td>
                                 </tr>
@@ -440,21 +440,33 @@ foreach ($all_history as $row):
                         <i class="fas fa-comments"></i> V. Comments & Decisions
                     </div>
                     <div class="row">
-                        <?php if($row['staff_comments']): ?>
-                        <div class="col-sm-4 mb-3">
+                        <?php if(!empty($row['staff_comments'])): ?>
+                        <div class="col-md-6 mb-3">
                             <strong class="x-small text-uppercase text-muted d-block mb-2">Employee Remarks</strong>
                             <div class="p-3 bg-light rounded-3 border italic small" style="min-height:80px;"><?php echo nl2br(e($row['staff_comments'])); ?></div>
                         </div>
                         <?php endif; ?>
-                        <?php if($row['supervisor_comments']): ?>
-                        <div class="col-sm-4 mb-3">
-                            <strong class="x-small text-uppercase text-muted d-block mb-2">Supervisor Feedback</strong>
+                        <?php if(!empty($row['supervisor_comments'])): ?>
+                        <div class="col-md-6 mb-3">
+                            <strong class="x-small text-uppercase text-muted d-block mb-2">Department Supervisor Feedback</strong>
                             <div class="p-3 bg-light rounded-3 border border-primary italic small" style="min-height:80px;"><?php echo nl2br(e($row['supervisor_comments'])); ?></div>
                         </div>
                         <?php endif; ?>
-                        <?php if($row['manager_comments']): ?>
-                        <div class="col-sm-4 mb-3">
-                            <strong class="x-small text-uppercase text-muted d-block mb-2">Manager Final Remarks</strong>
+                        <?php if(!empty($row['dept_manager_comments'])): ?>
+                        <div class="col-md-6 mb-3">
+                            <strong class="x-small text-uppercase text-muted d-block mb-2">Department Manager Endorsement</strong>
+                            <div class="p-3 bg-light rounded-3 border border-info italic small" style="min-height:80px;"><?php echo nl2br(e($row['dept_manager_comments'])); ?></div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if(!empty($row['evaluator_comments'])): ?>
+                        <div class="col-md-6 mb-3">
+                            <strong class="x-small text-uppercase text-muted d-block mb-2">HR Supervisor Remarks</strong>
+                            <div class="p-3 bg-light rounded-3 border border-success italic small" style="min-height:80px;"><?php echo nl2br(e($row['evaluator_comments'])); ?></div>
+                        </div>
+                        <?php endif; ?>
+                        <?php if(!empty($row['manager_comments'])): ?>
+                        <div class="col-md-6 mb-3">
+                            <strong class="x-small text-uppercase text-muted d-block mb-2">HR Manager Final Remarks</strong>
                             <div class="p-3 bg-light rounded-3 border border-warning italic small" style="min-height:80px;"><?php echo nl2br(e($row['manager_comments'])); ?></div>
                         </div>
                         <?php endif; ?>
@@ -590,6 +602,7 @@ function renderTable() {
 
     updatePaginationUI(visibleRows.length, totalPages);
     handleNoResults(visibleRows.length, filterInput, tbody);
+    applyZebraStriping('#evalTable');
 }
 
 function updatePaginationUI(totalItems, totalPages) {

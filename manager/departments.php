@@ -185,7 +185,7 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
                                 style="font-size:0.8rem;"></i></th>
                         <th style="cursor:pointer;" onclick="sortTable(4)">Created <i
                                 class="fas fa-sort text-muted ms-1" style="font-size:0.8rem;"></i></th>
-                        <th>Actions</th>
+                        <th style="min-width: 120px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -229,16 +229,18 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
                                         <?php echo formatDate($d['created_at']); ?>
                                     </small></td>
                                 <td data-label="Actions">
-                                    <button class="btn btn-sm btn-outline-primary" title="Edit"
-                                        onclick="openEditModal(<?php echo $d['department_id']; ?>, '<?php echo e(addslashes($d['department_name'])); ?>', '<?php echo e(addslashes($d['description'] ?? '')); ?>', <?php echo $d['is_active']; ?>)"
-                                        data-bs-toggle="modal" data-bs-target="#editDeptModal">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" title="Delete"
-                                        onclick="setDeleteTarget(<?php echo $d['department_id']; ?>, '<?php echo e(addslashes($d['department_name'])); ?>', <?php echo $d['employee_count']; ?>)"
-                                        data-bs-toggle="modal" data-bs-target="#deleteDeptModal">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <div class="d-flex gap-1 align-items-center flex-nowrap">
+                                        <button class="btn btn-sm btn-outline-primary" title="Edit"
+                                            onclick="openEditModal(<?php echo $d['department_id']; ?>, '<?php echo e(addslashes($d['department_name'])); ?>', '<?php echo e(addslashes($d['description'] ?? '')); ?>', <?php echo $d['is_active']; ?>)"
+                                            data-bs-toggle="modal" data-bs-target="#editDeptModal">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" title="Delete"
+                                            onclick="setDeleteTarget(<?php echo $d['department_id']; ?>, '<?php echo e(addslashes($d['department_name'])); ?>', <?php echo $d['employee_count']; ?>)"
+                                            data-bs-toggle="modal" data-bs-target="#deleteDeptModal">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
@@ -418,6 +420,9 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
             let text = row.innerText.toLowerCase();
             row.style.display = text.includes(filter) ? '' : 'none';
         });
+
+        // Re-apply zebra striping after filtering
+        applyZebraStriping('#deptTable');
 
         // Filter mobile card items
         let cards = document.querySelectorAll('.mobile-list-view .student-item');

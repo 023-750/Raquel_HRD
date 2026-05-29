@@ -501,6 +501,14 @@ function getStatusBadgeClass($status)
 
             return 'bg-primary';
 
+        case 'Pending Dept Supervisor':
+
+            return 'bg-warning text-dark';
+
+        case 'Pending Dept Manager':
+
+            return 'bg-info text-dark';
+
         case 'Pending Supervisor':
 
             return 'bg-warning text-dark';
@@ -1339,6 +1347,16 @@ function ensureEvaluationWorkflowSchema($conn)
 
             'manager_rating' => "ALTER TABLE evaluations ADD COLUMN manager_rating DECIMAL(5,2) NULL AFTER manager_comments",
 
+            'dept_supervisor_confirmed_by' => "ALTER TABLE evaluations ADD COLUMN dept_supervisor_confirmed_by INT NULL AFTER supervisor_confirmed_date",
+
+            'dept_supervisor_confirmed_date' => "ALTER TABLE evaluations ADD COLUMN dept_supervisor_confirmed_date DATETIME NULL AFTER dept_supervisor_confirmed_by",
+
+            'dept_manager_endorsed_by' => "ALTER TABLE evaluations ADD COLUMN dept_manager_endorsed_by INT NULL AFTER dept_supervisor_confirmed_date",
+
+            'dept_manager_endorsed_date' => "ALTER TABLE evaluations ADD COLUMN dept_manager_endorsed_date DATETIME NULL AFTER dept_manager_endorsed_by",
+
+            'dept_manager_comments' => "ALTER TABLE evaluations ADD COLUMN dept_manager_comments TEXT NULL AFTER supervisor_comments",
+
         ];
 
 
@@ -1358,6 +1376,8 @@ function ensureEvaluationWorkflowSchema($conn)
         $required_statuses = [
             'Draft',
             'Pending Self-Rating',
+            'Pending Dept Supervisor',
+            'Pending Dept Manager',
             'Pending Supervisor',
             'Pending HR Consolidation',
             'Pending Manager',
@@ -1373,6 +1393,8 @@ function ensureEvaluationWorkflowSchema($conn)
                 MODIFY COLUMN status ENUM(
                     'Draft',
                     'Pending Self-Rating',
+                    'Pending Dept Supervisor',
+                    'Pending Dept Manager',
                     'Pending Supervisor',
                     'Pending HR Consolidation',
                     'Pending Manager',
@@ -1669,5 +1691,87 @@ function recalculateEvaluationScores($conn, $evaluation_id)
     $stmt->close();
 
     return $result;
+}
+
+/**
+ * Get employee's department manager (supervisor of supervisor) based on reports_to
+ */
+function getDeptManagerOfEmployee($conn, $employee_id)
+{
+    $employee_id = (int)$employee_id;
+    // Get immediate supervisor (reports_to)
+    $stmt = $conn->prepare("SELECT reports_to FROM employees WHERE employee_id = ? LIMIT 1");
+    $stmt->bind_param("i", $employee_id);
+    $stmt->execute();
+    $res = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    
+    $supervisor_id = (int)($res['reports_to'] ?? 0);
+    if (!$supervisor_id) {
+        return null;
+    }
+    
+    // Get supervisor's supervisor -> Dept Manager
+    return getEmployeeSupervisor($conn, $supervisor_id);
+}
+
+/**
+ * Check if user is department manager of specific employee (supervisor's supervisor)
+ */
+function isDeptManagerOfEmployee($conn, $manager_user_id, $employee_id)
+{
+    $manager_user_id = (int)$manager_user_id;
+    $employee_id = (int)$employee_id;
+    
+    // Get manager's employee_id
+    $stmt = $conn->prepare("SELECT employee_id FROM users WHERE user_id = ? LIMIT 1");
+    $stmt->bind_param("i", $manager_user_id);
+    $stmt->execute();
+    $res = $stmt->get_result()->fetch_assoc();
+    $manager_employee_id = (int)($res['employee_id'] ?? 0);
+    $stmt->close();
+    
+    if (!$manager_employee_id) {
+        return false;
+    }
+    
+    // Check if employee reports to a supervisor who reports to this manager
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as count 
+        FROM employees e
+        JOIN employees s ON e.reports_to = s.employee_id
+        WHERE e.employee_id = ? AND s.reports_to = ? AND e.is_active = 1 AND s.is_active = 1
+    ");
+    $stmt->bind_param("ii", $employee_id, $manager_employee_id);
+    $stmt->execute();
+    $count = (int)($stmt->get_result()->fetch_assoc()['count'] ?? 0);
+    $stmt->close();
+    
+    return $count > 0;
+}
+
+/**
+ * Check if employee is a department manager (has subordinate supervisors who themselves have subordinates)
+ */
+function isDeptManagerRole($conn, $employee_id)
+{
+    $employee_id = (int)$employee_id;
+    if (!$employee_id) {
+        return false;
+    }
+    
+    // Check if there is any active employee whose supervisor reports to this employee
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as count
+        FROM employees e
+        JOIN employees s ON e.reports_to = s.employee_id
+        WHERE s.reports_to = ? AND e.is_active = 1 AND s.is_active = 1
+    ");
+    $stmt->bind_param("i", $employee_id);
+    $stmt->execute();
+    $count = (int)($stmt->get_result()->fetch_assoc()['count'] ?? 0);
+    $stmt->close();
+    
+    return $count > 0;
 }
 ?>

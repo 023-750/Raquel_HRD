@@ -325,7 +325,7 @@ foreach ($all_history as $row):
                                         </tr>
                                     <?php endwhile;
                                 endif; ?>
-                                <tr class="bg-light fw-bold border-top">
+                                <tr class="total-row bg-light fw-bold border-top">
                                     <td class="ps-3">KRA Sub-total</td>
                                     <td class="text-center">100%</td>
                                     <td></td>
@@ -388,7 +388,7 @@ foreach ($all_history as $row):
                                         </tr>
                                     <?php endwhile;
                                 endif; ?>
-                                <tr class="bg-light fw-bold border-top">
+                                <tr class="total-row bg-light fw-bold border-top">
                                     <td class="ps-3">Behavior Average</td>
                                     <td class="text-center text-primary"><?php echo $row['behavior_average']; ?></td>
                                 </tr>
@@ -462,6 +462,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const text = row.textContent.toLowerCase();
             row.style.display = text.includes(filter) ? '' : 'none';
         });
+        applyZebraStriping('#historyTable');
     });
 });
 
@@ -481,6 +482,7 @@ function filterHistory(status, btn) {
             row.style.display = 'none';
         }
     });
+    applyZebraStriping('#historyTable');
 }
 </script>
 

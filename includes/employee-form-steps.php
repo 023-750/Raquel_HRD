@@ -39,7 +39,7 @@ $rankCategories = $rankCategories ?? [
                 <div id="profilePreviewContainer" class="text-center"
                     style="<?php echo !empty($e['profile_picture']) ? '' : 'display:none;'; ?>">
                     <img id="profilePreview"
-                        src="<?php echo !empty($e['profile_picture']) ? BASE_URL . '/assets/img/employees/' . e($e['profile_picture']) : ''; ?>"
+                        src="<?php echo !empty($e['profile_picture']) ? getEmployeeAvatar($e['profile_picture']) : ''; ?>"
                         class="rounded-circle img-thumbnail shadow-sm"
                         style="width:100px;height:100px;object-fit:cover;">
                     <div class="small text-muted mt-1">Current/New</div>

@@ -12,13 +12,17 @@ if (!$id)
 $query = "SELECT ev.*, 
     CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, d.department_name,
     u.full_name as submitted_by_name, u2.full_name as endorsed_by_name, u3.full_name as approved_by_name,
-    et.template_name
+    et.template_name,
+    ds.full_name AS dept_supervisor_confirmed_by_name,
+    dm.full_name AS dept_manager_endorsed_by_name
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN departments d ON e.department_id = d.department_id
     LEFT JOIN users u ON ev.submitted_by = u.user_id
     LEFT JOIN users u2 ON ev.endorsed_by = u2.user_id
     LEFT JOIN users u3 ON ev.approved_by = u3.user_id
+    LEFT JOIN users ds ON ev.dept_supervisor_confirmed_by = ds.user_id
+    LEFT JOIN users dm ON ev.dept_manager_endorsed_by = dm.user_id
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
     WHERE ev.evaluation_id = $id";
 
@@ -572,10 +576,43 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
       </div>
     </div>
 
-    <!-- Evaluator's Comments -->
+    <!-- Department Supervisor's Comments -->
+    <?php if (!empty($row['supervisor_comments'])): ?>
+    <div class="comment-box">
+      <div class="label">Immediate Supervisor's Comments:</div>
+      <div class="content"><?php echo nl2br(e($row['supervisor_comments'])); ?></div>
+      <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
+        <div
+          style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
+          <?php echo strtoupper(e($row['dept_supervisor_confirmed_by_name'] ?? 'IMMEDIATE HEAD')); ?>
+        </div>
+        <br>
+        <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Department Manager's Comments -->
+    <?php if (!empty($row['dept_manager_comments'])): ?>
+    <div class="comment-box">
+      <div class="label">Department Manager's Comments:</div>
+      <div class="content"><?php echo nl2br(e($row['dept_manager_comments'])); ?></div>
+      <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
+        <div
+          style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
+          <?php echo strtoupper(e($row['dept_manager_endorsed_by_name'] ?? 'DEPT MANAGER')); ?>
+        </div>
+        <br>
+        <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
+      </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Evaluator's Comments (HR Supervisor) -->
+    <?php if (!empty($row['evaluator_comments'])): ?>
     <div class="comment-box">
       <div class="label">HR Supervisor's Comments:</div>
-      <div class="content"><?php echo nl2br(e($row['supervisor_comments'])); ?></div>
+      <div class="content"><?php echo nl2br(e($row['evaluator_comments'])); ?></div>
       <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
         <div
           style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
@@ -585,6 +622,7 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
         <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
       </div>
     </div>
+    <?php endif; ?>
 
     <!-- HR Manager's Comments -->
     <div class="comment-box">

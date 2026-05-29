@@ -454,6 +454,7 @@ function supervisorCareerMovementStatusClass($status)
                 rows.forEach(row => {
                     row.style.display = row.textContent.toLowerCase().includes(term) ? '' : 'none';
                 });
+                applyZebraStriping('#movementTable');
             });
         }
     });

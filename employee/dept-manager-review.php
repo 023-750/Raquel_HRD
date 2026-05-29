@@ -1,30 +1,28 @@
 <?php
 /**
- * Employee Portal - Supervisor Confirmation of Self-Ratings
- * Immediate Head/Manager confirms or alters self-ratings before sending to HRD
+ * Employee Portal - Department Manager Review
+ * Allows Department Managers to review, alter scores, endorse, or return subordinate evaluations.
  */
-$page_title = 'Confirm Self-Rating';
+$page_title = 'Department Manager Review';
 require_once '../includes/session-check.php';
 checkRole(['Employee']);
 require_once '../includes/functions.php';
 
 $user_id = (int)($_SESSION['user_id'] ?? 0);
-$supervisor_employee_id = (int)($_SESSION['employee_id'] ?? 0);
+$manager_employee_id = (int)($_SESSION['employee_id'] ?? 0);
+
+// Check if user is a department manager
+$is_dept_manager = isDeptManagerRole($conn, $manager_employee_id);
 
 // Ensure 360-degree columns exist
+ensureEvaluationWorkflowSchema($conn);
 ensure360DegreeEvaluationColumns($conn);
 
 // Get evaluation ID from URL
 $evaluation_id = (int)($_GET['evaluation_id'] ?? 0);
 
-// Check if user has subordinates (is a supervisor)
-$is_supervisor = hasEmployeeSubordinates($conn, $supervisor_employee_id);
-
-// Fetch the evaluation with employee details
 $evaluation = null;
-$employee = null;
 $scores = [];
-$template = null;
 $criteria_kra = [];
 $criteria_behavior = [];
 
@@ -33,39 +31,29 @@ if ($evaluation_id > 0) {
         SELECT e.*, emp.employee_id, emp.employee_code, emp.first_name, emp.last_name, emp.job_title,
                emp.department_id, emp.branch_id, emp.reports_to,
                d.department_name, b.branch_name,
-               t.template_name, t.kra_weight, t.behavior_weight
+               t.template_name, t.kra_weight, t.behavior_weight,
+               su.full_name AS supervisor_name
         FROM evaluations e
         JOIN employees emp ON e.employee_id = emp.employee_id
         LEFT JOIN departments d ON emp.department_id = d.department_id
         LEFT JOIN branches b ON emp.branch_id = b.branch_id
         LEFT JOIN evaluation_templates t ON e.template_id = t.template_id
-        WHERE e.evaluation_id = ? AND (
-            e.status IN ('Pending Dept Supervisor', 'Pending Supervisor', 'Supervisor Confirmed')
-            OR e.dept_supervisor_confirmed_by = ?
-            OR e.supervisor_confirmed_by = ?
-        )
+        LEFT JOIN users su ON e.dept_supervisor_confirmed_by = su.user_id
+        WHERE e.evaluation_id = ? AND e.status IN ('Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Supervisor Confirmed', 'Approved')
         LIMIT 1
     ");
-    $eval_stmt->bind_param("iii", $evaluation_id, $user_id, $user_id);
+    $eval_stmt->bind_param("i", $evaluation_id);
     $eval_stmt->execute();
     $evaluation = $eval_stmt->get_result()->fetch_assoc();
     $eval_stmt->close();
-    
-    $is_readonly = false;
+
     if ($evaluation) {
-        if (!in_array($evaluation['status'], ['Pending Dept Supervisor', 'Pending Supervisor'])) {
-            $is_readonly = true;
-        }
-        
-        // Check if this supervisor is the employee's immediate head
-        $is_authorized = isSupervisorOfEmployee($conn, $user_id, (int)$evaluation['employee_id']);
-        
+        // Authorize: Check if this manager is the employee's department manager
+        $is_authorized = isDeptManagerOfEmployee($conn, $user_id, (int)$evaluation['employee_id']);
         if (!$is_authorized) {
-            redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'You are not authorized to confirm this rating.');
+            redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'You are not authorized to review this evaluation.');
         }
-        
-        $dept_manager = getDeptManagerOfEmployee($conn, (int)$evaluation['employee_id']);
-        
+
         // Fetch scores
         $scores_stmt = $conn->prepare("
             SELECT es.*, ec.criterion_name, ec.description, ec.weight, ec.section
@@ -89,17 +77,16 @@ if ($evaluation_id > 0) {
     }
 }
 
-// Handle form submission (confirmation or sending to HR)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$is_readonly) {
+// Handle Form Submission
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager) {
     $action = $_POST['confirm_action'] ?? '';
-    $supervisor_comments = trim($_POST['supervisor_comments'] ?? '');
-    $supervisor_altered = false;
-    
-    if ($action === 'confirm_and_send') {
-        // Supervisor can alter scores if needed
+    $dept_manager_comments = trim($_POST['dept_manager_comments'] ?? '');
+
+    if ($action === 'endorse') {
         $kra_scores = $_POST['kra_scores'] ?? [];
         $beh_scores = $_POST['beh_scores'] ?? [];
-        
+        $manager_altered = false;
+
         // Combine scores manually to preserve criterion_id numeric keys (array_merge reindexes numeric keys)
         $all_scores = [];
         foreach ($kra_scores as $cid => $rating) {
@@ -109,18 +96,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
             $all_scores[(int)$cid] = (float)$rating;
         }
 
-        // Check if scores were altered
+        // Apply any score changes
         foreach ($all_scores as $criterion_id => $new_rating) {
             $original_rating = (float)($scores[$criterion_id]['score_value'] ?? 0);
-            
+
             if (abs($new_rating - $original_rating) > 0.01) {
-                $supervisor_altered = true;
-                // Update the score
+                $manager_altered = true;
                 $update_score = $conn->prepare("
-                    UPDATE evaluation_scores 
-                    SET score_value = ?, weighted_score = ?,
-                        supervisor_override_score = NULL, supervisor_override_by = NULL, supervisor_override_at = NULL,
-                        manager_override_score = NULL, manager_override_by = NULL, manager_override_at = NULL
+                    UPDATE evaluation_scores
+                    SET score_value = ?, weighted_score = ?
                     WHERE evaluation_id = ? AND criterion_id = ?
                 ");
                 $weight = (float)($scores[$criterion_id]['weight'] ?? 0);
@@ -131,60 +115,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
                 $update_score->close();
             }
         }
-        
-        // Recalculate totals if altered
-        $new_total_score = (float)$evaluation['total_score'];
-        $new_kra_subtotal = (float)$evaluation['kra_subtotal'];
+
+        // Recalculate totals if manager altered scores
+        $new_total_score      = (float)$evaluation['total_score'];
+        $new_kra_subtotal     = (float)$evaluation['kra_subtotal'];
         $new_behavior_average = (float)$evaluation['behavior_average'];
         $new_performance_level = $evaluation['performance_level'];
-        $new_supervisor_rating = null;
-        
-        if ($supervisor_altered) {
-            // Recalculate KRA
+
+        if ($manager_altered) {
             $kra_subtotal = 0;
             foreach ($criteria_kra as $criterion) {
-                $cid = (int)$criterion['criterion_id'];
+                $cid    = (int)$criterion['criterion_id'];
                 $rating = (float)($kra_scores[$cid] ?? $criterion['score_value'] ?? 0);
                 $weight = (float)$criterion['weight'];
-                $weighted = round(($weight / 100) * $rating, 2);
-                $kra_subtotal += $weighted;
+                $kra_subtotal += round(($weight / 100) * $rating, 4);
             }
             $new_kra_subtotal = round($kra_subtotal, 2);
-            
-            // Recalculate Behavior
-            $beh_total = 0;
-            $beh_count = 0;
+
+            $beh_total = 0; $beh_count = 0;
             foreach ($criteria_behavior as $criterion) {
-                $cid = (int)$criterion['criterion_id'];
+                $cid    = (int)$criterion['criterion_id'];
                 $rating = (float)($beh_scores[$cid] ?? $criterion['score_value'] ?? 0);
                 $beh_total += $rating;
                 $beh_count++;
             }
             $new_behavior_average = $beh_count > 0 ? round($beh_total / $beh_count, 2) : 0;
-            
-            // Calculate new total
+
             $kra_weight_pct = (float)($evaluation['kra_weight'] ?? 80);
             $beh_weight_pct = (float)($evaluation['behavior_weight'] ?? 20);
             $new_total_score = calculateEvalTotal($new_kra_subtotal, $new_behavior_average, $kra_weight_pct, $beh_weight_pct);
             $new_performance_level = getPerformanceLevel($new_total_score);
-            $new_supervisor_rating = $new_total_score;
         }
-        
-        // Check if employee has a department manager
-        $dept_manager = getDeptManagerOfEmployee($conn, (int)$evaluation['employee_id']);
-        $next_status = $dept_manager ? 'Pending Dept Manager' : 'Pending HR Consolidation';
 
-        // Update evaluation status
+        // Update evaluation
         $update = $conn->prepare("
-            UPDATE evaluations 
-            SET status = ?,
-                dept_supervisor_confirmed_by = ?,
-                dept_supervisor_confirmed_date = NOW(),
-                supervisor_confirmed_by = ?,
-                supervisor_confirmed_date = NOW(),
-                supervisor_altered_scores = ?,
-                supervisor_comments = ?,
-                supervisor_rating = ?,
+            UPDATE evaluations
+            SET status = 'Pending HR Consolidation',
+                dept_manager_endorsed_by = ?,
+                dept_manager_endorsed_date = NOW(),
+                dept_manager_comments = ?,
                 sent_to_hr_date = NOW(),
                 sent_to_hr_by = ?,
                 total_score = ?,
@@ -193,15 +162,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
                 performance_level = ?
             WHERE evaluation_id = ?
         ");
-        $altered_int = $supervisor_altered ? 1 : 0;
         $update->bind_param(
-            "siiisidddsii",
-            $next_status,
+            "isiiddsi",
             $user_id,
-            $user_id,
-            $altered_int,
-            $supervisor_comments,
-            $new_supervisor_rating,
+            $dept_manager_comments,
             $user_id,
             $new_total_score,
             $new_kra_subtotal,
@@ -211,92 +175,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         );
         $update->execute();
         $update->close();
-        
-        $emp_name = $evaluation['first_name'] . ' ' . $evaluation['last_name'];
-        $supervisor_name = $_SESSION['full_name'] ?? 'Supervisor';
 
-        if ($next_status === 'Pending Dept Manager') {
-            // Notify Dept Manager
+        // Notify HR
+        $hr_users = $conn->query("SELECT user_id FROM users WHERE role IN ('HR Supervisor', 'HR Manager') AND is_active = 1");
+        $emp_name    = $evaluation['first_name'] . ' ' . $evaluation['last_name'];
+        $manager_name = $_SESSION['full_name'] ?? 'Department Manager';
+        while ($hr = $hr_users->fetch_assoc()) {
             createNotification(
                 $conn,
-                (int)$dept_manager['user_id'],
-                'Evaluation Pending Endorsement',
-                $supervisor_name . ' confirmed self-rating for ' . $emp_name . ' and requires your endorsement.',
-                BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $evaluation_id
+                (int)$hr['user_id'],
+                'Evaluation Endorsed by Dept Manager',
+                $manager_name . ' endorsed evaluation for ' . $emp_name . ($manager_altered ? ' (with score adjustments)' : '') . ' — forwarded to HRD.',
+                BASE_URL . '/supervisor/pending-endorsements.php'
             );
-        } else {
-            // Notify HR Supervisor and HR Manager
-            $hr_users = $conn->query("SELECT user_id FROM users WHERE role IN ('HR Supervisor', 'HR Manager') AND is_active = 1");
-            while ($hr = $hr_users->fetch_assoc()) {
-                createNotification(
-                    $conn,
-                    (int)$hr['user_id'],
-                    'Rating Ready for Consolidation',
-                    $supervisor_name . ' confirmed self-rating for ' . $emp_name . ($supervisor_altered ? ' (with alterations)' : ''),
-                    BASE_URL . '/supervisor/pending-endorsements.php'
-                );
-            }
         }
-        
+
         // Notify employee
         $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . (int)$evaluation['employee_id'] . " LIMIT 1")->fetch_assoc();
         if ($emp_user) {
-            $msg = ($next_status === 'Pending Dept Manager') 
-                ? 'Your supervisor has confirmed your self-rating and forwarded it to the Department Manager.'
-                : 'Your supervisor has confirmed your self-rating and sent it to HRD.';
             createNotification(
                 $conn,
                 (int)$emp_user['user_id'],
-                'Self-Rating Confirmed',
-                $msg,
+                'Self-Rating Endorsed',
+                'Your self-rating has been endorsed by your Department Manager and sent to HRD.',
                 BASE_URL . '/employee/self-rating.php'
             );
         }
-        
-        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Confirmed self-rating' . ($supervisor_altered ? ' with alterations' : '') . '. Status set to ' . $next_status);
-        
-        $success_msg = ($next_status === 'Pending Dept Manager') 
-            ? 'Self-rating confirmed and forwarded to Department Manager successfully.'
-            : 'Self-rating confirmed and sent to HRD successfully.';
-        redirectWith(BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id, 'success', $success_msg);
+
+        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Department Manager endorsed evaluation' . ($manager_altered ? ' with score adjustments' : '') . '. Status: Pending HR Consolidation.');
+        redirectWith(BASE_URL . '/employee/dept-manager-review.php', 'success', 'Evaluation endorsed and sent to HRD successfully.');
+
+    } elseif ($action === 'return') {
+        if (empty($dept_manager_comments)) {
+            redirectWith(BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $evaluation_id, 'danger', 'Comments are required when returning an evaluation.');
+        }
+
+        $update = $conn->prepare("
+            UPDATE evaluations
+            SET status = 'Returned',
+                dept_manager_comments = ?
+            WHERE evaluation_id = ?
+        ");
+        $update->bind_param("si", $dept_manager_comments, $evaluation_id);
+        $update->execute();
+        $update->close();
+
+        $emp_name = $evaluation['first_name'] . ' ' . $evaluation['last_name'];
+
+        $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . (int)$evaluation['employee_id'] . " LIMIT 1")->fetch_assoc();
+        if ($emp_user) {
+            createNotification(
+                $conn,
+                (int)$emp_user['user_id'],
+                'Evaluation Returned by Manager',
+                'Your self-rating has been returned by your Department Manager: ' . $dept_manager_comments,
+                BASE_URL . '/employee/self-rating.php?edit=' . $evaluation_id
+            );
+        }
+
+        if ($evaluation['dept_supervisor_confirmed_by']) {
+            createNotification(
+                $conn,
+                (int)$evaluation['dept_supervisor_confirmed_by'],
+                'Subordinate Evaluation Returned',
+                'Evaluation for ' . $emp_name . ' has been returned by the Department Manager: ' . $dept_manager_comments,
+                BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id
+            );
+        }
+
+        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Department Manager returned evaluation.');
+        redirectWith(BASE_URL . '/employee/dept-manager-review.php', 'warning', 'Evaluation returned for revision.');
     }
 }
 
-// Fetch pending confirmations for this supervisor
-$pending_confirmations = [];
-$confirmation_history = [];
-if ($is_supervisor) {
+// Fetch pending reviews for this department manager
+$pending_reviews = [];
+if ($is_dept_manager) {
     $pending_stmt = $conn->prepare("
         SELECT e.*, emp.first_name, emp.last_name, emp.job_title, emp.employee_code,
                t.template_name
         FROM evaluations e
         JOIN employees emp ON e.employee_id = emp.employee_id
+        JOIN employees sup ON emp.reports_to = sup.employee_id
         LEFT JOIN evaluation_templates t ON e.template_id = t.template_id
-        WHERE e.status IN ('Pending Dept Supervisor', 'Pending Supervisor') AND emp.reports_to = ?
+        WHERE e.status = 'Pending Dept Manager' AND sup.reports_to = ?
         ORDER BY e.submitted_date DESC
     ");
-    $pending_stmt->bind_param("i", $supervisor_employee_id);
+    $pending_stmt->bind_param("i", $manager_employee_id);
     $pending_stmt->execute();
-    $pending_confirmations = $pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $pending_reviews = $pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $pending_stmt->close();
-
-    // Fetch confirmation history where supervisor had historically confirmed
-    $history_stmt = $conn->prepare("
-        SELECT e.*, emp.first_name, emp.last_name, emp.job_title, emp.employee_code,
-               t.template_name
-        FROM evaluations e
-        JOIN employees emp ON e.employee_id = emp.employee_id
-        LEFT JOIN evaluation_templates t ON e.template_id = t.template_id
-        WHERE (e.dept_supervisor_confirmed_by = ? OR e.supervisor_confirmed_by = ?)
-        ORDER BY COALESCE(e.dept_supervisor_confirmed_date, e.supervisor_confirmed_date) DESC
-    ");
-    $history_stmt->bind_param("ii", $user_id, $user_id);
-    $history_stmt->execute();
-    $confirmation_history = $history_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $history_stmt->close();
 }
 
-// Pre-compute PHP-side KRA total and behavior average for the "original" summary card
+// Pre-compute PHP-side KRA total and behavior average
 $orig_kra_total = 0;
 foreach ($criteria_kra as $c) {
     $orig_kra_total += round(($c['weight'] / 100) * (float)$c['score_value'], 4);
@@ -318,73 +289,67 @@ require_once '../includes/header.php';
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-0 gap-4">
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">Employee Portal</div>
-            <h2 class="text-white fw-bold mb-1 mt-1">Confirm Self-Rating</h2>
+            <h2 class="text-white fw-bold mb-1 mt-1">Department Manager Review</h2>
             <p class="mb-0 text-white-50 small">
-                <i class="fas fa-check-double me-1"></i>Review and confirm self-ratings from your team members
+                <i class="fas fa-clipboard-check me-1"></i>Review and endorse evaluations from your department's teams
             </p>
         </div>
     </div>
 </div>
 
-<?php if (!$is_supervisor): ?>
-    <!-- Not a supervisor - informational message -->
+<?php if (!$is_dept_manager): ?>
     <div class="content-card fadeup-1">
         <div class="card-body text-center py-5">
             <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
-            <h5 class="text-muted">Supervisor Access Only</h5>
+            <h5 class="text-muted">Department Manager Access Only</h5>
             <p class="text-muted mb-0">
-                This feature is available for Immediate Heads and Department Managers only.<br>
+                This page is available only to Department Managers with subordinates who are supervisors.<br>
                 If you believe you should have access, please contact HRD.
             </p>
         </div>
     </div>
 <?php elseif (!$evaluation): ?>
-    <!-- List of pending confirmations -->
+    <!-- List of pending endorsements -->
     <div class="content-card fadeup-1">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Pending Confirmations</h5>
-            <?php if (!empty($pending_confirmations)): ?>
-                <span class="badge bg-warning text-dark"><?php echo count($pending_confirmations); ?> pending</span>
-            <?php endif; ?>
+        <div class="card-header">
+            <h5><i class="fas fa-clipboard-check me-2"></i>Pending Endorsements</h5>
         </div>
         <div class="card-body p-0">
-            <?php if (empty($pending_confirmations)): ?>
+            <?php if (empty($pending_reviews)): ?>
                 <div class="text-center py-5 text-muted">
                     <i class="fas fa-check-circle fa-3x mb-3"></i>
-                    <p class="mb-0">No pending self-ratings to confirm.</p>
-                    <div class="small mt-1">All caught up! Check the history below for past confirmations.</div>
+                    <p>No pending evaluations to endorse.</p>
                 </div>
             <?php else: ?>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead class="table-light">
+                    <table class="table table-hover mb-0">
+                        <thead>
                             <tr>
-                                <th class="ps-3">Employee</th>
+                                <th>Employee</th>
                                 <th>Template</th>
                                 <th>Period</th>
-                                <th class="text-center">Score</th>
-                                <th class="text-center">Submitted</th>
-                                <th class="text-center">Action</th>
+                                <th>Score</th>
+                                <th>Submitted</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($pending_confirmations as $pending): ?>
+                            <?php foreach ($pending_reviews as $pending): ?>
                                 <tr>
-                                    <td class="ps-3">
+                                    <td>
                                         <div class="fw-semibold"><?php echo e($pending['last_name'] . ', ' . $pending['first_name']); ?></div>
                                         <div class="small text-muted"><?php echo e($pending['job_title']); ?></div>
                                     </td>
-                                    <td><?php echo e($pending['template_name'] ?? 'N/A'); ?></td>
-                                    <td class="small text-muted">
-                                        <?php echo formatDate($pending['evaluation_period_start']); ?> –<br>
-                                        <?php echo formatDate($pending['evaluation_period_end']); ?>
+                                    <td><?php echo e($pending['template_name']); ?></td>
+                                    <td>
+                                        <?php echo formatDate($pending['evaluation_period_start']) . ' – ' . formatDate($pending['evaluation_period_end']); ?>
                                     </td>
-                                    <td class="text-center">
+                                    <td>
                                         <div class="fw-bold text-primary"><?php echo number_format((float)$pending['total_score'], 2); ?></div>
-                                        <span class="badge bg-light text-dark"><?php echo e($pending['performance_level'] ?? '—'); ?></span>
+                                        <span class="badge bg-light text-dark"><?php echo e($pending['performance_level']); ?></span>
                                     </td>
-                                    <td class="text-center small"><?php echo formatDateTime($pending['submitted_date']); ?></td>
-                                    <td class="text-center">
+                                    <td><?php echo formatDateTime($pending['submitted_date']); ?></td>
+                                    <td>
                                         <a href="?evaluation_id=<?php echo (int)$pending['evaluation_id']; ?>" class="btn btn-sm btn-primary">
                                             <i class="fas fa-eye me-1"></i>Review
                                         </a>
@@ -397,98 +362,8 @@ require_once '../includes/header.php';
             <?php endif; ?>
         </div>
     </div>
-
-    <!-- Confirmation History -->
-    <div class="content-card fadeup-2 mt-4">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="mb-0"><i class="fas fa-history me-2"></i>Confirmation History</h5>
-            <span class="badge bg-secondary"><?php echo count($confirmation_history); ?> record<?php echo count($confirmation_history) !== 1 ? 's' : ''; ?></span>
-        </div>
-        <div class="card-body p-0">
-            <?php if (empty($confirmation_history)): ?>
-                <div class="text-center py-5 text-muted">
-                    <i class="fas fa-inbox fa-3x mb-3"></i>
-                    <p class="mb-0">No confirmation history yet.</p>
-                </div>
-            <?php else: ?>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="ps-3">Employee</th>
-                                <th>Template</th>
-                                <th>Period</th>
-                                <th class="text-center">Final Score</th>
-                                <th class="text-center">Status</th>
-                                <th class="text-center">Confirmed On</th>
-                                <th class="text-center">Scores Altered?</th>
-                                <th class="text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($confirmation_history as $hist): 
-                                $confirmed_date = $hist['dept_supervisor_confirmed_date'] ?? $hist['supervisor_confirmed_date'] ?? null;
-                                $status_classes = [
-                                    'Pending Dept Manager'     => 'bg-warning text-dark',
-                                    'Pending HR Consolidation' => 'bg-info text-dark',
-                                    'Pending Manager'          => 'bg-info text-dark',
-                                    'Approved'                 => 'bg-success',
-                                    'Returned'                 => 'bg-danger',
-                                ];
-                                $status_labels = [
-                                    'Pending Dept Manager'     => 'Pending Dept Mgr',
-                                    'Pending HR Consolidation' => 'Sent to HR',
-                                    'Pending Manager'          => 'Pending HR Mgr',
-                                    'Approved'                 => 'Approved',
-                                    'Returned'                 => 'Returned',
-                                ];
-                                $sc = $status_classes[$hist['status']] ?? 'bg-secondary';
-                                $sl = $status_labels[$hist['status']] ?? $hist['status'];
-                            ?>
-                                <tr>
-                                    <td class="ps-3">
-                                        <div class="fw-semibold"><?php echo e($hist['last_name'] . ', ' . $hist['first_name']); ?></div>
-                                        <div class="small text-muted"><?php echo e($hist['job_title']); ?></div>
-                                    </td>
-                                    <td><?php echo e($hist['template_name'] ?? 'N/A'); ?></td>
-                                    <td class="small text-muted">
-                                        <?php echo formatDate($hist['evaluation_period_start']); ?> –<br>
-                                        <?php echo formatDate($hist['evaluation_period_end']); ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="fw-bold text-primary fs-6"><?php echo number_format((float)$hist['total_score'], 2); ?></div>
-                                        <div class="small text-muted"><?php echo e($hist['performance_level'] ?? '—'); ?></div>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge <?php echo $sc; ?>"><?php echo $sl; ?></span>
-                                    </td>
-                                    <td class="text-center small">
-                                        <?php echo $confirmed_date ? formatDateTime($confirmed_date) : '—'; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php if (!empty($hist['supervisor_altered_scores'])): ?>
-                                            <span class="badge bg-warning text-dark" title="You adjusted the employee's original scores">
-                                                <i class="fas fa-pen me-1"></i>Yes
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="badge bg-light text-secondary">No</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <a href="?evaluation_id=<?php echo (int)$hist['evaluation_id']; ?>" class="btn btn-sm btn-outline-secondary">
-                                            <i class="fas fa-eye me-1"></i>View
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
 <?php else: ?>
-    <!-- Review and Confirm Form -->
+    <!-- Review and Endorse Form -->
 
     <style>
     .score-changed {
@@ -505,10 +380,9 @@ require_once '../includes/header.php';
         border: 1px solid #fcd34d;
         border-radius: 4px;
         padding: 1px 6px;
-        margin-left: 6px;
+        margin-top: 4px;
         white-space: nowrap;
     }
-    .change-badge .arrow { font-size: .7rem; }
     
     /* TOTAL ROWS DESIGN UPGRADE */
     .total-row td {
@@ -607,97 +481,134 @@ require_once '../includes/header.php';
             font-size: 3.5rem !important;
         }
     }
+    .supervisor-altered-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: .72rem;
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+        border-radius: 4px;
+        padding: 2px 7px;
+        margin-left: 6px;
+    }
     </style>
 
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="content-card fadeup-1">
                 <div class="card-header">
-                    <h5><i class="fas fa-star me-2"></i>Review Self-Rating</h5>
+                    <h5><i class="fas fa-star me-2"></i>Review Evaluation Details</h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="" id="confirmForm">
+                    <form method="POST" action="">
                         <!-- Employee Info -->
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
-                                <label class="form-label">Employee</label>
-                                <input type="text" class="form-control" 
-                                       value="<?php echo e($evaluation['last_name'] . ', ' . $evaluation['first_name']); ?>" readonly>
+                                <label class="form-label text-muted small uppercase">Employee</label>
+                                <div class="fw-bold fs-5 text-dark"><?php echo e($evaluation['last_name'] . ', ' . $evaluation['first_name']); ?></div>
+                                <div class="small text-muted"><?php echo e($evaluation['job_title']); ?></div>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Position</label>
-                                <input type="text" class="form-control" 
-                                       value="<?php echo e($evaluation['job_title']); ?>" readonly>
+                            <div class="col-md-6 text-md-end">
+                                <label class="form-label text-muted small uppercase">Department &amp; Branch</label>
+                                <div class="fw-semibold"><?php echo e($evaluation['department_name']); ?></div>
+                                <div class="small text-muted"><?php echo e($evaluation['branch_name']); ?></div>
                             </div>
+                            <hr class="my-3">
                             <div class="col-md-4">
-                                <label class="form-label">Evaluation Type</label>
-                                <input type="text" class="form-control" 
-                                       value="<?php echo e($evaluation['evaluation_type']); ?>" readonly>
+                                <label class="form-label text-muted small">Evaluation Type</label>
+                                <input type="text" class="form-control bg-light" value="<?php echo e($evaluation['evaluation_type']); ?>" readonly>
                             </div>
                             <div class="col-md-8">
-                                <label class="form-label">Period</label>
-                                <input type="text" class="form-control" 
+                                <label class="form-label text-muted small">Evaluation Period</label>
+                                <input type="text" class="form-control bg-light" 
                                        value="<?php echo formatDate($evaluation['evaluation_period_start']) . ' - ' . formatDate($evaluation['evaluation_period_end']); ?>" readonly>
                             </div>
                         </div>
 
-                        <!-- Self Comments -->
+                        <!-- Employee Self-Comments -->
                         <?php if (!empty($evaluation['staff_comments'])): ?>
                             <div class="alert alert-light border mb-4">
-                                <label class="form-label fw-semibold">Employee's Comments:</label>
-                                <p class="mb-0"><?php echo nl2br(e($evaluation['staff_comments'])); ?></p>
+                                <label class="form-label fw-semibold text-primary">
+                                    <i class="fas fa-comment-dots me-1"></i>Employee Self-Comments
+                                </label>
+                                <p class="mb-0 text-dark"><?php echo nl2br(e($evaluation['staff_comments'])); ?></p>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Supervisor Comments -->
+                        <?php if (!empty($evaluation['supervisor_comments'])): ?>
+                            <div class="alert bg-light border-start border-warning border-3 mb-4">
+                                <label class="form-label fw-semibold text-warning">
+                                    <i class="fas fa-user-shield me-1"></i>Supervisor Comments
+                                    (<?php echo e($evaluation['supervisor_name'] ?? 'Immediate Head'); ?>)
+                                    <?php if (!empty($evaluation['supervisor_altered_scores'])): ?>
+                                        <span class="supervisor-altered-tag">
+                                            <i class="fas fa-pen"></i> Scores Adjusted by Supervisor
+                                        </span>
+                                    <?php endif; ?>
+                                </label>
+                                <p class="mb-0 text-dark"><?php echo nl2br(e($evaluation['supervisor_comments'])); ?></p>
+                            </div>
+                        <?php elseif (!empty($evaluation['supervisor_altered_scores'])): ?>
+                            <div class="alert bg-light border-start border-warning border-3 mb-4">
+                                <span class="supervisor-altered-tag">
+                                    <i class="fas fa-pen"></i> Supervisor adjusted scores before forwarding
+                                </span>
                             </div>
                         <?php endif; ?>
 
                         <!-- KRA Scores -->
                         <?php if (!empty($criteria_kra)): ?>
-                            <div class="section-premium-label mb-3">
-                                <i class="fas fa-bullseye"></i>KRA Ratings (You can adjust if needed)
+                            <div class="section-premium-label mb-3 mt-4">
+                                <i class="fas fa-bullseye me-1"></i>KRA Ratings
+                                <span class="ms-2 text-muted fw-normal" style="font-size:.8rem;">(You may adjust scores before endorsing)</span>
                             </div>
                             <div class="table-responsive mb-4">
-                                <table class="table table-hover align-middle" id="kraTable">
-                                    <thead>
+                                <table class="table table-hover align-middle border" id="kraTable">
+                                    <thead class="table-light">
                                         <tr>
                                             <th class="text-start">Criterion</th>
                                             <th class="text-center" style="width:90px;">Weight</th>
-                                            <th class="text-center" style="width:150px;">Employee Rating</th>
-                                            <th class="text-center" style="width:155px;">Your Rating</th>
+                                            <th class="text-center" style="width:140px;">Current Rating</th>
+                                            <th class="text-center" style="width:155px;">Your Adjustment</th>
                                             <th class="text-end" style="width:110px;">Weighted</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($criteria_kra as $criterion): 
-                                            $orig = (float)$criterion['score_value'];
+                                        <?php foreach ($criteria_kra as $criterion):
+                                            $orig   = (float)$criterion['score_value'];
                                             $weight = (float)$criterion['weight'];
                                             $weighted_orig = round(($weight / 100) * $orig, 2);
                                         ?>
-                                            <tr class="kra-row" 
-                                                data-orig="<?php echo $orig; ?>" 
+                                            <tr class="kra-row"
+                                                data-orig="<?php echo $orig; ?>"
                                                 data-weight="<?php echo $weight; ?>"
                                                 data-criterion="<?php echo (int)$criterion['criterion_id']; ?>">
                                                 <td class="text-start">
-                                                    <div class="fw-semibold"><?php echo e($criterion['criterion_name']); ?></div>
+                                                    <div class="fw-semibold text-dark"><?php echo e($criterion['criterion_name']); ?></div>
                                                     <?php if (!empty($criterion['description'])): ?>
                                                         <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
                                                     <?php endif; ?>
                                                 </td>
                                                 <td class="text-center fw-semibold"><?php echo e($weight); ?>%</td>
                                                 <td class="text-center">
-                                                    <span class="badge bg-light text-dark fs-6 orig-val">
+                                                    <span class="badge bg-primary text-white fs-6">
                                                         <?php echo number_format($orig, 2); ?>
                                                     </span>
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="d-flex flex-column align-items-center">
-                                                        <input type="number" class="form-control kra-input" 
+                                                        <input type="number" class="form-control kra-input"
                                                                name="kra_scores[<?php echo (int)$criterion['criterion_id']; ?>]"
                                                                id="kra_<?php echo (int)$criterion['criterion_id']; ?>"
                                                                min="0" max="4" step="0.01"
                                                                value="<?php echo number_format($orig, 2); ?>"
-                                                               placeholder="0.00 - 4.00"
+                                                               placeholder="0.00 – 4.00"
                                                                style="max-width: 90px; text-align: center;">
                                                         <div class="change-badge d-none" id="chg_kra_<?php echo (int)$criterion['criterion_id']; ?>">
-                                                            <i class="fas fa-edit"></i> Changed
+                                                            <i class="fas fa-pen"></i> Adjusted
                                                         </div>
                                                     </div>
                                                 </td>
@@ -723,16 +634,17 @@ require_once '../includes/header.php';
 
                         <!-- Behavior Scores -->
                         <?php if (!empty($criteria_behavior)): ?>
-                            <div class="section-premium-label mb-3">
-                                <i class="fas fa-heart"></i>Behavior Ratings (You can adjust if needed)
+                            <div class="section-premium-label mb-3 mt-4">
+                                <i class="fas fa-heart me-1"></i>Behavior Ratings
+                                <span class="ms-2 text-muted fw-normal" style="font-size:.8rem;">(You may adjust scores before endorsing)</span>
                             </div>
                             <div class="table-responsive mb-4">
-                                <table class="table table-hover align-middle" id="behTable">
-                                    <thead>
+                                <table class="table table-hover align-middle border" id="behTable">
+                                    <thead class="table-light">
                                         <tr>
                                             <th class="text-start">Criterion</th>
-                                            <th class="text-center" style="width:150px;">Employee Rating</th>
-                                            <th class="text-center" style="width:155px;">Your Rating</th>
+                                            <th class="text-center" style="width:140px;">Current Rating</th>
+                                            <th class="text-center" style="width:155px;">Your Adjustment</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -743,27 +655,27 @@ require_once '../includes/header.php';
                                                 data-orig="<?php echo $orig; ?>"
                                                 data-criterion="<?php echo (int)$criterion['criterion_id']; ?>">
                                                 <td class="text-start">
-                                                    <div class="fw-semibold"><?php echo e($criterion['criterion_name']); ?></div>
+                                                    <div class="fw-semibold text-dark"><?php echo e($criterion['criterion_name']); ?></div>
                                                     <?php if (!empty($criterion['description'])): ?>
                                                         <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
                                                     <?php endif; ?>
                                                 </td>
                                                 <td class="text-center">
-                                                    <span class="badge bg-light text-dark fs-6 orig-val">
+                                                    <span class="badge bg-info text-dark fs-6">
                                                         <?php echo number_format($orig, 2); ?>
                                                     </span>
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="d-flex flex-column align-items-center">
-                                                        <input type="number" class="form-control beh-input" 
+                                                        <input type="number" class="form-control beh-input"
                                                                name="beh_scores[<?php echo (int)$criterion['criterion_id']; ?>]"
                                                                id="beh_<?php echo (int)$criterion['criterion_id']; ?>"
                                                                min="0" max="4" step="0.01"
                                                                value="<?php echo number_format($orig, 2); ?>"
-                                                               placeholder="0.00 - 4.00"
+                                                               placeholder="0.00 – 4.00"
                                                                style="max-width: 90px; text-align: center;">
                                                         <div class="change-badge d-none" id="chg_beh_<?php echo (int)$criterion['criterion_id']; ?>">
-                                                            <i class="fas fa-edit"></i> Changed
+                                                            <i class="fas fa-pen"></i> Adjusted
                                                         </div>
                                                     </div>
                                                 </td>
@@ -825,28 +737,35 @@ require_once '../includes/header.php';
                             </div>
                             <div id="alteredNotice" class="mt-3 d-none" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.4);border-radius:8px;padding:.5rem .9rem;font-size:.82rem;color:#fde68a;">
                                 <i class="fas fa-triangle-exclamation me-1"></i>
-                                <strong>Scores have been adjusted.</strong> The final grade reflects your changes.
+                                <strong>Scores have been adjusted.</strong> The final grade reflects your changes and will be saved on endorsement.
                             </div>
                         </div>
 
-                        <!-- Supervisor Comments -->
+                        <!-- Dept Manager Comments -->
                         <div class="mb-4 mt-4">
-                            <label class="form-label fw-semibold">Your Comments / Justification for Changes</label>
-                            <textarea class="form-control" name="supervisor_comments" rows="4" 
-                                      placeholder="Enter your comments or justification for any rating adjustments..."></textarea>
-                            <div class="form-text">Optional. This will be visible to HR and the employee.</div>
+                            <label for="dept_manager_comments" class="form-label fw-bold">
+                                Department Manager Endorsement Comments
+                            </label>
+                            <textarea class="form-control border-primary" id="dept_manager_comments" name="dept_manager_comments" rows="4"
+                                      placeholder="Provide feedback, endorsements, or reasons for returning this self-rating..."></textarea>
+                            <div class="form-text">Required when returning. Optional when endorsing.</div>
                         </div>
 
-                        <!-- Action Buttons -->
-                        <div class="d-flex flex-wrap justify-content-between gap-2">
-                            <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" class="btn btn-outline-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>Back to List
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between gap-3 mt-4">
+                            <a href="dept-manager-review.php" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>Back to List
                             </a>
-                            <button type="submit" name="confirm_action" value="confirm_and_send" 
-                                    class="btn btn-primary" id="submitBtn"
-                                    onclick="return confirm('<?php echo $dept_manager ? 'Confirm this self-rating and forward to Department Manager?' : 'Confirm this self-rating and send to HRD?'; ?>');">
-                                <i class="fas fa-check-circle me-2"></i><?php echo $dept_manager ? 'Confirm &amp; Forward to Dept Manager' : 'Confirm &amp; Send to HRD'; ?>
-                            </button>
+                            <div class="d-flex gap-2">
+                                <button type="submit" name="confirm_action" value="return" class="btn btn-warning text-dark"
+                                        onclick="return confirm('Are you sure you want to return this evaluation for revision? Comments are required.');">
+                                    <i class="fas fa-undo me-1"></i>Return for Revision
+                                </button>
+                                <button type="submit" name="confirm_action" value="endorse" class="btn btn-success"
+                                        onclick="return confirm('Endorse this evaluation and send to HRD?');">
+                                    <i class="fas fa-check-circle me-1"></i>Endorse &amp; Send to HRD
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -854,23 +773,34 @@ require_once '../includes/header.php';
         </div>
 
         <div class="col-lg-4">
-            <!-- How It Works -->
-            <div class="content-card fadeup-1 mb-4">
+            <div class="content-card fadeup-2">
                 <div class="card-header">
-                    <h5><i class="fas fa-info-circle me-2"></i>How It Works</h5>
+                    <h5><i class="fas fa-chart-pie me-2"></i>Summary</h5>
                 </div>
-                <div class="card-body">
-                    <div class="small text-muted">
-                        <p class="mb-2"><strong>1.</strong> Review the employee's self-rating.</p>
-                        <p class="mb-2"><strong>2.</strong> Adjust ratings if you disagree (optional).</p>
-                        <p class="mb-2"><strong>3.</strong> Add comments to justify any changes.</p>
-                        <p class="mb-0"><strong>4.</strong> <?php echo $dept_manager ? 'Confirm and forward to Department Manager.' : 'Confirm and send to HRD for consolidation.'; ?></p>
+                <div class="card-body text-center py-4">
+                    <div style="font-size:3.5rem;font-weight:800;color:var(--primary-blue);line-height:1;margin-bottom:.5rem;" id="sideFinalGrade">
+                        <?php echo number_format((float)$evaluation['total_score'], 2); ?>
+                    </div>
+                    <div class="fw-bold mb-3" id="sidePerfLevel"><?php echo e($evaluation['performance_level'] ?? '—'); ?></div>
+                    <hr>
+                    <div class="row g-2 text-start mt-2">
+                        <div class="col-6 text-muted small">KRA Weight:</div>
+                        <div class="col-6 text-end fw-semibold small"><?php echo e($evaluation['kra_weight']); ?>%</div>
+                        <div class="col-6 text-muted small">KRA Score:</div>
+                        <div class="col-6 text-end fw-semibold small text-primary" id="sideKRA"><?php echo number_format($orig_kra_total, 2); ?></div>
+
+                        <div class="col-12"><hr class="my-2"></div>
+
+                        <div class="col-6 text-muted small">Behavior Weight:</div>
+                        <div class="col-6 text-end fw-semibold small"><?php echo e($evaluation['behavior_weight']); ?>%</div>
+                        <div class="col-6 text-muted small">Behavior Avg:</div>
+                        <div class="col-6 text-end fw-semibold small text-info" id="sideBeh"><?php echo number_format($orig_beh_avg, 2); ?></div>
                     </div>
                 </div>
             </div>
 
             <!-- Rating Scale -->
-            <div class="content-card fadeup-1">
+            <div class="content-card fadeup-2 mt-4">
                 <div class="card-header">
                     <h5><i class="fas fa-chart-bar me-2"></i>Rating Scale</h5>
                 </div>
@@ -900,8 +830,8 @@ require_once '../includes/header.php';
 
 <script>
 (function () {
-    const kraWeight   = <?php echo $kra_weight_display; ?> / 100;
-    const behWeight   = <?php echo $beh_weight_display; ?> / 100;
+    const kraWeight = <?php echo $kra_weight_display; ?> / 100;
+    const behWeight = <?php echo $beh_weight_display; ?> / 100;
 
     function getPerformanceLabel(score) {
         if (score >= 3.60) return 'Outstanding';
@@ -911,10 +841,10 @@ require_once '../includes/header.php';
     }
 
     function recalculate() {
-        // --- KRA ---
-        let kraTotal = 0;
+        let kraTotal   = 0;
         let anyChanged = false;
 
+        // KRA
         document.querySelectorAll('.kra-row').forEach(row => {
             const orig   = parseFloat(row.dataset.orig);
             const weight = parseFloat(row.dataset.weight) / 100;
@@ -932,15 +862,15 @@ require_once '../includes/header.php';
 
             const changed = Math.abs(val - orig) > 0.005;
             if (changed) anyChanged = true;
-            badge.classList.toggle('d-none', !changed);
+            if (badge) badge.classList.toggle('d-none', !changed);
             row.classList.toggle('score-changed', changed);
         });
 
-        // --- Behavior ---
+        // Behavior
         let behSum = 0, behCount = 0;
         document.querySelectorAll('.beh-row').forEach(row => {
-            const orig = parseFloat(row.dataset.orig);
-            const cid  = row.dataset.criterion;
+            const orig  = parseFloat(row.dataset.orig);
+            const cid   = row.dataset.criterion;
             const input = document.getElementById('beh_' + cid);
             const badge = document.getElementById('chg_beh_' + cid);
 
@@ -951,46 +881,48 @@ require_once '../includes/header.php';
 
             const changed = Math.abs(val - orig) > 0.005;
             if (changed) anyChanged = true;
-            badge.classList.toggle('d-none', !changed);
+            if (badge) badge.classList.toggle('d-none', !changed);
             row.classList.toggle('score-changed', changed);
         });
 
-        const kraRounded  = Math.round(kraTotal * 100) / 100;
-        const behAvg      = behCount > 0 ? Math.round((behSum / behCount) * 100) / 100 : 0;
-        const finalGrade  = Math.round((kraRounded * kraWeight + behAvg * behWeight) * 100) / 100;
+        const kraRounded = Math.round(kraTotal * 100) / 100;
+        const behAvg     = behCount > 0 ? Math.round((behSum / behCount) * 100) / 100 : 0;
+        const finalGrade = Math.round((kraRounded * kraWeight + behAvg * behWeight) * 100) / 100;
+        const perfLabel  = getPerformanceLabel(finalGrade);
 
-        // Update KRA total row
+        // Update table totals
         const kraEl = document.getElementById('kraTotal');
         if (kraEl) kraEl.textContent = kraRounded.toFixed(2);
-
-        // Update Behavior average row
         const behEl = document.getElementById('behAvg');
         if (behEl) behEl.textContent = behAvg.toFixed(2);
 
         // Update final grade card
-        const fpgKRA = document.getElementById('fpgKRA');
-        const fpgKRAW = document.getElementById('fpgKRAWeighted');
-        const fpgBeh = document.getElementById('fpgBeh');
-        const fpgBehW = document.getElementById('fpgBehWeighted');
-        const fpgTotal = document.getElementById('fpgTotal');
-        const fpgLevel = document.getElementById('fpgLevel');
-        const alteredNotice = document.getElementById('alteredNotice');
+        const els = {
+            fpgKRA: kraRounded.toFixed(2),
+            fpgKRAWeighted: (kraRounded * kraWeight).toFixed(2),
+            fpgBeh: behAvg.toFixed(2),
+            fpgBehWeighted: (behAvg * behWeight).toFixed(2),
+            fpgTotal: finalGrade.toFixed(2),
+            fpgLevel: perfLabel,
+            sideFinalGrade: finalGrade.toFixed(2),
+            sidePerfLevel: perfLabel,
+            sideKRA: kraRounded.toFixed(2),
+            sideBeh: behAvg.toFixed(2)
+        };
+        for (const [id, val] of Object.entries(els)) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        }
 
-        if (fpgKRA) fpgKRA.textContent = kraRounded.toFixed(2);
-        if (fpgKRAW) fpgKRAW.textContent = (kraRounded * kraWeight).toFixed(2);
-        if (fpgBeh) fpgBeh.textContent = behAvg.toFixed(2);
-        if (fpgBehW) fpgBehW.textContent = (behAvg * behWeight).toFixed(2);
-        if (fpgTotal) fpgTotal.textContent = finalGrade.toFixed(2);
-        if (fpgLevel) fpgLevel.textContent = getPerformanceLabel(finalGrade);
-        if (alteredNotice) alteredNotice.classList.toggle('d-none', !anyChanged);
+        // Altered notice
+        const notice = document.getElementById('alteredNotice');
+        if (notice) notice.classList.toggle('d-none', !anyChanged);
     }
 
-    // Attach listeners
     document.querySelectorAll('.kra-input, .beh-input').forEach(inp => {
         inp.addEventListener('input', recalculate);
     });
 
-    // Initial run
     recalculate();
 })();
 </script>

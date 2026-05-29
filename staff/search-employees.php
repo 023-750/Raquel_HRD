@@ -208,6 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
                     resultsBody.innerHTML += row;
                 });
+                applyZebraStriping('#searchResultsTable');
             })
             .catch(error => {
                 console.error('Error fetching data:', error);

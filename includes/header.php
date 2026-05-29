@@ -74,7 +74,7 @@ switch ($effective_role) {
                 ['icon' => 'fas fa-building', 'label' => 'Branches', 'url' => BASE_URL . '/manager/branches.php', 'page' => 'branches.php'],
                 ['icon' => 'fas fa-sitemap', 'label' => 'Departments', 'url' => BASE_URL . '/manager/departments.php', 'page' => 'departments.php'],
                 ['icon' => 'fas fa-briefcase', 'label' => 'Positions', 'url' => BASE_URL . '/manager/positions.php', 'page' => 'positions.php'],
-                ['icon' => 'fas fa-project-diagram', 'label' => 'Operation Management', 'url' => BASE_URL . '/manager/operation-management.php', 'page' => 'operation-management.php'],
+                // ['icon' => 'fas fa-project-diagram', 'label' => 'Operation Management', 'url' => BASE_URL . '/manager/operation-management.php', 'page' => 'operation-management.php'],
             ],
             'EVALUATIONS' => [
                 ['icon' => 'fas fa-file-alt', 'label' => 'Templates', 'url' => BASE_URL . '/manager/templates.php', 'page' => 'templates.php'],
@@ -180,6 +180,15 @@ switch ($effective_role) {
         // Add supervisor-only links
         if ($is_supervisor_menu) {
             $self_service_menu[] = ['icon' => 'fas fa-clipboard-check', 'label' => 'Confirm Self-Rating', 'url' => BASE_URL . '/employee/confirm-rating.php', 'page' => 'confirm-rating.php'];
+        }
+
+        // Add department manager links
+        $is_dept_manager_menu = false;
+        if (isset($_SESSION['employee_id']) && $conn) {
+            $is_dept_manager_menu = isDeptManagerRole($conn, (int) $_SESSION['employee_id']);
+        }
+        if ($is_dept_manager_menu) {
+            $self_service_menu[] = ['icon' => 'fas fa-user-shield', 'label' => 'Dept Manager Review', 'url' => BASE_URL . '/employee/dept-manager-review.php', 'page' => 'dept-manager-review.php'];
         }
 
         $self_service_menu[] = ['icon' => 'fas fa-bell', 'label' => 'Notifications', 'url' => BASE_URL . '/employee/notifications.php', 'page' => 'notifications.php'];

@@ -1313,6 +1313,7 @@ while ($row = $age_dist_q->fetch_assoc()) {
             .then(html => {
                 tbody.innerHTML = html;
                 tbody.style.opacity = '1';
+                applyZebraStriping('#performanceDistributionDirectorySection table');
             })
             .catch(err => {
                 console.error(err);

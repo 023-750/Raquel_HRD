@@ -224,10 +224,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $total_score = calculateEvalTotal($kra_subtotal, $behavior_average, $kra_weight_pct, $beh_weight_pct);
     $performance_level = getPerformanceLevel($total_score);
+    $has_supervisor = (getEmployeeSupervisor($conn, $employee_id) !== null);
     if ($is_assigned_submission) {
-        $status = ($action === 'submit') ? 'Pending Supervisor' : 'Pending Self-Rating';
+        $status = ($action === 'submit') ? ($has_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation') : 'Pending Self-Rating';
     } else {
-        $status = ($action === 'submit') ? 'Pending Supervisor' : 'Draft';
+        $status = ($action === 'submit') ? ($has_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation') : 'Draft';
     }
     $submitted_date = ($action === 'submit') ? date('Y-m-d H:i:s') : null;
 
@@ -736,7 +737,7 @@ require_once '../includes/header.php';
                         </table>
                     </div>
 
-                    <?php if (!empty($view_eval['supervisor_comments']) || !empty($view_eval['manager_comments'])): ?>
+                    <?php if (!empty($view_eval['supervisor_comments']) || !empty($view_eval['dept_manager_comments']) || !empty($view_eval['evaluator_comments']) || !empty($view_eval['manager_comments'])): ?>
                         <div class="section-premium-label mb-3 mt-4">
                             <i class="fas fa-comments"></i>Management Remarks & Justifications
                         </div>
@@ -745,9 +746,29 @@ require_once '../includes/header.php';
                                 <div class="col-md-6">
                                     <div class="p-3 bg-light rounded-3 border-start border-warning border-4 shadow-sm">
                                         <div class="fw-bold text-warning small mb-1">
-                                            <i class="fas fa-user-shield me-1"></i>Supervisor Feedback
+                                            <i class="fas fa-user-shield me-1"></i>Department Supervisor Feedback
                                         </div>
                                         <p class="mb-0 small text-dark" style="white-space: pre-wrap;"><?php echo e($view_eval['supervisor_comments']); ?></p>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($view_eval['dept_manager_comments'])): ?>
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-light rounded-3 border-start border-info border-4 shadow-sm">
+                                        <div class="fw-bold text-info small mb-1">
+                                            <i class="fas fa-user-shield me-1"></i>Department Manager Remarks
+                                        </div>
+                                        <p class="mb-0 small text-dark" style="white-space: pre-wrap;"><?php echo e($view_eval['dept_manager_comments']); ?></p>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (!empty($view_eval['evaluator_comments'])): ?>
+                                <div class="col-md-6">
+                                    <div class="p-3 bg-light rounded-3 border-start border-primary border-4 shadow-sm">
+                                        <div class="fw-bold text-primary small mb-1">
+                                            <i class="fas fa-user-tie me-1"></i>HR Supervisor Remarks
+                                        </div>
+                                        <p class="mb-0 small text-dark" style="white-space: pre-wrap;"><?php echo e($view_eval['evaluator_comments']); ?></p>
                                     </div>
                                 </div>
                             <?php endif; ?>
@@ -847,6 +868,16 @@ require_once '../includes/header.php';
                                 <?php if (!empty($edit_eval['supervisor_comments'])): ?>
                                     <div class="mt-2 p-2 bg-white rounded border italic small text-dark">
                                         <strong>Supervisor Feedback:</strong> <?php echo nl2br(e($edit_eval['supervisor_comments'])); ?>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($edit_eval['dept_manager_comments'])): ?>
+                                    <div class="mt-2 p-2 bg-white rounded border italic small text-dark">
+                                        <strong>Department Manager Feedback:</strong> <?php echo nl2br(e($edit_eval['dept_manager_comments'])); ?>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if (!empty($edit_eval['evaluator_comments'])): ?>
+                                    <div class="mt-2 p-2 bg-white rounded border italic small text-dark">
+                                        <strong>HR Supervisor Feedback:</strong> <?php echo nl2br(e($edit_eval['evaluator_comments'])); ?>
                                     </div>
                                 <?php endif; ?>
                                 <?php if (!empty($edit_eval['manager_comments'])): ?>

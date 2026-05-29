@@ -600,6 +600,7 @@ $orgRegionCount = (int) $conn->query("SELECT COUNT(DISTINCT region_name) AS cnt 
             rows.forEach((row) => {
                 row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
             });
+            applyZebraStriping('#' + tableId);
         });
     }
 

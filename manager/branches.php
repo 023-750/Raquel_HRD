@@ -653,6 +653,7 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
 
         updatePaginationUI(visibleRows.length, totalPages);
         handleNoResults(visibleRows.length, filterInput, tbody);
+        applyZebraStriping('#branchTable');
     }
 
     function updatePaginationUI(totalItems, totalPages) {

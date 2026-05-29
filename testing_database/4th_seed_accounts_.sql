@@ -8,16 +8,16 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ---------------------------------------------------------
 -- 1. EMPLOYEES (Marketing & HRD Teams)
 -- ---------------------------------------------------------
-REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middle_name, hire_date, date_of_birth, place_of_birth, gender, civil_status, job_title_id, job_title, department_id, rank_category_id, branch_id, employment_status, employment_type) VALUES
+REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middle_name, hire_date, date_of_birth, place_of_birth, gender, civil_status, job_title_id, job_title, department_id, rank_category_id, branch_id, employment_status, employment_type, profile_picture) VALUES
 -- HR Admin
-(101, 'HRD-001', 'Elena', 'Delgado', 'Santos', '2020-01-15', '1990-05-15', 'Tayabas, Quezon', 'Female', 'Married', 700, 'HR Manager I', 7, 3, 102, 'Regular', 'Full-time'),
+(101, 'HRD-001', 'Elena', 'Delgado', 'Santos', '2020-01-15', '1990-05-15', 'Tayabas, Quezon', 'Female', 'Married', 700, 'HR Manager I', 7, 3, 102, 'Regular', 'Full-time', 'malupiton.jpg'),
 -- Marketing Team
-(201, 'MKT-001', 'Marcus', 'Reyes', 'Vidal', '2015-03-10', '1988-07-22', 'Manila, Metro Manila', 'Male', 'Single', 900, 'Marketing Manager I', 9, 3, 102, 'Regular', 'Full-time'),
-(202, 'MKT-002', 'Sarah', 'Miller', 'Jane', '2018-06-15', '1992-03-14', 'Makati, Metro Manila', 'Female', 'Married', 902, 'Marketing Supervisor I', 9, 4, 102, 'Regular', 'Full-time'),
-(203, 'MKT-003', 'Kevin', 'Santiago', 'Alonzo', '2021-11-20', '1998-09-30', 'Quezon City, Metro Manila', 'Male', 'Single', 905, 'Marketing Staff I', 9, 5, 102, 'Regular', 'Full-time'),
+(201, 'MKT-001', 'Marcus', 'Reyes', 'Vidal', '2015-03-10', '1988-07-22', 'Manila, Metro Manila', 'Male', 'Single', 900, 'Marketing Manager I', 9, 3, 102, 'Regular', 'Full-time', 'black.jpg'),
+(202, 'MKT-002', 'Sarah', 'Miller', 'Jane', '2018-06-15', '1992-03-14', 'Makati, Metro Manila', 'Female', 'Married', 902, 'Marketing Supervisor I', 9, 4, 102, 'Regular', 'Full-time', 'bossdogs.jpg'),
+(203, 'MKT-003', 'Kevin', 'Santiago', 'Alonzo', '2021-11-20', '1998-09-30', 'Quezon City, Metro Manila', 'Male', 'Single', 905, 'Marketing Staff I', 9, 5, 102, 'Regular', 'Full-time', 'chano.jpg'),
 -- HRD Team
-(301, 'HRD-002', 'Patricia', 'Gomez', 'Luna', '2017-02-14', '1989-11-08', 'Pasig, Metro Manila', 'Female', 'Widowed', 705, 'HR Supervisor I', 7, 4, 102, 'Regular', 'Full-time'),
-(302, 'HRD-003', 'Miguel', 'Torres', 'Cruz', '2022-01-05', '2000-04-17', 'Caloocan, Metro Manila', 'Male', 'Single', 711, 'HR Staff I', 7, 5, 102, 'Regular', 'Full-time');
+(301, 'HRD-002', 'Patricia', 'Gomez', 'Luna', '2017-02-14', '1989-11-08', 'Pasig, Metro Manila', 'Female', 'Widowed', 705, 'HR Supervisor I', 7, 4, 102, 'Regular', 'Full-time', 'cat.jpg'),
+(302, 'HRD-003', 'Miguel', 'Torres', 'Cruz', '2022-01-05', '2000-04-17', 'Caloocan, Metro Manila', 'Male', 'Single', 711, 'HR Staff I', 7, 5, 102, 'Regular', 'Full-time', 'xplit.jpg');
 
 -- ---------------------------------------------------------
 -- 3. EMPLOYEE CONTACTS (Required for Portal Validation)
