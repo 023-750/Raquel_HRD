@@ -1,15 +1,11 @@
 <?php
-// ============================================
-// Database Connection - XAMPP Default Settings
-// ============================================
-
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
-define('DB_PASS', 'admin'); // Empty for XAMPP default
+define('DB_PASS', 'admin');
 define('DB_NAME', 'raquel_hris');
 
-// Base URL for the application
-define('BASE_URL', '/raquel-hris');
+// Base URL for the application (auto-detected from folder name)
+define('BASE_URL', '/' . basename(dirname(__DIR__)));
 
 // Enable error reporting for mysqli
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);

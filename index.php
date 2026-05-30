@@ -4,6 +4,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Load config early so BASE_URL is available for redirects and HTML
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/includes/functions.php';
+
 function normalizeLoginRole($role)
 {
     $role_aliases = [
@@ -21,24 +25,24 @@ if (isset($_SESSION['user_id'])) {
 
     switch ($_SESSION['role']) {
         case 'Admin':
-            header("Location: /raquel-hris/admin/dashboard.php");
+            header("Location: " . BASE_URL . "/admin/dashboard.php");
             break;
         case 'HR Manager':
-            header("Location: /raquel-hris/manager/dashboard.php");
+            header("Location: " . BASE_URL . "/manager/dashboard.php");
             break;
         case 'HR Supervisor':
-            header("Location: /raquel-hris/supervisor/dashboard.php");
+            header("Location: " . BASE_URL . "/supervisor/dashboard.php");
             break;
         case 'HR Staff':
-            header("Location: /raquel-hris/staff/dashboard.php");
+            header("Location: " . BASE_URL . "/staff/dashboard.php");
             break;
         case 'Employee':
-            header("Location: /raquel-hris/employee/dashboard.php");
+            header("Location: " . BASE_URL . "/employee/dashboard.php");
             break;
         default:
             session_unset();
             session_destroy();
-            header("Location: /raquel-hris/index.php");
+            header("Location: " . BASE_URL . "/index.php");
             break;
     }
     exit();
@@ -48,8 +52,6 @@ $error = '';
 
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    require_once 'config/database.php';
-    require_once 'includes/functions.php';
 
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -116,19 +118,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Redirect based on role
                 switch ($user['role']) {
                     case 'Admin':
-                        header("Location: /raquel-hris/admin/dashboard.php");
+                        header("Location: " . BASE_URL . "/admin/dashboard.php");
                         break;
                     case 'HR Manager':
-                        header("Location: /raquel-hris/manager/dashboard.php");
+                        header("Location: " . BASE_URL . "/manager/dashboard.php");
                         break;
                     case 'HR Supervisor':
-                        header("Location: /raquel-hris/supervisor/dashboard.php");
+                        header("Location: " . BASE_URL . "/supervisor/dashboard.php");
                         break;
                     case 'HR Staff':
-                        header("Location: /raquel-hris/staff/dashboard.php");
+                        header("Location: " . BASE_URL . "/staff/dashboard.php");
                         break;
                     case 'Employee':
-                        header("Location: /raquel-hris/employee/dashboard.php");
+                        header("Location: " . BASE_URL . "/employee/dashboard.php");
                         break;
                 }
                 exit();
@@ -181,14 +183,14 @@ render_login:
     <meta name="description" content="Login to Raquel Pawnshop Human Resource Information System">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="/raquel-hris/assets/css/style.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/style.css?v=<?php echo time(); ?>" rel="stylesheet">
 </head>
 
 <body>
     <div class="login-wrapper">
         <div class="login-card">
             <div class="logo-section">
-                <img src="/raquel-hris/assets/img/logo/logo.png" alt="Raquel Pawnshop Logo"
+                <img src="<?php echo BASE_URL; ?>/assets/img/logo/logo.png" alt="Raquel Pawnshop Logo"
                     style="width:100px;height:100px;border-radius:14px;display:inline-block;object-fit:cover;box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 5px;">
                 <h1>Raquel Pawnshop</h1>
                 <p>Human Resource Information System</p>
@@ -236,7 +238,7 @@ render_login:
                     <i class="fas fa-sign-in-alt me-2"></i>Sign In
                 </button>
                 <div class="text-center">
-                    <a href="/raquel-hris/employee/index.php" class="btn btn-outline-secondary btn-sm w-100"
+                    <a href="<?php echo BASE_URL; ?>/employee/index.php" class="btn btn-outline-secondary btn-sm w-100"
                         style="border-radius:10px;">
                         <i class="fas fa-id-card me-2"></i>Employee Self-Service Login
                     </a>
