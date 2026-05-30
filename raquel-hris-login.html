@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raquel Pawnshop — HRIS</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<!-- FIX 1: Tabler Icons was missing — this made ALL icons invisible -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+html,body{
+  height:100%;
+  margin:0;
+  padding:0;
+  min-height:100vh;
+  background:#ede9df;
+  font-family:'DM Sans',sans-serif;
+}
+
+:root{
+  --forest:#0a1f10;
+  --dark-green:#0d2818;
+  --bright-green:#1a6b35;
+  --gold:#c9a227;
+  --gold-hover:#d4ac30;
+  --cream:#faf9f5;
+  --border:#d2ddd5;
+  --text:#1a2e20;
+  --muted:#7a8a7f;
+  --light:#9db0a3;
+  --dur:.62s;
+  --ease:cubic-bezier(.77,0,.18,1);
+}
+
+/* ── Root card ── */
+.root{
+  width:100%;
+  height:100vh;
+  border-radius:0;
+  overflow:hidden;
+  box-shadow:none;
+  position:relative;
+}
+
+/* ── Layout ── */
+.track{
+  display:flex;
+  width:100%;
+  height:100vh;
+  position:relative;
+}
+
+/* each screen = full width */
+.screen{display:flex;width:100%;height:100vh;position:absolute;inset:0}
+
+/* ════════════════════════════
+   BRAND PANEL  (HRIS — dark)
+   ════════════════════════════ */
+.brand{
+  width:38%;flex-shrink:0;
+  background:var(--dark-green);
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:48px 32px;overflow:hidden;
+  z-index:1;
+  opacity:1;
+  transition:opacity calc(var(--dur) * 0.3) ease calc(var(--dur) * 0.4);
+}
+.show-ess .brand{
+  opacity:0;
+}
+.brand::before{
+  content:'';position:absolute;inset:0;
+  background-image:
+    repeating-linear-gradient(45deg,transparent,transparent 28px,rgba(201,162,39,.05) 28px,rgba(201,162,39,.05) 29px),
+    repeating-linear-gradient(-45deg,transparent,transparent 28px,rgba(201,162,39,.05) 28px,rgba(201,162,39,.05) 29px);
+}
+
+/* corner brackets */
+.cr{position:absolute;width:40px;height:40px}
+.tl{top:18px;left:18px;border-top:1px solid rgba(201,162,39,.3);border-left:1px solid rgba(201,162,39,.3)}
+.tr{top:18px;right:18px;border-top:1px solid rgba(201,162,39,.3);border-right:1px solid rgba(201,162,39,.3)}
+.bl{bottom:18px;left:18px;border-bottom:1px solid rgba(201,162,39,.3);border-left:1px solid rgba(201,162,39,.3)}
+.br{bottom:18px;right:18px;border-bottom:1px solid rgba(201,162,39,.3);border-right:1px solid rgba(201,162,39,.3)}
+
+.bcon{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px;
+  animation:fadeUp .8s ease;
+}
+
+.logo-ring{
+  width:86px;height:86px;border-radius:18px;
+  background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.28);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;transition:transform .3s ease;cursor:default;
+}
+.logo-ring:hover{transform:scale(1.05)}
+.logo-ring::after{
+  content:'';position:absolute;inset:-8px;border-radius:24px;
+  border:1px solid rgba(201,162,39,.1);
+}
+.mono{font-family:'Cormorant Garamond',serif;font-size:46px;font-weight:600;color:var(--gold);line-height:1;user-select:none}
+
+.b-label{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:rgba(201,162,39,.5)}
+.g-line{width:30px;height:1px;background:rgba(201,162,39,.36);margin:5px auto}
+.b-name{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:600;color:var(--cream);line-height:1.15}
+.b-name span{color:var(--gold);display:block}
+.b-tag{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:rgba(250,249,245,.27);line-height:1.7;max-width:155px}
+
+/* ════════════════════════════
+   FORM PANEL
+   ════════════════════════════ */
+.form-panel{
+  display:flex;align-items:center;justify-content:center;
+  padding:52px 48px;
+  position:absolute;
+  left:38%;right:0;top:0;bottom:0;
+  background:#f0ede6;
+  transition:transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  z-index:2;
+  box-shadow:0 0 0 0 transparent;
+}
+.show-ess .form-panel{
+  transform:translateX(-61.3%);
+  box-shadow:-20px 0 60px rgba(10,31,16,.3), -6px 0 20px rgba(10,31,16,.2);
+}
+
+/* floating card inside the panel */
+.form-inner{
+  width:100%;
+  max-width:380px;
+  background:#fff;
+  border-radius:24px;
+  padding:44px 40px 36px;
+  box-shadow:0 4px 6px rgba(10,31,16,.04), 0 12px 32px rgba(10,31,16,.08), 0 32px 64px rgba(10,31,16,.06);
+  border:1px solid rgba(210,221,213,.5);
+  position:relative;
+  transition:opacity calc(var(--dur) * 0.3) ease;
+}
+
+/* top accent bar */
+.hris::before{
+  content:'';
+  position:absolute;
+  top:0;left:40px;right:40px;
+  height:3px;
+  background:linear-gradient(90deg, var(--gold), var(--gold-hover), var(--gold));
+  border-radius:0 0 4px 4px;
+}
+.essf::before{
+  content:'';
+  position:absolute;
+  top:0;left:40px;right:40px;
+  height:3px;
+  background:linear-gradient(90deg, var(--bright-green), #228a45, var(--bright-green));
+  border-radius:0 0 4px 4px;
+}
+
+.hris{opacity:1;pointer-events:auto}
+.show-ess .hris{opacity:0;pointer-events:none}
+
+/* desktop ESS form */
+.essf{
+  opacity:0;
+  pointer-events:none;
+  position:absolute;
+  left:52px;right:52px;
+  top:50%;
+  transform:translateY(-50%);
+  width:auto;
+  max-width:380px;
+  margin:0 auto;
+  transition:opacity calc(var(--dur) * 0.3) ease calc(var(--dur) * 0.3);
+}
+.show-ess .essf{opacity:1;pointer-events:auto}
+
+/* mobile overlay + sheet hidden on desktop */
+.mob-ess-overlay{ display:none; }
+#essSheet{ display:none; }
+
+/* ════════════════════════════
+   ESS BRAND PANEL (bright green)
+   ════════════════════════════ */
+.ess-brand{
+  width:38%;flex-shrink:0;
+  background:var(--bright-green);
+  position:absolute;
+  right:0;
+  top:0;
+  bottom:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:48px 28px;overflow:hidden;
+  z-index:1;
+  opacity:0;
+  transition:opacity calc(var(--dur) * 0.3) ease calc(var(--dur) * 0.4);
+}
+.show-ess .ess-brand{
+  opacity:1;
+}
+.ess-brand::before{
+  content:'';position:absolute;inset:0;
+  background-image:
+    repeating-linear-gradient(45deg,transparent,transparent 26px,rgba(255,255,255,.035) 26px,rgba(255,255,255,.035) 27px),
+    repeating-linear-gradient(-45deg,transparent,transparent 26px,rgba(255,255,255,.035) 26px,rgba(255,255,255,.035) 27px);
+}
+
+.ess-brand .tl{border-top:1px solid rgba(255,255,255,.2);border-left:1px solid rgba(255,255,255,.2)}
+.ess-brand .tr{border-top:1px solid rgba(255,255,255,.2);border-right:1px solid rgba(255,255,255,.2)}
+.ess-brand .bl{border-bottom:1px solid rgba(255,255,255,.2);border-left:1px solid rgba(255,255,255,.2)}
+.ess-brand .br{border-bottom:1px solid rgba(255,255,255,.2);border-right:1px solid rgba(255,255,255,.2)}
+
+.ess-bcon{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px;
+  animation:fadeUp .8s ease;
+}
+
+.ess-ring{
+  width:86px;height:86px;border-radius:50%;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;position:relative;
+}
+.ess-ring::after{content:'';position:absolute;inset:-8px;border-radius:50%;border:1px solid rgba(255,255,255,.1)}
+.ess-ring i{font-size:34px;color:#fff}
+
+.e-label{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.e-line{width:30px;height:1px;background:rgba(255,255,255,.28);margin:5px auto}
+.e-name{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:600;color:#fff;line-height:1.2}
+.e-name span{color:rgba(255,255,255,.62);display:block;font-size:22px}
+.e-tag{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:12.5px;color:rgba(255,255,255,.38);line-height:1.7;max-width:148px}
+
+.ess-feats{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:4px}
+.ess-feat{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;padding:8px 12px;transition:background .2s;
+}
+.ess-feat:hover{background:rgba(255,255,255,.13)}
+.ess-feat i{font-size:15px;color:rgba(255,255,255,.65);flex-shrink:0}
+.ess-feat span{font-size:12px;color:rgba(255,255,255,.6);text-align:left}
+
+/* ════════════════════════════
+   SHARED FORM ELEMENTS
+   ════════════════════════════ */
+.eyebrow{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:9px;font-weight:600;letter-spacing:3px;text-transform:uppercase;
+  margin-bottom:14px;
+  padding:5px 12px;
+  border-radius:20px;
+}
+.ey-gold{
+  color:var(--gold);
+  background:rgba(201,162,39,.08);
+  border:1px solid rgba(201,162,39,.2);
+}
+.ey-green{
+  color:var(--bright-green);
+  background:rgba(26,107,53,.08);
+  border:1px solid rgba(26,107,53,.2);
+}
+
+.form-title{
+  font-family:'Cormorant Garamond',serif;
+  font-size:52px;font-weight:600;
+  line-height:1;letter-spacing:-1px;margin-bottom:8px;
+  color:var(--forest);
+}
+.form-sub{
+  font-size:13px;color:var(--muted);
+  margin-bottom:28px;line-height:1.6;
+  padding-bottom:24px;
+  border-bottom:1px solid #edf0eb;
+}
+
+/* Fields */
+.field{margin-bottom:14px}
+.field label{
+  display:block;font-size:10px;font-weight:600;
+  letter-spacing:1.5px;text-transform:uppercase;
+  color:#3d5442;margin-bottom:8px;
+}
+
+.iwrap{position:relative;display:flex;align-items:center}
+.iico{
+  position:absolute;left:14px;font-size:16px;
+  color:var(--light);pointer-events:none;transition:color .25s;
+}
+.iwrap input{
+  width:100%;padding:14px 16px 14px 44px;
+  background:#f7f9f7;
+  border:1.5px solid #e4ebe6;
+  border-radius:12px;
+  font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);
+  outline:none;
+  transition:all .25s ease;
+}
+.iwrap input:hover{
+  background:#f2f6f3;
+  border-color:#cdd9cf;
+}
+.iwrap input::placeholder{color:#c2d0c6;font-weight:300}
+
+/* Gold focus (HRIS) */
+.hris .iwrap input:focus{
+  background:#fff;
+  border-color:var(--gold);
+  box-shadow:0 0 0 4px rgba(201,162,39,.1);
+}
+.hris .iwrap:focus-within .iico{color:var(--gold)}
+
+/* Green focus (ESS) */
+.essf .iwrap input:focus{
+  background:#fff;
+  border-color:var(--bright-green);
+  box-shadow:0 0 0 4px rgba(26,107,53,.1);
+}
+.essf .iwrap:focus-within .iico{color:var(--bright-green)}
+
+.eyebtn{
+  position:absolute;right:12px;
+  background:none;border:none;cursor:pointer;
+  color:var(--light);font-size:16px;
+  padding:4px;display:flex;align-items:center;
+  border-radius:6px;transition:color .2s, background .2s;
+}
+.eyebtn:hover{background:rgba(0,0,0,.04)}
+.hris .eyebtn:hover{color:var(--gold)}
+.essf .eyebtn:hover{color:var(--bright-green)}
+
+.optrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.rmb{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#6a7d6f;cursor:pointer;user-select:none}
+.rmb input{width:14px;height:14px;cursor:pointer;border-radius:4px;}
+.hris .rmb input{accent-color:var(--gold)}
+.essf .rmb input{accent-color:var(--bright-green)}
+
+.fgt{font-size:12.5px;font-weight:500;text-decoration:none;transition:opacity .2s}
+.hris .fgt{color:var(--gold)}
+.essf .fgt{color:var(--bright-green)}
+.fgt:hover{opacity:.65}
+
+/* Primary button */
+.btn-p{
+  width:100%;padding:16px 24px;
+  border:none;border-radius:14px;
+  font-family:'DM Sans',sans-serif;
+  font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:12px;
+  transition:all .3s ease;
+  position:relative;overflow:hidden;
+}
+.btn-p::after{
+  content:'';
+  position:absolute;inset:0;
+  background:linear-gradient(180deg, rgba(255,255,255,.15) 0%, transparent 100%);
+  pointer-events:none;
+}
+.btn-p:hover{transform:translateY(-2px)}
+.btn-p:active{transform:translateY(0)}
+
+.btn-gold{
+  background:linear-gradient(135deg, #d4ac30 0%, var(--gold) 50%, #b8911f 100%);
+  color:var(--forest);
+  box-shadow:0 4px 12px rgba(201,162,39,.3), 0 1px 3px rgba(201,162,39,.2);
+}
+.btn-gold:hover{
+  box-shadow:0 8px 24px rgba(201,162,39,.4), 0 2px 6px rgba(201,162,39,.3);
+}
+.btn-green{
+  background:linear-gradient(135deg, #228a45 0%, var(--bright-green) 50%, #155a2b 100%);
+  color:#fff;
+  box-shadow:0 4px 12px rgba(26,107,53,.3), 0 1px 3px rgba(26,107,53,.2);
+}
+.btn-green:hover{
+  box-shadow:0 8px 24px rgba(26,107,53,.4), 0 2px 6px rgba(26,107,53,.3);
+}
+
+/* Secondary button */
+.btn-s{
+  width:100%;padding:14px 24px;
+  background:transparent;
+  border:1.5px solid #e4ebe6;
+  border-radius:14px;font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:500;color:#5a7060;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  margin-bottom:28px;
+  transition:all .25s ease;
+}
+.hris .btn-s:hover{
+  border-color:var(--gold);color:var(--gold);
+  background:rgba(201,162,39,.05);
+  transform:translateY(-1px);
+}
+.essf .btn-s:hover{
+  border-color:var(--bright-green);color:var(--bright-green);
+  background:rgba(26,107,53,.05);
+  transform:translateY(-1px);
+}
+
+.ffoot{
+  text-align:center;font-size:10.5px;color:#b8c8bc;
+  letter-spacing:.3px;
+  padding-top:16px;
+  border-top:1px solid #edf0eb;
+}
+
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+/* ════════════════════════════
+   MOBILE  (≤ 640px)
+   ════════════════════════════ */
+@media(max-width:640px){
+
+  html,body{
+    height:auto;
+    min-height:100vh;
+    overflow-y:auto;
+    background:var(--dark-green);
+  }
+
+  .root{
+    height:auto;
+    min-height:100vh;
+    overflow:visible;
+  }
+
+  /* hide the second screen (ESS brand) — handled differently on mobile */
+  .screen:last-child{ display:none; }
+
+  .track{
+    height:auto;
+    min-height:100vh;
+    display:block;
+    position:static;
+  }
+
+  .screen{
+    position:static;
+    display:flex;
+    flex-direction:column;
+    width:100%;
+    height:auto;
+    min-height:100vh;
+  }
+
+  /* ── Mobile brand header ── */
+  .brand{
+    position:static;
+    width:100%;
+    height:auto;
+    padding:48px 24px 36px;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    opacity:1 !important;
+    transition:none;
+  }
+
+  .bcon{ gap:14px; }
+
+  .logo-ring{
+    width:68px;height:68px;border-radius:14px;
+  }
+  .mono{ font-size:36px; }
+  .b-name{ font-size:26px; }
+  .b-tag{ font-size:12px; }
+
+  /* ── Mobile form panel ── */
+  .form-panel{
+    position:static;
+    left:auto;right:auto;top:auto;bottom:auto;
+    width:100%;
+    height:auto;
+    padding:0;
+    background:transparent;
+    box-shadow:none !important;
+    transform:none !important;
+    display:block;
+    border-radius:28px 28px 0 0;
+    margin-top:-20px;
+    z-index:10;
+  }
+
+  /* HRIS card */
+  .form-inner.hris{
+    position:static;
+    opacity:1 !important;
+    pointer-events:auto !important;
+    width:100%;
+    max-width:100%;
+    border-radius:28px 28px 0 0;
+    padding:36px 24px 40px;
+    box-shadow:0 -8px 40px rgba(10,31,16,.2);
+    transition:opacity var(--dur) ease, transform var(--dur) var(--ease);
+  }
+
+  /* ESS card — slides up from below */
+  .form-inner.essf{
+    position:fixed;
+    top:auto;
+    left:0;right:0;
+    bottom:0;
+    width:100%;
+    max-width:100%;
+    border-radius:28px 28px 0 0;
+    padding:36px 24px 40px;
+    box-shadow:0 -8px 40px rgba(10,31,16,.2);
+    transform:translateY(100%);
+    opacity:1;
+    pointer-events:none;
+    transition:transform var(--dur) var(--ease);
+    z-index:100;
+    overflow-y:auto;
+    max-height:92vh;
+    background:#fff;
+  }
+
+  /* ESS card visible state */
+  .show-ess .form-inner.essf{
+    transform:translateY(0);
+    pointer-events:auto;
+  }
+
+  /* dim overlay behind ESS card */
+  .track::after{
+    content:'';
+    position:fixed;inset:0;
+    background:rgba(10,31,16,.5);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity var(--dur) ease;
+    z-index:99;
+  }
+  .show-ess .track::after{
+    opacity:1;
+    pointer-events:auto;
+  }
+
+  /* accent bars still work */
+  .hris::before{ left:24px;right:24px; }
+  .essf::before{ left:24px;right:24px; }
+
+  /* drag handle on ESS card */
+  .essf::after{
+    content:'';
+    position:absolute;
+    top:12px;left:50%;
+    transform:translateX(-50%);
+    width:36px;height:4px;
+    background:#d2ddd5;
+    border-radius:2px;
+  }
+
+  /* mobile overlay */
+  .mob-ess-overlay{
+    display:block;
+    position:fixed;inset:0;
+    background:rgba(10,31,16,.55);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity var(--dur) ease;
+    z-index:99;
+  }
+  .show-ess .mob-ess-overlay{
+    opacity:1;
+    pointer-events:auto;
+  }
+
+  /* mobile ESS sheet */
+  #essSheet{
+    display:block;
+    position:fixed;
+    left:0;right:0;bottom:0;
+    width:100%;
+    border-radius:28px 28px 0 0;
+    padding:44px 24px 40px;
+    background:#fff;
+    box-shadow:0 -8px 40px rgba(10,31,16,.25);
+    transform:translateY(100%);
+    pointer-events:none;
+    transition:transform var(--dur) var(--ease);
+    z-index:100;
+    overflow-y:auto;
+    max-height:92vh;
+  }
+  .show-ess #essSheet{
+    transform:translateY(0);
+    pointer-events:auto;
+  }
+
+  /* drag handle */
+  #essSheet::before{
+    content:'';
+    position:absolute;
+    top:12px;left:50%;
+    transform:translateX(-50%);
+    width:36px;height:4px;
+    background:#d2ddd5;
+    border-radius:2px;
+  }
+
+  /* accent bar on mobile ESS sheet */
+  #essSheet::after{
+    content:'';
+    position:absolute;
+    top:0;left:24px;right:24px;
+    height:3px;
+    background:linear-gradient(90deg, var(--bright-green), #228a45, var(--bright-green));
+    border-radius:0 0 4px 4px;
+  }
+
+  /* hide desktop essf on mobile */
+  .essf{ display:none !important; }
+
+  /* accent bars */
+  .hris::before{ left:24px;right:24px; }
+  .mob-tabs{
+    display:flex;
+    gap:8px;
+    margin-bottom:24px;
+  }
+  .mob-tab{
+    flex:1;padding:10px 8px;
+    border-radius:10px;
+    border:1.5px solid #e4ebe6;
+    background:transparent;
+    font-family:'DM Sans',sans-serif;
+    font-size:11px;font-weight:600;
+    letter-spacing:1px;text-transform:uppercase;
+    color:#7a8a7f;cursor:pointer;
+    transition:all .2s ease;
+  }
+  .mob-tab.active-gold{
+    background:rgba(201,162,39,.08);
+    border-color:var(--gold);
+    color:var(--gold);
+  }
+  .mob-tab.active-green{
+    background:rgba(26,107,53,.08);
+    border-color:var(--bright-green);
+    color:var(--bright-green);
+  }
+
+  /* hide desktop switch buttons on mobile */
+  .btn-s{ display:none; }
+
+  /* tighter spacing */
+  .form-title{ font-size:40px; }
+  .form-sub{ margin-bottom:20px;padding-bottom:18px; }
+  .field{ margin-bottom:12px; }
+  .optrow{ margin-bottom:16px; }
+  .btn-p{ padding:15px 20px; }
+
+  /* ess-brand hidden on mobile */
+  .ess-brand{ display:none; }
+}
+</style>
+</head>
+<body>
+
+<div class="root">
+  <div class="track" id="track">
+
+    <!-- ══ HRIS SCREEN ══ -->
+    <div class="screen">
+      <div class="brand">
+        <div class="cr tl"></div><div class="cr tr"></div>
+        <div class="cr bl"></div><div class="cr br"></div>
+        <div class="bcon">
+          <div class="logo-ring"><span class="mono">R</span></div>
+          <div>
+            <p class="b-label">Human Resource</p>
+            <div class="g-line"></div>
+            <h1 class="b-name">Raquel<span>Pawnshop</span></h1>
+          </div>
+          <p class="b-tag">Trusted. Reliable.<br>Committed to Excellence.</p>
+        </div>
+      </div>
+
+      <div class="form-panel">
+        <div class="form-inner hris">
+          <div class="mob-tabs">
+            <button class="mob-tab active-gold" onclick="showHRIS()">HRIS Portal</button>
+            <button class="mob-tab" onclick="showESS()">ESS Portal</button>
+          </div>
+          <p class="eyebrow ey-gold">HRIS Portal</p>
+          <h2 class="form-title">Welcome<br>Back</h2>
+          <p class="form-sub">Sign in to access your HR account</p>
+
+          <div class="field">
+            <label>Username</label>
+            <div class="iwrap">
+              <i class="ti ti-user iico" aria-hidden="true"></i>
+              <input type="text" placeholder="Enter your username">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Password</label>
+            <div class="iwrap">
+              <i class="ti ti-lock iico" aria-hidden="true"></i>
+              <input type="password" placeholder="Enter your password" id="hp">
+              <button class="eyebtn" onclick="tpw('hp','he')" aria-label="Toggle password visibility">
+                <i class="ti ti-eye" id="he"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="optrow">
+            <label class="rmb"><input type="checkbox"> Remember me</label>
+            <a href="#" class="fgt">Forgot password?</a>
+          </div>
+
+          <button class="btn-p btn-gold">
+            <i class="ti ti-login" aria-hidden="true"></i>
+            Sign In
+          </button>
+
+          <button class="btn-s" onclick="showESS()">
+            <i class="ti ti-id-badge-2" aria-hidden="true"></i>
+            Employee Self-Service Login
+          </button>
+
+          <p class="ffoot">© 2026 Raquel Pawnshop. All rights reserved.</p>
+        </div>
+
+        <div class="form-inner essf desktop-essf">
+          <p class="eyebrow ey-green">ESS Portal</p>
+          <h2 class="form-title">Welcome<br>Back</h2>
+          <p class="form-sub">Sign in to access your employee account</p>
+
+          <div class="field">
+            <label>Username</label>
+            <div class="iwrap">
+              <i class="ti ti-user iico" aria-hidden="true"></i>
+              <input type="text" placeholder="Enter your username">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Password</label>
+            <div class="iwrap">
+              <i class="ti ti-lock iico" aria-hidden="true"></i>
+              <input type="password" placeholder="Enter your password" id="ep">
+              <button class="eyebtn" onclick="tpw('ep','ee')" aria-label="Toggle password visibility">
+                <i class="ti ti-eye" id="ee"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="optrow">
+            <label class="rmb"><input type="checkbox"> Remember me</label>
+            <a href="#" class="fgt">Forgot password?</a>
+          </div>
+
+          <button class="btn-p btn-green">
+            <i class="ti ti-login" aria-hidden="true"></i>
+            Sign In
+          </button>
+
+          <button class="btn-s" onclick="showHRIS()">
+            <i class="ti ti-briefcase" aria-hidden="true"></i>
+            HR Management Login
+          </button>
+
+          <p class="ffoot">© 2026 Raquel Pawnshop. All rights reserved.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ESS SCREEN ══ -->
+    <div class="screen">
+      <div class="ess-brand">
+        <div class="cr tl"></div><div class="cr tr"></div>
+        <div class="cr bl"></div><div class="cr br"></div>
+        <div class="ess-bcon">
+          <div class="ess-ring">
+            <i class="ti ti-user-circle" aria-hidden="true"></i>
+          </div>
+          <div>
+            <p class="e-label">Employee Portal</p>
+            <div class="e-line"></div>
+            <p class="e-name">Self-Service<span>Access</span></p>
+          </div>
+          <p class="e-tag">Your personal HR hub,<br>available anytime.</p>
+          <div class="ess-feats">
+            <div class="ess-feat">
+              <i class="ti ti-file-invoice" aria-hidden="true"></i>
+              <span>View & download payslips</span>
+            </div>
+            <div class="ess-feat">
+              <i class="ti ti-heart-rate-monitor" aria-hidden="true"></i>
+              <span>Check benefits & coverage</span>
+            </div>
+            <div class="ess-feat">
+              <i class="ti ti-calendar-stats" aria-hidden="true"></i>
+              <span>Track leave & attendance</span>
+            </div>
+            <div class="ess-feat">
+              <i class="ti ti-user-edit" aria-hidden="true"></i>
+              <span>Update personal information</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /track -->
+</div><!-- /root -->
+
+<!-- ══ Mobile ESS Sheet (outside .root to avoid stacking context) ══ -->
+<div class="mob-ess-overlay" id="mobOverlay" onclick="showHRIS()"></div>
+<div class="form-inner essf" id="essSheet">
+  <div class="mob-tabs">
+    <button class="mob-tab" onclick="showHRIS()">HRIS Portal</button>
+    <button class="mob-tab active-green" onclick="showESS()">ESS Portal</button>
+  </div>
+  <p class="eyebrow ey-green">ESS Portal</p>
+  <h2 class="form-title">Welcome<br>Back</h2>
+  <p class="form-sub">Sign in to access your employee account</p>
+
+  <div class="field">
+    <label>Username</label>
+    <div class="iwrap">
+      <i class="ti ti-user iico" aria-hidden="true"></i>
+      <input type="text" placeholder="Enter your username">
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Password</label>
+    <div class="iwrap">
+      <i class="ti ti-lock iico" aria-hidden="true"></i>
+      <input type="password" placeholder="Enter your password" id="ep2">
+      <button class="eyebtn" onclick="tpw('ep2','ee2')" aria-label="Toggle password visibility">
+        <i class="ti ti-eye" id="ee2"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="optrow">
+    <label class="rmb"><input type="checkbox"> Remember me</label>
+    <a href="#" class="fgt">Forgot password?</a>
+  </div>
+
+  <button class="btn-p btn-green">
+    <i class="ti ti-login" aria-hidden="true"></i>
+    Sign In
+  </button>
+
+  <p class="ffoot">© 2026 Raquel Pawnshop. All rights reserved.</p>
+</div>
+
+<script>
+function tpw(inputId, iconId) {
+  var i = document.getElementById(inputId);
+  var e = document.getElementById(iconId);
+  if (i.type === 'password') { i.type = 'text'; e.className = 'ti ti-eye-off'; }
+  else { i.type = 'password'; e.className = 'ti ti-eye'; }
+}
+function showESS() {
+  document.getElementById('track').classList.add('show-ess');
+  if(window.innerWidth <= 640) document.body.style.overflow = 'hidden';
+}
+function showHRIS() {
+  document.getElementById('track').classList.remove('show-ess');
+  if(window.innerWidth <= 640) document.body.style.overflow = '';
+}
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelector('.root').addEventListener('click', function(e){
+    if(window.innerWidth <= 640){
+      var track = document.getElementById('track');
+      var sheet = document.getElementById('essSheet');
+      if(track.classList.contains('show-ess') && sheet && !sheet.contains(e.target)){
+        showHRIS();
+      }
+    }
+  });
+});
+</script>
+
+</body>
+</html>
