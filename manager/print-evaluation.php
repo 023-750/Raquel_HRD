@@ -433,13 +433,21 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
         $kra_count = 0;
         while ($k = $kra_q->fetch_assoc()):
           $kra_count++;
+          $effective_score = $k['score_value'];
+          if ($k['supervisor_override_score'] !== null) {
+              $effective_score = $k['supervisor_override_score'];
+          }
+          if ($k['manager_override_score'] !== null) {
+              $effective_score = $k['manager_override_score'];
+          }
+          $weighted_score = round(($k['weight'] / 100) * $effective_score, 2);
           ?>
           <tr>
             <td style="width:55px; border:1px solid #000; padding:3px 6px;">KRA <?php echo $kra_count; ?></td>
             <td style="border:1px solid #000;"><?php echo e($k['criterion_name']); ?></td>
             <td style="border:1px solid #000; text-align:center;"><?php echo $k['weight']; ?>%</td>
-            <td style="border:1px solid #000; text-align:center;"><?php echo $k['score_value']; ?></td>
-            <td style="border:1px solid #000; text-align:center;"><?php echo $k['weighted_score']; ?></td>
+            <td style="border:1px solid #000; text-align:center;"><?php echo number_format($effective_score, 2); ?></td>
+            <td style="border:1px solid #000; text-align:center;"><?php echo number_format($weighted_score, 2); ?></td>
           </tr>
         <?php endwhile; ?>
         <tr>
@@ -510,11 +518,18 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
         $beh_q = $conn->query("SELECT es.*, ec.criterion_name, ec.kpi_description FROM evaluation_scores es JOIN evaluation_criteria ec ON es.criterion_id = ec.criterion_id WHERE es.evaluation_id = $id AND ec.section = 'Behavior' ORDER BY ec.sort_order");
         $idx = 1;
         while ($b = $beh_q->fetch_assoc()):
+          $effective_score = $b['score_value'];
+          if ($b['supervisor_override_score'] !== null) {
+              $effective_score = $b['supervisor_override_score'];
+          }
+          if ($b['manager_override_score'] !== null) {
+              $effective_score = $b['manager_override_score'];
+          }
           ?>
           <tr>
             <td><?php echo $idx++; ?>. <?php echo e($b['criterion_name']); ?></td>
             <td><?php echo e($b['kpi_description']); ?></td>
-            <td style="border:1px solid #000; text-align:center; font-weight:bold;"><?php echo $b['score_value']; ?></td>
+            <td style="border:1px solid #000; text-align:center; font-weight:bold;"><?php echo number_format($effective_score, 2); ?></td>
           </tr>
         <?php endwhile; ?>
         <tr style="font-weight:bold;">

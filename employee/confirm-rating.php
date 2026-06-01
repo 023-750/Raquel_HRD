@@ -259,6 +259,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
             ? 'Self-rating confirmed and forwarded to Department Manager successfully.'
             : 'Self-rating confirmed and sent to HRD successfully.';
         redirectWith(BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id, 'success', $success_msg);
+    } elseif ($action === 'reject') {
+        if (empty($supervisor_comments)) {
+            redirectWith(BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id, 'danger', 'Comments/rejection reason is required.');
+        }
+        
+        $update = $conn->prepare("
+            UPDATE evaluations 
+            SET status = 'Pending Supervisor',
+                supervisor_comments = ?,
+                dept_supervisor_confirmed_by = ?,
+                dept_supervisor_confirmed_date = NOW(),
+                supervisor_confirmed_by = ?,
+                supervisor_confirmed_date = NOW()
+            WHERE evaluation_id = ?
+        ");
+        $update->bind_param("siii", $supervisor_comments, $user_id, $user_id, $evaluation_id);
+        $update->execute();
+        $update->close();
+        
+        // Notify HR Supervisor
+        $hr_sups = $conn->query("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
+        $emp_name = $evaluation['first_name'] . ' ' . $evaluation['last_name'];
+        while ($hr = $hr_sups->fetch_assoc()) {
+            createNotification(
+                $conn,
+                (int)$hr['user_id'],
+                'Evaluation Rejected by Immediate Head',
+                $_SESSION['full_name'] . ' rejected the self-rating of ' . $emp_name . ' and forwarded it to you.',
+                BASE_URL . '/supervisor/pending-endorsements.php'
+            );
+        }
+        
+        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Immediate Head rejected self-rating, forwarded to HR Supervisor.');
+        redirectWith(BASE_URL . '/employee/confirm-rating.php', 'warning', 'Evaluation rejected and forwarded to HR Supervisor.');
     }
 }
 
@@ -990,11 +1024,17 @@ require_once '../includes/header.php';
                             <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-2"></i>Back to List
                             </a>
-                            <button type="submit" name="confirm_action" value="confirm_and_send" 
-                                    class="btn btn-primary" id="submitBtn"
-                                    onclick="return confirm('<?php echo $dept_manager ? 'Confirm this self-rating and forward to Department Manager?' : 'Confirm this self-rating and send to HRD?'; ?>');">
-                                <i class="fas fa-check-circle me-2"></i><?php echo $dept_manager ? 'Confirm &amp; Forward to Dept Manager' : 'Confirm &amp; Send to HRD'; ?>
-                            </button>
+                            <div class="d-flex gap-2">
+                                <button type="submit" name="confirm_action" value="reject" class="btn btn-warning text-dark"
+                                        onclick="return confirm('Are you sure you want to reject this self-rating and forward to HR Supervisor? Comments/justification are required.');">
+                                    <i class="fas fa-times-circle me-1"></i>Reject
+                                </button>
+                                <button type="submit" name="confirm_action" value="confirm_and_send" 
+                                        class="btn btn-primary" id="submitBtn"
+                                        onclick="return confirm('<?php echo $dept_manager ? 'Confirm this self-rating and forward to Department Manager?' : 'Confirm this self-rating and send to HRD?'; ?>');">
+                                    <i class="fas fa-check-circle me-2"></i><?php echo $dept_manager ? 'Confirm &amp; Forward' : 'Confirm &amp; Send'; ?>
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>

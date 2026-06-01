@@ -207,44 +207,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager) {
 
     } elseif ($action === 'return') {
         if (empty($dept_manager_comments)) {
-            redirectWith(BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $evaluation_id, 'danger', 'Comments are required when returning an evaluation.');
+            redirectWith(BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $evaluation_id, 'danger', 'Comments are required when returning/rejecting an evaluation.');
         }
 
         $update = $conn->prepare("
             UPDATE evaluations
-            SET status = 'Returned',
-                dept_manager_comments = ?
+            SET status = 'Pending Supervisor',
+                dept_manager_comments = ?,
+                dept_manager_endorsed_by = ?,
+                dept_manager_endorsed_date = NOW()
             WHERE evaluation_id = ?
         ");
-        $update->bind_param("si", $dept_manager_comments, $evaluation_id);
+        $update->bind_param("sii", $dept_manager_comments, $user_id, $evaluation_id);
         $update->execute();
         $update->close();
 
         $emp_name = $evaluation['first_name'] . ' ' . $evaluation['last_name'];
 
-        $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . (int)$evaluation['employee_id'] . " LIMIT 1")->fetch_assoc();
-        if ($emp_user) {
+        // Notify HR Supervisor
+        $hr_sups = $conn->query("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
+        while ($hr = $hr_sups->fetch_assoc()) {
             createNotification(
                 $conn,
-                (int)$emp_user['user_id'],
-                'Evaluation Returned by Manager',
-                'Your self-rating has been returned by your Department Manager: ' . $dept_manager_comments,
-                BASE_URL . '/employee/self-rating.php?edit=' . $evaluation_id
+                (int)$hr['user_id'],
+                'Evaluation Returned/Rejected by Dept Manager',
+                $_SESSION['full_name'] . ' returned/rejected evaluation for ' . $emp_name . ' and forwarded it to you.',
+                BASE_URL . '/supervisor/pending-endorsements.php'
             );
         }
 
-        if ($evaluation['dept_supervisor_confirmed_by']) {
-            createNotification(
-                $conn,
-                (int)$evaluation['dept_supervisor_confirmed_by'],
-                'Subordinate Evaluation Returned',
-                'Evaluation for ' . $emp_name . ' has been returned by the Department Manager: ' . $dept_manager_comments,
-                BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id
-            );
-        }
-
-        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Department Manager returned evaluation.');
-        redirectWith(BASE_URL . '/employee/dept-manager-review.php', 'warning', 'Evaluation returned for revision.');
+        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Department Manager returned/rejected evaluation, routed to HR Supervisor.');
+        redirectWith(BASE_URL . '/employee/dept-manager-review.php', 'warning', 'Evaluation returned/rejected and routed to HR Supervisor.');
     }
 }
 

@@ -193,6 +193,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Global Fix: Scroll modal body to top when modal is shown
+    document.addEventListener('show.bs.modal', function (event) {
+        const modalBody = event.target.querySelector('.modal-body');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
+    });
+
     // Clear Employee Draft if success feedback exists
     const successFeedback = document.querySelector('.alert-success, .flash-message-success .flash-message-text');
     if (successFeedback) {

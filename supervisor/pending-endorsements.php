@@ -238,12 +238,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
 
     } elseif ($action === 'return') {
         if (empty($comments)) {
-            redirectWith($redirect_url, 'danger', 'Comments are required when returning an evaluation.');
+            redirectWith($redirect_url, 'danger', 'Comments/rejection reason is required.');
         }
         $stmt = $conn->prepare("
             UPDATE evaluations ev
             INNER JOIN employees e ON ev.employee_id = e.employee_id
-            SET ev.status = 'Returned',
+            SET ev.status = 'Pending Manager',
                 ev.endorsed_by = ?,
                 ev.endorsed_date = NOW(),
                 ev.evaluator_comments = ?
@@ -255,15 +255,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         $stmt->execute();
         $stmt->close();
 
-        if ($eval_info['submitted_by']) {
-            if ($eval_info['submitter_role'] === 'Employee') {
-                createNotification($conn, $eval_info['submitted_by'], 'Evaluation Returned', "Your self-rating for {$eval_info['template_name']} has been returned by your Supervisor for revision.", BASE_URL . '/employee/self-rating.php?edit=' . $eval_id);
-            } else {
-                createNotification($conn, $eval_info['submitted_by'], 'Evaluation Returned', "Your evaluation for {$eval_info['emp_name']} has been returned for revision.", BASE_URL . '/staff/evaluation-history.php');
-            }
+        // Notify HR Managers
+        $managers = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
+        $emp_name = $eval_info['emp_name'];
+        while ($mgr = $managers->fetch_assoc()) {
+            createNotification(
+                $conn,
+                $mgr['user_id'],
+                'Evaluation Returned/Rejected by HR Supervisor',
+                "HR Supervisor returned/rejected evaluation for {$emp_name} and requires your final decision.",
+                BASE_URL . '/manager/pending-approvals.php'
+            );
         }
-        logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Returned evaluation for {$eval_info['emp_name']}");
-        redirectWith($redirect_url, 'warning', 'Evaluation returned for revision.');
+
+        logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Returned/rejected evaluation for {$emp_name}, routed to HR Manager");
+        redirectWith($redirect_url, 'warning', 'Evaluation return/rejection forwarded to HR Manager.');
     }
 }
 
