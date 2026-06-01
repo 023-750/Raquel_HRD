@@ -427,34 +427,6 @@ body:not(.show-ess) .bcon {
   margin-top: 5px;
 }
 
-/* ESS feature list (desktop only) */
-.ess-feats {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  margin-top: 4px;
-}
-
-.ess-feat {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 8px;
-  padding: 8px 12px;
-  transition: background var(--speed-fast);
-}
-
-.ess-feat:hover {
-  background: rgba(255,255,255,.13);
-}
-
-.ess-feat i    { font-size: 15px; color: rgba(255,255,255,0.9); flex-shrink: 0; }
-.ess-feat span { font-size: 12px; color: rgba(255,255,255,0.85); text-align: left; }
-
-
 /* =============================================
    6. FORM PANEL & CARDS
 ============================================= */
@@ -749,14 +721,14 @@ body:not(.show-ess) .bcon {
 
 /* Footer copyright line */
 .ffoot {
-  text-align: center;
-  font-size: 10px;
-  color: #c2d0c6;
-  letter-spacing: 0.4px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(4,82,2,0.07);
+  text-align: center !important;
+  font-size: 11px !important;
+  color: #3d4d42 !important;
+  letter-spacing: 0.3px;
+  padding-top: 16px !important;
+  border-top: 1px solid rgba(4,82,2,0.15) !important;
+  font-weight: 500 !important;
 }
-
 
 /* =============================================
    8. BUTTONS
@@ -932,9 +904,6 @@ body:not(.show-ess) .bcon {
   .show-ess .brand      { display: none; }
   .show-ess .ess-brand  { display: flex; }
 
-  /* Hide ESS feature list */
-  .ess-brand .ess-feats { display: none; }
-
   /* Brand content */
   .bcon,
   .ess-bcon {
@@ -951,8 +920,15 @@ body:not(.show-ess) .bcon {
     height: 72px;
   }
 
-  .logo-ring {
+  .logo-ring,
+  .ess-ring {
     border-radius: 14px;
+  }
+
+  .logo-ring img,
+  .ess-ring img {
+    border-radius: 10px;
+    padding: 6px;
   }
 
   /* Company name sizes */
