@@ -36,6 +36,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$user['is_active']) {
                 $error = 'Your account has been deactivated.';
             } elseif (password_verify($password, $user['password_hash'])) {
+                // Handle Remember Me functionality
+                if (!empty($_POST['remember'])) {
+                    setcookie('remember_employee_username', $username, time() + (30 * 24 * 60 * 60), '/');
+                    $params = session_get_cookie_params();
+                    setcookie(
+                        session_name(),
+                        session_id(),
+                        time() + (30 * 24 * 60 * 60),
+                        $params["path"],
+                        $params["domain"],
+                        $params["secure"],
+                        $params["httponly"]
+                    );
+                } else {
+                    setcookie('remember_employee_username', '', time() - 3600, '/');
+                }
+
                 // Set session
                 $_SESSION['user_id'] = $user['user_id'];
                 $_SESSION['employee_id'] = $user['employee_id'];
@@ -60,104 +77,195 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Login - Raquel Pawnshop HRIS</title>
-    <meta name="description" content="Employee Self-Service login to Raquel Pawnshop Human Resource Information System">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link href="<?php echo BASE_URL; ?>/assets/css/style.css?v=<?php echo time(); ?>" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Employee Login - Raquel Pawnshop HRIS</title>
+  <meta name="description" content="Employee Self-Service login to Raquel Pawnshop Human Resource Information System">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/raquel-hris-login.css">
+  <noscript>
+    <style>
+      body::before {
+        content: 'JavaScript is required to use this login page.';
+        display: block;
+        text-align: center;
+        padding: 2rem;
+        font-family: sans-serif;
+      }
+    </style>
+  </noscript>
 </head>
 
-<body>
-    <div class="login-wrapper ess-login">
-        <div class="login-card">
-            <div class="logo-section">
-                <img src="<?php echo BASE_URL; ?>/assets/img/logo/logo.png" alt="Raquel Pawnshop Logo"
-                    style="width:100px;height:100px;border-radius:14px;display:inline-block;object-fit:cover;box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 5px;">
-                <h1>Raquel Pawnshop</h1>
-                <p>Employee Self-Service Portal</p>
+<body class="show-ess">
+
+  <div class="root">
+    <div class="track show-ess" id="track">
+
+      <!-- ══ HRIS SCREEN ══ -->
+      <div class="screen">
+        <div class="brand page-hero">
+          <div class="cr tl"></div>
+          <div class="cr tr"></div>
+          <div class="cr bl"></div>
+          <div class="cr br"></div>
+          <div class="bcon">
+            <div class="logo-ring">
+              <img src="<?php echo BASE_URL; ?>/assets/img/logo/logo.png" alt="Raquel Pawnshop Logo"
+                onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+              <span class="mono" style="display:none">R</span>
+            </div>
+            <div>
+              <p class="b-label">Human Resource Department</p>
+              <div class="g-line"></div>
+              <h1 class="b-name">Raquel Pawnshop</h1>
+            </div>
+            <p class="b-tag"><b>Palagay ang Loob Ko!</b></p>
+          </div>
+        </div>
+
+        <!-- ESS brand panel (positioned absolute desktop / toggled mobile sibling) -->
+        <div class="ess-brand page-hero">
+          <div class="cr tl"></div>
+          <div class="cr tr"></div>
+          <div class="cr bl"></div>
+          <div class="cr br"></div>
+          <div class="ess-bcon">
+            <div class="ess-ring">
+              <img src="<?php echo BASE_URL; ?>/assets/img/logo/logo.png" alt="Raquel Pawnshop Logo">
+            </div>
+            <div>
+              <p class="e-label">Employee Portal</p>
+              <div class="e-line"></div>
+              <p class="e-name">Raquel Pawnshop</p>
+            </div>
+            <p class="e-tag"><b>Palagay ang Loob Ko!</b></p>
+          </div>
+        </div>
+
+        <div class="form-panel">
+          <!-- ── HRIS Login Card ── -->
+          <div class="form-inner hris" id="hrisCard">
+            <!-- Mobile tabs -->
+            <div class="mob-tabs">
+              <button class="mob-tab" id="mobTabHRIS" onclick="showHRIS()">HRIS Portal</button>
+              <button class="mob-tab active-green" id="mobTabESS" onclick="showESS()">Employee Portal</button>
             </div>
 
-            <?php if ($error): ?>
-                <?php renderFlashPopup('danger', $error); ?>
-            <?php endif; ?>
+            <p class="eyebrow ey-gold"><i class="ti ti-briefcase" aria-hidden="true"></i> HRIS Portal</p>
+            <h2 class="form-title">Welcome Back!</h2>
+            <p class="form-sub">Login to access your HR management account</p>
 
-            <form method="POST" action="" id="loginForm">
-                <div class="mb-3">
-                    <label for="username" class="form-label">Employee ID / Username</label>
-                    <div class="input-group">
-                        <span class="input-group-text"
-                            style="border-radius:8px 0 0 8px;border:1.5px solid #dee2e6;border-right:none;background:#f8f9fa;">
-                            <i class="fas fa-user" style="color:#6c757d;font-size:0.85rem;"></i>
-                        </span>
-                        <input type="text" class="form-control" id="username" name="username" placeholder="e.g. 024-001"
-                            value="<?php echo e($_POST['username'] ?? ''); ?>" required
-                            style="border-left:none;border-radius:0 8px 8px 0;">
-                    </div>
+            <!-- Error container -->
+            <div class="login-error" id="hrisError" style="display:none">
+              <i class="ti ti-alert-circle"></i>
+              <span id="hrisErrorMsg"></span>
+            </div>
+
+            <form method="POST" action="<?php echo BASE_URL; ?>/index.php" id="hrisForm">
+              <div class="field">
+                <label for="hris-username">Username</label>
+                <div class="iwrap">
+                  <i class="ti ti-user iico" aria-hidden="true"></i>
+                  <input type="text" id="hris-username" name="username" placeholder="Enter your username"
+                    autocomplete="username" value="<?php echo htmlspecialchars($_COOKIE['remember_username'] ?? ''); ?>">
                 </div>
+              </div>
 
-                <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <div class="input-group" style="position:relative;">
-                        <span class="input-group-text"
-                            style="border-radius:8px 0 0 8px;border:1.5px solid #dee2e6;border-right:none;background:#f8f9fa;">
-                            <i class="fas fa-lock" style="color:#6c757d;font-size:0.85rem;"></i>
-                        </span>
-                        <input type="password" class="form-control" id="password" name="password"
-                            placeholder="Enter your password" required
-                            style="border-left:none;border-radius:0 8px 8px 0;padding-right:40px;">
-                        <button type="button" class="password-toggle" onclick="togglePassword()"
-                            style="position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:5;">
-                            <i class="fas fa-eye" id="toggleIcon"></i>
-                        </button>
-                    </div>
+              <div class="field">
+                <label for="hp">Password</label>
+                <div class="iwrap">
+                  <i class="ti ti-lock iico" aria-hidden="true"></i>
+                  <input type="password" id="hp" name="password" placeholder="Enter your password"
+                    autocomplete="current-password">
+                  <button type="button" class="eyebtn" onclick="tpw('hp','he')" aria-label="Toggle password visibility">
+                    <i class="ti ti-eye" id="he"></i>
+                  </button>
                 </div>
+              </div>
 
-                <div class="mb-4"></div>
+              <div class="optrow">
+                <label class="rmb"><input type="checkbox" name="remember" <?php echo isset($_COOKIE['remember_username']) ? 'checked' : ''; ?>> Remember me</label>
+                <a href="#" class="fgt">Forgot password?</a>
+              </div>
 
-                <button type="submit" class="btn btn-primary w-100 mb-3">
-                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
-                </button>
-
-                <div class="text-center">
-                    <a href="<?php echo BASE_URL; ?>/index.php" class="btn btn-outline-secondary btn-sm w-100"
-                        style="border-radius:10px;">
-                        <i class="fas fa-arrow-left me-2"></i>Admin / HR Login
-                    </a>
-                </div>
+              <button type="submit" class="btn-p btn-gold">
+                <i class="ti ti-login" aria-hidden="true"></i>
+                Sign In
+              </button>
             </form>
 
-            <div class="text-center mt-4">
-                <small style="color:#adb5bd;">&copy; <?php echo date('Y'); ?> Raquel Pawnshop. All rights
-                    reserved.</small>
+            <button class="btn-s" onclick="showESS()">
+              <i class="ti ti-id-badge-2" aria-hidden="true"></i>
+              Employee Portal Login
+            </button>
+
+            <p class="ffoot">© <?php echo date('Y'); ?> Raquel Pawnshop. All rights reserved.</p>
+          </div>
+
+          <!-- ── ESS Login Card ── -->
+          <div class="form-inner essf">
+            <!-- Mobile tabs -->
+            <div class="mob-tabs">
+              <button class="mob-tab" id="mobTabHRIS2" onclick="showHRIS()">HRIS Portal</button>
+              <button class="mob-tab active-green" id="mobTabESS2" onclick="showESS()">Employee Portal</button>
             </div>
+            <p class="eyebrow ey-green"><i class="ti ti-user-circle" aria-hidden="true"></i> Employee Portal</p>
+            <h2 class="form-title">Welcome Back!</h2>
+            <p class="form-sub">Login to access your employee account</p>
+
+            <div class="login-error" id="essError" style="<?php echo $error ? 'display: flex;' : 'display: none;'; ?>">
+              <i class="ti ti-alert-circle"></i>
+              <span id="essErrorMsg"><?php echo htmlspecialchars($error); ?></span>
+            </div>
+
+            <form method="POST" action="index.php" id="essForm">
+              <div class="field">
+                <label for="ess-username">Employee ID / Username</label>
+                <div class="iwrap">
+                  <i class="ti ti-user iico" aria-hidden="true"></i>
+                  <input type="text" id="ess-username" name="username" placeholder="e.g. 024-001"
+                    autocomplete="username" value="<?php echo e($_COOKIE['remember_employee_username'] ?? $_POST['username'] ?? ''); ?>">
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="ep">Password</label>
+                <div class="iwrap">
+                  <i class="ti ti-lock iico" aria-hidden="true"></i>
+                  <input type="password" id="ep" name="password" placeholder="Enter your password"
+                    autocomplete="current-password">
+                  <button type="button" class="eyebtn" onclick="tpw('ep','ee')" aria-label="Toggle password visibility">
+                    <i class="ti ti-eye" id="ee"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="optrow">
+                <label class="rmb"><input type="checkbox" name="remember" <?php echo isset($_COOKIE['remember_employee_username']) ? 'checked' : ''; ?>> Remember me</label>
+                <a href="#" class="fgt">Forgot password?</a>
+              </div>
+
+              <button type="submit" class="btn-p btn-green">
+                <i class="ti ti-login" aria-hidden="true"></i>
+                Sign In
+              </button>
+            </form>
+
+            <button class="btn-s" onclick="showHRIS()">
+              <i class="ti ti-briefcase" aria-hidden="true"></i>
+              HR Management Login
+            </button>
+
+            <p class="ffoot">© <?php echo date('Y'); ?> Raquel Pawnshop. All rights reserved.</p>
+          </div>
         </div>
-    </div>
+      </div><!-- /HRIS screen -->
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function togglePassword() {
-            const pwd = document.getElementById('password');
-            const icon = document.getElementById('toggleIcon');
-            if (pwd.type === 'password') {
-                pwd.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                pwd.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
+    </div><!-- /track -->
+  </div><!-- /root -->
 
-        document.getElementById('loginForm').addEventListener('submit', function (e) {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            if (!username || !password) {
-                e.preventDefault();
-                alert('Please fill in all fields.');
-            }
-        });
-    </script>
+  <script src="<?php echo BASE_URL; ?>/assets/js/raquel-hris-login.js" defer></script>
+
 </body>
 
 </html>

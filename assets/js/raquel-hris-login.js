@@ -72,19 +72,34 @@ document.addEventListener('DOMContentLoaded', function () {
   ───────────────────────────────────────── */
   const hrisForm = document.getElementById('hrisForm');
   if (hrisForm) {
+    const hrisUser = document.getElementById('hris-username');
+    const hrisPass = document.getElementById('hp');
+    const hrisErr  = document.getElementById('hrisError');
+
     hrisForm.addEventListener('submit', function (e) {
-      const username = document.getElementById('hris-username').value.trim();
-      const password = document.getElementById('hp').value;
+      const username = hrisUser.value.trim();
+      const password = hrisPass.value;
 
       if (!username || !password) {
         e.preventDefault();
-        const errBox = document.getElementById('hrisError');
         document.getElementById('hrisErrorMsg').textContent =
           'Please fill in both username and password.';
-        errBox.style.display = 'flex';
-        errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        hrisErr.style.display = 'flex';
+        hrisErr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     });
+
+    // Clear error messages when user starts typing
+    if (hrisUser) {
+      hrisUser.addEventListener('input', function () {
+        hrisErr.style.display = 'none';
+      });
+    }
+    if (hrisPass) {
+      hrisPass.addEventListener('input', function () {
+        hrisErr.style.display = 'none';
+      });
+    }
   }
 
   /* ─────────────────────────────────────────
@@ -92,19 +107,34 @@ document.addEventListener('DOMContentLoaded', function () {
   ───────────────────────────────────────── */
   const essForm = document.getElementById('essForm');
   if (essForm) {
+    const essUser = document.getElementById('ess-username');
+    const essPass = document.getElementById('ep');
+    const essErr  = document.getElementById('essError');
+
     essForm.addEventListener('submit', function (e) {
-      const username = document.getElementById('ess-username').value.trim();
-      const password = document.getElementById('ep').value;
+      const username = essUser.value.trim();
+      const password = essPass.value;
 
       if (!username || !password) {
         e.preventDefault();
-        const errBox = document.getElementById('essError');
         document.getElementById('essErrorMsg').textContent =
           'Please fill in both username and password.';
-        errBox.style.display = 'flex';
-        errBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        essErr.style.display = 'flex';
+        essErr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     });
+
+    // Clear error messages when user starts typing
+    if (essUser) {
+      essUser.addEventListener('input', function () {
+        essErr.style.display = 'none';
+      });
+    }
+    if (essPass) {
+      essPass.addEventListener('input', function () {
+        essErr.style.display = 'none';
+      });
+    }
   }
 
 });
