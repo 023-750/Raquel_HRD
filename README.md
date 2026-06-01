@@ -8,5 +8,3 @@ overal aesthetic design seems off modernize it
 - employee template should be rejected by immediate head / manager >> hr supervisor >> manager TEST!
 
 forgot password page should work on employee side
-ha?# raquel-pawnshop-fixed
-waw
