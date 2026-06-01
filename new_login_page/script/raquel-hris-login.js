@@ -30,11 +30,34 @@ document.addEventListener('DOMContentLoaded', function () {
   window.tpw = togglePasswordVisibility;
 
   /* ─────────────────────────────────────────
+     Mobile breakpoint helper
+  ───────────────────────────────────────── */
+  const mobileBreakpoint = window.matchMedia('(max-width: 640px)');
+
+  function requestSyncMobileHrisCard() {
+    // No-op: scroll-based expansion removed to prevent over-swipe jank.
+    // The HRIS card now stays in its natural static position on mobile.
+    document.body.classList.remove('mobile-hris-expanded');
+  }
+
+  /* ─────────────────────────────────────────
      Panel switching — Show ESS portal
   ───────────────────────────────────────── */
   window.showESS = function () {
     document.getElementById('track').classList.add('show-ess');
     document.body.classList.add('show-ess');
+
+    // Update mobile tab active states
+    ['mobTabHRIS', 'mobTabHRIS2'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) { el.classList.remove('active-gold'); }
+    });
+    ['mobTabESS', 'mobTabESS2'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) { el.classList.add('active-green'); }
+    });
+
+    requestSyncMobileHrisCard();
   };
 
   /* ─────────────────────────────────────────
@@ -43,7 +66,21 @@ document.addEventListener('DOMContentLoaded', function () {
   window.showHRIS = function () {
     document.getElementById('track').classList.remove('show-ess');
     document.body.classList.remove('show-ess');
+
+    // Update mobile tab active states
+    ['mobTabESS', 'mobTabESS2'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) { el.classList.remove('active-green'); }
+    });
+    ['mobTabHRIS', 'mobTabHRIS2'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) { el.classList.add('active-gold'); }
+    });
+
+    requestSyncMobileHrisCard();
   };
+
+  mobileBreakpoint.addEventListener('change', requestSyncMobileHrisCard);
 
   /* ─────────────────────────────────────────
      HRIS form — client-side validation
@@ -84,5 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
   }
+
+  requestSyncMobileHrisCard();
 
 });

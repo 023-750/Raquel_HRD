@@ -1,67 +1,82 @@
-/* ══════════════════════════════════════
+/* =============================================
    raquel-hris-login.css
    Raquel Pawnshop HRIS — Login Page Styles
-   Extracted from raquel-hris-login.html
-══════════════════════════════════════ */
+   =============================================
+   Sections:
+   1. Variables
+   2. Reset & Base
+   3. Page Layout
+   4. HRIS Brand Panel (left)
+   5. ESS Brand Panel (right)
+   6. Form Panel & Cards
+   7. Form Elements
+   8. Buttons
+   9. Animations
+   10. Mobile (max 640px)
+   11. Tablet (641px – 900px)
+============================================= */
 
-/* ── Reset ── */
-*,
-*::before,
-*::after {
+
+/* =============================================
+   1. VARIABLES
+============================================= */
+
+:root {
+  /* Brand greens */
+  --green-dark:    #031b02;
+  --green-forest:  #045202;
+  --green-mid:     #1a2b04;
+  --green-primary: #294306;
+  --green-bright:  #28a745;
+
+  /* Brand gold (used on brand panels only) */
+  --gold:          #bd9414;
+  --gold-light:    #ffd754;
+
+  /* Text & UI */
+  --text-dark:     #1a1a2e;
+  --text-muted:    #6c757d;
+  --text-light:    #9db0a3;
+
+  /* Form surface */
+  --input-bg:      #f8faf8;
+  --input-border:  #e2ebe4;
+  --input-hover:   #c8d8cb;
+
+  /* Transition speed */
+  --speed-fast:    0.2s;
+  --speed-normal:  0.35s;
+  --speed-slow:    0.58s;
+}
+
+
+/* =============================================
+   2. RESET & BASE
+============================================= */
+
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-/* ── Design Tokens (aligned to style.css) ── */
-:root {
-  --forest: #045202;
-  /* matches .login-wrapper bg */
-  --dark-green: #1a2b04;
-  /* --primary-dark */
-  --primary-green: #294306;
-  /* --primary-blue / Forest Green */
-  --bright-green: #28a745;
-  /* success green */
-  --gold: #BD9414;
-  /* --primary-light / brand gold */
-  --gold-hover: #d4ac30;
-  --cream: #faf9f5;
-  --border: #d2ddd5;
-  --text: #1a1a2e;
-  /* --text-dark */
-  --muted: #6c757d;
-  /* --text-muted */
-  --light: #9db0a3;
-  --bg-panel: #f0f2f5;
-  /* --bg-gray */
-  --dur: .58s;
-  --ease: cubic-bezier(.77, 0, .18, 1);
-}
-
-/* ── Base ── */
-html,
-body,
-input,
-button,
-select,
-textarea {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-html,
-body {
+html, body {
   height: 100%;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  background: var(--forest);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--green-forest);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ══════════════════════════════════════
-   ROOT + TRACK
-══════════════════════════════════════ */
+input, button, select, textarea {
+  font-family: inherit;
+}
+
+
+/* =============================================
+   3. PAGE LAYOUT
+============================================= */
+
+/* Outer wrapper — fills the full viewport */
 .root {
   width: 100%;
   height: 100vh;
@@ -69,6 +84,7 @@ body {
   position: relative;
 }
 
+/* Sliding track that holds all screens */
 .track {
   display: flex;
   width: 100%;
@@ -76,90 +92,69 @@ body {
   position: relative;
 }
 
+/* A single screen (HRIS or ESS view) */
 .screen {
   display: flex;
   width: 100%;
   height: 100vh;
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
-/* ══════════════════════════════════════
-   BRAND PANEL — HRIS (dark forest green)
-══════════════════════════════════════ */
+
+/* =============================================
+   4. HRIS BRAND PANEL (left side, dark green)
+============================================= */
+
 .brand {
   width: 50%;
-  flex-shrink: 0;
-  background: linear-gradient(160deg, #0f2d0d 0%, var(--forest) 60%, #031b02 100%);
   position: absolute;
-  left: 0;
   top: 0;
+  left: 0;
   bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 48px 32px;
+  background: linear-gradient(160deg, #0f2d0d 0%, var(--green-forest) 60%, var(--green-dark) 100%);
   overflow: hidden;
   z-index: 1;
   opacity: 1;
-  transition: opacity calc(var(--dur) * .3) ease calc(var(--dur) * .4);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  transition: opacity 0.17s ease 0.23s;
 }
 
+/* Fade out HRIS brand when ESS is active */
 .show-ess .brand {
   opacity: 0;
 }
 
-/* grid texture */
+/* Subtle diagonal grid texture on the brand panel */
 .brand::before {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background-image:
-    repeating-linear-gradient(45deg, transparent, transparent 28px, rgba(189, 148, 20, .04) 28px, rgba(189, 148, 20, .04) 29px),
-    repeating-linear-gradient(-45deg, transparent, transparent 28px, rgba(189, 148, 20, .04) 28px, rgba(189, 148, 20, .04) 29px);
+    repeating-linear-gradient(45deg,  transparent, transparent 28px, rgba(189,148,20,.04) 28px, rgba(189,148,20,.04) 29px),
+    repeating-linear-gradient(-45deg, transparent, transparent 28px, rgba(189,148,20,.04) 28px, rgba(189,148,20,.04) 29px);
 }
 
-/* ── Corner brackets ── */
+/* Corner bracket decorations */
 .cr {
   position: absolute;
   width: 40px;
   height: 40px;
 }
 
-.tl {
-  top: 18px;
-  left: 18px;
-  border-top: 1px solid rgba(189, 148, 20, .3);
-  border-left: 1px solid rgba(189, 148, 20, .3);
-}
+.tl { top: 18px;    left: 18px;  border-top:    1px solid rgba(189,148,20,.3); border-left:  1px solid rgba(189,148,20,.3); }
+.tr { top: 18px;    right: 18px; border-top:    1px solid rgba(189,148,20,.3); border-right: 1px solid rgba(189,148,20,.3); }
+.bl { bottom: 18px; left: 18px;  border-bottom: 1px solid rgba(189,148,20,.3); border-left:  1px solid rgba(189,148,20,.3); }
+.br { bottom: 18px; right: 18px; border-bottom: 1px solid rgba(189,148,20,.3); border-right: 1px solid rgba(189,148,20,.3); }
 
-.tr {
-  top: 18px;
-  right: 18px;
-  border-top: 1px solid rgba(189, 148, 20, .3);
-  border-right: 1px solid rgba(189, 148, 20, .3);
-}
-
-.bl {
-  bottom: 18px;
-  left: 18px;
-  border-bottom: 1px solid rgba(189, 148, 20, .3);
-  border-left: 1px solid rgba(189, 148, 20, .3);
-}
-
-.br {
-  bottom: 18px;
-  right: 18px;
-  border-bottom: 1px solid rgba(189, 148, 20, .3);
-  border-right: 1px solid rgba(189, 148, 20, .3);
-}
-
-/* ── Brand content block ── */
+/* Content block inside the brand panel */
 .bcon {
   position: relative;
   z-index: 1;
@@ -170,53 +165,58 @@ body {
   gap: 20px;
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* logo image ring */
+/* Show brand content when HRIS is active */
+body:not(.show-ess) .bcon {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Logo badge */
 .logo-ring {
   width: 100px;
   height: 100px;
   border-radius: 24px;
-  background: #ffffff; /* Solid white background so the logo looks perfect and stands out! */
-  border: 1.5px solid rgba(189, 148, 20, 0.35);
+  background: #fff;
+  border: 1.5px solid rgba(189,148,20,0.35);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
   cursor: default;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-}
-
-.logo-ring::before {
-  content: '';
-  position: absolute;
-  inset: -12px;
-  border-radius: 30px;
-  background: radial-gradient(circle, rgba(189, 148, 20, 0.28) 0%, transparent 70%);
-  z-index: -1;
-  animation: pulseGlow 3s ease-in-out infinite;
-  pointer-events: none;
 }
 
 .logo-ring:hover {
   transform: translateY(-4px) scale(1.03);
   border-color: var(--gold);
-  box-shadow: 0 15px 35px rgba(189, 148, 20, 0.2);
+  box-shadow: 0 15px 35px rgba(189,148,20,0.2);
+}
+
+/* Glow ring behind the logo badge */
+.logo-ring::before {
+  content: '';
+  position: absolute;
+  top: -12px; left: -12px; right: -12px; bottom: -12px;
+  border-radius: 30px;
+  background: radial-gradient(circle, rgba(189,148,20,0.28) 0%, transparent 70%);
+  z-index: -1;
+  animation: pulseGlow 3s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .logo-ring img {
   width: 100%;
   height: 100%;
-  object-fit: contain; /* Keep the logo aspect ratio perfect! */
+  object-fit: contain;
   border-radius: 22px;
   padding: 8px;
 }
 
-/* fallback monogram if img fails */
+/* Fallback letter if logo image fails to load */
 .mono {
   font-size: 46px;
   font-weight: 600;
@@ -225,21 +225,22 @@ body {
   user-select: none;
 }
 
+/* "Human Resource Department" pill label */
 .b-label {
   display: inline-block;
   font-size: 10px;
-  letter-spacing: 2px;
   font-weight: 700;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  color: #ffd754; /* High-contrast bright gold */
-  background: rgba(189, 148, 20, 0.1);
-  border: 1px solid rgba(189, 148, 20, 0.28);
+  color: var(--gold-light);
+  background: rgba(189,148,20,0.1);
+  border: 1px solid rgba(189,148,20,0.28);
   padding: 4px 12px;
   border-radius: 100px;
   margin-bottom: 8px;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
 }
 
+/* Thin gold divider line */
 .g-line {
   width: 60px;
   height: 2px;
@@ -247,224 +248,79 @@ body {
   margin: 12px auto;
 }
 
+/* Company name heading */
 .b-name {
   font-size: 34px;
   font-weight: 800;
-  color: #ffffff;
+  color: #fff;
   line-height: 1.1;
   letter-spacing: -0.5px;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-.b-name span {
-  background: linear-gradient(135deg, #ffffff 30%, #ffd754 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: block;
-  font-size: 26px;
-  font-weight: 300;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-top: 4px;
-}
-
+/* Tagline pill */
 .b-tag {
   font-size: 15px;
   font-weight: 500;
-  color: #ffffff; /* Crisp white for ultimate readability */
+  color: #fff;
   letter-spacing: 0.5px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
   padding: 10px 22px;
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(12px);
   max-width: 220px;
   margin-top: 5px;
 }
 
 .b-tag b {
-  font-weight: 700;
-  color: #ffd754; /* Bright gold for contrast and readability */
+  color: var(--gold-light);
 }
 
-/* ══════════════════════════════════════
-   FORM PANEL
-══════════════════════════════════════ */
-.form-panel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  position: absolute;
-  left: 50%;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  background: transparent;
-  transition: transform var(--dur) var(--ease);
-  z-index: 2;
-  overflow: visible;
-}
 
-.show-ess .form-panel {
-  transform: translateX(-100%);
-}
+/* =============================================
+   5. ESS BRAND PANEL (right side, darker green)
+============================================= */
 
-/* ── Floating card ── */
-.form-inner {
-  width: 360px;
-  flex-shrink: 0;
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 36px 32px 28px;
-  box-shadow:
-    0 0 0 1px rgba(4, 82, 2, 0.07),
-    0 8px 24px rgba(4, 82, 2, 0.14),
-    0 32px 72px rgba(4, 82, 2, 0.22),
-    0 0 90px rgba(189, 148, 20, 0.06);
-  border: 1px solid rgba(210, 221, 213, 0.4);
-  position: relative;
-  z-index: 1;
-  transition:
-    opacity calc(var(--dur) * .3) ease,
-    transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
-    box-shadow 0.35s ease;
-}
-
-/* ── Top accent bars ── */
-.hris::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2.5px;
-  background: linear-gradient(90deg, transparent 0%, var(--gold) 20%, var(--gold-hover) 50%, var(--gold) 80%, transparent 100%);
-  border-radius: 20px 20px 0 0;
-}
-
-.essf::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2.5px;
-  background: linear-gradient(90deg, transparent 0%, var(--bright-green) 20%, #34c059 50%, var(--bright-green) 80%, transparent 100%);
-  border-radius: 20px 20px 0 0;
-}
-
-/* ── HRIS card visibility ── */
-.hris {
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity calc(var(--dur) * .3) ease,
-    transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
-    box-shadow 0.35s ease;
-}
-
-.show-ess .hris {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity calc(var(--dur) * .3) ease calc(var(--dur) * .3),
-    transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
-    box-shadow 0.35s ease;
-}
-
-/* ── ESS desktop card ── */
-.essf {
-  opacity: 0;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 360px;
-  flex-shrink: 0;
-  height: fit-content;
-  transition: opacity calc(var(--dur) * .3) ease calc(var(--dur) * .3),
-    transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
-    box-shadow 0.35s ease;
-}
-
-.show-ess .essf {
-  opacity: 1;
-  pointer-events: auto;
-  transition: opacity calc(var(--dur) * .3) ease,
-    transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
-    box-shadow 0.35s ease;
-}
-
-/* mobile-only elements hidden on desktop */
-.mob-ess-overlay {
-  display: none;
-}
-
-.mob-tabs {
-  display: none;
-}
-
-/* ══════════════════════════════════════
-   ESS BRAND PANEL (bright green, right side)
-══════════════════════════════════════ */
 .ess-brand {
   width: 50%;
-  flex-shrink: 0;
-  background: linear-gradient(160deg, var(--primary-green) 0%, var(--dark-green) 100%);
   position: absolute;
-  right: 0;
   top: 0;
+  right: 0;
   bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 48px 28px;
+  background: linear-gradient(160deg, var(--green-primary) 0%, var(--green-mid) 100%);
   overflow: hidden;
   z-index: 1;
   opacity: 0;
-  transition: opacity calc(var(--dur) * .3) ease calc(var(--dur) * .4);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  transition: opacity 0.17s ease 0.23s;
 }
 
+/* Show ESS brand when ESS is active */
 .show-ess .ess-brand {
   opacity: 1;
 }
 
+/* Subtle diagonal grid texture */
 .ess-brand::before {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background-image:
-    repeating-linear-gradient(45deg, transparent, transparent 26px, rgba(255, 255, 255, .03) 26px, rgba(255, 255, 255, .03) 27px),
-    repeating-linear-gradient(-45deg, transparent, transparent 26px, rgba(255, 255, 255, .03) 26px, rgba(255, 255, 255, .03) 27px);
+    repeating-linear-gradient(45deg,  transparent, transparent 26px, rgba(255,255,255,.03) 26px, rgba(255,255,255,.03) 27px),
+    repeating-linear-gradient(-45deg, transparent, transparent 26px, rgba(255,255,255,.03) 26px, rgba(255,255,255,.03) 27px);
 }
 
-/* ESS corner brackets override */
-.ess-brand .tl {
-  border-top: 1px solid rgba(255, 255, 255, .2);
-  border-left: 1px solid rgba(255, 255, 255, .2);
-}
+/* ESS corner brackets (white instead of gold) */
+.ess-brand .tl { border-top:    1px solid rgba(255,255,255,.2); border-left:  1px solid rgba(255,255,255,.2); }
+.ess-brand .tr { border-top:    1px solid rgba(255,255,255,.2); border-right: 1px solid rgba(255,255,255,.2); }
+.ess-brand .bl { border-bottom: 1px solid rgba(255,255,255,.2); border-left:  1px solid rgba(255,255,255,.2); }
+.ess-brand .br { border-bottom: 1px solid rgba(255,255,255,.2); border-right: 1px solid rgba(255,255,255,.2); }
 
-.ess-brand .tr {
-  border-top: 1px solid rgba(255, 255, 255, .2);
-  border-right: 1px solid rgba(255, 255, 255, .2);
-}
-
-.ess-brand .bl {
-  border-bottom: 1px solid rgba(255, 255, 255, .2);
-  border-left: 1px solid rgba(255, 255, 255, .2);
-}
-
-.ess-brand .br {
-  border-bottom: 1px solid rgba(255, 255, 255, .2);
-  border-right: 1px solid rgba(255, 255, 255, .2);
-}
-
-/* ── ESS content block ── */
+/* Content block inside ESS brand panel */
 .ess-bcon {
   position: relative;
   z-index: 1;
@@ -475,106 +331,103 @@ body {
   gap: 18px;
   opacity: 0;
   transform: translateY(8px);
-  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
+/* Show ESS content when ESS is active */
+.show-ess .ess-bcon {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ESS logo badge */
 .ess-ring {
   width: 100px;
   height: 100px;
   border-radius: 24px;
-  background: #ffffff; /* Solid white — matches the HRIS logo badge */
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  background: #fff;
+  border: 1.5px solid rgba(255,255,255,0.25);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
   cursor: default;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.ess-ring:hover {
+  transform: translateY(-4px) scale(1.03);
+  border-color: rgba(255,255,255,0.6);
+  box-shadow: 0 15px 35px rgba(255,255,255,0.1);
 }
 
 .ess-ring::before {
   content: '';
   position: absolute;
-  inset: -12px;
+  top: -12px; left: -12px; right: -12px; bottom: -12px;
   border-radius: 30px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%);
   z-index: -1;
   animation: pulseGlow 3s ease-in-out infinite;
   pointer-events: none;
 }
 
-.ess-ring:hover {
-  transform: translateY(-4px) scale(1.03);
-  border-color: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 15px 35px rgba(255, 255, 255, 0.1);
+.ess-ring img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 22px;
+  padding: 8px;
 }
 
-.ess-ring i {
-  font-size: 40px;
-  color: var(--primary-green); /* Forest-green icon on white background */
-}
-
+/* "Employee Portal" pill label */
 .e-label {
   display: inline-block;
   font-size: 10px;
-  letter-spacing: 2px;
   font-weight: 700;
+  letter-spacing: 2px;
   text-transform: uppercase;
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.22);
   padding: 4px 12px;
   border-radius: 100px;
   margin-bottom: 8px;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
 }
 
+/* Thin white divider line */
 .e-line {
   width: 60px;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
   margin: 12px auto;
 }
 
+/* Company name */
 .e-name {
   font-size: 34px;
   font-weight: 800;
-  color: #ffffff;
+  color: #fff;
   line-height: 1.1;
   letter-spacing: -0.5px;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
-.e-name span {
-  background: linear-gradient(135deg, #ffffff 30%, #a3e8b4 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: block;
-  font-size: 26px;
-  font-weight: 300;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  margin-top: 4px;
-}
-
+/* Tagline pill */
 .e-tag {
   font-size: 13.5px;
-  color: rgba(255, 255, 255, 0.9); /* High-opacity white for legibility */
+  color: rgba(255,255,255,0.9);
   line-height: 1.5;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
   padding: 10px 22px;
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(12px);
   max-width: 220px;
   margin-top: 5px;
 }
 
-/* ── ESS feature list ── */
+/* ESS feature list (desktop only) */
 .ess-feats {
   display: flex;
   flex-direction: column;
@@ -587,32 +440,119 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(255, 255, 255, .07);
-  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
   border-radius: 8px;
   padding: 8px 12px;
-  transition: background .2s;
+  transition: background var(--speed-fast);
 }
 
 .ess-feat:hover {
-  background: rgba(255, 255, 255, .13);
+  background: rgba(255,255,255,.13);
 }
 
-.ess-feat i {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.9);
-  flex-shrink: 0;
+.ess-feat i    { font-size: 15px; color: rgba(255,255,255,0.9); flex-shrink: 0; }
+.ess-feat span { font-size: 12px; color: rgba(255,255,255,0.85); text-align: left; }
+
+
+/* =============================================
+   6. FORM PANEL & CARDS
+============================================= */
+
+/* Container that holds the login card — sits on the right half */
+.form-panel {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: transform var(--speed-slow) ease;
 }
 
-.ess-feat span {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
-  text-align: left;
+/* Slide the form panel left when ESS is active */
+.show-ess .form-panel {
+  transform: translateX(-100%);
 }
 
-/* ══════════════════════════════════════
-   SHARED FORM ELEMENTS
-══════════════════════════════════════ */
+/* The white login card */
+.form-inner {
+  width: 360px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  border: 1px solid rgba(210,221,213,0.4);
+  box-shadow:
+    0 0 0 1px rgba(4,82,2,0.07),
+    0 8px 24px rgba(4,82,2,0.14),
+    0 32px 72px rgba(4,82,2,0.22);
+  position: relative;
+  z-index: 1;
+  transition: opacity var(--speed-normal) ease;
+}
+
+/* Thin colored line at the top of each card */
+.hris::before,
+.essf::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 20px 20px 0 0;
+}
+
+.hris::before {
+  background: linear-gradient(90deg, transparent, var(--green-forest), #1a5c18, var(--green-forest), transparent);
+}
+
+.essf::before {
+  background: linear-gradient(90deg, transparent, var(--green-bright), #34c059, var(--green-bright), transparent);
+}
+
+/* HRIS card — visible by default */
+.hris {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.show-ess .hris {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ESS card — hidden by default, shown when ESS is active */
+.essf {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  margin: auto;
+  width: 360px;
+  height: fit-content;
+  transition: opacity var(--speed-normal) ease;
+}
+
+.show-ess .essf {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Mobile-only elements are hidden on desktop */
+.mob-tabs {
+  display: none;
+}
+
+
+/* =============================================
+   7. FORM ELEMENTS
+============================================= */
+
+/* Small badge above the form title e.g. "HRIS Portal" */
 .eyebrow {
   display: inline-flex;
   align-items: center;
@@ -621,23 +561,15 @@ body {
   font-weight: 700;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  margin-bottom: 12px;
   padding: 4px 10px;
   border-radius: 6px;
+  margin-bottom: 12px;
+  color: var(--green-primary);
+  background: rgba(41,67,6,0.1);
+  border: 1px solid rgba(41,67,6,0.25);
 }
 
-.ey-gold {
-  color: #9c7a10;
-  background: rgba(189, 148, 20, .1);
-  border: 1px solid rgba(189, 148, 20, .25);
-}
-
-.ey-green {
-  color: var(--primary-green);
-  background: rgba(41, 67, 6, .1);
-  border: 1px solid rgba(41, 67, 6, .25);
-}
-
+/* Form heading */
 .form-title {
   font-size: 34px;
   font-weight: 600;
@@ -647,22 +579,23 @@ body {
   color: #141f17;
 }
 
+/* Subtitle below the heading */
 .form-sub {
   font-size: 12.5px;
   color: #8a9e90;
-  margin-bottom: 18px;
   line-height: 1.5;
+  margin-bottom: 18px;
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(4, 82, 2, 0.07);
+  border-bottom: 1px solid rgba(4,82,2,0.07);
 }
 
-/* ── Error alert ── */
+/* Error message box */
 .login-error {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  background: rgba(220, 53, 69, .06);
-  border: 1px solid rgba(220, 53, 69, .22);
+  background: rgba(220,53,69,0.06);
+  border: 1px solid rgba(220,53,69,0.22);
   border-left: 3px solid #dc3545;
   border-radius: 10px;
   padding: 12px 14px;
@@ -678,7 +611,7 @@ body {
   margin-top: 1px;
 }
 
-/* ── Fields ── */
+/* Field wrapper */
 .field {
   margin-bottom: 12px;
 }
@@ -693,36 +626,39 @@ body {
   margin-bottom: 6px;
 }
 
+/* Input wrapper — holds icon + input + eye button */
 .iwrap {
   position: relative;
   display: flex;
   align-items: center;
 }
 
+/* Left icon inside the input */
 .iico {
   position: absolute;
   left: 13px;
   font-size: 15px;
   color: #b8ccbe;
   pointer-events: none;
-  transition: color .2s;
+  transition: color var(--speed-fast);
 }
 
+/* Text input */
 .iwrap input {
   width: 100%;
   padding: 12px 14px 12px 40px;
-  background: #f8faf8;
-  border: 1.5px solid #e2ebe4;
+  background: var(--input-bg);
+  border: 1.5px solid var(--input-border);
   border-radius: 10px;
   font-size: 13.5px;
-  color: var(--text);
+  color: var(--text-dark);
   outline: none;
-  transition: all .2s ease;
+  transition: background var(--speed-fast), border-color var(--speed-fast), box-shadow var(--speed-fast);
 }
 
 .iwrap input:hover {
   background: #f3f7f4;
-  border-color: #c8d8cb;
+  border-color: var(--input-hover);
 }
 
 .iwrap input::placeholder {
@@ -730,57 +666,49 @@ body {
   font-weight: 300;
 }
 
-/* Gold focus — HRIS */
+/* Focus styles — HRIS card (green) */
 .hris .iwrap input:focus {
   background: #fff;
-  border-color: var(--gold);
-  box-shadow: 0 0 0 4px rgba(189, 148, 20, .12);
+  border-color: var(--green-forest);
+  box-shadow: 0 0 0 4px rgba(4,82,2,0.12);
 }
 
 .hris .iwrap:focus-within .iico {
-  color: var(--gold);
+  color: var(--green-forest);
 }
 
-/* Green focus — ESS */
+/* Focus styles — ESS card (darker green) */
 .essf .iwrap input:focus {
   background: #fff;
-  border-color: var(--primary-green);
-  box-shadow: 0 0 0 4px rgba(41, 67, 6, .12);
+  border-color: var(--green-primary);
+  box-shadow: 0 0 0 4px rgba(41,67,6,0.12);
 }
 
 .essf .iwrap:focus-within .iico {
-  color: var(--primary-green);
+  color: var(--green-primary);
 }
 
-/* ── Password toggle button ── */
+/* Show/hide password button */
 .eyebtn {
   position: absolute;
   right: 12px;
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--light);
+  color: var(--text-light);
   font-size: 16px;
   padding: 4px;
   display: flex;
   align-items: center;
   border-radius: 6px;
-  transition: color .2s, background .2s;
+  transition: color var(--speed-fast), background var(--speed-fast);
 }
 
-.eyebtn:hover {
-  background: rgba(0, 0, 0, .04);
-}
+.eyebtn:hover               { background: rgba(0,0,0,0.04); }
+.hris .eyebtn:hover         { color: var(--green-forest); }
+.essf .eyebtn:hover         { color: var(--green-bright); }
 
-.hris .eyebtn:hover {
-  color: var(--gold);
-}
-
-.essf .eyebtn:hover {
-  color: var(--bright-green);
-}
-
-/* ── Options row (remember me + forgot password) ── */
+/* Row with "Remember me" and "Forgot password" */
 .optrow {
   display: flex;
   align-items: center;
@@ -802,37 +730,39 @@ body {
   width: 14px;
   height: 14px;
   cursor: pointer;
-  border-radius: 4px;
 }
 
-.hris .rmb input {
-  accent-color: var(--gold);
-}
+.hris .rmb input { accent-color: var(--green-forest); }
+.essf .rmb input { accent-color: var(--green-primary); }
 
-.essf .rmb input {
-  accent-color: var(--primary-green);
-}
-
+/* Forgot password link */
 .fgt {
   font-size: 12.5px;
   font-weight: 500;
   text-decoration: none;
-  transition: opacity .2s;
+  transition: opacity var(--speed-fast);
 }
 
-.hris .fgt {
-  color: var(--gold);
+.hris .fgt { color: var(--green-forest); }
+.essf .fgt { color: var(--green-primary); }
+.fgt:hover { opacity: 0.65; }
+
+/* Footer copyright line */
+.ffoot {
+  text-align: center;
+  font-size: 10px;
+  color: #c2d0c6;
+  letter-spacing: 0.4px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(4,82,2,0.07);
 }
 
-.essf .fgt {
-  color: var(--primary-green);
-}
 
-.fgt:hover {
-  opacity: .65;
-}
+/* =============================================
+   8. BUTTONS
+============================================= */
 
-/* ── Primary submit button ── */
+/* Primary "Sign In" button */
 .btn-p {
   width: 100%;
   padding: 12px 20px;
@@ -848,48 +778,46 @@ body {
   justify-content: center;
   gap: 9px;
   margin-bottom: 10px;
-  transition: all .25s ease;
   position: relative;
   overflow: hidden;
+  transition: transform var(--speed-fast), box-shadow var(--speed-fast);
 }
 
+/* Subtle shine overlay on the button */
 .btn-p::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, .18) 0%, transparent 60%);
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 60%);
   pointer-events: none;
 }
 
-.btn-p:hover {
-  transform: translateY(-2px);
-}
+.btn-p:hover  { transform: translateY(-2px); }
+.btn-p:active { transform: translateY(0); }
 
-.btn-p:active {
-  transform: translateY(0);
-}
-
+/* HRIS Sign In — forest green */
 .btn-gold {
-  background: linear-gradient(135deg, #d4ac30 0%, var(--gold) 50%, #9e7a10 100%);
-  color: #faf9f5;
-  box-shadow: 0 4px 14px rgba(189, 148, 20, .35), 0 1px 3px rgba(189, 148, 20, .2);
+  background: linear-gradient(135deg, #1a5c18 0%, var(--green-forest) 50%, var(--green-dark) 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(4,82,2,0.35);
 }
 
 .btn-gold:hover {
-  box-shadow: 0 8px 24px rgba(189, 148, 20, .45), 0 2px 6px rgba(189, 148, 20, .3);
+  box-shadow: 0 8px 24px rgba(4,82,2,0.5);
 }
 
+/* ESS Sign In — darker green */
 .btn-green {
-  background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+  background: linear-gradient(135deg, var(--green-primary) 0%, var(--green-mid) 100%);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(41, 67, 6, .3), 0 1px 3px rgba(41, 67, 6, .2);
+  box-shadow: 0 4px 14px rgba(41,67,6,0.3);
 }
 
 .btn-green:hover {
-  box-shadow: 0 8px 24px rgba(41, 67, 6, .45), 0 2px 6px rgba(41, 67, 6, .3);
+  box-shadow: 0 8px 24px rgba(41,67,6,0.45);
 }
 
-/* ── Secondary portal-switch button ── */
+/* Secondary "Switch portal" button */
 .btn-s {
   width: 100%;
   padding: 10px 20px;
@@ -905,61 +833,60 @@ body {
   justify-content: center;
   gap: 9px;
   margin-bottom: 18px;
-  transition: all .2s ease;
+  transition: all var(--speed-fast);
 }
 
 .hris .btn-s:hover {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: rgba(189, 148, 20, .05);
+  border-color: var(--green-forest);
+  color: var(--green-forest);
+  background: rgba(4,82,2,0.05);
   transform: translateY(-1px);
 }
 
 .essf .btn-s:hover {
-  border-color: var(--primary-green);
-  color: var(--primary-green);
-  background: rgba(41, 67, 6, .05);
+  border-color: var(--green-primary);
+  color: var(--green-primary);
+  background: rgba(41,67,6,0.05);
   transform: translateY(-1px);
 }
 
-/* ── Form footer ── */
-.ffoot {
-  text-align: center;
-  font-size: 10px;
-  color: #c2d0c6;
-  letter-spacing: .4px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(4, 82, 2, 0.07);
+
+/* =============================================
+   9. ANIMATIONS
+============================================= */
+
+/* Pulsing glow behind logo badges */
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%       { opacity: 1;    transform: scale(1.08); }
 }
 
-/* ══════════════════════════════════════
-   ANIMATIONS & TRANSITIONS
-   ══════════════════════════════════════ */
-
-/* Trigger fade-in on active brand panel content */
-body:not(.show-ess) .bcon {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+/* Mobile fade in for brand header */
+@keyframes mobileFadeUp {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
-.show-ess .ess-bcon {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+/* Mobile fade in for login card */
+@keyframes mobileCardIn {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
-/* ══════════════════════════════════════
-   MOBILE  (≤ 640px)
-══════════════════════════════════════ */
+
+/* =============================================
+   10. MOBILE  (max-width: 640px)
+   Layout: scrollable page with tall brand header.
+============================================= */
+
 @media (max-width: 640px) {
 
-  html,
-  body {
+  /* Scrollable page */
+  html, body {
     height: auto;
     min-height: 100vh;
     overflow-y: auto;
-    background: linear-gradient(160deg, #0f2d0d 0%, var(--forest) 60%, #031b02 100%);
+    background: linear-gradient(160deg, #0f2d0d 0%, var(--green-forest) 60%, var(--green-dark) 100%);
   }
 
   .root {
@@ -984,7 +911,7 @@ body:not(.show-ess) .bcon {
     min-height: 100vh;
   }
 
-  /* ── Mobile brand header ── */
+  /* Brand header — tall centered column (same as before) */
   .brand,
   .ess-brand {
     position: static;
@@ -995,35 +922,29 @@ body:not(.show-ess) .bcon {
     align-items: center;
     justify-content: center;
     transition: none;
+    opacity: 1;
+    animation: mobileFadeUp 0.35s ease both;
   }
 
-  /* Toggle visibility of brand headers */
-  .brand {
-    display: flex !important;
-  }
+  /* Show/hide brand panels by toggling display */
+  .brand                { display: flex; }
+  .ess-brand            { display: none; }
+  .show-ess .brand      { display: none; }
+  .show-ess .ess-brand  { display: flex; }
 
-  .ess-brand {
-    display: none !important;
-  }
+  /* Hide ESS feature list */
+  .ess-brand .ess-feats { display: none; }
 
-  .show-ess .brand {
-    display: none !important;
-  }
-
-  .show-ess .ess-brand {
-    display: flex !important;
-  }
-
-  /* Hide ESS feature list on mobile brand header */
-  .ess-brand .ess-feats {
-    display: none;
-  }
-
+  /* Brand content */
   .bcon,
   .ess-bcon {
     gap: 12px;
+    opacity: 1;
+    transform: none;
+    transition: none;
   }
 
+  /* Logo sizes */
   .logo-ring,
   .ess-ring {
     width: 72px;
@@ -1034,6 +955,7 @@ body:not(.show-ess) .bcon {
     border-radius: 14px;
   }
 
+  /* Company name sizes */
   .b-name,
   .e-name {
     font-size: 24px;
@@ -1048,8 +970,9 @@ body:not(.show-ess) .bcon {
     font-size: 12px;
   }
 
-  /* ── Mobile form panel ── */
-  .form-panel {
+  /* Form panel */
+  .form-panel,
+  .show-ess .form-panel {
     position: static;
     left: auto;
     right: auto;
@@ -1059,15 +982,16 @@ body:not(.show-ess) .bcon {
     height: auto;
     padding: 0;
     background: transparent;
-    box-shadow: none !important;
-    transform: none !important;
+    box-shadow: none;
     display: block;
     border-radius: 28px 28px 0 0;
-    margin-top: -20px;
+    margin-top: 0;
+    transform: none;
+    transition: none;
     z-index: 10;
   }
 
-  /* HRIS & ESS cards on mobile */
+  /* Login cards */
   .form-inner.hris,
   .form-inner.essf {
     position: static;
@@ -1075,28 +999,30 @@ body:not(.show-ess) .bcon {
     max-width: 100%;
     border-radius: 28px 28px 0 0;
     padding: 32px 20px 40px;
-    box-shadow: 0 -8px 40px rgba(4, 82, 2, .22);
+    box-shadow: 0 -8px 40px rgba(4,82,2,0.22);
     min-height: calc(100vh - 220px);
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    transform: none !important;
-    transition: none;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    animation: mobileCardIn 0.35s ease both;
+    inset: auto;
+    margin: 0;
+    height: auto;
   }
 
-  /* Toggle display of cards */
-  .form-inner.essf {
-    display: none;
+  @supports (height: 100svh) {
+    .form-inner.hris,
+    .form-inner.essf {
+      min-height: calc(100svh - 220px);
+    }
   }
 
-  .show-ess .form-inner.hris {
-    display: none !important;
-  }
+  /* Show/hide cards */
+  .form-inner.essf               { display: none; }
+  .show-ess .form-inner.hris     { display: none; }
+  .show-ess .form-inner.essf     { display: block; }
 
-  .show-ess .form-inner.essf {
-    display: block !important;
-  }
-
-  /* ── Mobile tab switcher ── */
+  /* Mobile tab switcher */
   .mob-tabs {
     display: flex;
     gap: 8px;
@@ -1115,30 +1041,27 @@ body:not(.show-ess) .bcon {
     text-transform: uppercase;
     color: #7a8a7f;
     cursor: pointer;
-    transition: all .2s ease;
+    transition: all var(--speed-fast);
   }
 
   .mob-tab.active-gold {
-    background: rgba(189, 148, 20, .08);
-    border-color: var(--gold);
-    color: var(--gold);
+    background: rgba(4,82,2,0.08);
+    border-color: var(--green-forest);
+    color: var(--green-forest);
   }
 
   .mob-tab.active-green {
-    background: rgba(41, 67, 6, .08);
-    border-color: var(--primary-green);
-    color: var(--primary-green);
+    background: rgba(41,67,6,0.08);
+    border-color: var(--green-primary);
+    color: var(--green-primary);
   }
 
-  /* hide desktop switch button on mobile */
+  /* Hide desktop switch button on mobile */
   .btn-s {
     display: none;
   }
 
-  /* accent bars adjust on mobile */
-  /* accent bars are full-width, no override needed */
-
-  /* tighter spacing */
+  /* Tighter spacing */
   .form-title {
     font-size: 32px;
   }
@@ -1161,9 +1084,11 @@ body:not(.show-ess) .bcon {
   }
 }
 
-/* ══════════════════════════════════════
-   TABLET  (641px – 900px)
-══════════════════════════════════════ */
+
+/* =============================================
+   11. TABLET  (641px – 900px)
+============================================= */
+
 @media (min-width: 641px) and (max-width: 900px) {
 
   .brand,
@@ -1173,11 +1098,15 @@ body:not(.show-ess) .bcon {
 
   .form-panel {
     left: 50%;
-    padding: 0;
   }
 
   .show-ess .form-panel {
     transform: translateX(-100%);
+  }
+
+  .form-inner {
+    padding: 28px 24px 22px;
+    max-width: 360px;
   }
 
   .essf {
@@ -1186,10 +1115,5 @@ body:not(.show-ess) .bcon {
 
   .form-title {
     font-size: 30px;
-  }
-
-  .form-inner {
-    padding: 28px 24px 22px;
-    max-width: 360px;
   }
 }
