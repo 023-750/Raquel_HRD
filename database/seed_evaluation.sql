@@ -10,11 +10,11 @@ DELETE FROM evaluation_templates WHERE template_id IN (1, 2, 3, 4, 5);
 
 -- 2. INSERT EVALUATION TEMPLATES
 INSERT INTO evaluation_templates (template_id, template_name, description, target_department, evaluation_type, kra_weight, behavior_weight, form_code, revision_date, effective_date_form, status, created_by) VALUES
-(1, 'Digital Marketing Specialist Performance Review', 'Performance review for Digital Marketing Specialists targeting SEO, PPC, and social media campaigns.', 'Marketing', 'Annual', 80.00, 20.00, 'HRD Form-013.01', '2026-01-15', '2026-02-01', 'Active', 1),
-(2, 'Brand & Creative Specialist Evaluation', 'Evaluation for creative staff focusing on brand alignment, asset creation, and design.', 'Marketing', 'Annual', 80.00, 20.00, 'HRD Form-013.02', '2026-01-15', '2026-02-01', 'Active', 1),
-(3, 'Marketing Manager Performance Review', 'Strategic review for Marketing Managers focusing on ROI, leadership, and budget control.', 'Marketing', 'Annual', 80.00, 20.00, 'HRD Form-013.03', '2026-01-15', '2026-02-01', 'Active', 1),
-(4, 'General Employee Template (All Departments)', 'Standard evaluation template applicable to rank-and-file employees across all departments.', 'All Departments', 'Annual', 80.00, 20.00, 'HRD Form-013.04', '2026-01-15', '2026-02-01', 'Active', 1),
-(5, 'HR Specialist Performance Evaluation', 'Review template for HR Specialists focusing on recruitment, engagement, and training compliance.', 'Human Resources', 'Annual', 80.00, 20.00, 'HRD Form-013.05', '2026-01-15', '2026-02-01', 'Active', 1);
+(1, 'Digital Marketing Specialist Performance Review', 'Performance review for Digital Marketing Specialists targeting SEO, PPC, and social media campaigns.', 'Marketing', 'Annual', 80.00, 20.00, 'HRD Form-013.01', '2026-06-05', '2026-06-05', 'Active', 1),
+(2, 'Brand & Creative Specialist Evaluation', 'Evaluation for creative staff focusing on brand alignment, asset creation, and design.', 'Marketing', 'Annual', 80.00, 20.00, 'HRD Form-013.02', '2026-06-05', '2026-06-05', 'Active', 1),
+(3, 'Marketing Manager Performance Review', 'Strategic review for Marketing Managers focusing on ROI, leadership, and budget control.', 'Marketing', 'Annual', 80.00, 20.00, 'HRD Form-013.03', '2026-06-05', '2026-06-05', 'Active', 1),
+(4, 'General Employee Template (All Departments)', 'Standard evaluation template applicable to rank-and-file employees across all departments.', 'All Departments', 'Annual', 80.00, 20.00, 'HRD Form-013.04', '2026-06-05', '2026-06-05', 'Active', 1),
+(5, 'HR Specialist Performance Evaluation', 'Review template for HR Specialists focusing on recruitment, engagement, and training compliance.', 'Human Resources', 'Annual', 80.00, 20.00, 'HRD Form-013.05', '2026-06-05', '2026-06-05', 'Active', 1);
 
 -- 3. INSERT EVALUATION CRITERIA (KRA Section)
 -- Weights sum to 100% per section for each template.

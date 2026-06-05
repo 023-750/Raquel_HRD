@@ -11,3 +11,39 @@ check the flow of 360 evaluation
 check the analytics on hr manager and supervisor
 
 final function addition career movements
+
+
+notification center on employee portal ain't working no live notification too 
+
+the evaluation status on employee portal "last updated" time date information is not accurate
+
+the employee can do multiple drafts on same evaluation template which is not good
+
+if the employee has draft template the template won't be shown on available templates it should use the drafted version then submit it 
+
+employee from the other branch when performing 360 evaluation it goes first to it's own immediate head for example 
+employee from agdangan (It helpdesk 1) perform self evaluation then submit it the form will go to it's immediate head that is it's branch head (it supervisor) now the
+IT Supervisor will check it and it can alter the employee self rating before it goes to (IT Manager) the IT manager can also alter employee self rating.
+
+now the IT Manager will pass or propose the initial employee self evaluation to Human resource department
+
+now the HR Supervisor can check the employee self evaluation and the HR Superisor has the authority to alter self evaluation of the employee.
+after that the HR Superisor can now finalize or lock the employee self evaluation then it will go to the HR Manager
+
+now the HR Manager can review the final employee self evaluation and the HR Manager has the authority to alter employee self evaluation.
+the hr manager accept the changes and done!
+
+flow
+
+employee = branch employee
+immediate head = branch supervisor and branch manager
+HR Supervisor = hr supervisor
+HR Manager = hr manager
+
+employee --> immediate head --> hr supervisor --> hr manager --> done!
+
+now if the employee has no immediate head the self evaluation will be directly sent to HRD For checking and review
+
+employee --> hr supervisor --> hr manager --> done!
+
+those immediate head must have dedicated web page for reviewing employee self evaluation inside employee portal
