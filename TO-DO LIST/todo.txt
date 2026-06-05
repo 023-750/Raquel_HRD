@@ -1,0 +1,13 @@
+admin test
+
+overall functionality
+
+hr manager, supervisor, staff full test
+
+perform 360 self evaluation all branch you must add mock-up data for each branch
+
+check the flow of 360 evaluation
+
+check the analytics on hr manager and supervisor
+
+final function addition career movements

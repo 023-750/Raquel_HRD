@@ -4,6 +4,12 @@ require_once '../includes/session-check.php';
 checkRole(['Admin']);
 require_once '../includes/functions.php';
 
+function formatSize($bytes) {
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    for ($i = 0; $bytes > 1024; $i++) $bytes /= 1024;
+    return round($bytes, 2) . ' ' . $units[$i];
+}
+
 // Handle Download
 if (isset($_GET['download'])) {
     $file = basename($_GET['download']);
@@ -40,10 +46,19 @@ $files = array_diff(scandir($backup_dir), array('.', '..', '.htaccess'));
 $backups = [];
 foreach ($files as $file) {
     if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {
+        // Detect backup type from filename
+        if (strpos($file, '_schema_') !== false) {
+            $btype = 'schema';
+        } elseif (strpos($file, '_data_') !== false) {
+            $btype = 'data';
+        } else {
+            $btype = 'full';
+        }
         $backups[] = [
             'name' => $file,
             'size' => filesize($backup_dir . $file),
-            'date' => filemtime($backup_dir . $file)
+            'date' => filemtime($backup_dir . $file),
+            'type' => $btype,
         ];
     }
 }
@@ -57,11 +72,19 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
         <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
             <div>
                 <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">System Admin · Recovery Center</div>
-                <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-database me-2" style="color:var(--primary-light);"></i>System Backup & Recovery</h4>
+                <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-database me-2" style="color:var(--primary-light);"></i>System Backup &amp; Recovery</h4>
             </div>
-            <button class="btn btn-light text-primary" id="btnCreateBackup">
-                <i class="fas fa-database me-2"></i>Create New Backup
-            </button>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-light text-primary fw-semibold" id="btnFullBackup" title="Full: Table structures + all data">
+                    <i class="fas fa-database me-2"></i>Full Backup
+                </button>
+                <button class="btn btn-outline-light fw-semibold" id="btnSchemaBackup" title="Schema: Table structures only (no data)">
+                    <i class="fas fa-sitemap me-2"></i>Schema Only
+                </button>
+                <button class="btn btn-outline-light fw-semibold" id="btnDataBackup" title="Data: Records/values only (no table structures)">
+                    <i class="fas fa-table me-2"></i>Data Only
+                </button>
+            </div>
         </div>
         <p class="text-white-50 small mb-0"><i class="fas fa-shield-alt me-1"></i>Manage database snapshots and system exports.</p>
     </div>
@@ -81,9 +104,7 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
             <div class="stat-card">
                 <div class="stat-icon gold"><i class="fas fa-hdd"></i></div>
                 <div class="stat-info">
-                    <?php 
-                    $total_size = array_sum(array_column($backups, 'size')); 
-                    ?>
+                    <?php $total_size = array_sum(array_column($backups, 'size')); ?>
                     <h3><?php echo formatSize($total_size); ?></h3>
                     <p>Total Backup Size</p>
                 </div>
@@ -112,6 +133,7 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
                     <thead class="table-light">
                         <tr>
                             <th>Backup Filename</th>
+                            <th>Type</th>
                             <th>Created Date</th>
                             <th>File Size</th>
                             <th class="text-end">Actions</th>
@@ -120,15 +142,30 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
                     <tbody>
                         <?php if (empty($backups)): ?>
                             <tr>
-                                <td colspan="4" class="text-center text-muted py-5">
+                                <td colspan="5" class="text-center text-muted py-5">
                                     <i class="fas fa-box-open fa-3x mb-3 d-block opacity-25"></i>
-                                    No backups found. Click "Create New Backup" to secure your data.
+                                    No backups found. Use the buttons above to create a backup.
                                 </td>
                             </tr>
                         <?php else: ?>
-                            <?php foreach ($backups as $b): ?>
+                            <?php foreach ($backups as $b):
+                                if ($b['type'] === 'schema') {
+                                    $type_badge = '<span class="badge" style="background:#6366f1"><i class="fas fa-sitemap me-1"></i>Schema Only</span>';
+                                    $file_icon  = 'fas fa-file-alt';
+                                    $icon_color = 'color:#6366f1';
+                                } elseif ($b['type'] === 'data') {
+                                    $type_badge = '<span class="badge" style="background:#0891b2"><i class="fas fa-table me-1"></i>Data Only</span>';
+                                    $file_icon  = 'fas fa-file-alt';
+                                    $icon_color = 'color:#0891b2';
+                                } else {
+                                    $type_badge = '<span class="badge bg-success"><i class="fas fa-database me-1"></i>Full Backup</span>';
+                                    $file_icon  = 'fas fa-file-code';
+                                    $icon_color = 'color:#16a34a';
+                                }
+                            ?>
                                 <tr>
-                                    <td><strong><i class="fas fa-file-code text-primary me-2"></i><?php echo e($b['name']); ?></strong></td>
+                                    <td><strong><i class="<?php echo $file_icon; ?> me-2" style="<?php echo $icon_color; ?>"></i><?php echo e($b['name']); ?></strong></td>
+                                    <td><?php echo $type_badge; ?></td>
                                     <td><?php echo formatDateTime(date('Y-m-d H:i:s', $b['date'])); ?></td>
                                     <td><span class="badge bg-secondary"><?php echo formatSize($b['size']); ?></span></td>
                                     <td class="text-end">
@@ -136,8 +173,8 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
                                             <a href="?download=<?php echo urlencode($b['name']); ?>" class="btn btn-sm btn-outline-primary" title="Download">
                                                 <i class="fas fa-download"></i>
                                             </a>
-                                            <button class="btn btn-sm btn-outline-danger" 
-                                                    onclick="confirmDelete('<?php echo e($b['name']); ?>')" title="Delete">
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    onclick="confirmDeleteBackup('<?php echo e($b['name']); ?>')" title="Delete">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -158,8 +195,8 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
         <div class="modal-content">
             <div class="modal-body text-center py-5">
                 <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
-                <h4 class="fw-bold">Generating Backup...</h4>
-                <p class="text-muted mb-0">Please wait while the system exports the database. This may take a few seconds.</p>
+                <h4 class="fw-bold" id="backupProgressLabel">Generating Backup...</h4>
+                <p class="text-muted mb-0" id="backupProgressSub">Please wait while the system exports the database. This may take a few seconds.</p>
             </div>
         </div>
     </div>
@@ -168,11 +205,17 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
 <script>
 const AJAX_URL = '<?php echo BASE_URL; ?>/includes/ajax/system-backup.php';
 
-document.getElementById('btnCreateBackup').addEventListener('click', function() {
+function runBackup(type, labelText) {
+    document.getElementById('backupProgressLabel').textContent = 'Generating ' + labelText + '...';
+    document.getElementById('backupProgressSub').textContent  = 'Please wait while the system exports the database. This may take a few seconds.';
+
     const modal = new bootstrap.Modal(document.getElementById('backupProgressModal'));
     modal.show();
 
-    fetch(AJAX_URL, { method: 'POST' })
+    const body = new FormData();
+    body.append('type', type);
+
+    fetch(AJAX_URL, { method: 'POST', body })
         .then(r => r.json())
         .then(data => {
             modal.hide();
@@ -187,20 +230,19 @@ document.getElementById('btnCreateBackup').addEventListener('click', function() 
             alert('A system error occurred while generating the backup.');
             console.error(err);
         });
-});
+}
 
-function confirmDelete(filename) {
+document.getElementById('btnFullBackup').addEventListener('click',   () => runBackup('full',   'Full Backup'));
+document.getElementById('btnSchemaBackup').addEventListener('click', () => runBackup('schema', 'Schema Only Backup'));
+document.getElementById('btnDataBackup').addEventListener('click',   () => runBackup('data',   'Data Only Backup'));
+
+function confirmDeleteBackup(filename) {
     if (confirm(`Are you sure you want to delete backup "${filename}"? This cannot be undone.`)) {
         window.location.href = `?delete=${encodeURIComponent(filename)}`;
     }
 }
 </script>
 
-<?php 
-function formatSize($bytes) {
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    for ($i = 0; $bytes > 1024; $i++) $bytes /= 1024;
-    return round($bytes, 2) . ' ' . $units[$i];
-}
-require_once '../includes/footer.php'; 
+<?php
+require_once '../includes/footer.php';
 ?>

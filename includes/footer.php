@@ -7,9 +7,13 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
 ?>
     <!-- Mobile Bottom Navigation -->
     <nav class="employee-bottom-nav d-md-none">
+        <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="nav-item <?php echo ($curr_p === 'dashboard.php') ? 'active' : ''; ?>">
+            <i class="fas fa-home nav-icon"></i>
+            <span class="nav-label">Home</span>
+        </a>
         <a href="<?php echo BASE_URL; ?>/employee/my-employment.php" class="nav-item <?php echo ($curr_p === 'my-employment.php') ? 'active' : ''; ?>">
             <i class="fas fa-briefcase nav-icon"></i>
-            <span class="nav-label">My Employment</span>
+            <span class="nav-label">Employment</span>
         </a>
         <a href="<?php echo BASE_URL; ?>/employee/self-rating.php" class="nav-item <?php echo ($curr_p === 'self-rating.php') ? 'active' : ''; ?>">
             <div class="position-relative">
@@ -25,8 +29,10 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
         </a>
         <?php 
         $is_sup = false;
+        $is_dept_mgr = false;
         if (isset($_SESSION['employee_id']) && $conn) {
             $is_sup = hasEmployeeSubordinates($conn, (int)$_SESSION['employee_id']);
+            $is_dept_mgr = isDeptManagerRole($conn, (int)$_SESSION['employee_id']);
         }
         if ($is_sup):
             $m_confirm_count = 0;
@@ -50,12 +56,37 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
                         <span class="mobile-notif-badge"><?php echo $m_confirm_count > 9 ? '9+' : $m_confirm_count; ?></span>
                     <?php endif; ?>
                 </div>
-                <span class="nav-label">Confirm Ratings</span>
+                <span class="nav-label">Confirm</span>
+            </a>
+        <?php endif; ?>
+        <?php if ($is_dept_mgr): 
+            $m_dept_pending_count = 0;
+            $_hdr_mgr_id = (int)$_SESSION['employee_id'];
+            $_hdr_dept_stmt = $conn->query("
+                SELECT COUNT(*) AS total
+                FROM evaluations e
+                JOIN employees emp ON e.employee_id = emp.employee_id
+                JOIN employees sup ON emp.reports_to = sup.employee_id
+                WHERE e.status = 'Pending Dept Manager' AND sup.reports_to = $_hdr_mgr_id
+                  AND e.deleted_at IS NULL
+            ");
+            if ($_hdr_dept_stmt) {
+                $m_dept_pending_count = (int)$_hdr_dept_stmt->fetch_assoc()['total'];
+            }
+        ?>
+            <a href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" class="nav-item <?php echo ($curr_p === 'dept-manager-review.php') ? 'active' : ''; ?>">
+                <div class="position-relative">
+                    <i class="fas fa-user-check nav-icon"></i>
+                    <?php if ($m_dept_pending_count > 0): ?>
+                        <span class="mobile-notif-badge"><?php echo $m_dept_pending_count > 9 ? '9+' : $m_dept_pending_count; ?></span>
+                    <?php endif; ?>
+                </div>
+                <span class="nav-label">Dept Review</span>
             </a>
         <?php endif; ?>
         <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php" class="nav-item <?php echo ($curr_p === 'completed-ratings.php') ? 'active' : ''; ?>">
             <i class="fas fa-clipboard-check nav-icon"></i>
-            <span class="nav-label">Evaluation Status</span>
+            <span class="nav-label">Status</span>
         </a>
         <a href="<?php echo BASE_URL; ?>/employee/notifications.php" class="nav-item <?php echo ($curr_p === 'notifications.php') ? 'active' : ''; ?>">
             <div class="position-relative">
@@ -64,7 +95,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
                     <span class="mobile-notif-badge"><?php echo $m_notif_count > 9 ? '9+' : $m_notif_count; ?></span>
                 <?php endif; ?>
             </div>
-            <span class="nav-label">Notifications</span>
+            <span class="nav-label">Alerts</span>
         </a>
     </nav>
 <?php endif; ?>

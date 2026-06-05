@@ -5,8 +5,10 @@ checkRole(['Admin']);
 require_once '../includes/functions.php';
 
 $user_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$dept = isset($_GET['department']) ? (int)$_GET['department'] : 0;
 if ($user_id <= 0) {
-    redirectWith(BASE_URL . '/admin/employee-accounts.php', 'danger', 'Invalid portal user ID.');
+    redirectWith(BASE_URL . '/admin/employee-accounts.php?page=' . $page . ($dept > 0 ? '&department=' . $dept : ''), 'danger', 'Invalid portal user ID.');
 }
 
 // Grab and clear any pending credential slip
@@ -31,7 +33,7 @@ $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 if (!$user) {
-    redirectWith(BASE_URL . '/admin/employee-accounts.php', 'danger', 'Portal user not found.');
+    redirectWith(BASE_URL . '/admin/employee-accounts.php?page=' . $page . ($dept > 0 ? '&department=' . $dept : ''), 'danger', 'Portal user not found.');
 }
 
 // This page is exclusively for non-HR employees using a dedicated Employee role account
@@ -44,7 +46,7 @@ if (($user['role'] ?? '') !== 'Employee') {
 }
 
 if (empty($user['employee_id'])) {
-    redirectWith(BASE_URL . '/admin/employee-accounts.php', 'danger', 'This portal account is not linked to an employee record.');
+    redirectWith(BASE_URL . '/admin/employee-accounts.php?page=' . $page . ($dept > 0 ? '&department=' . $dept : ''), 'danger', 'This portal account is not linked to an employee record.');
 }
 
 // ── Handle delete ─────────────────────────────────────────────────────────────
@@ -52,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     $confirm = (string)($_POST['confirm_delete'] ?? '');
     if ($confirm !== 'DELETE') {
         redirectWith(
-            BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id",
+            BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id&page=$page" . ($dept > 0 ? "&department=$dept" : ""),
             'danger',
             'Deletion not confirmed. Type DELETE to confirm.'
         );
@@ -64,11 +66,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delet
     if ($del->execute()) {
         $del->close();
         logAudit($conn, $_SESSION['user_id'], 'DELETE', 'User', $user_id, "Deleted Employee Portal account: {$user['username']}");
-        redirectWith(BASE_URL . '/admin/employee-accounts.php', 'success', "Employee Portal account '{$user['username']}' deleted successfully.");
+        redirectWith(BASE_URL . '/admin/employee-accounts.php?page=' . $page . ($dept > 0 ? '&department=' . $dept : ''), 'success', "Employee Portal account '{$user['username']}' deleted successfully.");
     }
 
     $del->close();
-    redirectWith(BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id", 'danger', 'Failed to delete portal account. Please try again.');
+    redirectWith(BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id&page=$page" . ($dept > 0 ? "&department=$dept" : ""), 'danger', 'Failed to delete portal account. Please try again.');
 }
 
 // ── Handle update ─────────────────────────────────────────────────────────────
@@ -98,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!empty($errors)) {
-        redirectWith(BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id", 'danger', implode(' ', $errors));
+        redirectWith(BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id&page=$page" . ($dept > 0 ? "&department=$dept" : ""), 'danger', implode(' ', $errors));
     }
 
     if ($new_password !== '') {
@@ -119,9 +121,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'full_name' => $user['full_name'] ?? (($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')),
             ];
         }
-        redirectWith(BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id", 'success', 'Employee Portal account updated successfully.');
+        redirectWith(BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id&page=$page" . ($dept > 0 ? "&department=$dept" : ""), 'success', 'Employee Portal account updated successfully.');
     } else {
-        redirectWith(BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id", 'danger', 'Failed to update portal account. Please try again.');
+        redirectWith(BASE_URL . "/admin/employee-portal-user.php?user_id=$user_id&page=$page" . ($dept > 0 ? "&department=$dept" : ""), 'danger', 'Failed to update portal account. Please try again.');
     }
 }
 
@@ -198,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
 ═══════════════════════════════════════════ -->
 <div class="epu-page-header">
     <div class="epu-page-header-left">
-        <a href="<?php echo BASE_URL; ?>/admin/employee-accounts.php" class="epu-back-btn">
+        <a href="<?php echo BASE_URL; ?>/admin/employee-accounts.php?page=<?php echo $page; ?><?php echo $dept > 0 ? '&department=' . $dept : ''; ?>" class="epu-back-btn">
             <i class="fas fa-arrow-left"></i>
         </a>
         <div>
@@ -299,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
             </div>
 
             <div class="epu-form-actions">
-                <a href="<?php echo BASE_URL; ?>/admin/employee-accounts.php" class="epu-btn-cancel">
+                <a href="<?php echo BASE_URL; ?>/admin/employee-accounts.php?page=<?php echo $page; ?><?php echo $dept > 0 ? '&department=' . $dept : ''; ?>" class="epu-btn-cancel">
                     <i class="fas fa-times me-2"></i>Cancel
                 </a>
                 <button type="submit" class="epu-btn-save">

@@ -1,10 +1,9 @@
-USE raquel_hris;
-
 -- ============================================
 -- Organizational Structure Seed
 -- (Branches, Rank Categories, Departments, Job Titles)
 -- ============================================
 
+USE raquel_hris;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- Branches (154 entries)

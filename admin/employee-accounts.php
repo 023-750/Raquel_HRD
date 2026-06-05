@@ -283,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                                         </button>
                                     <?php else: ?>
                                         <?php if (($emp['role'] ?? '') === 'Employee'): ?>
-                                            <a href="employee-portal-user.php?user_id=<?php echo (int)$emp['user_id']; ?>" class="btn btn-sm btn-outline-primary">
+                                            <a href="employee-portal-user.php?user_id=<?php echo (int)$emp['user_id']; ?>&page=<?php echo $current_page; ?><?php echo $selected_department > 0 ? '&department=' . (int) $selected_department : ''; ?>" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-id-card me-1"></i>Manage Portal
                                             </a>
                                         <?php else: ?>
@@ -351,7 +351,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                                     </button>
                                 <?php else: ?>
                                     <?php if (($emp['role'] ?? '') === 'Employee'): ?>
-                                        <a href="employee-portal-user.php?user_id=<?php echo (int)$emp['user_id']; ?>" class="btn btn-sm btn-outline-primary"
+                                        <a href="employee-portal-user.php?user_id=<?php echo (int)$emp['user_id']; ?>&page=<?php echo $current_page; ?><?php echo $selected_department > 0 ? '&department=' . (int) $selected_department : ''; ?>" class="btn btn-sm btn-outline-primary"
                                            title="Manage Portal" style="padding: 6px 12px; border-radius: 8px;">
                                             <i class="fas fa-cog me-1"></i>Manage
                                         </a>
@@ -408,7 +408,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                     <input type="hidden" name="full_name" id="modal_full_name">
                     <input type="hidden" name="email" id="modal_email">
                     <input type="hidden" name="role" value="Employee">
-                    <input type="hidden" name="redirect" value="employee-accounts.php<?php echo $selected_department > 0 ? '?department=' . (int) $selected_department : ''; ?>">
+                    <input type="hidden" name="redirect" value="employee-accounts.php?page=<?php echo $current_page; ?><?php echo $selected_department > 0 ? '&department=' . (int) $selected_department : ''; ?>">
                     
                     <!-- Employee Badge Info -->
                     <div class="portal-emp-badge">
