@@ -134,11 +134,6 @@ switch ($effective_role) {
         break;
 
     case 'Employee':
-        // Check if employee is also a supervisor (has subordinates)
-        $is_supervisor_menu = false;
-        if (isset($_SESSION['employee_id']) && $conn) {
-            $is_supervisor_menu = hasEmployeeSubordinates($conn, (int) $_SESSION['employee_id']);
-        }
 
         // Count pending evaluation templates for mobile bottom-nav badge
         $m_pending_template_count = 0;
@@ -176,13 +171,7 @@ switch ($effective_role) {
             ['icon' => 'fas fa-briefcase', 'label' => 'My Employment', 'url' => BASE_URL . '/employee/my-employment.php', 'page' => 'my-employment.php'],
             ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php'],
             ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php'],
-            ['icon' => 'fas fa-route', 'label' => 'Career Movement Request', 'url' => BASE_URL . '/employee/career-movement-request.php', 'page' => 'career-movement-request.php'],
         ];
-
-        // Add supervisor-only links
-        if ($is_supervisor_menu) {
-            $self_service_menu[] = ['icon' => 'fas fa-clipboard-check', 'label' => 'Confirm Self-Rating', 'url' => BASE_URL . '/employee/confirm-rating.php', 'page' => 'confirm-rating.php'];
-        }
 
         // Add department manager links
         $is_dept_manager_menu = false;
@@ -291,8 +280,8 @@ switch ($effective_role) {
         </div>
 
         <div class="nav-right">
-            <!-- Notification Bell -->
-            <div class="dropdown <?php echo ($effective_role === 'Employee') ? 'd-none d-md-block' : ''; ?>">
+            <!-- Notification Bell (visible on all screen sizes) -->
+            <div class="dropdown">
                 <button class="notification-btn" data-bs-toggle="dropdown" aria-expanded="false" id="notificationBtn">
                     <i class="fas fa-bell"></i>
                     <?php if ($notif_count > 0): ?>
@@ -386,18 +375,6 @@ switch ($effective_role) {
                                 <i class="fas fa-tachometer-alt me-2" style="width: 20px; text-align: center;"></i>Dashboard
                             </a>
                         </li>
-                        <li>
-                            <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/career-movement-request.php">
-                                <i class="fas fa-route me-2" style="width: 20px; text-align: center;"></i>Career Movement
-                            </a>
-                        </li>
-                        <?php if (isset($_SESSION['employee_id']) && $conn && hasEmployeeSubordinates($conn, (int)$_SESSION['employee_id'])): ?>
-                            <li>
-                                <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/confirm-rating.php">
-                                    <i class="fas fa-clipboard-check me-2" style="width: 20px; text-align: center;"></i>Confirm Self-Rating
-                                </a>
-                            </li>
-                        <?php endif; ?>
                         <?php if (isset($_SESSION['employee_id']) && $conn && isDeptManagerRole($conn, (int)$_SESSION['employee_id'])): ?>
                             <li>
                                 <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php">
@@ -424,4 +401,17 @@ switch ($effective_role) {
 
     <!-- Main Content Wrapper -->
     <main class="main-content">
-        <?php displayFlashMessage(); ?>
+        <?php
+        // Always consume the flash session to prevent it leaking to the next page.
+        // Suppress the visual banner on pages that have their own inline feedback:
+        //   - employee-accounts.php  → Portal Accounts (uses credential slip modal)
+        //   - users.php              → User Management (has its own inline alerts)
+        $suppress_flash_pages = ['employee-accounts.php', 'users.php'];
+        if (isset($_SESSION['flash_message'])) {
+            if (!in_array($current_page, $suppress_flash_pages, true)) {
+                displayFlashMessage(); // renders and clears
+            } else {
+                unset($_SESSION['flash_type'], $_SESSION['flash_message']); // clear only
+            }
+        }
+        ?>

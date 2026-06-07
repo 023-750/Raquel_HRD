@@ -117,8 +117,8 @@ $cm_stmt->close();
 // ── Recent notifications ────────────────────────────────────────────────────
 $recent_notifs = getRecentNotifications($conn, $user_id, 4, 'employee');
 
-// ── Has subordinates? ───────────────────────────────────────────────────────
-$is_supervisor = hasEmployeeSubordinates($conn, $employee_id);
+// ── Has supervisor privileges? (subordinates in DB OR supervisor/manager role) ─
+$is_supervisor = hasSupervisorPrivileges($conn, $employee_id);
 
 // ── Pending subordinate ratings count ──────────────────────────────────────
 $pending_sub_count = 0;

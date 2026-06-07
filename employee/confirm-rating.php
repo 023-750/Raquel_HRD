@@ -11,14 +11,18 @@ require_once '../includes/functions.php';
 $user_id = (int)($_SESSION['user_id'] ?? 0);
 $supervisor_employee_id = (int)($_SESSION['employee_id'] ?? 0);
 
+if (!hasSupervisorPrivileges($conn, $supervisor_employee_id)) {
+    redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'Access Denied: You do not have supervisor privileges.');
+}
+
 // Ensure 360-degree columns exist
 ensure360DegreeEvaluationColumns($conn);
 
 // Get evaluation ID from URL
 $evaluation_id = (int)($_GET['evaluation_id'] ?? 0);
 
-// Check if user has subordinates (is a supervisor)
-$is_supervisor = hasEmployeeSubordinates($conn, $supervisor_employee_id);
+// Check if user has supervisor privileges (has subordinates OR holds a supervisor/manager role)
+$is_supervisor = hasSupervisorPrivileges($conn, $supervisor_employee_id);
 
 // Fetch the evaluation with employee details
 $evaluation = null;
@@ -86,6 +90,19 @@ if ($evaluation_id > 0) {
             }
         }
         $scores_stmt->close();
+
+        // Fetch audit history for this evaluation
+        $audit_stmt = $conn->prepare("
+            SELECT al.*, u.full_name, u.role
+            FROM audit_logs al
+            LEFT JOIN users u ON al.user_id = u.user_id
+            WHERE al.entity_type = 'Evaluation' AND al.entity_id = ?
+            ORDER BY al.timestamp DESC, al.log_id DESC
+        ");
+        $audit_stmt->bind_param("i", $evaluation_id);
+        $audit_stmt->execute();
+        $audit_history = $audit_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $audit_stmt->close();
     }
 }
 
@@ -110,11 +127,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         }
 
         // Check if scores were altered
+        $altered_details = [];
         foreach ($all_scores as $criterion_id => $new_rating) {
             $original_rating = (float)($scores[$criterion_id]['score_value'] ?? 0);
             
             if (abs($new_rating - $original_rating) > 0.01) {
                 $supervisor_altered = true;
+                $criterion_name = $scores[$criterion_id]['criterion_name'] ?? 'Criterion #' . $criterion_id;
+                $altered_details[] = "$criterion_name (Self-Rating: " . number_format($original_rating, 2) . " -> Adjusted: " . number_format($new_rating, 2) . ")";
                 // Update the score
                 $update_score = $conn->prepare("
                     UPDATE evaluation_scores 
@@ -170,9 +190,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
             $new_supervisor_rating = $new_total_score;
         }
         
-        // Check if employee has a department manager
-        $dept_manager = getDeptManagerOfEmployee($conn, (int)$evaluation['employee_id']);
-        $next_status = $dept_manager ? 'Pending Dept Manager' : 'Pending HR Consolidation';
+        // Under the new standard flow, bypass department manager (Pending Dept Manager)
+        // and route directly to HR Supervisor (Pending HR Consolidation)
+        $next_status = 'Pending HR Consolidation';
 
         // Update evaluation status
         $update = $conn->prepare("
@@ -253,7 +273,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
             );
         }
         
-        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Confirmed self-rating' . ($supervisor_altered ? ' with alterations' : '') . '. Status set to ' . $next_status);
+        $audit_details = 'Confirmed self-rating. Status set to ' . $next_status;
+        if ($supervisor_altered && !empty($altered_details)) {
+            $audit_details .= ". Score adjustments:\n" . implode("\n", $altered_details);
+        }
+        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, $audit_details);
         
         $success_msg = ($next_status === 'Pending Dept Manager') 
             ? 'Self-rating confirmed and forwarded to Department Manager successfully.'
@@ -263,36 +287,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         if (empty($supervisor_comments)) {
             redirectWith(BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id, 'danger', 'Comments/rejection reason is required.');
         }
-        
+
+        // Return the evaluation to the employee for revision.
+        // Status = 'Returned' removes it from Pending Confirmations and sends it back to the employee.
         $update = $conn->prepare("
-            UPDATE evaluations 
-            SET status = 'Pending Supervisor',
+            UPDATE evaluations
+            SET status = 'Returned',
                 supervisor_comments = ?,
-                dept_supervisor_confirmed_by = ?,
-                dept_supervisor_confirmed_date = NOW(),
-                supervisor_confirmed_by = ?,
-                supervisor_confirmed_date = NOW()
+                dept_supervisor_confirmed_by = NULL,
+                dept_supervisor_confirmed_date = NULL,
+                supervisor_confirmed_by = NULL,
+                supervisor_confirmed_date = NULL
             WHERE evaluation_id = ?
         ");
-        $update->bind_param("siii", $supervisor_comments, $user_id, $user_id, $evaluation_id);
+        $update->bind_param("si", $supervisor_comments, $evaluation_id);
         $update->execute();
         $update->close();
-        
-        // Notify HR Supervisor
-        $hr_sups = $conn->query("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
+
+        // Notify the employee their self-rating was returned for revision
+        $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . (int)$evaluation['employee_id'] . " LIMIT 1")->fetch_assoc();
         $emp_name = $evaluation['first_name'] . ' ' . $evaluation['last_name'];
-        while ($hr = $hr_sups->fetch_assoc()) {
+        if ($emp_user) {
             createNotification(
                 $conn,
-                (int)$hr['user_id'],
-                'Evaluation Rejected by Immediate Head',
-                $_SESSION['full_name'] . ' rejected the self-rating of ' . $emp_name . ' and forwarded it to you.',
-                BASE_URL . '/supervisor/pending-endorsements.php'
+                (int)$emp_user['user_id'],
+                'Self-Rating Returned for Revision',
+                ($_SESSION['full_name'] ?? 'Your Immediate Head') . ' returned your self-rating for revision. Please review the comments and resubmit.',
+                BASE_URL . '/employee/self-rating.php'
             );
         }
-        
-        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Immediate Head rejected self-rating, forwarded to HR Supervisor.');
-        redirectWith(BASE_URL . '/employee/confirm-rating.php', 'warning', 'Evaluation rejected and forwarded to HR Supervisor.');
+
+        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Immediate Head returned self-rating to employee for revision. Status: Returned.');
+        redirectWith(BASE_URL . '/employee/confirm-rating.php', 'warning', 'Evaluation returned to employee for revision.');
     }
 }
 
@@ -300,19 +326,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
 $pending_confirmations = [];
 $confirmation_history = [];
 if ($is_supervisor) {
+    $sup_branch_stmt = $conn->prepare("SELECT branch_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $sup_branch_stmt->bind_param("i", $supervisor_employee_id);
+    $sup_branch_stmt->execute();
+    $sup_branch_row = $sup_branch_stmt->get_result()->fetch_assoc();
+    $supervisor_branch_id = $sup_branch_row ? (int)$sup_branch_row['branch_id'] : 0;
+    $sup_branch_stmt->close();
+
     $pending_stmt = $conn->prepare("
         SELECT e.*, emp.first_name, emp.last_name, emp.job_title, emp.employee_code,
                t.template_name
         FROM evaluations e
         JOIN employees emp ON e.employee_id = emp.employee_id
         LEFT JOIN evaluation_templates t ON e.template_id = t.template_id
-        WHERE e.status IN ('Pending Dept Supervisor', 'Pending Supervisor') AND emp.reports_to = ?
+        WHERE e.status IN ('Pending Dept Supervisor', 'Pending Supervisor') 
+          AND (emp.reports_to = ? OR (emp.reports_to IS NULL AND emp.branch_id = ?))
         ORDER BY e.submitted_date DESC
     ");
-    $pending_stmt->bind_param("i", $supervisor_employee_id);
+    $pending_stmt->bind_param("ii", $supervisor_employee_id, $supervisor_branch_id);
     $pending_stmt->execute();
-    $pending_confirmations = $pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $all_pending = $pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $pending_stmt->close();
+
+    $pending_confirmations = [];
+    foreach ($all_pending as $p) {
+        $sup = getEmployeeSupervisor($conn, (int)$p['employee_id']);
+        if ($sup && (int)$sup['supervisor_employee_id'] === $supervisor_employee_id) {
+            $pending_confirmations[] = $p;
+        }
+    }
 
     // Fetch confirmation history where supervisor had historically confirmed
     $history_stmt = $conn->prepare("
@@ -1031,14 +1073,47 @@ require_once '../includes/header.php';
                                 </button>
                                 <button type="submit" name="confirm_action" value="confirm_and_send" 
                                         class="btn btn-primary" id="submitBtn"
-                                        onclick="return confirm('<?php echo $dept_manager ? 'Confirm this self-rating and forward to Department Manager?' : 'Confirm this self-rating and send to HRD?'; ?>');">
-                                    <i class="fas fa-check-circle me-2"></i><?php echo $dept_manager ? 'Confirm &amp; Forward' : 'Confirm &amp; Send'; ?>
+                                        onclick="return confirm('Confirm this self-rating and send to HRD?');">
+                                    <i class="fas fa-check-circle me-2"></i>Confirm &amp; Send
                                 </button>
                             </div>
                         </div>
                     </form>
                 </div>
             </div>
+            
+            <!-- Audit History Timeline -->
+            <?php if ($evaluation_id > 0): ?>
+                <div class="content-card mt-4 fadeup-2">
+                    <div class="card-header">
+                        <h5><i class="fas fa-history me-2"></i>Evaluation Audit History</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($audit_history)): ?>
+                            <p class="text-muted small mb-0">No audit logs found for this evaluation.</p>
+                        <?php else: ?>
+                            <div class="timeline" style="border-left: 2px solid #e2e8f0; padding-left: 20px; position: relative;">
+                                <?php foreach ($audit_history as $log): ?>
+                                    <div class="timeline-item mb-3" style="position: relative;">
+                                        <div class="timeline-marker" style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; position: absolute; left: -27px; top: 5px;"></div>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="fw-bold text-dark small">
+                                                <?php echo e($log['full_name'] ?? 'System'); ?> 
+                                                <span class="text-muted font-normal">(<?php echo e($log['role'] ?? 'System'); ?>)</span>
+                                            </span>
+                                            <span class="text-muted x-small"><?php echo formatDateTime($log['timestamp']); ?></span>
+                                        </div>
+                                        <div class="small text-secondary fw-semibold"><?php echo e($log['action_type']); ?> - <?php echo e(explode('.', $log['details'])[0]); ?></div>
+                                        <?php if (strpos($log['details'], 'Score adjustments:') !== false): ?>
+                                            <div class="mt-2 p-2 bg-light rounded border x-small text-muted" style="white-space: pre-wrap; font-family: monospace; font-size: 0.78rem;"><?php echo e(substr($log['details'], strpos($log['details'], 'Score adjustments:'))); ?></div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
 
         <div class="col-lg-4">
@@ -1052,7 +1127,7 @@ require_once '../includes/header.php';
                         <p class="mb-2"><strong>1.</strong> Review the employee's self-rating.</p>
                         <p class="mb-2"><strong>2.</strong> Adjust ratings if you disagree (optional).</p>
                         <p class="mb-2"><strong>3.</strong> Add comments to justify any changes.</p>
-                        <p class="mb-0"><strong>4.</strong> <?php echo $dept_manager ? 'Confirm and forward to Department Manager.' : 'Confirm and send to HRD for consolidation.'; ?></p>
+                        <p class="mb-0"><strong>4.</strong> Confirm and send to HRD for consolidation.</p>
                     </div>
                 </div>
             </div>

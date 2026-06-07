@@ -1,0 +1,31 @@
+Manual Verification
+1. Log in as Employee:
+- Select a template and save it as a draft.
+- Verify that the template is hidden from "Available Templates" and is shown under the "Continue Draft / In Progress" section.
+- Try to access the template via URL parameter ?template=[id] and verify it redirects to the draft.
+- Discard the draft and verify the template reappears in "Available Templates".
+- Reselect a template, fill ratings, and click "Submit".
+
+=====TESTING=====
+- Select a template and save it as a draft.
+  it was saved as draft and it can be also be seen on "Recent Evaluations" labelled as DRAFT.
+  the selected template was cannot be seen inside dropdown list "Templates" which is good.
+  there's discard draft button, if I discard the draft the "template dropdown list" will show again the discarded draft which is okay.
+
+  but the "Recent Evaluations" still visible even I discard the draft. not good.
+  employee can submit evaluation with zero values which is not allowed it must be filled every questions.
+
+2. Log in as Immediate Head:
+- Verify access is allowed, while regular employees are blocked and redirected.
+- Open the subordinate's evaluation, alter some ratings, and click "Confirm and Send".
+- Verify that the audit logs record the exact rating modifications.
+- Verify a live notification appears immediately on the HR Supervisor's screen without requiring a page refresh.
+
+=====TESTING=====
+I'm on Supervisor employee portal but the system "Access denied you do not have Supervisor privilages" when clicking the "self-rating pending confirmation"
+if the employee rank for example is branch Supervisor or branch manager it would unlocked the possition privilages for them such as 
+- can see the self-rating pending confirmation button
+- can see the employee evaluation form
+
+if the branch Supervisor perform self evaluation to itself the flow will be branch Supervisor -> branch manager -> HR supervisor -> HR Manager.
+if the manager perform self evaluation to itself the flow will be branch manager -> branch supervisor -> HR supervisor -> HR Manager.

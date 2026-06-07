@@ -192,7 +192,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
     $comments = trim($_POST['supervisor_comments'] ?? '');
 
     $eval_stmt = $conn->prepare("
-        SELECT ev.evaluation_id, ev.submitted_by, CONCAT(e.first_name, ' ', e.last_name) AS emp_name, u.role AS submitter_role, et.template_name
+        SELECT ev.evaluation_id, ev.employee_id, ev.submitted_by, CONCAT(e.first_name, ' ', e.last_name) AS emp_name, u.role AS submitter_role, et.template_name
         FROM evaluations ev
         INNER JOIN employees e ON ev.employee_id = e.employee_id
         LEFT JOIN users u ON ev.submitted_by = u.user_id
@@ -212,64 +212,131 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
         redirectWith($redirect_url, 'danger', 'Pending evaluation could not be found.');
     }
 
-    if ($action === 'endorse') {
-        $stmt = $conn->prepare("
-            UPDATE evaluations ev
-            INNER JOIN employees e ON ev.employee_id = e.employee_id
-            SET ev.status = 'Pending Manager',
-                ev.endorsed_by = ?,
-                ev.endorsed_date = NOW(),
-                ev.evaluator_comments = ?
-            WHERE ev.evaluation_id = ?
-              AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
-              AND e.is_active = 1
-        ");
-        $stmt->bind_param("isi", $supervisor_id, $comments, $eval_id);
-        $stmt->execute();
-        $stmt->close();
+    $emp_hr_role = getEmployeeHRRole($conn, $eval_info['employee_id']);
 
-        // Notify all HR Managers
-        $managers = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
-        while ($mgr = $managers->fetch_assoc()) {
-            createNotification($conn, $mgr['user_id'], 'Evaluation Endorsed', "Evaluation for {$eval_info['emp_name']} has been endorsed and requires your approval.", BASE_URL . '/manager/pending-approvals.php');
+    if ($action === 'endorse') {
+        if ($emp_hr_role === 'HR Manager') {
+            $stmt = $conn->prepare("
+                UPDATE evaluations ev
+                INNER JOIN employees e ON ev.employee_id = e.employee_id
+                SET ev.status = 'Approved',
+                    ev.endorsed_by = ?,
+                    ev.endorsed_date = NOW(),
+                    ev.approved_by = ?,
+                    ev.approved_date = NOW(),
+                    ev.evaluator_comments = ?
+                WHERE ev.evaluation_id = ?
+                  AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+                  AND e.is_active = 1
+            ");
+            $stmt->bind_param("iisi", $supervisor_id, $supervisor_id, $comments, $eval_id);
+            $stmt->execute();
+            $stmt->close();
+
+            // Notify HR Manager employee directly
+            if ($eval_info['submitted_by']) {
+                createNotification(
+                    $conn,
+                    (int) $eval_info['submitted_by'],
+                    'Evaluation Approved',
+                    "Your evaluation has been approved by the HR Supervisor.",
+                    BASE_URL . '/employee/self-rating.php?view=' . $eval_id
+                );
+            }
+
+            logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Approved evaluation for HR Manager {$eval_info['emp_name']}");
+            redirectWith($redirect_url, 'success', 'Evaluation approved successfully.');
+        } else {
+            $stmt = $conn->prepare("
+                UPDATE evaluations ev
+                INNER JOIN employees e ON ev.employee_id = e.employee_id
+                SET ev.status = 'Pending Manager',
+                    ev.endorsed_by = ?,
+                    ev.endorsed_date = NOW(),
+                    ev.evaluator_comments = ?
+                WHERE ev.evaluation_id = ?
+                  AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+                  AND e.is_active = 1
+            ");
+            $stmt->bind_param("isi", $supervisor_id, $comments, $eval_id);
+            $stmt->execute();
+            $stmt->close();
+
+            // Notify all HR Managers
+            $managers = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
+            while ($mgr = $managers->fetch_assoc()) {
+                createNotification($conn, $mgr['user_id'], 'Evaluation Endorsed', "Evaluation for {$eval_info['emp_name']} has been endorsed and requires your approval.", BASE_URL . '/manager/pending-approvals.php');
+            }
+            logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Endorsed evaluation for {$eval_info['emp_name']}");
+            redirectWith($redirect_url, 'success', 'Evaluation endorsed and forwarded to HR Manager.');
         }
-        logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Endorsed evaluation for {$eval_info['emp_name']}");
-        redirectWith($redirect_url, 'success', 'Evaluation endorsed and forwarded to HR Manager.');
 
     } elseif ($action === 'return') {
         if (empty($comments)) {
             redirectWith($redirect_url, 'danger', 'Comments/rejection reason is required.');
         }
-        $stmt = $conn->prepare("
-            UPDATE evaluations ev
-            INNER JOIN employees e ON ev.employee_id = e.employee_id
-            SET ev.status = 'Pending Manager',
-                ev.endorsed_by = ?,
-                ev.endorsed_date = NOW(),
-                ev.evaluator_comments = ?
-            WHERE ev.evaluation_id = ?
-              AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
-              AND e.is_active = 1
-        ");
-        $stmt->bind_param("isi", $supervisor_id, $comments, $eval_id);
-        $stmt->execute();
-        $stmt->close();
 
-        // Notify HR Managers
-        $managers = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
-        $emp_name = $eval_info['emp_name'];
-        while ($mgr = $managers->fetch_assoc()) {
-            createNotification(
-                $conn,
-                $mgr['user_id'],
-                'Evaluation Returned/Rejected by HR Supervisor',
-                "HR Supervisor returned/rejected evaluation for {$emp_name} and requires your final decision.",
-                BASE_URL . '/manager/pending-approvals.php'
-            );
+        if ($emp_hr_role === 'HR Manager') {
+            $stmt = $conn->prepare("
+                UPDATE evaluations ev
+                INNER JOIN employees e ON ev.employee_id = e.employee_id
+                SET ev.status = 'Returned',
+                    ev.endorsed_by = ?,
+                    ev.endorsed_date = NOW(),
+                    ev.evaluator_comments = ?
+                WHERE ev.evaluation_id = ?
+                  AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+                  AND e.is_active = 1
+            ");
+            $stmt->bind_param("isi", $supervisor_id, $comments, $eval_id);
+            $stmt->execute();
+            $stmt->close();
+
+            // Notify HR Manager employee directly
+            if ($eval_info['submitted_by']) {
+                createNotification(
+                    $conn,
+                    (int) $eval_info['submitted_by'],
+                    'Evaluation Returned for Revision',
+                    "Your evaluation has been returned by the HR Supervisor for revision. Remarks: " . $comments,
+                    BASE_URL . '/employee/self-rating.php?edit=' . $eval_id
+                );
+            }
+
+            logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Returned evaluation for HR Manager {$eval_info['emp_name']} for revision");
+            redirectWith($redirect_url, 'warning', 'Evaluation returned to HR Manager for revision.');
+        } else {
+            $stmt = $conn->prepare("
+                UPDATE evaluations ev
+                INNER JOIN employees e ON ev.employee_id = e.employee_id
+                SET ev.status = 'Pending Manager',
+                    ev.endorsed_by = ?,
+                    ev.endorsed_date = NOW(),
+                    ev.evaluator_comments = ?
+                WHERE ev.evaluation_id = ?
+                  AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+                  AND e.is_active = 1
+            ");
+            $stmt->bind_param("isi", $supervisor_id, $comments, $eval_id);
+            $stmt->execute();
+            $stmt->close();
+
+            // Notify HR Managers
+            $managers = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
+            $emp_name = $eval_info['emp_name'];
+            while ($mgr = $managers->fetch_assoc()) {
+                createNotification(
+                    $conn,
+                    $mgr['user_id'],
+                    'Evaluation Returned/Rejected by HR Supervisor',
+                    "HR Supervisor returned/rejected evaluation for {$emp_name} and requires your final decision.",
+                    BASE_URL . '/manager/pending-approvals.php'
+                );
+            }
+
+            logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Returned/rejected evaluation for {$emp_name}, routed to HR Manager");
+            redirectWith($redirect_url, 'warning', 'Evaluation return/rejection forwarded to HR Manager.');
         }
-
-        logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Returned/rejected evaluation for {$emp_name}, routed to HR Manager");
-        redirectWith($redirect_url, 'warning', 'Evaluation return/rejection forwarded to HR Manager.');
     }
 }
 
@@ -1061,7 +1128,7 @@ foreach ($all_pending as $row):
                     </div>
 
                     <?php
-                    $can_edit_scores = in_array($row['eval_status'] ?? $row['status'] ?? '', ['Pending Supervisor', 'Pending HR Consolidation'], true) && (int)($row['rank_category_id'] ?? 0) === 5;
+                    $can_edit_scores = in_array($row['eval_status'] ?? $row['status'] ?? '', ['Pending Supervisor', 'Pending HR Consolidation'], true) && ((int)($row['rank_category_id'] ?? 0) === 5 || getEmployeeHRRole($conn, $row['employee_id']) === 'HR Manager');
                     ?>
                     <?php if ($can_edit_scores): ?>
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-4 d-print-none eval-rating-toolbar">

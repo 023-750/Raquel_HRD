@@ -71,15 +71,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_supervisor) {
         // Get supervisor info for initiated_by fields
         $supervisor_name = $_SESSION['full_name'] ?? 'Unknown';
 
+        // Fetch supervisor's job title
+        $sup_stmt = $conn->prepare("SELECT job_title FROM employees WHERE employee_id = ? LIMIT 1");
+        $sup_stmt->bind_param("i", $supervisor_employee_id);
+        $sup_stmt->execute();
+        $sup_data = $sup_stmt->get_result()->fetch_assoc();
+        $sup_stmt->close();
+        
+        $supervisor_title = $sup_data['job_title'] ?? 'Immediate Head';
+
         // Insert the career movement request
         $insert = $conn->prepare("
             INSERT INTO career_movements 
             (employee_id, movement_type, previous_position, new_position, previous_branch_id, new_branch_id, 
-             effective_date, reason, logged_by, approval_status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())
+             effective_date, reason, logged_by, approval_status, initiated_by_name, initiated_by_role, initiated_via, request_source, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, 'Employee Portal', 'Employee Portal', NOW())
         ");
         $insert->bind_param(
-            "issssisi",
+            "isssiississ",
             $employee_id,
             $movement_type,
             $previous_position,
@@ -88,7 +97,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_supervisor) {
             $new_branch_id,
             $effective_date,
             $reason,
-            $user_id
+            $user_id,
+            $supervisor_name,
+            $supervisor_title
         );
 
         if ($insert->execute()) {

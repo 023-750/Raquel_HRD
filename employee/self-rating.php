@@ -9,6 +9,29 @@ ensureEvaluationWorkflowSchema($conn);
 $employee_id = (int) ($_SESSION['employee_id'] ?? 0);
 $user_id = (int) ($_SESSION['user_id'] ?? 0);
 
+if (isset($_GET['discard']) && is_numeric($_GET['discard'])) {
+    $discard_id = (int)$_GET['discard'];
+    $stmt = $conn->prepare("
+        UPDATE evaluations 
+        SET deleted_at = NOW() 
+        WHERE evaluation_id = ? 
+          AND employee_id = ? 
+          AND status IN ('Draft', 'Returned', 'Pending Self-Rating')
+        LIMIT 1
+    ");
+    $stmt->bind_param("ii", $discard_id, $employee_id);
+    $stmt->execute();
+    $affected = $stmt->affected_rows;
+    $stmt->close();
+    
+    if ($affected > 0) {
+        logAudit($conn, $user_id, 'DELETE', 'Evaluation', $discard_id, 'Discarded evaluation draft');
+        redirectWith(BASE_URL . '/employee/self-rating.php', 'success', 'Draft evaluation was successfully discarded.');
+    } else {
+        redirectWith(BASE_URL . '/employee/self-rating.php', 'danger', 'Failed to discard draft, or draft not found.');
+    }
+}
+
 $employee_stmt = $conn->prepare("
     SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.department_id, e.branch_id,
            d.department_name, b.branch_name
@@ -105,6 +128,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editable_eval = null;
     $is_assigned_submission = false;
 
+    if ($editing_id <= 0 && $template_id > 0) {
+        $check_stmt = $conn->prepare("
+            SELECT evaluation_id 
+            FROM evaluations 
+            WHERE employee_id = ? 
+              AND template_id = ? 
+              AND status IN ('Draft', 'Returned', 'Pending Self-Rating')
+              AND deleted_at IS NULL 
+            LIMIT 1
+        ");
+        $check_stmt->bind_param("ii", $employee_id, $template_id);
+        $check_stmt->execute();
+        $check_res = $check_stmt->get_result()->fetch_assoc();
+        $check_stmt->close();
+        if ($check_res) {
+            $editing_id = (int) $check_res['evaluation_id'];
+        }
+    }
+
     $errors = [];
 
     if ($editing_id > 0) {
@@ -179,6 +221,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($criteria_total <= 0) {
             $errors[] = 'This template has no criteria yet.';
         }
+
+        // Validate that no KRA score is zero (all questions must be answered)
+        $all_submitted_scores = array_merge((array)$kra_scores, (array)$beh_scores);
+        $has_zero_score = false;
+        foreach ($all_submitted_scores as $score_val) {
+            if ((float)$score_val <= 0) {
+                $has_zero_score = true;
+                break;
+            }
+        }
+        if ($has_zero_score || empty($all_submitted_scores)) {
+            $errors[] = 'All evaluation criteria must have a rating greater than 0 before submitting. Please fill in all fields.';
+        }
     }
 
     if (!empty($errors)) {
@@ -226,10 +281,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $performance_level = getPerformanceLevel($total_score);
     $supervisor = getEmployeeSupervisor($conn, $employee_id);
     $has_supervisor = ($supervisor !== null && !empty($supervisor['user_id']));
-    if ($is_assigned_submission) {
-        $status = ($action === 'submit') ? ($has_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation') : 'Pending Self-Rating';
+    
+    // Check if employee has an HR role
+    $hr_role = getEmployeeHRRole($conn, $employee_id);
+    
+    if ($action === 'submit') {
+        if ($hr_role === 'HR Staff') {
+            $status = 'Pending Supervisor';
+        } elseif ($hr_role === 'HR Supervisor') {
+            $status = 'Pending Manager';
+        } elseif ($hr_role === 'HR Manager') {
+            $status = 'Pending Supervisor';
+        } else {
+            $status = $has_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation';
+        }
     } else {
-        $status = ($action === 'submit') ? ($has_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation') : 'Draft';
+        $status = $is_assigned_submission ? 'Pending Self-Rating' : 'Draft';
     }
     $submitted_date = ($action === 'submit') ? date('Y-m-d H:i:s') : null;
 
@@ -285,26 +352,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'submit') {
         $employee_name = trim(($employee['first_name'] ?? '') . ' ' . ($employee['last_name'] ?? ''));
 
-        // Notify employee's immediate supervisor (for 360-degree workflow)
-        $supervisor_notified = notifySupervisorOfSelfRating($conn, $employee_id, $eval_id);
+        // Check if employee has an HR role
+        $hr_role = getEmployeeHRRole($conn, $employee_id);
+        if ($hr_role) {
+            if ($hr_role === 'HR Staff' || $hr_role === 'HR Manager') {
+                // Route to HR Supervisor
+                $branch_id = (int) ($employee['branch_id'] ?? 0);
+                $hr_supervisors_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND branch_id = ? AND is_active = 1");
+                $hr_supervisors_stmt->bind_param("i", $branch_id);
+                $hr_supervisors_stmt->execute();
+                $hr_supervisors = $hr_supervisors_stmt->get_result();
+                $notified = false;
+                while ($hr_sup = $hr_supervisors->fetch_assoc()) {
+                    createNotification(
+                        $conn,
+                        (int) $hr_sup['user_id'],
+                        'Employee Self-Rating Submitted',
+                        $employee_name . ' (' . $hr_role . ') submitted a self-rating for review.',
+                        BASE_URL . '/supervisor/pending-endorsements.php'
+                    );
+                    $notified = true;
+                }
+                $hr_supervisors_stmt->close();
 
-        // If no supervisor found, notify HR Supervisor as fallback (filtered by employee's branch)
-        if (!$supervisor_notified) {
-            $branch_id = (int) ($employee['branch_id'] ?? 0);
-            $hr_supervisors_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND branch_id = ? AND is_active = 1");
-            $hr_supervisors_stmt->bind_param("i", $branch_id);
-            $hr_supervisors_stmt->execute();
-            $hr_supervisors = $hr_supervisors_stmt->get_result();
-            while ($hr_sup = $hr_supervisors->fetch_assoc()) {
-                createNotification(
-                    $conn,
-                    (int) $hr_sup['user_id'],
-                    'Employee Self-Rating Submitted',
-                    $employee_name . ' submitted a self-rating for review. (No supervisor assigned)',
-                    BASE_URL . '/supervisor/pending-endorsements.php'
-                );
+                // Fallback to all active HR Supervisors if none in same branch
+                if (!$notified) {
+                    $hr_sups = $conn->query("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
+                    while ($hr_sup = $hr_sups->fetch_assoc()) {
+                        createNotification(
+                            $conn,
+                            (int) $hr_sup['user_id'],
+                            'Employee Self-Rating Submitted',
+                            $employee_name . ' (' . $hr_role . ') submitted a self-rating for review.',
+                            BASE_URL . '/supervisor/pending-endorsements.php'
+                        );
+                    }
+                }
+            } elseif ($hr_role === 'HR Supervisor') {
+                // Route to HR Manager
+                $hr_managers = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
+                while ($hr_mgr = $hr_managers->fetch_assoc()) {
+                    createNotification(
+                        $conn,
+                        (int) $hr_mgr['user_id'],
+                        'Employee Self-Rating Submitted',
+                        $employee_name . ' (HR Supervisor) submitted a self-rating for review.',
+                        BASE_URL . '/manager/pending-approvals.php'
+                    );
+                }
             }
-            $hr_supervisors_stmt->close();
+        } else {
+            // Normal employee flow
+            $supervisor_notified = notifySupervisorOfSelfRating($conn, $employee_id, $eval_id);
+
+            // If no supervisor found, notify HR Supervisor as fallback (filtered by employee's branch)
+            if (!$supervisor_notified) {
+                $branch_id = (int) ($employee['branch_id'] ?? 0);
+                $hr_supervisors_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND branch_id = ? AND is_active = 1");
+                $hr_supervisors_stmt->bind_param("i", $branch_id);
+                $hr_supervisors_stmt->execute();
+                $hr_supervisors = $hr_supervisors_stmt->get_result();
+                while ($hr_sup = $hr_supervisors->fetch_assoc()) {
+                    createNotification(
+                        $conn,
+                        (int) $hr_sup['user_id'],
+                        'Employee Self-Rating Submitted',
+                        $employee_name . ' submitted a self-rating for review. (No supervisor assigned)',
+                        BASE_URL . '/supervisor/pending-endorsements.php'
+                    );
+                }
+                $hr_supervisors_stmt->close();
+            }
         }
 
         logAudit($conn, $user_id, 'CREATE', 'Evaluation', $eval_id, 'Submitted employee self-rating');
@@ -330,7 +448,7 @@ $templates_stmt = $conn->prepare("
           WHERE ev.employee_id = ?
             AND ev.template_id = et.template_id
             AND ev.deleted_at IS NULL
-            AND ev.status NOT IN ('Draft', 'Returned', 'Rejected', 'Pending Self-Rating')
+            AND ev.status != 'Rejected'
       )
     ORDER BY template_name
 ");
@@ -377,7 +495,7 @@ if ($selected_template_id > 0) {
             FROM evaluations 
             WHERE employee_id = ? 
               AND template_id = ? 
-              AND status IN ('Returned', 'Pending Self-Rating')
+              AND status IN ('Draft', 'Returned', 'Pending Self-Rating')
               AND deleted_at IS NULL 
             ORDER BY updated_at DESC, evaluation_id DESC
             LIMIT 1
@@ -445,9 +563,22 @@ $history = $conn->query("
     FROM evaluations ev
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
     WHERE ev.employee_id = $employee_id AND ev.submitted_by = $user_id
+      AND ev.deleted_at IS NULL
     ORDER BY COALESCE(ev.submitted_date, ev.updated_at) DESC, ev.evaluation_id DESC
     LIMIT 10
 ");
+
+$in_progress_q = $conn->query("
+    SELECT ev.evaluation_id, ev.evaluation_type, ev.status, ev.updated_at, ev.created_at,
+           et.template_name
+    FROM evaluations ev
+    LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
+    WHERE ev.employee_id = $employee_id
+      AND ev.status IN ('Draft', 'Returned', 'Pending Self-Rating')
+      AND ev.deleted_at IS NULL
+    ORDER BY COALESCE(ev.updated_at, ev.created_at) DESC, ev.evaluation_id DESC
+");
+$in_progress_evals = $in_progress_q ? $in_progress_q->fetch_all(MYSQLI_ASSOC) : [];
 
 require_once '../includes/header.php';
 ?>
@@ -972,9 +1103,14 @@ require_once '../includes/header.php';
                                         value="<?php echo e($selected_template['template_name']); ?>" readonly>
                                     <small class="text-muted mt-1 d-block"><i class="fas fa-lock me-1"></i>This template was
                                         assigned by your Head and cannot be changed.</small>
+                                <?php elseif ($edit_eval && $selected_template): ?>
+                                    <?php /* Editing an existing draft: lock template to avoid dropdown excluding the already-used template */ ?>
+                                    <input type="hidden" name="template_id" value="<?php echo (int) $selected_template['template_id']; ?>">
+                                    <input type="text" class="form-control" value="<?php echo e($selected_template['template_name']); ?>" readonly>
+                                    <small class="text-muted mt-1 d-block"><i class="fas fa-lock me-1"></i>Template is locked for this draft.</small>
                                 <?php else: ?>
                                     <select class="form-select" name="template_id" id="templateSelect"
-                                        onchange="if(this.value){ window.location='?template=' + this.value <?php echo $edit_eval ? " + '&edit=" . (int) $edit_eval['evaluation_id'] . "'" : ''; ?>; } else { window.location='self-rating.php'; }"
+                                        onchange="if(this.value){ window.location='?template=' + this.value; } else { window.location='self-rating.php'; }"
                                         required>
                                         <option value="">Select Template</option>
                                         <?php while ($template = $templates->fetch_assoc()): ?>
@@ -1068,6 +1204,11 @@ require_once '../includes/header.php';
                             </div>
 
                             <div class="d-flex flex-wrap justify-content-end gap-2">
+                                <?php if ($edit_eval): ?>
+                                    <a href="?discard=<?php echo (int) $edit_eval['evaluation_id']; ?>" class="btn btn-outline-danger me-auto" onclick="return confirm('Are you sure you want to discard this draft? This action cannot be undone.');">
+                                        <i class="fas fa-trash me-2"></i>Discard Draft
+                                    </a>
+                                <?php endif; ?>
                                 <button type="submit" name="submit_action" value="draft" class="btn btn-outline-secondary">
                                     <i class="fas fa-save me-2"></i>Save Draft
                                 </button>
@@ -1078,10 +1219,44 @@ require_once '../includes/header.php';
                                 <button type="submit" name="submit_action" value="submit" id="realSubmitBtn" class="d-none"></button>
                             </div>
                         <?php else: ?>
-                            <div class="empty-state">
-                                <i class="fas fa-file-signature d-block"></i>
-                                <p class="mb-0">Select an active template to start your self-rating.</p>
-                            </div>
+                            <?php if (!empty($in_progress_evals)): ?>
+                                <div class="in-progress-section">
+                                    <h5 class="fw-bold mb-3 text-primary"><i class="fas fa-clock me-2"></i>In-Progress Evaluations</h5>
+                                    <div class="row g-3 mb-4">
+                                        <?php foreach ($in_progress_evals as $ip_eval): ?>
+                                            <div class="col-md-6">
+                                                <div class="card border border-primary border-opacity-10 h-100 shadow-sm" style="border-radius: 12px; background: #fafcf8;">
+                                                    <div class="card-body p-3 d-flex flex-column justify-content-between">
+                                                        <div>
+                                                            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                                                <h6 class="fw-bold text-dark mb-0" style="font-size:0.9rem;"><?php echo e($ip_eval['template_name'] ?? 'Evaluation'); ?></h6>
+                                                                <span class="badge <?php echo getStatusBadgeClass($ip_eval['status']); ?>"><?php echo e($ip_eval['status']); ?></span>
+                                                            </div>
+                                                            <div class="small text-muted mb-1" style="font-size:0.75rem;">Type: <?php echo e($ip_eval['evaluation_type']); ?></div>
+                                                            <div class="small text-muted mb-3" style="font-size:0.75rem;"><i class="fas fa-edit me-1"></i>Last updated: <?php echo formatDateTime($ip_eval['updated_at'] ?? $ip_eval['created_at']); ?></div>
+                                                        </div>
+                                                        <div class="d-flex gap-2">
+                                                            <a href="?edit=<?php echo (int) $ip_eval['evaluation_id']; ?>" class="btn btn-sm btn-primary w-100 rounded-pill" style="font-size:0.75rem;">
+                                                                <i class="fas fa-play me-1"></i>Continue
+                                                            </a>
+                                                            <a href="?discard=<?php echo (int) $ip_eval['evaluation_id']; ?>" class="btn btn-sm btn-outline-danger rounded-pill px-2" style="font-size:0.75rem;" onclick="return confirm('Are you sure you want to discard this draft? This action cannot be undone.');">
+                                                                <i class="fas fa-trash"></i>
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <div class="border-top my-4"></div>
+                                    <p class="text-muted small"><i class="fas fa-info-circle me-1"></i>Or choose a template below to start a new self-rating.</p>
+                                </div>
+                            <?php else: ?>
+                                <div class="empty-state">
+                                    <i class="fas fa-file-signature d-block"></i>
+                                    <p class="mb-0">Select an active template to start your self-rating.</p>
+                                </div>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </form>
                 </div>

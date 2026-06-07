@@ -232,7 +232,9 @@ foreach ($all_history as $row):
                     <!-- Action Buttons -->
                     <div class="d-flex justify-content-between align-items-center mb-4 gap-2 d-print-none">
                         <div>
-                            <?php if ((int)($row['rank_category_id'] ?? 0) === 5): ?>
+                            <?php 
+                            $can_edit_rating = ((int)($row['rank_category_id'] ?? 0) === 5) || (getEmployeeHRRole($conn, (int)$row['employee_id']) === 'HR Manager');
+                            if ($can_edit_rating): ?>
                             <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold btn-edit-ratings" onclick="toggleEditRatings(<?php echo $row['evaluation_id']; ?>)">
                                 <i class="fas fa-edit me-1"></i>Edit Ratings
                             </button>

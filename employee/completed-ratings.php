@@ -196,7 +196,7 @@ require_once '../includes/header.php';
                                 </div>
                                 <div class="eval-status-field" style="grid-column: 1 / -1;">
                                     <span class="eval-status-field-label">Last Updated</span>
-                                    <span class="eval-status-field-value"><?php echo formatDateTime($eval['submitted_date'] ?? $eval['updated_at'] ?? ''); ?></span>
+                                    <span class="eval-status-field-value"><?php echo formatDateTime($eval['updated_at'] ?? $eval['submitted_date'] ?? ''); ?></span>
                                 </div>
                             </div>
                             <div class="eval-status-card-footer">
@@ -242,7 +242,7 @@ require_once '../includes/header.php';
                                                 <span class="badge bg-primary"><?php echo e($eval['performance_level']); ?></span>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?php echo formatDateTime($eval['submitted_date'] ?? $eval['updated_at'] ?? ''); ?></td>
+                                        <td><?php echo formatDateTime($eval['updated_at'] ?? $eval['submitted_date'] ?? ''); ?></td>
                                         <td class="text-end pe-3">
                                             <a href="<?php echo $view_url; ?>" class="btn btn-sm btn-outline-<?php echo $can_edit ? 'primary' : 'info'; ?>">
                                                 <i class="fas fa-<?php echo $can_edit ? 'edit' : 'eye'; ?> me-1"></i><?php echo $can_edit ? 'Continue' : 'View'; ?>

@@ -39,8 +39,12 @@ $rank_category_id = (int)$eval['rank_category_id'];
 
 
 if ($rank_category_id !== 5) {
-    echo json_encode(['success' => false, 'message' => 'Rating adjustments are only permitted for Rank & File (R&F) employees.']);
-    exit;
+    // Check if the employee is an HR Manager
+    $emp_hr_role = getEmployeeHRRole($conn, $employee_id);
+    if ($emp_hr_role !== 'HR Manager') {
+        echo json_encode(['success' => false, 'message' => 'Rating adjustments are only permitted for Rank & File (R&F) employees or HR Manager evaluations.']);
+        exit;
+    }
 }
 
 if (!in_array($eval['status'], ['Pending Supervisor', 'Pending HR Consolidation'], true)) {
