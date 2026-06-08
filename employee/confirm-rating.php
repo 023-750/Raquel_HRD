@@ -190,12 +190,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
             $new_supervisor_rating = $new_total_score;
         }
         
-        // Under the new standard flow, bypass department manager (Pending Dept Manager)
-        // and route directly to HR Supervisor (Pending HR Consolidation)
-        $next_status = 'Pending HR Consolidation';
+        // Determine the next status based on roles and department structure
+        $emp_hr_role = getEmployeeHRRole($conn, (int)$evaluation['employee_id']);
+        
+        if ($emp_hr_role === 'HR Manager') {
+            $next_status = 'Approved';
+        } elseif ($emp_hr_role === 'HR Staff') {
+            $next_status = 'Pending Manager';
+        } else {
+            // Non-HR employee: check if there is a separate department manager
+            $dept_manager = getDeptManagerOfEmployee($conn, (int)$evaluation['employee_id']);
+            $is_emp_manager = isDeptManagerRole($conn, (int)$evaluation['employee_id']);
+            if (!$is_emp_manager && $dept_manager !== null && (int)$dept_manager['supervisor_employee_id'] !== $supervisor_employee_id) {
+                // Route to department manager
+                $next_status = 'Pending Dept Manager';
+            } else {
+                // No separate department manager, route directly to HR Supervisor
+                $next_status = 'Pending HR Consolidation';
+            }
+        }
 
         // Update evaluation status
-        $update = $conn->prepare("
+        $sql = "
             UPDATE evaluations 
             SET status = ?,
                 dept_supervisor_confirmed_by = ?,
@@ -210,25 +226,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
                 total_score = ?,
                 kra_subtotal = ?,
                 behavior_average = ?,
-                performance_level = ?
+                performance_level = ?,
+                approved_by = " . ($next_status === 'Approved' ? '?' : 'approved_by') . ",
+                approved_date = " . ($next_status === 'Approved' ? 'NOW()' : 'approved_date') . "
             WHERE evaluation_id = ?
-        ");
+        ";
+        $update = $conn->prepare($sql);
         $altered_int = $supervisor_altered ? 1 : 0;
-        $update->bind_param(
-            "siiisidddsii",
-            $next_status,
-            $user_id,
-            $user_id,
-            $altered_int,
-            $supervisor_comments,
-            $new_supervisor_rating,
-            $user_id,
-            $new_total_score,
-            $new_kra_subtotal,
-            $new_behavior_average,
-            $new_performance_level,
-            $evaluation_id
-        );
+        
+        if ($next_status === 'Approved') {
+            $update->bind_param(
+                "siiisiddddsii",
+                $next_status,
+                $user_id,
+                $user_id,
+                $altered_int,
+                $supervisor_comments,
+                $new_supervisor_rating,
+                $user_id,
+                $new_total_score,
+                $new_kra_subtotal,
+                $new_behavior_average,
+                $new_performance_level,
+                $user_id, // approved_by
+                $evaluation_id
+            );
+        } else {
+            $update->bind_param(
+                "siiisidddsii",
+                $next_status,
+                $user_id,
+                $user_id,
+                $altered_int,
+                $supervisor_comments,
+                $new_supervisor_rating,
+                $user_id,
+                $new_total_score,
+                $new_kra_subtotal,
+                $new_behavior_average,
+                $new_performance_level,
+                $evaluation_id
+            );
+        }
         $update->execute();
         $update->close();
         
@@ -244,7 +283,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
                 $supervisor_name . ' confirmed self-rating for ' . $emp_name . ' and requires your endorsement.',
                 BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $evaluation_id
             );
-        } else {
+        } elseif ($next_status === 'Pending Manager') {
+            // Notify HR Manager
+            $hr_users = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
+            while ($hr = $hr_users->fetch_assoc()) {
+                createNotification(
+                    $conn,
+                    (int)$hr['user_id'],
+                    'Evaluation Pending Approval',
+                    $supervisor_name . ' confirmed self-rating for ' . $emp_name . ' (HR Staff) and requires your approval.',
+                    BASE_URL . '/manager/pending-approvals.php'
+                );
+            }
+        } elseif ($next_status === 'Pending HR Consolidation') {
             // Notify HR Supervisor and HR Manager
             $hr_users = $conn->query("SELECT user_id FROM users WHERE role IN ('HR Supervisor', 'HR Manager') AND is_active = 1");
             while ($hr = $hr_users->fetch_assoc()) {
@@ -261,9 +312,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         // Notify employee
         $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . (int)$evaluation['employee_id'] . " LIMIT 1")->fetch_assoc();
         if ($emp_user) {
-            $msg = ($next_status === 'Pending Dept Manager') 
-                ? 'Your supervisor has confirmed your self-rating and forwarded it to the Department Manager.'
-                : 'Your supervisor has confirmed your self-rating and sent it to HRD.';
+            if ($next_status === 'Approved') {
+                $msg = 'Your evaluation has been approved.';
+            } elseif ($next_status === 'Pending Dept Manager') {
+                $msg = 'Your supervisor has confirmed your self-rating and forwarded it to the Department Manager.';
+            } elseif ($next_status === 'Pending Manager') {
+                $msg = 'Your supervisor has confirmed your self-rating and forwarded it to the HR Manager.';
+            } else {
+                $msg = 'Your supervisor has confirmed your self-rating and sent it to HRD.';
+            }
             createNotification(
                 $conn,
                 (int)$emp_user['user_id'],
@@ -279,9 +336,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         }
         logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, $audit_details);
         
-        $success_msg = ($next_status === 'Pending Dept Manager') 
-            ? 'Self-rating confirmed and forwarded to Department Manager successfully.'
-            : 'Self-rating confirmed and sent to HRD successfully.';
+        $success_msg = 'Self-rating confirmed successfully.';
+        if ($next_status === 'Pending Dept Manager') {
+            $success_msg = 'Self-rating confirmed and forwarded to Department Manager successfully.';
+        } elseif ($next_status === 'Pending Manager') {
+            $success_msg = 'Self-rating confirmed and forwarded to HR Manager successfully.';
+        } elseif ($next_status === 'Approved') {
+            $success_msg = 'Evaluation confirmed and approved successfully.';
+        } else {
+            $success_msg = 'Self-rating confirmed and sent to HRD successfully.';
+        }
         redirectWith(BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id, 'success', $success_msg);
     } elseif ($action === 'reject') {
         if (empty($supervisor_comments)) {
@@ -335,6 +399,7 @@ if ($is_supervisor) {
 
     $pending_stmt = $conn->prepare("
         SELECT e.*, emp.first_name, emp.last_name, emp.job_title, emp.employee_code,
+               emp.reports_to, emp.branch_id,
                t.template_name
         FROM evaluations e
         JOIN employees emp ON e.employee_id = emp.employee_id
@@ -349,9 +414,87 @@ if ($is_supervisor) {
     $pending_stmt->close();
 
     $pending_confirmations = [];
+    
+    // Find the branch fallback supervisor once to avoid running queries in loop
+    $fallback_supervisor_id = 0;
+    if ($supervisor_branch_id > 0) {
+        $sup_stmt = $conn->prepare("
+            SELECT employee_id 
+            FROM employees 
+            WHERE branch_id = ? 
+              AND is_active = 1 
+              AND deleted_at IS NULL
+              AND (rank_category_id = 4 OR job_title LIKE '%Supervisor%')
+            ORDER BY employee_id ASC
+            LIMIT 1
+        ");
+        if ($sup_stmt) {
+            $sup_stmt->bind_param("i", $supervisor_branch_id);
+            $sup_stmt->execute();
+            $res = $sup_stmt->get_result()->fetch_assoc();
+            $sup_stmt->close();
+            if ($res) {
+                $fallback_supervisor_id = (int)$res['employee_id'];
+            }
+        }
+        
+        if ($fallback_supervisor_id <= 0) {
+            $mgr_stmt = $conn->prepare("
+                SELECT employee_id 
+                FROM employees 
+                WHERE branch_id = ? 
+                  AND is_active = 1 
+                  AND deleted_at IS NULL
+                  AND (rank_category_id = 3 OR job_title LIKE '%Manager%')
+                ORDER BY employee_id ASC
+                LIMIT 1
+            ");
+            if ($mgr_stmt) {
+                $mgr_stmt->bind_param("i", $supervisor_branch_id);
+                $mgr_stmt->execute();
+                $res = $mgr_stmt->get_result()->fetch_assoc();
+                $mgr_stmt->close();
+                if ($res) {
+                    $fallback_supervisor_id = (int)$res['employee_id'];
+                }
+            }
+        }
+    }
+
+    $active_reports_to_cache = [];
     foreach ($all_pending as $p) {
-        $sup = getEmployeeSupervisor($conn, (int)$p['employee_id']);
-        if ($sup && (int)$sup['supervisor_employee_id'] === $supervisor_employee_id) {
+        $p_reports_to = (isset($p['reports_to']) && $p['reports_to']) ? (int)$p['reports_to'] : 0;
+        $is_match = false;
+        
+        if ($p_reports_to > 0) {
+            if (!isset($active_reports_to_cache[$p_reports_to])) {
+                $check_stmt = $conn->prepare("SELECT employee_id FROM employees WHERE employee_id = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1");
+                if ($check_stmt) {
+                    $check_stmt->bind_param("i", $p_reports_to);
+                    $check_stmt->execute();
+                    $active_reports_to_cache[$p_reports_to] = (bool)$check_stmt->get_result()->fetch_assoc();
+                    $check_stmt->close();
+                } else {
+                    $active_reports_to_cache[$p_reports_to] = false;
+                }
+            }
+            
+            if ($active_reports_to_cache[$p_reports_to]) {
+                if ($p_reports_to === $supervisor_employee_id) {
+                    $is_match = true;
+                }
+            } else {
+                if ($fallback_supervisor_id === $supervisor_employee_id) {
+                    $is_match = true;
+                }
+            }
+        } else {
+            if ($fallback_supervisor_id === $supervisor_employee_id) {
+                $is_match = true;
+            }
+        }
+        
+        if ($is_match) {
             $pending_confirmations[] = $p;
         }
     }

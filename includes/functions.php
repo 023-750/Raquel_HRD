@@ -668,37 +668,29 @@ function redirectWith($url, $type, $message)
 
 function getCareerProgressionMovementColumns($conn)
 {
-
     $columns = [];
-
-
-
     try {
-
         $result = $conn->query("SHOW COLUMNS FROM career_movements");
-
-        while ($result && $row = $result->fetch_assoc()) {
-
-            $columns[$row['Field']] = true;
-
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $columns[$row['Field']] = true;
+            }
+            $result->free();
         }
-
     } catch (mysqli_sql_exception $e) {
-
         return [];
-
     }
-
-
-
     return $columns;
-
 }
 
 
 
 function ensureCareerProgressionMovements($conn)
 {
+    static $ensured = false;
+    if ($ensured) {
+        return true;
+    }
 
     try {
 
@@ -1121,25 +1113,24 @@ function clearLoginAttempts($conn, $identifier, $ip)
 
 function ensureEmployeesReportsTo($conn)
 {
-
-    try {
-
-        $result = $conn->query("SHOW COLUMNS FROM employees LIKE 'reports_to'");
-
-        if ($result->num_rows === 0) {
-
-            $conn->query("ALTER TABLE employees ADD COLUMN reports_to INT NULL AFTER branch_id, ADD CONSTRAINT fk_employees_reports_to FOREIGN KEY (reports_to) REFERENCES employees(employee_id) ON DELETE SET NULL");
-
-        }
-
-    } catch (mysqli_sql_exception $e) {
-
-        return false;
-
+    static $ensured = false;
+    if ($ensured) {
+        return true;
     }
 
+    try {
+        $result = $conn->query("SHOW COLUMNS FROM employees LIKE 'reports_to'");
+        if ($result) {
+            if ($result->num_rows === 0) {
+                $conn->query("ALTER TABLE employees ADD COLUMN reports_to INT NULL AFTER branch_id, ADD CONSTRAINT fk_employees_reports_to FOREIGN KEY (reports_to) REFERENCES employees(employee_id) ON DELETE SET NULL");
+            }
+            $result->free();
+        }
+    } catch (mysqli_sql_exception $e) {
+        return false;
+    }
+    $ensured = true;
     return true;
-
 }
 
 
@@ -1306,100 +1297,78 @@ function getEmployeeNameById($conn, $employee_id)
 
 function getEvaluationsTableColumns($conn)
 {
-
     $columns = [];
-
     try {
-
         $result = $conn->query("SHOW COLUMNS FROM evaluations");
-
-        while ($result && $row = $result->fetch_assoc()) {
-
-            $columns[$row['Field']] = true;
-
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $columns[$row['Field']] = true;
+            }
+            $result->free();
         }
-
     } catch (mysqli_sql_exception $e) {
-
         return [];
-
     }
-
     return $columns;
-
 }
 
 
 
 function getEvaluationCriteriaTableColumns($conn)
 {
-
     $columns = [];
-
     try {
-
         $result = $conn->query("SHOW COLUMNS FROM evaluation_criteria");
-
-        while ($result && $row = $result->fetch_assoc()) {
-
-            $columns[$row['Field']] = true;
-
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $columns[$row['Field']] = true;
+            }
+            $result->free();
         }
-
     } catch (mysqli_sql_exception $e) {
-
         return [];
-
     }
-
     return $columns;
-
 }
 
 
 
 function evaluationsStatusSupports($conn, $required_statuses)
 {
-
     try {
-
         $result = $conn->query("SHOW COLUMNS FROM evaluations LIKE 'status'");
         $status_column = $result ? $result->fetch_assoc() : null;
+        if ($result) {
+            $result->free();
+        }
         $column_type = (string) ($status_column['Type'] ?? '');
 
         if ($column_type === '') {
-
             return false;
-
         }
 
         foreach ($required_statuses as $status) {
-
             if (strpos($column_type, "'" . $status . "'") === false) {
-
                 return false;
-
             }
-
         }
 
         return true;
-
     } catch (mysqli_sql_exception $e) {
-
         return false;
-
     }
-
 }
 
 
 
 function ensureEvaluationWorkflowSchema($conn)
 {
+    static $ensured = false;
+    if ($ensured) {
+        return true;
+    }
 
     try {
-
         $columns = getEvaluationsTableColumns($conn);
 
         $optional_columns = [
@@ -1493,6 +1462,7 @@ function ensureEvaluationWorkflowSchema($conn)
             while ($score_col = $score_cols_result->fetch_assoc()) {
                 $score_columns[$score_col['Field']] = true;
             }
+            $score_cols_result->free();
         }
 
         $score_optional_columns = [
@@ -1551,8 +1521,17 @@ function ensure360DegreeEvaluationColumns($conn)
 
 function getEmployeeSupervisor($conn, $employee_id)
 {
+    $employee_id = (int)$employee_id;
+    if ($employee_id <= 0) {
+        return null;
+    }
+
+    static $supervisor_cache = [];
+    if (array_key_exists($employee_id, $supervisor_cache)) {
+        return $supervisor_cache[$employee_id];
+    }
+
     ensureEmployeesReportsTo($conn);
-    $employee_id = (int) $employee_id;
 
     // Get the employee's direct reports_to and branch_id
     $emp_stmt = $conn->prepare("SELECT reports_to, branch_id FROM employees WHERE employee_id = ? LIMIT 1");
@@ -1645,9 +1624,11 @@ function getEmployeeSupervisor($conn, $employee_id)
         $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
 
-        return $result ?: null;
+        $supervisor_cache[$employee_id] = $result ?: null;
+        return $supervisor_cache[$employee_id];
     }
 
+    $supervisor_cache[$employee_id] = null;
     return null;
 }
 
@@ -1810,24 +1791,110 @@ function recalculateEvaluationScores($conn, $evaluation_id)
 function getDeptManagerOfEmployee($conn, $employee_id)
 {
     $employee_id = (int)$employee_id;
-    // Get immediate supervisor (reports_to)
-    $stmt = $conn->prepare("SELECT reports_to FROM employees WHERE employee_id = ? LIMIT 1");
+    if ($employee_id <= 0) {
+        return null;
+    }
+
+    // Get immediate supervisor (reports_to), branch_id, and rank/job title
+    $stmt = $conn->prepare("SELECT reports_to, branch_id, job_title, rank_category_id FROM employees WHERE employee_id = ? LIMIT 1");
     $stmt->bind_param("i", $employee_id);
     $stmt->execute();
-    $res = $stmt->get_result()->fetch_assoc();
+    $emp_info = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    
-    $supervisor_id = (int)($res['reports_to'] ?? 0);
-    if (!$supervisor_id) {
+
+    if (!$emp_info) {
         return null;
     }
-    
-    // Get supervisor's supervisor -> Dept Manager
-    $manager = getEmployeeSupervisor($conn, $supervisor_id);
-    if (!$manager || empty($manager['user_id'])) {
-        return null;
+
+    $reports_to = $emp_info['reports_to'] ? (int)$emp_info['reports_to'] : 0;
+    $branch_id = $emp_info['branch_id'] ? (int)$emp_info['branch_id'] : 0;
+    $job_title = $emp_info['job_title'] ?? '';
+    $rank_category_id = (int)($emp_info['rank_category_id'] ?? 0);
+
+    // 1. Try reports_to chain
+    if ($reports_to > 0) {
+        $stmt = $conn->prepare("SELECT reports_to FROM employees WHERE employee_id = ? LIMIT 1");
+        $stmt->bind_param("i", $reports_to);
+        $stmt->execute();
+        $sup_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $supervisor_reports_to = $sup_info['reports_to'] ? (int)$sup_info['reports_to'] : 0;
+        if ($supervisor_reports_to > 0) {
+            $manager = getEmployeeSupervisor($conn, $supervisor_reports_to);
+            if ($manager && !empty($manager['user_id'])) {
+                return $manager;
+            }
+        }
     }
-    return $manager;
+
+    // 2. Fallback to branch-based hierarchy if reports_to chain is not set or doesn't yield a manager
+    if ($branch_id > 0) {
+        // If the employee is a Manager themselves, they don't have a department manager above them.
+        if ($rank_category_id === 3 || stripos($job_title, 'Manager') !== false) {
+            return null;
+        }
+
+        // Check if there is an active Manager in the same branch
+        $mgr_stmt = $conn->prepare("
+            SELECT employee_id 
+            FROM employees 
+            WHERE branch_id = ? 
+              AND is_active = 1 
+              AND deleted_at IS NULL
+              AND employee_id != ?
+              AND (rank_category_id = 3 OR job_title LIKE '%Manager%')
+            ORDER BY employee_id ASC
+            LIMIT 1
+        ");
+        $mgr_stmt->bind_param("ii", $branch_id, $employee_id);
+        $mgr_stmt->execute();
+        $mgr_res = $mgr_stmt->get_result()->fetch_assoc();
+        $mgr_stmt->close();
+
+        if ($mgr_res) {
+            $manager_employee_id = (int)$mgr_res['employee_id'];
+
+            // Check if there is also an active Supervisor in the same branch
+            $sup_stmt = $conn->prepare("
+                SELECT employee_id 
+                FROM employees 
+                WHERE branch_id = ? 
+                  AND is_active = 1 
+                  AND deleted_at IS NULL
+                  AND employee_id != ?
+                  AND (rank_category_id = 4 OR job_title LIKE '%Supervisor%')
+                ORDER BY employee_id ASC
+                LIMIT 1
+            ");
+            $sup_stmt->bind_param("ii", $branch_id, $employee_id);
+            $sup_stmt->execute();
+            $sup_res = $sup_stmt->get_result()->fetch_assoc();
+            $sup_stmt->close();
+
+            // If we have a Supervisor in the branch:
+            // - A Staff member (not Supervisor, not Manager) reports to Supervisor, who reports to Manager. So Manager is Dept Manager.
+            // - A Supervisor reports to Manager. So Manager is Dept Manager.
+            if ($sup_res || $rank_category_id === 4 || stripos($job_title, 'Supervisor') !== false) {
+                $stmt = $conn->prepare("
+                    SELECT s.reports_to, s.employee_id as supervisor_employee_id, 
+                           s.first_name, s.last_name, s.job_title,
+                           u.user_id, u.full_name, u.email
+                    FROM employees s
+                    LEFT JOIN users u ON s.employee_id = u.employee_id
+                    WHERE s.employee_id = ? AND s.is_active = 1 AND s.deleted_at IS NULL
+                    LIMIT 1
+                ");
+                $stmt->bind_param("i", $manager_employee_id);
+                $stmt->execute();
+                $mgr_info = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                return $mgr_info;
+            }
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -1837,7 +1904,7 @@ function isDeptManagerOfEmployee($conn, $manager_user_id, $employee_id)
 {
     $manager_user_id = (int)$manager_user_id;
     $employee_id = (int)$employee_id;
-    
+
     // Get manager's employee_id
     $stmt = $conn->prepare("SELECT employee_id FROM users WHERE user_id = ? LIMIT 1");
     $stmt->bind_param("i", $manager_user_id);
@@ -1845,12 +1912,12 @@ function isDeptManagerOfEmployee($conn, $manager_user_id, $employee_id)
     $res = $stmt->get_result()->fetch_assoc();
     $manager_employee_id = (int)($res['employee_id'] ?? 0);
     $stmt->close();
-    
+
     if (!$manager_employee_id) {
         return false;
     }
-    
-    // Check if employee reports to a supervisor who reports to this manager
+
+    // 1. Try direct reports_to check first
     $stmt = $conn->prepare("
         SELECT COUNT(*) as count 
         FROM employees e
@@ -1861,8 +1928,18 @@ function isDeptManagerOfEmployee($conn, $manager_user_id, $employee_id)
     $stmt->execute();
     $count = (int)($stmt->get_result()->fetch_assoc()['count'] ?? 0);
     $stmt->close();
-    
-    return $count > 0;
+
+    if ($count > 0) {
+        return true;
+    }
+
+    // 2. Fallback: Resolve employee's department manager using fallback logic
+    $dept_manager = getDeptManagerOfEmployee($conn, $employee_id);
+    if ($dept_manager && (int)$dept_manager['supervisor_employee_id'] === $manager_employee_id) {
+        return true;
+    }
+
+    return false;
 }
 
 /**
@@ -1874,8 +1951,8 @@ function isDeptManagerRole($conn, $employee_id)
     if (!$employee_id) {
         return false;
     }
-    
-    // Check if there is any active employee whose supervisor reports to this employee
+
+    // 1. Direct reports_to check: Check if there is any active employee whose supervisor reports to this employee
     $stmt = $conn->prepare("
         SELECT COUNT(*) as count
         FROM employees e
@@ -1886,8 +1963,32 @@ function isDeptManagerRole($conn, $employee_id)
     $stmt->execute();
     $count = (int)($stmt->get_result()->fetch_assoc()['count'] ?? 0);
     $stmt->close();
-    
-    return $count > 0;
+
+    if ($count > 0) {
+        return true;
+    }
+
+    // 2. Fallback check: is the employee themselves a Manager (rank_category_id = 3 or job_title containing Manager)?
+    $stmt = $conn->prepare("
+        SELECT rank_category_id, job_title 
+        FROM employees 
+        WHERE employee_id = ? AND is_active = 1 AND deleted_at IS NULL 
+        LIMIT 1
+    ");
+    $stmt->bind_param("i", $employee_id);
+    $stmt->execute();
+    $emp = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if ($emp) {
+        $rank_category_id = (int)($emp['rank_category_id'] ?? 0);
+        $job_title = $emp['job_title'] ?? '';
+        if ($rank_category_id === 3 || stripos($job_title, 'Manager') !== false) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**

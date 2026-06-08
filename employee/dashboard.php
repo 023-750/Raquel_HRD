@@ -342,44 +342,101 @@ function movementIcon(string $type): string {
                     <?php endif; ?>
                 </div>
 
-                <!-- Workflow Progress Bar (dynamic: HRD vs full-chain) -->
                 <?php
+                // Workflow Progress Bar (dynamic: HRD vs full-chain)
                 $current_status = $active_eval['status'] ?? '';
+                $hr_role = getEmployeeHRRole($conn, $employee_id);
 
-                if ($has_dept_supervisor || $has_dept_manager) {
-                    // Full org-chain workflow
-                    $workflow_steps  = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
-                    $workflow_labels = ['Self-Rating', 'Dept Supervisor', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
+                if ($hr_role === 'HR Manager') {
+                    $workflow_steps  = ['Pending Self-Rating', 'Pending Supervisor', 'Approved'];
+                    $workflow_labels = ['Self-Rating', 'HR Supervisor', 'Approved'];
                     $status_step_map = [
                         'Draft'                    => 0,
                         'Returned'                 => 0,
                         'Pending Self-Rating'      => 0,
                         'Pending Dept Supervisor'  => 1,
                         'Pending Supervisor'       => 1,
-                        'Pending Dept Manager'     => 2,
-                        'Supervisor Confirmed'     => 3,
-                        'Pending HR Consolidation' => 3,
-                        'Pending Manager'          => 4,
-                        'Approved'                 => 5,
-                        'Rejected'                 => 5,
+                        'Approved'                 => 2,
+                        'Rejected'                 => 2,
                     ];
-                } else {
-                    // HRD / direct-to-HR workflow (no dept supervisor or manager)
-                    $workflow_steps  = ['Pending Self-Rating', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
-                    $workflow_labels = ['Self-Rating', 'HR Consolidation', 'HR Manager', 'Approved'];
+                } elseif ($hr_role === 'HR Supervisor') {
+                    $workflow_steps  = ['Pending Self-Rating', 'Pending Manager', 'Approved'];
+                    $workflow_labels = ['Self-Rating', 'HR Manager', 'Approved'];
+                    $status_step_map = [
+                        'Draft'                    => 0,
+                        'Returned'                 => 0,
+                        'Pending Self-Rating'      => 0,
+                        'Pending Manager'          => 1,
+                        'Approved'                 => 2,
+                        'Rejected'                 => 2,
+                    ];
+                } elseif ($hr_role === 'HR Staff') {
+                    $workflow_steps  = ['Pending Self-Rating', 'Pending Supervisor', 'Pending Manager', 'Approved'];
+                    $workflow_labels = ['Self-Rating', 'HR Supervisor', 'HR Manager', 'Approved'];
                     $status_step_map = [
                         'Draft'                    => 0,
                         'Returned'                 => 0,
                         'Pending Self-Rating'      => 0,
                         'Pending Dept Supervisor'  => 1,
                         'Pending Supervisor'       => 1,
-                        'Pending Dept Manager'     => 1,
-                        'Supervisor Confirmed'     => 1,
-                        'Pending HR Consolidation' => 1,
                         'Pending Manager'          => 2,
                         'Approved'                 => 3,
                         'Rejected'                 => 3,
                     ];
+                } else {
+                    // Non-HR employee
+                    if ($has_dept_supervisor && $has_dept_manager) {
+                        // Full org-chain workflow
+                        $workflow_steps  = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                        $workflow_labels = ['Self-Rating', 'Dept Supervisor', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
+                        $status_step_map = [
+                            'Draft'                    => 0,
+                            'Returned'                 => 0,
+                            'Pending Self-Rating'      => 0,
+                            'Pending Dept Supervisor'  => 1,
+                            'Pending Supervisor'       => 1,
+                            'Pending Dept Manager'     => 2,
+                            'Supervisor Confirmed'     => 3,
+                            'Pending HR Consolidation' => 3,
+                            'Pending Manager'          => 4,
+                            'Approved'                 => 5,
+                            'Rejected'                 => 5,
+                        ];
+                    } elseif ($has_dept_supervisor) {
+                        // Supervisor only workflow
+                        $workflow_steps  = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                        $workflow_labels = ['Self-Rating', 'Dept Supervisor', 'HR Consolidation', 'HR Manager', 'Approved'];
+                        $status_step_map = [
+                            'Draft'                    => 0,
+                            'Returned'                 => 0,
+                            'Pending Self-Rating'      => 0,
+                            'Pending Dept Supervisor'  => 1,
+                            'Pending Supervisor'       => 1,
+                            'Pending Dept Manager'     => 1,
+                            'Supervisor Confirmed'     => 2,
+                            'Pending HR Consolidation' => 2,
+                            'Pending Manager'          => 3,
+                            'Approved'                 => 4,
+                            'Rejected'                 => 4,
+                        ];
+                    } else {
+                        // Direct-to-HR (no supervisor at all)
+                        $workflow_steps  = ['Pending Self-Rating', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                        $workflow_labels = ['Self-Rating', 'HR Consolidation', 'HR Manager', 'Approved'];
+                        $status_step_map = [
+                            'Draft'                    => 0,
+                            'Returned'                 => 0,
+                            'Pending Self-Rating'      => 0,
+                            'Pending Dept Supervisor'  => 1,
+                            'Pending Supervisor'       => 1,
+                            'Pending Dept Manager'     => 1,
+                            'Supervisor Confirmed'     => 1,
+                            'Pending HR Consolidation' => 1,
+                            'Pending Manager'          => 2,
+                            'Approved'                 => 3,
+                            'Rejected'                 => 3,
+                        ];
+                    }
                 }
 
                 $step_index = $status_step_map[$current_status] ?? null;

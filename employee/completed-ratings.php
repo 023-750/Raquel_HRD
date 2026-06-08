@@ -24,39 +24,98 @@ $has_dept_supervisor = ($my_supervisor !== null && !empty($my_supervisor['user_i
 $my_dept_manager    = getDeptManagerOfEmployee($conn, $employee_id);
 $has_dept_manager   = ($my_dept_manager !== null && !empty($my_dept_manager['user_id']));
 
-if ($has_dept_supervisor || $has_dept_manager) {
-    $wf_steps  = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
-    $wf_labels = ['Self-Rating', 'Dept Supervisor', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
-    $wf_map    = [
+$hr_role = getEmployeeHRRole($conn, $employee_id);
+
+if ($hr_role === 'HR Manager') {
+    $wf_steps   = ['Pending Self-Rating', 'Pending Supervisor', 'Approved'];
+    $wf_labels  = ['Self-Rating', 'HR Supervisor', 'Approved'];
+    $wf_map     = [
         'Draft'                    => 0,
         'Returned'                 => 0,
         'Pending Self-Rating'      => 0,
         'Pending Dept Supervisor'  => 1,
         'Pending Supervisor'       => 1,
-        'Pending Dept Manager'     => 2,
-        'Supervisor Confirmed'     => 3,
-        'Pending HR Consolidation' => 3,
-        'Pending Manager'          => 4,
-        'Approved'                 => 5,
-        'Rejected'                 => 5,
+        'Approved'                 => 2,
+        'Rejected'                 => 2,
     ];
-} else {
-    // HRD / direct-to-HR: no Dept Supervisor or Dept Manager step
-    $wf_steps  = ['Pending Self-Rating', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
-    $wf_labels = ['Self-Rating', 'HR Consolidation', 'HR Manager', 'Approved'];
-    $wf_map    = [
+} elseif ($hr_role === 'HR Supervisor') {
+    $wf_steps   = ['Pending Self-Rating', 'Pending Manager', 'Approved'];
+    $wf_labels  = ['Self-Rating', 'HR Manager', 'Approved'];
+    $wf_map     = [
+        'Draft'                    => 0,
+        'Returned'                 => 0,
+        'Pending Self-Rating'      => 0,
+        'Pending Manager'          => 1,
+        'Approved'                 => 2,
+        'Rejected'                 => 2,
+    ];
+} elseif ($hr_role === 'HR Staff') {
+    $wf_steps   = ['Pending Self-Rating', 'Pending Supervisor', 'Pending Manager', 'Approved'];
+    $wf_labels  = ['Self-Rating', 'HR Supervisor', 'HR Manager', 'Approved'];
+    $wf_map     = [
         'Draft'                    => 0,
         'Returned'                 => 0,
         'Pending Self-Rating'      => 0,
         'Pending Dept Supervisor'  => 1,
         'Pending Supervisor'       => 1,
-        'Pending Dept Manager'     => 1,
-        'Supervisor Confirmed'     => 1,
-        'Pending HR Consolidation' => 1,
         'Pending Manager'          => 2,
         'Approved'                 => 3,
         'Rejected'                 => 3,
     ];
+} else {
+    // Non-HR employee
+    if ($has_dept_supervisor && $has_dept_manager) {
+        // Full org-chain workflow
+        $wf_steps   = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+        $wf_labels  = ['Self-Rating', 'Dept Supervisor', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
+        $wf_map     = [
+            'Draft'                    => 0,
+            'Returned'                 => 0,
+            'Pending Self-Rating'      => 0,
+            'Pending Dept Supervisor'  => 1,
+            'Pending Supervisor'       => 1,
+            'Pending Dept Manager'     => 2,
+            'Supervisor Confirmed'     => 3,
+            'Pending HR Consolidation' => 3,
+            'Pending Manager'          => 4,
+            'Approved'                 => 5,
+            'Rejected'                 => 5,
+        ];
+    } elseif ($has_dept_supervisor) {
+        // Supervisor only workflow
+        $wf_steps   = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+        $wf_labels  = ['Self-Rating', 'Dept Supervisor', 'HR Consolidation', 'HR Manager', 'Approved'];
+        $wf_map     = [
+            'Draft'                    => 0,
+            'Returned'                 => 0,
+            'Pending Self-Rating'      => 0,
+            'Pending Dept Supervisor'  => 1,
+            'Pending Supervisor'       => 1,
+            'Pending Dept Manager'     => 1,
+            'Supervisor Confirmed'     => 2,
+            'Pending HR Consolidation' => 2,
+            'Pending Manager'          => 3,
+            'Approved'                 => 4,
+            'Rejected'                 => 4,
+        ];
+    } else {
+        // Direct-to-HR (no supervisor at all)
+        $wf_steps   = ['Pending Self-Rating', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+        $wf_labels  = ['Self-Rating', 'HR Consolidation', 'HR Manager', 'Approved'];
+        $wf_map     = [
+            'Draft'                    => 0,
+            'Returned'                 => 0,
+            'Pending Self-Rating'      => 0,
+            'Pending Dept Supervisor'  => 1,
+            'Pending Supervisor'       => 1,
+            'Pending Dept Manager'     => 1,
+            'Supervisor Confirmed'     => 1,
+            'Pending HR Consolidation' => 1,
+            'Pending Manager'          => 2,
+            'Approved'                 => 3,
+            'Rejected'                 => 3,
+        ];
+    }
 }
 
 /**
