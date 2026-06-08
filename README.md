@@ -1,3 +1,4 @@
+🤬
 marketing evaluation flow anomalies
 
 1. marketing staff 1 kevin santiago perform self-rating and submit it, the dept supervisor receieves it and "confirm and send" to dept manager- on dept manager marketing manager marcus reyes Confirm Self-Rating/Pending Confirmations has no entries.
