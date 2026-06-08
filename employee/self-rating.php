@@ -34,6 +34,7 @@ if (isset($_GET['discard']) && is_numeric($_GET['discard'])) {
 
 $employee_stmt = $conn->prepare("
     SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.department_id, e.branch_id,
+           e.rank_category_id,
            d.department_name, b.branch_name
     FROM employees e
     LEFT JOIN departments d ON e.department_id = d.department_id
@@ -281,17 +282,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $performance_level = getPerformanceLevel($total_score);
     $supervisor = getEmployeeSupervisor($conn, $employee_id);
     $has_supervisor = ($supervisor !== null && !empty($supervisor['user_id']));
+    $dept_manager = getDeptManagerOfEmployee($conn, $employee_id);
+    $has_dept_manager = ($dept_manager !== null && !empty($dept_manager['user_id']));
+    $is_supervisor_level_employee = isSupervisorLevelEmployee($employee);
     
     // Check if employee has an HR role
     $hr_role = getEmployeeHRRole($conn, $employee_id);
+    $uses_hr_specific_flow = $hr_role !== null || isMainOfficeHumanResourcesEmployee($conn, $employee_id);
     
     if ($action === 'submit') {
-        if ($hr_role === 'HR Staff') {
+        if ($uses_hr_specific_flow && ($hr_role === 'HR Staff' || $hr_role === null)) {
             $status = 'Pending Supervisor';
         } elseif ($hr_role === 'HR Supervisor') {
             $status = 'Pending Manager';
         } elseif ($hr_role === 'HR Manager') {
             $status = 'Pending Supervisor';
+        } elseif ($is_supervisor_level_employee && $has_dept_manager) {
+            $status = 'Pending Dept Manager';
         } else {
             $status = $has_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation';
         }
@@ -354,8 +361,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Check if employee has an HR role
         $hr_role = getEmployeeHRRole($conn, $employee_id);
-        if ($hr_role) {
-            if ($hr_role === 'HR Staff' || $hr_role === 'HR Manager') {
+        $uses_hr_specific_flow = $hr_role !== null || isMainOfficeHumanResourcesEmployee($conn, $employee_id);
+        if ($uses_hr_specific_flow) {
+            $display_hr_role = $hr_role ?? 'Human Resources';
+            if ($hr_role === 'HR Staff' || $hr_role === 'HR Manager' || $hr_role === null) {
                 // Route to HR Supervisor
                 $branch_id = (int) ($employee['branch_id'] ?? 0);
                 $hr_supervisors_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND branch_id = ? AND is_active = 1");
@@ -368,7 +377,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $conn,
                         (int) $hr_sup['user_id'],
                         'Employee Self-Rating Submitted',
-                        $employee_name . ' (' . $hr_role . ') submitted a self-rating for review.',
+                        $employee_name . ' (' . $display_hr_role . ') submitted a self-rating for review.',
                         BASE_URL . '/supervisor/pending-endorsements.php'
                     );
                     $notified = true;
@@ -383,7 +392,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $conn,
                             (int) $hr_sup['user_id'],
                             'Employee Self-Rating Submitted',
-                            $employee_name . ' (' . $hr_role . ') submitted a self-rating for review.',
+                            $employee_name . ' (' . $display_hr_role . ') submitted a self-rating for review.',
                             BASE_URL . '/supervisor/pending-endorsements.php'
                         );
                     }
@@ -403,7 +412,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // Normal employee flow
-            $supervisor_notified = notifySupervisorOfSelfRating($conn, $employee_id, $eval_id);
+            if ($is_supervisor_level_employee && $has_dept_manager) {
+                createNotification(
+                    $conn,
+                    (int) $dept_manager['user_id'],
+                    'Evaluation Pending Endorsement',
+                    $employee_name . ' submitted a self-rating requiring your Department Manager review.',
+                    BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $eval_id
+                );
+                $supervisor_notified = true;
+            } else {
+                $supervisor_notified = notifySupervisorOfSelfRating($conn, $employee_id, $eval_id);
+            }
 
             // If no supervisor found, notify HR Supervisor as fallback (filtered by employee's branch)
             if (!$supervisor_notified) {

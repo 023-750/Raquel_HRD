@@ -394,11 +394,11 @@ require_once '../includes/header.php';
     
     /* TOTAL ROWS DESIGN UPGRADE */
     .total-row td {
-        background: #e0f2fe !important;
+        background: #f8f3df !important;
         font-weight: 800 !important;
-        border-top: 2px solid #0284c7 !important;
-        border-bottom: 3px double #0284c7 !important;
-        color: #0369a1 !important;
+        border-top: 2px solid #CBA135 !important;
+        border-bottom: 3px double #CBA135 !important;
+        color: #082E06 !important;
         font-size: 0.95rem !important;
     }
     
@@ -410,15 +410,36 @@ require_once '../includes/header.php';
     
     /* FINAL PERFORMANCE GRADE PREMIUM CONTAINER */
     .final-grade-card {
-        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
-        border-radius: 16px !important;
+        background: linear-gradient(135deg, #041D03 0%, #082E06 68%, #294306 100%) !important;
+        border-radius: 10px !important;
         padding: 1.8rem !important;
         color: #ffffff !important;
         margin-top: 2rem !important;
-        border: 2px solid rgba(14, 165, 233, 0.4) !important;
-        border-top: 6px solid #0ea5e9 !important;
-        box-shadow: 0 15px 30px -5px rgba(15, 23, 42, 0.45), 0 0 15px rgba(14, 165, 233, 0.25) !important;
+        border: 1px solid rgba(203, 161, 53, 0.36) !important;
+        border-top: 5px solid #CBA135 !important;
+        box-shadow: 0 14px 28px rgba(8, 46, 6, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+        transform: none !important;
+        transition: none !important;
     }
+    .final-grade-card:hover {
+        box-shadow: 0 14px 28px rgba(8, 46, 6, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+        transform: none !important;
+    }
+
+    .final-grade-card .col-md-8:hover,
+    .final-grade-card .table-hover tbody tr:hover,
+    .final-grade-card .table-hover tbody tr:hover > *,
+    .final-grade-card .grade-table tbody tr:hover,
+    .final-grade-card .grade-table tbody tr:hover td {
+        background: transparent !important;
+        background-color: transparent !important;
+        --bs-table-bg: transparent !important;
+        --bs-table-accent-bg: transparent !important;
+        --bs-table-hover-bg: transparent !important;
+        --bs-table-hover-color: #ffffff !important;
+        color: #ffffff !important;
+    }
+
     .final-grade-card,
     .final-grade-card th,
     .final-grade-card td,
@@ -432,14 +453,30 @@ require_once '../includes/header.php';
         background: transparent !important;
         background-color: transparent !important;
         --bs-table-bg: transparent !important;
+        --bs-table-accent-bg: transparent !important;
+        --bs-table-striped-bg: transparent !important;
+        --bs-table-active-bg: transparent !important;
+        --bs-table-hover-bg: transparent !important;
         --bs-table-color: #ffffff !important;
         margin-bottom: 0 !important;
-        border-color: rgba(255,255,255,.15) !important;
+        border-color: rgba(203,161,53,.22) !important;
+    }
+    .final-grade-card .table > :not(caption) > * > *,
+    .final-grade-card .grade-table > :not(caption) > * > * {
+        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        --bs-table-bg: transparent !important;
+        --bs-table-accent-bg: transparent !important;
+        --bs-table-striped-bg: transparent !important;
+        --bs-table-active-bg: transparent !important;
+        --bs-table-hover-bg: transparent !important;
+        color: #ffffff !important;
     }
     .final-grade-card .grade-table th,
     .final-grade-card .grade-table td {
         color: rgba(255,255,255,.9) !important;
-        border-color: rgba(255,255,255,.15) !important;
+        border-color: rgba(203,161,53,.22) !important;
         font-size: .88rem !important;
         background: transparent !important;
         background-color: transparent !important;
@@ -448,17 +485,40 @@ require_once '../includes/header.php';
     }
     .final-grade-card .grade-table th {
         font-weight: 600 !important;
-        color: rgba(255,255,255,.65) !important;
+        color: rgba(248,243,223,.72) !important;
         font-size: .75rem !important;
         text-transform: uppercase !important;
         letter-spacing: .5px !important;
+    }
+    .final-grade-card .col-md-8,
+    .final-grade-card .col-md-8:hover,
+    .final-grade-card .col-md-8:hover *,
+    .final-grade-card .grade-table,
+    .final-grade-card .grade-table tbody,
+    .final-grade-card .grade-table tbody tr,
+    .final-grade-card .grade-table tbody tr:hover,
+    .final-grade-card .grade-table tbody tr:hover > *,
+    .final-grade-card .grade-table th,
+    .final-grade-card .grade-table td,
+    .final-grade-card .grade-table th:hover,
+    .final-grade-card .grade-table td:hover {
+        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        --bs-table-bg: transparent !important;
+        --bs-table-accent-bg: transparent !important;
+        --bs-table-striped-bg: transparent !important;
+        --bs-table-active-bg: transparent !important;
+        --bs-table-hover-bg: transparent !important;
+        --bs-table-hover-color: #ffffff !important;
+        color: #ffffff !important;
     }
     .final-grade-value {
         font-size: 3.5rem !important;
         font-weight: 850 !important;
         line-height: 1.1 !important;
         color: #ffffff !important;
-        text-shadow: 0 0 15px rgba(255, 255, 255, 0.45) !important;
+        text-shadow: 0 2px 12px rgba(203, 161, 53, 0.28) !important;
     }
     .perf-badge {
         display: inline-block !important;
@@ -467,9 +527,9 @@ require_once '../includes/header.php';
         font-weight: 800 !important;
         font-size: .85rem !important;
         margin-top: .6rem !important;
-        background: rgba(255,255,255,.18) !important;
-        border: 1px solid rgba(255,255,255,.35) !important;
-        color: #ffffff !important;
+        background: rgba(203,161,53,.18) !important;
+        border: 1px solid rgba(203,161,53,.45) !important;
+        color: #f8f3df !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
     }
@@ -481,7 +541,7 @@ require_once '../includes/header.php';
             gap: 1.5rem !important;
         }
         .final-grade-card .col-md-4 {
-            border-bottom: 1px dashed rgba(255, 255, 255, 0.2) !important;
+            border-bottom: 1px dashed rgba(203, 161, 53, 0.35) !important;
             padding-bottom: 1.5rem !important;
             margin-bottom: 0.5rem !important;
         }
@@ -709,12 +769,12 @@ require_once '../includes/header.php';
                         <!-- Final Grade Summary Card -->
                         <div class="final-grade-card">
                             <div class="d-flex align-items-center gap-2 mb-3">
-                                <i class="fas fa-award fa-lg" style="color:#fbbf24;"></i>
+                                <i class="fas fa-award fa-lg" style="color:#CBA135;"></i>
                                 <span class="fw-bold" style="font-size:1rem;letter-spacing:.5px;">Final Performance Grade</span>
                             </div>
                             <div class="row align-items-center">
-                                <div class="col-md-8">
-                                    <table class="table grade-table mb-0">
+                                <div class="col-md-8" style="background:transparent !important;">
+                                    <table class="table grade-table mb-0" style="background:transparent !important;--bs-table-bg:transparent;--bs-table-accent-bg:transparent;--bs-table-striped-bg:transparent;--bs-table-active-bg:transparent;--bs-table-hover-bg:transparent;--bs-table-color:#ffffff;">
                                         <thead>
                                             <tr>
                                                 <th>Section</th>
@@ -725,13 +785,13 @@ require_once '../includes/header.php';
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td><i class="fas fa-bullseye me-1" style="color:#60a5fa;"></i>KRA</td>
+                                                <td><i class="fas fa-bullseye me-1" style="color:#CBA135;"></i>KRA</td>
                                                 <td class="text-end fw-semibold" id="fpgKRA"><?php echo number_format($orig_kra_total, 2); ?></td>
                                                 <td class="text-end"><?php echo $kra_weight_display; ?>%</td>
                                                 <td class="text-end fw-semibold" id="fpgKRAWeighted"><?php echo number_format($orig_kra_total * ($kra_weight_display / 100), 2); ?></td>
                                             </tr>
                                             <tr>
-                                                <td><i class="fas fa-heart me-1" style="color:#f87171;"></i>Behavior</td>
+                                                <td><i class="fas fa-heart me-1" style="color:#8FB55A;"></i>Behavior</td>
                                                 <td class="text-end fw-semibold" id="fpgBeh"><?php echo number_format($orig_beh_avg, 2); ?></td>
                                                 <td class="text-end"><?php echo $beh_weight_display; ?>%</td>
                                                 <td class="text-end fw-semibold" id="fpgBehWeighted"><?php echo number_format($orig_beh_avg * ($beh_weight_display / 100), 2); ?></td>

@@ -309,7 +309,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
             $stmt = $conn->prepare("
                 UPDATE evaluations ev
                 INNER JOIN employees e ON ev.employee_id = e.employee_id
-                SET ev.status = 'Pending Manager',
+                SET ev.status = 'Returned',
                     ev.endorsed_by = ?,
                     ev.endorsed_date = NOW(),
                     ev.evaluator_comments = ?
@@ -321,21 +321,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
             $stmt->execute();
             $stmt->close();
 
-            // Notify HR Managers
-            $managers = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
+            // Return the evaluation to the employee who submitted the self-rating.
             $emp_name = $eval_info['emp_name'];
-            while ($mgr = $managers->fetch_assoc()) {
+            if ($eval_info['submitted_by']) {
                 createNotification(
                     $conn,
-                    $mgr['user_id'],
-                    'Evaluation Returned/Rejected by HR Supervisor',
-                    "HR Supervisor returned/rejected evaluation for {$emp_name} and requires your final decision.",
-                    BASE_URL . '/manager/pending-approvals.php'
+                    (int) $eval_info['submitted_by'],
+                    'Evaluation Returned for Revision',
+                    "Your evaluation has been returned by the HR Supervisor for revision. Remarks: " . $comments,
+                    BASE_URL . '/employee/self-rating.php?edit=' . $eval_id
                 );
             }
 
-            logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Returned/rejected evaluation for {$emp_name}, routed to HR Manager");
-            redirectWith($redirect_url, 'warning', 'Evaluation return/rejection forwarded to HR Manager.');
+            logAudit($conn, $supervisor_id, 'UPDATE', 'Evaluation', $eval_id, "Returned/rejected evaluation for {$emp_name} to employee for revision");
+            redirectWith($redirect_url, 'warning', 'Evaluation returned to employee for revision.');
         }
     }
 }

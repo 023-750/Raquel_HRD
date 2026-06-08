@@ -107,6 +107,9 @@ require_once '../includes/header.php';
 
 $departments = $conn->query("SELECT department_id, department_name FROM departments ORDER BY department_name")->fetch_all(MYSQLI_ASSOC);
 $rankCategories = $conn->query("SELECT rank_category_id, rank_name FROM rank_categories WHERE is_active = 1 ORDER BY level_order, rank_name")->fetch_all(MYSQLI_ASSOC);
+$selected_department = isset($_GET['department']) && $_GET['department'] !== '' ? max(0, (int) $_GET['department']) : 0;
+$positionWhere = $selected_department > 0 ? "WHERE jt.department_id = $selected_department" : "";
+$employeePositionWhere = $selected_department > 0 ? "AND department_id = $selected_department" : "";
 
 $positions = $conn->query("
     SELECT jt.*,
@@ -123,13 +126,19 @@ $positions = $conn->query("
     LEFT JOIN departments d ON jt.department_id = d.department_id
     LEFT JOIN rank_categories rc ON jt.rank_category_id = rc.rank_category_id
     LEFT JOIN job_titles parent ON jt.reports_to = parent.job_title_id
+    $positionWhere
     ORDER BY jt.job_title
 ");
+$positionOptions = $conn->query("
+    SELECT job_title_id, job_title, department_id
+    FROM job_titles
+    ORDER BY job_title
+")->fetch_all(MYSQLI_ASSOC);
 
 $positionCount = $positions->num_rows;
-$activePositionCount = (int) $conn->query("SELECT COUNT(*) AS cnt FROM job_titles WHERE is_active = 1")->fetch_assoc()['cnt'];
+$activePositionCount = (int) $conn->query("SELECT COUNT(*) AS cnt FROM job_titles " . ($selected_department > 0 ? "WHERE is_active = 1 AND department_id = $selected_department" : "WHERE is_active = 1"))->fetch_assoc()['cnt'];
 $inactivePositionCount = max(0, $positionCount - $activePositionCount);
-$employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM employees WHERE job_title_id IS NOT NULL")->fetch_assoc()['cnt'];
+$employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM employees WHERE job_title_id IS NOT NULL $employeePositionWhere")->fetch_assoc()['cnt'];
 ?>
 
 <style>
@@ -184,6 +193,15 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
     .student-name { font-weight: 700; color: var(--primary-blue); margin-bottom: 2px; }
     .student-meta { font-size: 0.85rem; color: #666; }
     .btn-xs { padding: 2px 8px; font-size: 0.75rem; }
+    .position-toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
+    .position-toolbar .form-select { min-width: 210px; }
+    @media (max-width: 768px) {
+        .position-toolbar,
+        .position-toolbar form,
+        .position-toolbar .search-box,
+        .position-toolbar .form-select,
+        .position-toolbar .search-box input { width: 100%; }
+    }
 </style>
 
 <div class="page-hero fadeup">
@@ -261,10 +279,22 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                 <h5><i class="fas fa-briefcase me-2"></i>All Positions</h5>
                 <small class="text-muted">These positions feed the employee job title dropdowns.</small>
             </div>
-            <div class="search-box">
-                <i class="fas fa-search search-icon"></i>
-                <input type="text" class="form-control form-control-sm" id="searchPosition"
-                    placeholder="Search positions...">
+            <div class="position-toolbar">
+                <form method="GET" class="d-flex align-items-center gap-2">
+                    <select name="department" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Filter positions by department">
+                        <option value="">All Departments</option>
+                        <?php foreach ($departments as $department): ?>
+                            <option value="<?php echo (int) $department['department_id']; ?>" <?php echo $selected_department === (int) $department['department_id'] ? 'selected' : ''; ?>>
+                                <?php echo e($department['department_name']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+                <div class="search-box">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="form-control form-control-sm" id="searchPosition"
+                        placeholder="Search positions...">
+                </div>
             </div>
         </div>
         <div class="cc-body p-0">
@@ -286,10 +316,9 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                     <tbody>
                         <?php if ($positionCount === 0): ?>
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">
+                                <td colspan="8" class="text-center text-muted py-4">
                                     <i class="fas fa-briefcase fa-2x mb-2 d-block" style="opacity:0.3;"></i>
-                                    No positions found. Add the missing positions here so they can be used in employee
-                                    records.
+                                    No positions found for the selected department.
                                 </td>
                             </tr>
                         <?php else: ?>
@@ -361,7 +390,7 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                 <div class="student-list">
                     <?php 
                     if ($positionCount === 0): ?>
-                        <div class="text-center py-4 text-muted">No positions found.</div>
+                        <div class="text-center py-4 text-muted">No positions found for the selected department.</div>
                     <?php else:
                         $positions->data_seek(0);
                         while ($position = $positions->fetch_assoc()): ?>
@@ -467,13 +496,12 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                         <select class="form-select" name="reports_to" id="addPositionReportsTo">
                             <option value="">No Reporting Line</option>
                             <?php
-                            $positions->data_seek(0);
-                            while ($p = $positions->fetch_assoc()): ?>
+                            foreach ($positionOptions as $p): ?>
                                 <option value="<?php echo (int) $p['job_title_id']; ?>"
                                     data-department="<?php echo (int) ($p['department_id'] ?? 0); ?>">
                                     <?php echo e($p['job_title']); ?>
                                 </option>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="d-flex gap-3">
@@ -537,13 +565,12 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                         <select class="form-select" name="reports_to" id="editPositionReportsTo">
                             <option value="">No Reporting Line</option>
                             <?php
-                            $positions->data_seek(0);
-                            while ($p = $positions->fetch_assoc()): ?>
+                            foreach ($positionOptions as $p): ?>
                                 <option value="<?php echo (int) $p['job_title_id']; ?>"
                                     data-department="<?php echo (int) ($p['department_id'] ?? 0); ?>">
                                     <?php echo e($p['job_title']); ?>
                                 </option>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="d-flex gap-3">

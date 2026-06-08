@@ -285,6 +285,7 @@ a {
     padding: 0;
     z-index: 1040;
     /* Above top-navbar (1030) */
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     /* Prevent scroll chaining to body */
@@ -298,6 +299,7 @@ a {
     padding: 20px;
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    overflow: hidden;
 }
 
 .sidebar .sidebar-header h2 {
@@ -305,11 +307,16 @@ a {
     margin: 8px 0 2px;
     font-weight: 700;
     color: white;
+    white-space: nowrap;
 }
 
 .sidebar .sidebar-header small {
+    display: block;
     font-size: 0.75rem;
     opacity: 0.7;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .sidebar .sidebar-header .logo-icon {
@@ -1632,6 +1639,7 @@ select option.position-group-label {
 @media (min-width: 993px) {
     .sidebar-collapsed .sidebar {
         width: var(--sidebar-collapsed-width);
+        overflow-x: hidden;
     }
 
     .sidebar-collapsed .top-navbar {
@@ -1643,32 +1651,62 @@ select option.position-group-label {
     }
 
     .sidebar-collapsed .sidebar-header {
-        padding: 15px 5px;
+        align-items: center;
+        display: flex;
+        justify-content: center;
+        min-height: 78px;
+        padding: 15px 0;
     }
 
     .sidebar-collapsed .sidebar-header img {
         width: 40px !important;
         height: 40px !important;
         margin-bottom: 0 !important;
+        max-width: 40px;
+        flex: 0 0 40px;
     }
 
     .sidebar-collapsed .sidebar-header h2,
     .sidebar-collapsed .sidebar-header small {
-        display: none;
+        height: 0;
+        margin: 0;
+        opacity: 0;
+        overflow: hidden;
+        pointer-events: none;
+        visibility: hidden;
+        width: 0;
     }
 
     .sidebar-collapsed .sidebar-nav .nav-label {
-        display: none;
+        height: 0;
+        margin: 0;
+        opacity: 0;
+        overflow: hidden;
+        padding: 0;
+        pointer-events: none;
+        visibility: hidden;
     }
 
     .sidebar-collapsed .sidebar-nav a {
+        gap: 0;
         justify-content: center;
+        margin-left: 10px;
+        margin-right: 10px;
+        min-height: 44px;
         padding: 12px;
+    }
+
+    .sidebar-collapsed .sidebar-nav a:hover {
+        transform: none;
     }
 
     .sidebar-collapsed .sidebar-nav a .nav-text,
     .sidebar-collapsed .sidebar-nav a::after {
-        display: none;
+        opacity: 0;
+        overflow: hidden;
+        pointer-events: none;
+        visibility: hidden;
+        width: 0;
     }
 
     .sidebar-collapsed .sidebar-nav a i {

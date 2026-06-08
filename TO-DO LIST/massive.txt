@@ -1,0 +1,188 @@
+Now that we have plenty of fictional employees from:
+Human resources
+Information Technology (agdangan branch)
+Marketing
+
+Create a new massive seed sql dedicated for adding employee 
+Branch "Raquel Pawnshop Main Office" name the sql seed as "main_branch_department_employee_seed.sql"
+
+department
+> Acquired Properties
+> Audit
+> Business Development
+> Compliance
+> Finance
+> General Services
+> Human resources
+> Information Technology
+> Office of the President
+> Operations
+> Purchasing
+
+Each department must have all employee positions:
+
+-Acquired Properties-
+> AP Manager I (manager)
+> AP Manager II (manager)
+> AP Manager III (manager)
+> AP Manager IV (manager)
+> AP Staff I (R&F)
+> AP Staff II (R&F)
+> AP Staff III (R&F)
+> AP Staff IV (R&F)
+> AP Staff on Probation (R&F)
+> AP Staff V (R&F)
+> AP Supervisor I (Supervisor)
+> AP Supervisor II (Supervisor)
+> AP Supervisor III (Supervisor)
+> Sales Associate I (R&F)
+> Sales Associate II (R&F)
+> Sales Associate on Probation (R&F)
+> VP for Acquired Properties (Executives)
+
+-Audit-
+> Audit Manager I (Manager)
+> Audit Manager II (Manager)
+> Audit Manager III (Manager)
+> Audit Supervisor I (Supervisor)
+> Audit Supervisor II (Supervisor)
+> Audit Supervisor III (Supervisor)
+> Auditor I (R&F)
+> Auditor II (R&F)
+> Auditor III (R&F)
+> Auditor IV (R&F)
+> Auditor on Probation (R&F)
+> Auditor V (R&F)
+
+-Business Development-
+> Business Development Officer I (Manager)
+> Business Development Staff I (R&F)
+> Business Development Staff II (R&F)
+> Business Development Staff on Training (R&F)
+
+-Compliance-
+> Compliance Staff I (R&F)
+> Compliance Staff II (R&F)
+> Compliance Staff III (R&F)
+> Compliance Supervisor I (Supervisor)
+> Compliance Supervisor II (Supervisor)
+> Compliance Supervisor III (Supervisor)
+
+-Finance-
+> Accounting Staff I (R&F)
+> Accounting Staff II (R&F)
+> Accounting Staff III (R&F)
+> Accounting Staff IV (R&F)
+> Accounting Staff on Probation (R&F)
+> Accounting Staff V (R&F)
+> Accounting Supervisor I (Supervisor)
+> Accounting Supervisor II (Supervisor)
+> Accounting Supervisor III (Supervisor)
+> Accounting Supervisor IV (Supervisor)
+> Treasury Staff I (R&F)
+> Treasury Staff II (R&F)
+> Treasury Supervisor I (Supervisor)
+> Treasury Supervisor II (Supervisor)
+> Treasury Supervisor III (Supervisor)
+> Treasury Supervisor IV (Supervisor)
+> Treasury Supervisor V (Supervisor)
+> VP for Finance (Executives)
+
+-General Services-
+> Driver I (R&F)
+> Driver II (R&F)
+> Driver III (R&F)
+> Driver IV (R&F)
+> Driver V (R&F)
+> Facilities Maintenance Staff I (R&F) 
+> Facilities Maintenance Staff II (R&F)
+> Facilities Maintenance Staff III (R&F)
+> GS Manager I (Manager)
+> GS Manager II (Manager)
+> GS Manager III (Manager)
+> GS Manager IV (Manager)
+> GS Supervisor I (Supervisor)
+> GS Supervisor II (Supervisor)
+> GS Supervisor III (Supervisor)
+> GS Supervisor IV (Supervisor)
+> Messenger I (R&F)
+> Messenger II (R&F)
+> Security Monitoring Staff I (R&F)
+> Security Monitoring Staff II (R&F)
+> Security Monitoring Staff III (R&F)
+> Security Monitoring Staff IV (R&F)
+> VP for General Services (Executives)
+> Warehouse Staff I (R&F)
+
+-Human resources-
+> HR Manager I (Manager)
+> HR Manager II (Manager)
+> HR Manager III (Manager)
+> HR Manager IV (Manager)
+> HR Manager V (Manager)
+> HR Staff I (R&F)
+> HR Staff II (R&F)
+> HR Staff IV (R&F)
+> HR Staff V (R&F)
+> HR Staff on Probation (R&F)
+> HR Supervisor I (Supervisor)
+> HR Supervisor II (Supervisor)
+> HR Supervisor III (Supervisor)
+> HR Supervisor IV (Supervisor)
+> HR Supervisor V (Supervisor)
+
+-Information Technology-
+> Helpdesk Assistant I (R&F)
+> Helpdesk Assistant II (R&F)
+> Helpdesk Assistant III (R&F)
+> IT Manager I (Manager)
+> IT Manager II (Manager)
+> IT Manager III (Manager)
+> IT Manager IV (Manager)
+> IT Supervisor I (Supervisor)
+> IT Supervisor II (Supervisor)
+> IT Supervisor III (Supervisor)
+> IT Supervisor IV (Supervisor)
+> IT Supervisor V (Supervisor)
+> Programmer I (R&F)
+> Programmer on Probation (R&F)
+> Technical Support Staff I (R&F)
+> Technical Support Staff II (R&F)
+> Technical Support Staff III (R&F)
+> Technical Support Staff IV (R&F)
+> Technical Support Staff V (R&F)
+
+-Office of the President-
+> Executive Assistant I (R&F)
+> Executive Assistant II (R&F)
+> Executive Assistant III (R&F)
+> President and CEO (Executives)
+
+-Operations-
+> Area Coordinator I (Supervisor)
+> Area Coordinator II (Supervisor)
+> Branch Staff I (R&F)
+> Branch Staff II (R&F)
+> Branch Staff III (R&F)
+> Branch Staff IV (R&F)
+> Branch Staff V (R&F)
+> Branch Staff on Probation
+> Focal Person I (Supervisor)
+> Focal Person II (Supervisor)
+> Focal Person III (Supervisor)
+> Focal Person IV (Supervisor)
+> Focal Person V (Supervisor)
+> Regional Manager I (Manager)
+> Regional Manager II (Manager)
+> VP for Operations (Executives)
+
+-Purchasing-
+> Purchasing Staff I (R&F)
+> Purchasing Supervisor I (Supervisor)
+> Purchasing Supervisor on Training (Supervisor)
+
+
+each branch should have fictional employee based on positions!
+
+
+gawin mo bukas tanginamo

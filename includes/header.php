@@ -172,13 +172,28 @@ switch ($effective_role) {
             $m_pending_template_count = (int) ($_hdr_pt_stmt->get_result()->fetch_assoc()['total'] ?? 0);
             $_hdr_pt_stmt->close();
 
-            $_hdr_status_stmt = $conn->prepare("
-                SELECT COUNT(*) AS total
-                FROM evaluations
-                WHERE employee_id = ?
-                  AND status IN ('Approved', 'Rejected', 'Returned')
-                  AND deleted_at IS NULL
-            ");
+            if (ensureEmployeeEvaluationStatusViewSchema($conn)) {
+                $_hdr_status_stmt = $conn->prepare("
+                    SELECT COUNT(*) AS total
+                    FROM evaluations ev
+                    LEFT JOIN employee_evaluation_status_views esv ON esv.employee_id = ev.employee_id
+                    WHERE ev.employee_id = ?
+                      AND ev.status IN ('Approved', 'Rejected', 'Returned')
+                      AND ev.deleted_at IS NULL
+                      AND (
+                          esv.last_viewed_at IS NULL
+                          OR COALESCE(ev.updated_at, ev.submitted_date, ev.created_at) > esv.last_viewed_at
+                      )
+                ");
+            } else {
+                $_hdr_status_stmt = $conn->prepare("
+                    SELECT COUNT(*) AS total
+                    FROM evaluations
+                    WHERE employee_id = ?
+                      AND status IN ('Approved', 'Rejected', 'Returned')
+                      AND deleted_at IS NULL
+                ");
+            }
             $_hdr_status_stmt->bind_param("i", $_hdr_emp_id);
             $_hdr_status_stmt->execute();
             $m_eval_status_count = (int) ($_hdr_status_stmt->get_result()->fetch_assoc()['total'] ?? 0);
@@ -224,6 +239,12 @@ switch ($effective_role) {
                 $_hdr_confirm_rows = $_hdr_confirm_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 $_hdr_confirm_stmt->close();
                 foreach ($_hdr_confirm_rows as $_hdr_confirm_row) {
+                    if (getEmployeeHRRole($conn, (int) $_hdr_confirm_row['employee_id']) !== null
+                        || isMainOfficeHumanResourcesEmployee($conn, (int) $_hdr_confirm_row['employee_id'])
+                    ) {
+                        continue;
+                    }
+
                     $_hdr_supervisor = getEmployeeSupervisor($conn, (int) $_hdr_confirm_row['employee_id']);
                     if ($_hdr_supervisor && (int) $_hdr_supervisor['supervisor_employee_id'] === $_hdr_emp_id) {
                         $m_confirm_rating_count++;
