@@ -6,7 +6,9 @@
 USE raquel_hris;
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- ============================================
 -- Branches (154 entries)
+-- ============================================
 REPLACE INTO branches (branch_id, branch_name, location, is_active, created_at, updated_at) VALUES
 (102, 'Raquel Pawnshop Main Office', 'RGC Building, Diversion Road, Sitio 1 Barangay Mayuwi Tayabas City', 1, NOW(), NOW()),
 (1, 'Agdangan Branch', 'Agdangan, Quezon', 1, NOW(), NOW()),
@@ -39,7 +41,7 @@ REPLACE INTO branches (branch_id, branch_name, location, is_active, created_at, 
 (28, 'Calamba Branch 1', 'Calamba, Laguna', 1, NOW(), NOW()),
 (29, 'Calamba Branch 2', 'Calamba, Laguna', 1, NOW(), NOW()),
 (30, 'Calatagan Branch', 'Calatagan, Batangas', 1, NOW(), NOW()),
-(41, 'Calauag Branch', 'Calauag, Quezon', 1, NOW(), NOW()),
+(31, 'Calauag Branch', 'Calauag, Quezon', 1, NOW(), NOW()),
 (32, 'Calauan Branch', 'Calauan, Laguna', 1, NOW(), NOW()),
 (33, 'Candelaria Branch 1', 'Candelaria, Quezon', 1, NOW(), NOW()),
 (34, 'Candelaria Branch 2', 'Candelaria, Quezon', 1, NOW(), NOW()),
@@ -160,7 +162,9 @@ REPLACE INTO branches (branch_id, branch_name, location, is_active, created_at, 
 (150, 'Victoria Branch', 'Victoria, Laguna', 1, NOW(), NOW()),
 (151, 'Zamora Branch', 'Lucena City', 1, NOW(), NOW());
 
+-- ============================================
 -- Rank categories used for grouped position dropdowns.
+-- ============================================
 REPLACE INTO rank_categories (rank_category_id, rank_name, level_order, is_active, created_at, updated_at) VALUES
 (1, 'Executives', 1, 1, NOW(), NOW()),
 (2, 'Management Team', 2, 1, NOW(), NOW()),
@@ -168,7 +172,9 @@ REPLACE INTO rank_categories (rank_category_id, rank_name, level_order, is_activ
 (4, 'Supervisor', 4, 1, NOW(), NOW()),
 (5, 'R&F', 5, 1, NOW(), NOW());
 
+-- ============================================
 -- Departments for the standalone admin test database.
+-- ============================================
 REPLACE INTO departments (department_id, department_name, description, is_active, created_at, updated_at) VALUES
 (1, 'Acquired Properties', 'Handles acquired property coordination, sales, and support.', 1, NOW(), NOW()),
 (2, 'Audit', 'Handles internal audit and compliance checking.', 1, NOW(), NOW()),
@@ -183,7 +189,9 @@ REPLACE INTO departments (department_id, department_name, description, is_active
 (11, 'Operations', 'Handles branch and field operations.', 1, NOW(), NOW()),
 (12, 'Purchasing', 'Handles procurement and supplier management.', 1, NOW(), NOW());
 
+-- ============================================
 -- Job Titles (Positions)
+-- ============================================
 REPLACE INTO job_titles (job_title_id, job_title, rank_category_id, department_id, is_active, is_head, reports_to, created_at, updated_at) VALUES
 -- Acquired Properties (100-119)
 (100, 'VP for Acquired Properties', 1, 1, 1, 1, NULL, NOW(), NOW()),
