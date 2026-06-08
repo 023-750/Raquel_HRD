@@ -33,18 +33,29 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
             $is_dept_mgr = isDeptManagerRole($conn, (int)$_SESSION['employee_id']);
         }
         if ($is_dept_mgr):
-            $m_dept_pending_count = 0;
-            $_hdr_mgr_id = (int)$_SESSION['employee_id'];
-            $_hdr_dept_stmt = $conn->query("
-                SELECT COUNT(*) AS total
-                FROM evaluations e
-                JOIN employees emp ON e.employee_id = emp.employee_id
-                JOIN employees sup ON emp.reports_to = sup.employee_id
-                WHERE e.status = 'Pending Dept Manager' AND sup.reports_to = $_hdr_mgr_id
-                  AND e.deleted_at IS NULL
-            ");
-            if ($_hdr_dept_stmt) {
-                $m_dept_pending_count = (int)$_hdr_dept_stmt->fetch_assoc()['total'];
+            $m_dept_pending_count = $m_dept_review_count ?? 0;
+            if (!isset($m_dept_review_count)) {
+                $_hdr_mgr_id = (int)$_SESSION['employee_id'];
+                $_hdr_dept_stmt = $conn->prepare("
+                    SELECT e.evaluation_id, e.employee_id
+                    FROM evaluations e
+                    JOIN employees emp ON e.employee_id = emp.employee_id
+                    WHERE e.status = 'Pending Dept Manager'
+                      AND e.deleted_at IS NULL
+                      AND emp.is_active = 1
+                      AND emp.deleted_at IS NULL
+                ");
+                if ($_hdr_dept_stmt) {
+                    $_hdr_dept_stmt->execute();
+                    $_hdr_pending_rows = $_hdr_dept_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $_hdr_dept_stmt->close();
+                    foreach ($_hdr_pending_rows as $_hdr_pending) {
+                        $_hdr_dm = getDeptManagerOfEmployee($conn, (int)$_hdr_pending['employee_id']);
+                        if ($_hdr_dm && (int)$_hdr_dm['supervisor_employee_id'] === $_hdr_mgr_id) {
+                            $m_dept_pending_count++;
+                        }
+                    }
+                }
             }
         ?>
             <a href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" class="nav-item <?php echo ($curr_p === 'dept-manager-review.php') ? 'active' : ''; ?>">
@@ -58,7 +69,15 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
             </a>
         <?php endif; ?>
         <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php" class="nav-item <?php echo ($curr_p === 'completed-ratings.php') ? 'active' : ''; ?>">
-            <i class="fas fa-list-check nav-icon"></i>
+            <div class="position-relative">
+                <i class="fas fa-list-check nav-icon"></i>
+                <?php
+                    $m_status_count = $m_eval_status_count ?? 0;
+                    if ($m_status_count > 0):
+                ?>
+                    <span class="mobile-notif-badge"><?php echo $m_status_count > 9 ? '9+' : $m_status_count; ?></span>
+                <?php endif; ?>
+            </div>
             <span class="nav-label">Status</span>
         </a>
         <?php
@@ -75,22 +94,32 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
                 }
             }
         }
-        if ($m_is_supervisor && $m_confirm_dept_name !== 'Human Resources'):
+        if ($m_is_supervisor && !$is_dept_mgr && $m_confirm_dept_name !== 'Human Resources'):
             // Count members directly reporting to this supervisor with a pending status
-            $_m_confirm_count = 0;
-            $_m_c_stmt = $conn->prepare("
-                SELECT COUNT(*) AS total
-                FROM evaluations ev
-                JOIN employees e ON ev.employee_id = e.employee_id
-                WHERE e.reports_to = ?
-                  AND ev.status IN ('Pending Dept Supervisor','Pending Supervisor')
-                  AND ev.deleted_at IS NULL
-            ");
-            if ($_m_c_stmt) {
-                $_m_c_stmt->bind_param('i', $_m_sup_id);
-                $_m_c_stmt->execute();
-                $_m_confirm_count = (int)$_m_c_stmt->get_result()->fetch_assoc()['total'];
-                $_m_c_stmt->close();
+            $_m_confirm_count = $m_confirm_rating_count ?? 0;
+            if (!isset($m_confirm_rating_count)) {
+                $_m_c_stmt = $conn->prepare("
+                    SELECT ev.evaluation_id, ev.employee_id
+                    FROM evaluations ev
+                    JOIN employees e ON ev.employee_id = e.employee_id
+                    WHERE e.employee_id <> ?
+                      AND ev.status IN ('Pending Dept Supervisor','Pending Supervisor')
+                      AND ev.deleted_at IS NULL
+                      AND e.is_active = 1
+                      AND e.deleted_at IS NULL
+                ");
+                if ($_m_c_stmt) {
+                    $_m_c_stmt->bind_param('i', $_m_sup_id);
+                    $_m_c_stmt->execute();
+                    $_m_confirm_rows = $_m_c_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $_m_c_stmt->close();
+                    foreach ($_m_confirm_rows as $_m_confirm_row) {
+                        $_m_supervisor = getEmployeeSupervisor($conn, (int)$_m_confirm_row['employee_id']);
+                        if ($_m_supervisor && (int)$_m_supervisor['supervisor_employee_id'] === $_m_sup_id) {
+                            $_m_confirm_count++;
+                        }
+                    }
+                }
             }
         ?>
             <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php"

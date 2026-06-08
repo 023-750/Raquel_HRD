@@ -809,9 +809,6 @@ foreach ($all_pending as $row):
                                     <i class="fas fa-times me-1"></i>Cancel
                                 </button>
                             <?php endif; ?>
-                            <button type="submit" name="action" value="revision" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm">
-                                <i class="fas fa-undo me-2"></i>Provision
-                            </button>
                             <button type="submit" name="action" value="reject" class="btn btn-outline-danger rounded-pill px-4 fw-bold">
                                 <i class="fas fa-times me-2"></i>Reject
                             </button>

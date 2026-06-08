@@ -1449,8 +1449,8 @@ foreach ($all_pending as $row):
                         <input type="hidden" name="evaluation_id" value="<?php echo $modal_eval_id; ?>">
                         <div class="mb-4">
                             <label class="form-label fw-bold">Supervisor Comments / Feedback</label>
-                            <textarea class="form-control bg-light" name="supervisor_comments" rows="3" placeholder="Required for returns, optional for endorsements..."></textarea>
-                            <div class="form-text x-small text-danger">* Comments are required when returning an evaluation for revision.</div>
+                            <textarea class="form-control bg-light" name="supervisor_comments" rows="3" placeholder="Required for rejections, optional for endorsements..."></textarea>
+                            <div class="form-text x-small text-danger">* Comments are required when rejecting an evaluation.</div>
                         </div>
                         <div class="fixed-action-bar d-flex gap-2 justify-content-end">
                             <?php if ($can_edit_scores): ?>
@@ -1464,8 +1464,8 @@ foreach ($all_pending as $row):
                                     <i class="fas fa-times me-1"></i>Cancel
                                 </button>
                             <?php endif; ?>
-                            <button type="submit" name="action" value="return" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm">
-                                <i class="fas fa-undo me-2"></i>Return for Revision
+                            <button type="submit" name="action" value="return" class="btn btn-outline-danger rounded-pill px-4 fw-bold shadow-sm">
+                                <i class="fas fa-times me-2"></i>Reject
                             </button>
                             <button type="submit" name="action" value="endorse" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm">
                                 <i class="fas fa-check-double me-2"></i>Validate & Forward

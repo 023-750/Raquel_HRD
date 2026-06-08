@@ -25,6 +25,7 @@ $evaluation = null;
 $scores = [];
 $criteria_kra = [];
 $criteria_behavior = [];
+$is_readonly = false;
 
 if ($evaluation_id > 0) {
     $eval_stmt = $conn->prepare("
@@ -48,6 +49,8 @@ if ($evaluation_id > 0) {
     $eval_stmt->close();
 
     if ($evaluation) {
+        $is_readonly = ($evaluation['status'] !== 'Pending Dept Manager');
+
         // Authorize: Check if this manager is the employee's department manager
         $is_authorized = isDeptManagerOfEmployee($conn, $user_id, (int)$evaluation['employee_id']);
         if (!$is_authorized) {
@@ -77,8 +80,15 @@ if ($evaluation_id > 0) {
     }
 }
 
+$readonly_attr = $is_readonly ? 'readonly' : '';
+$disabled_attr = $is_readonly ? 'disabled' : '';
+
 // Handle Form Submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager && $is_readonly) {
+    redirectWith(BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $evaluation_id, 'warning', 'This evaluation is no longer pending department manager review and is view-only.');
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager && !$is_readonly) {
     $action = $_POST['confirm_action'] ?? '';
     $dept_manager_comments = trim($_POST['dept_manager_comments'] ?? '');
 
@@ -249,15 +259,20 @@ if ($is_dept_manager) {
                t.template_name
         FROM evaluations e
         JOIN employees emp ON e.employee_id = emp.employee_id
-        JOIN employees sup ON emp.reports_to = sup.employee_id
         LEFT JOIN evaluation_templates t ON e.template_id = t.template_id
-        WHERE e.status = 'Pending Dept Manager' AND sup.reports_to = ?
+        WHERE e.status = 'Pending Dept Manager'
         ORDER BY e.submitted_date DESC
     ");
-    $pending_stmt->bind_param("i", $manager_employee_id);
     $pending_stmt->execute();
-    $pending_reviews = $pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $all_pending_reviews = $pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $pending_stmt->close();
+
+    foreach ($all_pending_reviews as $pending) {
+        $dept_manager = getDeptManagerOfEmployee($conn, (int)$pending['employee_id']);
+        if ($dept_manager && (int)$dept_manager['supervisor_employee_id'] === $manager_employee_id) {
+            $pending_reviews[] = $pending;
+        }
+    }
 }
 
 // Pre-compute PHP-side KRA total and behavior average
@@ -598,6 +613,7 @@ require_once '../includes/header.php';
                                                                id="kra_<?php echo (int)$criterion['criterion_id']; ?>"
                                                                min="0" max="4" step="0.01"
                                                                value="<?php echo number_format($orig, 2); ?>"
+                                                               <?php echo $disabled_attr; ?>
                                                                placeholder="0.00 – 4.00"
                                                                style="max-width: 90px; text-align: center;">
                                                         <div class="change-badge d-none" id="chg_kra_<?php echo (int)$criterion['criterion_id']; ?>">
@@ -665,6 +681,7 @@ require_once '../includes/header.php';
                                                                id="beh_<?php echo (int)$criterion['criterion_id']; ?>"
                                                                min="0" max="4" step="0.01"
                                                                value="<?php echo number_format($orig, 2); ?>"
+                                                               <?php echo $disabled_attr; ?>
                                                                placeholder="0.00 – 4.00"
                                                                style="max-width: 90px; text-align: center;">
                                                         <div class="change-badge d-none" id="chg_beh_<?php echo (int)$criterion['criterion_id']; ?>">
@@ -740,8 +757,11 @@ require_once '../includes/header.php';
                                 Department Manager Endorsement Comments
                             </label>
                             <textarea class="form-control border-primary" id="dept_manager_comments" name="dept_manager_comments" rows="4"
-                                      placeholder="Provide feedback, endorsements, or reasons for returning this self-rating..."></textarea>
-                            <div class="form-text">Required when returning. Optional when endorsing.</div>
+                                      placeholder="Provide feedback, endorsements, or reasons for returning this self-rating..."
+                                      <?php echo $readonly_attr; ?>><?php echo $is_readonly ? e($evaluation['dept_manager_comments'] ?? '') : ''; ?></textarea>
+                            <div class="form-text">
+                                <?php echo $is_readonly ? 'View-only. This evaluation has already moved past department manager review.' : 'Required when returning. Optional when endorsing.'; ?>
+                            </div>
                         </div>
 
                         <!-- Form Actions -->
@@ -749,16 +769,22 @@ require_once '../includes/header.php';
                             <a href="dept-manager-review.php" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-1"></i>Back to List
                             </a>
-                            <div class="d-flex gap-2">
-                                <button type="submit" name="confirm_action" value="return" class="btn btn-warning text-dark"
-                                        onclick="return confirm('Are you sure you want to return this evaluation for revision? Comments are required.');">
-                                    <i class="fas fa-undo me-1"></i>Return for Revision
-                                </button>
-                                <button type="submit" name="confirm_action" value="endorse" class="btn btn-success"
-                                        onclick="return confirm('Endorse this evaluation and send to HRD?');">
-                                    <i class="fas fa-check-circle me-1"></i>Endorse &amp; Send to HRD
-                                </button>
-                            </div>
+                            <?php if ($is_readonly): ?>
+                                <span class="badge bg-secondary align-self-center px-3 py-2">
+                                    <i class="fas fa-eye me-1"></i>View-only
+                                </span>
+                            <?php else: ?>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" name="confirm_action" value="return" class="btn btn-warning text-dark"
+                                            onclick="return confirm('Are you sure you want to return this evaluation for revision? Comments are required.');">
+                                        <i class="fas fa-undo me-1"></i>Return for Revision
+                                    </button>
+                                    <button type="submit" name="confirm_action" value="endorse" class="btn btn-success"
+                                            onclick="return confirm('Endorse this evaluation and send to HRD?');">
+                                        <i class="fas fa-check-circle me-1"></i>Endorse &amp; Send to HRD
+                                    </button>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>

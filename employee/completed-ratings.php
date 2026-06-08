@@ -12,10 +12,29 @@ $evaluations = $conn->query("
     FROM evaluations e
     LEFT JOIN evaluation_templates et ON e.template_id = et.template_id
     WHERE e.employee_id = $employee_id
+      AND e.status IN ('Approved', 'Rejected', 'Returned')
       AND e.deleted_at IS NULL
     ORDER BY COALESCE(e.submitted_date, e.updated_at, e.created_at) DESC, e.evaluation_id DESC
 ");
 $evaluation_rows = $evaluations ? $evaluations->fetch_all(MYSQLI_ASSOC) : [];
+$status_tabs = [
+    'Approved' => ['label' => 'Approved', 'icon' => 'fa-check-circle'],
+    'Rejected' => ['label' => 'Rejected', 'icon' => 'fa-times-circle'],
+    'Returned' => ['label' => 'Returned', 'icon' => 'fa-rotate-left'],
+];
+$status_counts = array_fill_keys(array_keys($status_tabs), 0);
+foreach ($evaluation_rows as $row) {
+    if (isset($status_counts[$row['status']])) {
+        $status_counts[$row['status']]++;
+    }
+}
+$active_status = $_GET['status'] ?? 'Approved';
+if (!isset($status_tabs[$active_status])) {
+    $active_status = 'Approved';
+}
+$filtered_evaluation_rows = array_values(array_filter($evaluation_rows, static function (array $row) use ($active_status): bool {
+    return ($row['status'] ?? '') === $active_status;
+}));
 
 // ── Determine this employee's workflow path ──────────────────────────────────
 ensureEmployeesReportsTo($conn);
@@ -259,6 +278,17 @@ require_once '../includes/header.php';
     text-transform: uppercase;
     white-space: nowrap;
 }
+
+.eval-status-page .eval-status-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.eval-status-page .eval-status-tabs .btn {
+    border-radius: 999px;
+    font-weight: 700;
+}
 </style>
 
 <div class="page-hero fadeup">
@@ -291,7 +321,18 @@ require_once '../includes/header.php';
     <div class="col-12">
         <div class="content-card">
             <div class="card-header">
-                <h5><i class="fas fa-list me-2"></i>My Evaluations</h5>
+                <div>
+                    <h5 class="mb-2"><i class="fas fa-list me-2"></i>My Evaluations</h5>
+                    <div class="eval-status-tabs">
+                        <?php foreach ($status_tabs as $status => $tab): ?>
+                            <?php $is_active_tab = $active_status === $status; ?>
+                            <a href="?status=<?php echo urlencode($status); ?>" class="btn btn-sm btn-<?php echo $is_active_tab ? 'primary' : 'outline-primary'; ?>">
+                                <i class="fas <?php echo e($tab['icon']); ?> me-1"></i><?php echo e($tab['label']); ?>
+                                <span class="badge rounded-pill bg-<?php echo $is_active_tab ? 'light text-primary' : 'primary'; ?> ms-1"><?php echo (int)$status_counts[$status]; ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
                 <?php if (!empty($evaluation_rows)): ?>
                     <span class="badge bg-light text-muted border"><?php echo count($evaluation_rows); ?> total</span>
                 <?php endif; ?>
@@ -303,9 +344,16 @@ require_once '../includes/header.php';
                         <p class="mb-0">No evaluations yet.</p>
                     </div>
                 </div>
+            <?php elseif (empty($filtered_evaluation_rows)): ?>
+                <div class="card-body">
+                    <div class="empty-state py-5">
+                        <i class="fas fa-inbox d-block"></i>
+                        <p class="mb-0">No <?php echo strtolower(e($active_status)); ?> evaluations yet.</p>
+                    </div>
+                </div>
             <?php else: ?>
                 <div class="eval-status-cards d-md-none">
-                    <?php foreach ($evaluation_rows as $eval): ?>
+                    <?php foreach ($filtered_evaluation_rows as $eval): ?>
                         <?php
                         $can_edit = in_array($eval['status'], ['Draft', 'Returned', 'Pending Self-Rating'], true);
                         $view_url = BASE_URL . '/employee/self-rating.php' . ($can_edit ? '?edit=' : '?view=') . (int) $eval['evaluation_id'];
@@ -375,7 +423,7 @@ require_once '../includes/header.php';
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($evaluation_rows as $eval): ?>
+                                <?php foreach ($filtered_evaluation_rows as $eval): ?>
                                     <?php
                                     $can_edit = in_array($eval['status'], ['Draft', 'Returned', 'Pending Self-Rating'], true);
                                     $view_url = BASE_URL . '/employee/self-rating.php' . ($can_edit ? '?edit=' : '?view=') . (int) $eval['evaluation_id'];

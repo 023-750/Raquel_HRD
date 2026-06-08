@@ -1796,7 +1796,7 @@ function getDeptManagerOfEmployee($conn, $employee_id)
     }
 
     // Get immediate supervisor (reports_to), branch_id, and rank/job title
-    $stmt = $conn->prepare("SELECT reports_to, branch_id, job_title, rank_category_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT reports_to, branch_id, department_id, job_title, rank_category_id FROM employees WHERE employee_id = ? LIMIT 1");
     $stmt->bind_param("i", $employee_id);
     $stmt->execute();
     $emp_info = $stmt->get_result()->fetch_assoc();
@@ -1808,6 +1808,7 @@ function getDeptManagerOfEmployee($conn, $employee_id)
 
     $reports_to = $emp_info['reports_to'] ? (int)$emp_info['reports_to'] : 0;
     $branch_id = $emp_info['branch_id'] ? (int)$emp_info['branch_id'] : 0;
+    $department_id = $emp_info['department_id'] ? (int)$emp_info['department_id'] : 0;
     $job_title = $emp_info['job_title'] ?? '';
     $rank_category_id = (int)($emp_info['rank_category_id'] ?? 0);
 
@@ -1843,11 +1844,12 @@ function getDeptManagerOfEmployee($conn, $employee_id)
               AND is_active = 1 
               AND deleted_at IS NULL
               AND employee_id != ?
+              AND (? = 0 OR department_id = ?)
               AND (rank_category_id = 3 OR job_title LIKE '%Manager%')
             ORDER BY employee_id ASC
             LIMIT 1
         ");
-        $mgr_stmt->bind_param("ii", $branch_id, $employee_id);
+        $mgr_stmt->bind_param("iiii", $branch_id, $employee_id, $department_id, $department_id);
         $mgr_stmt->execute();
         $mgr_res = $mgr_stmt->get_result()->fetch_assoc();
         $mgr_stmt->close();
@@ -1863,11 +1865,12 @@ function getDeptManagerOfEmployee($conn, $employee_id)
                   AND is_active = 1 
                   AND deleted_at IS NULL
                   AND employee_id != ?
+                  AND (? = 0 OR department_id = ?)
                   AND (rank_category_id = 4 OR job_title LIKE '%Supervisor%')
                 ORDER BY employee_id ASC
                 LIMIT 1
             ");
-            $sup_stmt->bind_param("ii", $branch_id, $employee_id);
+            $sup_stmt->bind_param("iiii", $branch_id, $employee_id, $department_id, $department_id);
             $sup_stmt->execute();
             $sup_res = $sup_stmt->get_result()->fetch_assoc();
             $sup_stmt->close();

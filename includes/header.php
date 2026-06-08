@@ -135,8 +135,14 @@ switch ($effective_role) {
 
     case 'Employee':
 
-        // Count pending evaluation templates for mobile bottom-nav badge
+        // Count employee portal work items for sidebar and mobile bottom-nav badges.
         $m_pending_template_count = 0;
+        $m_eval_status_count = 0;
+        $m_dept_review_count = 0;
+        $m_confirm_rating_count = 0;
+        $is_dept_manager_menu = false;
+        $is_supervisor_menu  = false;
+        $hdr_sup_dept_name   = '';
         if (isset($_SESSION['employee_id']) && $conn) {
             $_hdr_emp_id = (int) $_SESSION['employee_id'];
             $_hdr_dept_stmt = $conn->prepare("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = ? LIMIT 1");
@@ -165,38 +171,83 @@ switch ($effective_role) {
             $_hdr_pt_stmt->execute();
             $m_pending_template_count = (int) ($_hdr_pt_stmt->get_result()->fetch_assoc()['total'] ?? 0);
             $_hdr_pt_stmt->close();
+
+            $_hdr_status_stmt = $conn->prepare("
+                SELECT COUNT(*) AS total
+                FROM evaluations
+                WHERE employee_id = ?
+                  AND status IN ('Approved', 'Rejected', 'Returned')
+                  AND deleted_at IS NULL
+            ");
+            $_hdr_status_stmt->bind_param("i", $_hdr_emp_id);
+            $_hdr_status_stmt->execute();
+            $m_eval_status_count = (int) ($_hdr_status_stmt->get_result()->fetch_assoc()['total'] ?? 0);
+            $_hdr_status_stmt->close();
+
+            $is_dept_manager_menu = isDeptManagerRole($conn, $_hdr_emp_id);
+            if ($is_dept_manager_menu) {
+                $_hdr_dept_pending_stmt = $conn->prepare("
+                    SELECT ev.evaluation_id, ev.employee_id
+                    FROM evaluations ev
+                    JOIN employees emp ON ev.employee_id = emp.employee_id
+                    WHERE ev.status = 'Pending Dept Manager'
+                      AND ev.deleted_at IS NULL
+                      AND emp.is_active = 1
+                      AND emp.deleted_at IS NULL
+                ");
+                $_hdr_dept_pending_stmt->execute();
+                $_hdr_dept_pending_rows = $_hdr_dept_pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                $_hdr_dept_pending_stmt->close();
+                foreach ($_hdr_dept_pending_rows as $_hdr_pending) {
+                    $_hdr_dm = getDeptManagerOfEmployee($conn, (int) $_hdr_pending['employee_id']);
+                    if ($_hdr_dm && (int) $_hdr_dm['supervisor_employee_id'] === $_hdr_emp_id) {
+                        $m_dept_review_count++;
+                    }
+                }
+            }
+
+            $is_supervisor_menu = hasSupervisorPrivileges($conn, $_hdr_emp_id);
+            if ($is_supervisor_menu) {
+                $hdr_sup_dept_name = $_hdr_emp_dept;
+                $_hdr_confirm_stmt = $conn->prepare("
+                    SELECT ev.evaluation_id, ev.employee_id
+                    FROM evaluations ev
+                    JOIN employees emp ON ev.employee_id = emp.employee_id
+                    WHERE emp.employee_id <> ?
+                      AND ev.status IN ('Pending Dept Supervisor','Pending Supervisor')
+                      AND ev.deleted_at IS NULL
+                      AND emp.is_active = 1
+                      AND emp.deleted_at IS NULL
+                ");
+                $_hdr_confirm_stmt->bind_param("i", $_hdr_emp_id);
+                $_hdr_confirm_stmt->execute();
+                $_hdr_confirm_rows = $_hdr_confirm_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                $_hdr_confirm_stmt->close();
+                foreach ($_hdr_confirm_rows as $_hdr_confirm_row) {
+                    $_hdr_supervisor = getEmployeeSupervisor($conn, (int) $_hdr_confirm_row['employee_id']);
+                    if ($_hdr_supervisor && (int) $_hdr_supervisor['supervisor_employee_id'] === $_hdr_emp_id) {
+                        $m_confirm_rating_count++;
+                    }
+                }
+            }
         }
 
         $self_service_menu = [
             ['icon' => 'fas fa-briefcase', 'label' => 'My Employment', 'url' => BASE_URL . '/employee/my-employment.php', 'page' => 'my-employment.php'],
-            ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php'],
-            ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php'],
+            ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php', 'badge' => $m_pending_template_count],
+            ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php', 'badge' => $m_eval_status_count],
         ];
 
         // Add department manager links
-        $is_dept_manager_menu = false;
-        if (isset($_SESSION['employee_id']) && $conn) {
-            $is_dept_manager_menu = isDeptManagerRole($conn, (int) $_SESSION['employee_id']);
-        }
         if ($is_dept_manager_menu) {
-            $self_service_menu[] = ['icon' => 'fas fa-user-shield', 'label' => 'Dept Manager Review', 'url' => BASE_URL . '/employee/dept-manager-review.php', 'page' => 'dept-manager-review.php'];
+            $self_service_menu[] = ['icon' => 'fas fa-user-shield', 'label' => 'Dept Manager Review', 'url' => BASE_URL . '/employee/dept-manager-review.php', 'page' => 'dept-manager-review.php', 'badge' => $m_dept_review_count];
         }
 
         // Add My Team link for supervisors/managers — excluding Human Resources department
-        $is_supervisor_menu  = false;
-        $hdr_sup_dept_name   = '';
-        if (isset($_SESSION['employee_id']) && $conn) {
-            $_hdr_sup_id = (int)$_SESSION['employee_id'];
-            $is_supervisor_menu = hasSupervisorPrivileges($conn, $_hdr_sup_id);
-            if ($is_supervisor_menu) {
-                $_hdr_dep_stmt = $conn->prepare('SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = ? LIMIT 1');
-                $_hdr_dep_stmt->bind_param('i', $_hdr_sup_id);
-                $_hdr_dep_stmt->execute();
-                $hdr_sup_dept_name = $_hdr_dep_stmt->get_result()->fetch_assoc()['department_name'] ?? '';
-                $_hdr_dep_stmt->close();
-            }
-        }
         if ($is_supervisor_menu && $hdr_sup_dept_name !== 'Human Resources') {
+            if (!$is_dept_manager_menu) {
+                $self_service_menu[] = ['icon' => 'fas fa-user-check', 'label' => 'Confirm Self-Rating', 'url' => BASE_URL . '/employee/confirm-rating.php', 'page' => 'confirm-rating.php', 'badge' => $m_confirm_rating_count];
+            }
             $self_service_menu[] = ['icon' => 'fas fa-users', 'label' => 'My Team', 'url' => BASE_URL . '/employee/team-list.php', 'page' => 'team-list.php'];
         }
 
@@ -269,6 +320,9 @@ switch ($effective_role) {
                         title="<?php echo e($item['label']); ?>">
                         <i class="<?php echo $item['icon']; ?>"></i>
                         <span class="nav-text"><?php echo e($item['label']); ?></span>
+                        <?php if (!empty($item['badge'])): ?>
+                            <span class="badge rounded-pill bg-danger ms-auto"><?php echo (int)$item['badge'] > 9 ? '9+' : (int)$item['badge']; ?></span>
+                        <?php endif; ?>
                     </a>
                 <?php endforeach; ?>
             <?php endforeach; ?>

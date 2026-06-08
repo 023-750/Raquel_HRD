@@ -31,6 +31,7 @@ $scores = [];
 $template = null;
 $criteria_kra = [];
 $criteria_behavior = [];
+$is_readonly = false;
 
 if ($evaluation_id > 0) {
     $eval_stmt = $conn->prepare("
@@ -43,21 +44,22 @@ if ($evaluation_id > 0) {
         LEFT JOIN departments d ON emp.department_id = d.department_id
         LEFT JOIN branches b ON emp.branch_id = b.branch_id
         LEFT JOIN evaluation_templates t ON e.template_id = t.template_id
-        WHERE e.evaluation_id = ? AND (
+        WHERE e.evaluation_id = ?
+          AND emp.employee_id <> ?
+          AND (
             e.status IN ('Pending Dept Supervisor', 'Pending Supervisor', 'Supervisor Confirmed')
             OR e.dept_supervisor_confirmed_by = ?
             OR e.supervisor_confirmed_by = ?
         )
         LIMIT 1
     ");
-    $eval_stmt->bind_param("iii", $evaluation_id, $user_id, $user_id);
+    $eval_stmt->bind_param("iiii", $evaluation_id, $supervisor_employee_id, $user_id, $user_id);
     $eval_stmt->execute();
     $evaluation = $eval_stmt->get_result()->fetch_assoc();
     $eval_stmt->close();
     
-    $is_readonly = false;
     if ($evaluation) {
-        if (!in_array($evaluation['status'], ['Pending Dept Supervisor', 'Pending Supervisor'])) {
+        if (!in_array($evaluation['status'], ['Pending Dept Supervisor', 'Pending Supervisor'], true)) {
             $is_readonly = true;
         }
         
@@ -106,7 +108,14 @@ if ($evaluation_id > 0) {
     }
 }
 
+$readonly_attr = !empty($is_readonly) ? 'readonly' : '';
+$disabled_attr = !empty($is_readonly) ? 'disabled' : '';
+
 // Handle form submission (confirmation or sending to HR)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && $is_readonly) {
+    redirectWith(BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id, 'warning', 'This confirmation has already been sent and is view-only.');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$is_readonly) {
     $action = $_POST['confirm_action'] ?? '';
     $supervisor_comments = trim($_POST['supervisor_comments'] ?? '');
@@ -405,10 +414,11 @@ if ($is_supervisor) {
         JOIN employees emp ON e.employee_id = emp.employee_id
         LEFT JOIN evaluation_templates t ON e.template_id = t.template_id
         WHERE e.status IN ('Pending Dept Supervisor', 'Pending Supervisor') 
+          AND emp.employee_id <> ?
           AND (emp.reports_to = ? OR (emp.reports_to IS NULL AND emp.branch_id = ?))
         ORDER BY e.submitted_date DESC
     ");
-    $pending_stmt->bind_param("ii", $supervisor_employee_id, $supervisor_branch_id);
+    $pending_stmt->bind_param("iii", $supervisor_employee_id, $supervisor_employee_id, $supervisor_branch_id);
     $pending_stmt->execute();
     $all_pending = $pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $pending_stmt->close();
@@ -1062,6 +1072,7 @@ require_once '../includes/header.php';
                                                                min="0" max="4" step="0.01"
                                                                value="<?php echo number_format($orig, 2); ?>"
                                                                placeholder="0.00 - 4.00"
+                                                               <?php echo $disabled_attr; ?>
                                                                style="max-width: 90px; text-align: center;">
                                                         <div class="change-badge d-none" id="chg_kra_<?php echo (int)$criterion['criterion_id']; ?>">
                                                             <i class="fas fa-edit"></i> Changed
@@ -1128,6 +1139,7 @@ require_once '../includes/header.php';
                                                                min="0" max="4" step="0.01"
                                                                value="<?php echo number_format($orig, 2); ?>"
                                                                placeholder="0.00 - 4.00"
+                                                               <?php echo $disabled_attr; ?>
                                                                style="max-width: 90px; text-align: center;">
                                                         <div class="change-badge d-none" id="chg_beh_<?php echo (int)$criterion['criterion_id']; ?>">
                                                             <i class="fas fa-edit"></i> Changed
@@ -1200,8 +1212,11 @@ require_once '../includes/header.php';
                         <div class="mb-4 mt-4">
                             <label class="form-label fw-semibold">Your Comments / Justification for Changes</label>
                             <textarea class="form-control" name="supervisor_comments" rows="4" 
-                                      placeholder="Enter your comments or justification for any rating adjustments..."></textarea>
-                            <div class="form-text">Optional. This will be visible to HR and the employee.</div>
+                                      placeholder="Enter your comments or justification for any rating adjustments..."
+                                      <?php echo $readonly_attr; ?>><?php echo !empty($is_readonly) ? e($evaluation['supervisor_comments'] ?? '') : ''; ?></textarea>
+                            <div class="form-text">
+                                <?php echo !empty($is_readonly) ? 'View-only. This confirmation has already been sent forward.' : 'Optional. This will be visible to HR and the employee.'; ?>
+                            </div>
                         </div>
 
                         <!-- Action Buttons -->
@@ -1209,17 +1224,23 @@ require_once '../includes/header.php';
                             <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-2"></i>Back to List
                             </a>
-                            <div class="d-flex gap-2">
-                                <button type="submit" name="confirm_action" value="reject" class="btn btn-warning text-dark"
-                                        onclick="return confirm('Are you sure you want to reject this self-rating and forward to HR Supervisor? Comments/justification are required.');">
-                                    <i class="fas fa-times-circle me-1"></i>Reject
-                                </button>
-                                <button type="submit" name="confirm_action" value="confirm_and_send" 
-                                        class="btn btn-primary" id="submitBtn"
-                                        onclick="return confirm('Confirm this self-rating and send to HRD?');">
-                                    <i class="fas fa-check-circle me-2"></i>Confirm &amp; Send
-                                </button>
-                            </div>
+                            <?php if (!empty($is_readonly)): ?>
+                                <span class="badge bg-secondary align-self-center px-3 py-2">
+                                    <i class="fas fa-eye me-1"></i>View-only
+                                </span>
+                            <?php else: ?>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" name="confirm_action" value="reject" class="btn btn-warning text-dark"
+                                            onclick="return confirm('Are you sure you want to reject this self-rating and forward to HR Supervisor? Comments/justification are required.');">
+                                        <i class="fas fa-times-circle me-1"></i>Reject
+                                    </button>
+                                    <button type="submit" name="confirm_action" value="confirm_and_send" 
+                                            class="btn btn-primary" id="submitBtn"
+                                            onclick="return confirm('Confirm this self-rating and send to HRD?');">
+                                        <i class="fas fa-check-circle me-2"></i>Confirm &amp; Send
+                                    </button>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>
