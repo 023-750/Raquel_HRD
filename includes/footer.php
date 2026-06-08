@@ -61,8 +61,52 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
             <i class="fas fa-list-check nav-icon"></i>
             <span class="nav-label">Status</span>
         </a>
+        <?php
+        // "Confirm Rating" shortcut — only for immediate heads outside Human Resources department
+        $m_confirm_dept_name = '';
+        $m_is_supervisor     = false;
+        if (isset($_SESSION['employee_id']) && $conn) {
+            $_m_sup_id = (int)$_SESSION['employee_id'];
+            $m_is_supervisor = hasSupervisorPrivileges($conn, $_m_sup_id);
+            if ($m_is_supervisor) {
+                $_m_dep_r = $conn->query("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = $_m_sup_id LIMIT 1");
+                if ($_m_dep_r) {
+                    $m_confirm_dept_name = $_m_dep_r->fetch_assoc()['department_name'] ?? '';
+                }
+            }
+        }
+        if ($m_is_supervisor && $m_confirm_dept_name !== 'Human Resources'):
+            // Count members directly reporting to this supervisor with a pending status
+            $_m_confirm_count = 0;
+            $_m_c_stmt = $conn->prepare("
+                SELECT COUNT(*) AS total
+                FROM evaluations ev
+                JOIN employees e ON ev.employee_id = e.employee_id
+                WHERE e.reports_to = ?
+                  AND ev.status IN ('Pending Dept Supervisor','Pending Supervisor')
+                  AND ev.deleted_at IS NULL
+            ");
+            if ($_m_c_stmt) {
+                $_m_c_stmt->bind_param('i', $_m_sup_id);
+                $_m_c_stmt->execute();
+                $_m_confirm_count = (int)$_m_c_stmt->get_result()->fetch_assoc()['total'];
+                $_m_c_stmt->close();
+            }
+        ?>
+            <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php"
+               class="nav-item <?php echo ($curr_p === 'confirm-rating.php') ? 'active' : ''; ?>">
+                <div class="position-relative">
+                    <i class="fas fa-user-check nav-icon"></i>
+                    <?php if ($_m_confirm_count > 0): ?>
+                        <span class="mobile-notif-badge"><?php echo $_m_confirm_count > 9 ? '9+' : $_m_confirm_count; ?></span>
+                    <?php endif; ?>
+                </div>
+                <span class="nav-label">Confirm</span>
+            </a>
+        <?php endif; ?>
 
     </nav>
+
 
 <?php endif; ?>
 

@@ -120,10 +120,16 @@ $recent_notifs = getRecentNotifications($conn, $user_id, 4, 'employee');
 // ── Has supervisor privileges? (subordinates in DB OR supervisor/manager role) ─
 $is_supervisor = hasSupervisorPrivileges($conn, $employee_id);
 
+// ── Does THIS employee have a dept supervisor / dept manager above them? ─────
+ensureEmployeesReportsTo($conn);
+$my_supervisor    = getEmployeeSupervisor($conn, $employee_id);
+$has_dept_supervisor = ($my_supervisor !== null && !empty($my_supervisor['user_id']));
+$my_dept_manager  = getDeptManagerOfEmployee($conn, $employee_id);
+$has_dept_manager = ($my_dept_manager !== null && !empty($my_dept_manager['user_id']));
+
 // ── Pending subordinate ratings count ──────────────────────────────────────
 $pending_sub_count = 0;
 if ($is_supervisor) {
-    ensureEmployeesReportsTo($conn);
     $ps = $conn->query("
         SELECT COUNT(*) AS total
         FROM evaluations ev
@@ -248,9 +254,15 @@ function movementIcon(string $type): string {
             <div style="width:50px;height:50px;background:linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-light) 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
                 <i class="fas fa-chart-line text-white" style="font-size:1.1rem;"></i>
             </div>
-            <?php if ($latest_score): ?>
-                <div style="font-size:2rem;font-weight:800;line-height:1;color:var(--text-dark);"><?php echo number_format((float)$latest_score['total_score'], 1); ?></div>
-                <div style="font-size:.75rem;color:var(--text-muted);"><?php echo e($latest_score['performance_level'] ?? '—'); ?></div>
+            <?php if ($latest_score):
+                $ls_level = $latest_score['performance_level'] ?? '';
+                $ls_color = $ls_level ? getPerformanceLevelColor($ls_level) : 'var(--text-dark)';
+                $ls_badge = $ls_level ? getPerformanceLevelBadgeClass($ls_level) : 'bg-secondary';
+            ?>
+                <div style="font-size:2rem;font-weight:800;line-height:1;color:<?php echo $ls_color; ?>;"><?php echo number_format((float)$latest_score['total_score'], 1); ?></div>
+                <?php if ($ls_level): ?>
+                <span class="badge <?php echo $ls_badge; ?>" style="font-size:.65rem;margin-top:3px;"><?php echo e($ls_level); ?></span>
+                <?php endif; ?>
             <?php else: ?>
                 <div style="font-size:1.4rem;font-weight:700;line-height:1;color:var(--text-muted);">N/A</div>
                 <div style="font-size:.75rem;color:var(--text-muted);">No approved score yet</div>
@@ -307,10 +319,16 @@ function movementIcon(string $type): string {
                             </div>
                             <?php echo evalStatusBadge($active_eval['status'] ?? 'Draft'); ?>
                         </div>
-                        <?php if (!empty($active_eval['total_score'])): ?>
+                        <?php if (!empty($active_eval['total_score'])):
+                            $ae_level = $active_eval['performance_level'] ?? '';
+                            $ae_color = $ae_level ? getPerformanceLevelColor($ae_level) : 'var(--primary-blue)';
+                            $ae_badge = $ae_level ? getPerformanceLevelBadgeClass($ae_level) : 'bg-secondary';
+                        ?>
                         <div class="text-end">
-                            <div style="font-size:2rem;font-weight:800;color:var(--primary-blue);line-height:1;"><?php echo number_format((float)$active_eval['total_score'], 1); ?></div>
-                            <div class="text-muted" style="font-size:.75rem;"><?php echo e($active_eval['performance_level'] ?? ''); ?></div>
+                            <div style="font-size:2rem;font-weight:800;color:<?php echo $ae_color; ?>;line-height:1;"><?php echo number_format((float)$active_eval['total_score'], 1); ?></div>
+                            <?php if ($ae_level): ?>
+                            <span class="badge <?php echo $ae_badge; ?>" style="font-size:.65rem;margin-top:2px;"><?php echo e($ae_level); ?></span>
+                            <?php endif; ?>
                         </div>
                         <?php endif; ?>
                     </div>
@@ -324,41 +342,91 @@ function movementIcon(string $type): string {
                     <?php endif; ?>
                 </div>
 
-                <!-- Workflow Progress Bar -->
+                <!-- Workflow Progress Bar (dynamic: HRD vs full-chain) -->
                 <?php
-                $workflow_steps = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
-                $workflow_labels = ['Self-Rating', 'Dept Supervisor', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
                 $current_status = $active_eval['status'] ?? '';
-                $status_step_map = [
-                    'Draft' => 0,
-                    'Returned' => 0,
-                    'Pending Self-Rating' => 0,
-                    'Pending Dept Supervisor' => 1,
-                    'Pending Supervisor' => 1,
-                    'Pending Dept Manager' => 2,
-                    'Supervisor Confirmed' => 3,
-                    'Pending HR Consolidation' => 3,
-                    'Pending Manager' => 4,
-                    'Approved' => 5,
-                    'Rejected' => 5,
-                ];
+
+                if ($has_dept_supervisor || $has_dept_manager) {
+                    // Full org-chain workflow
+                    $workflow_steps  = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                    $workflow_labels = ['Self-Rating', 'Dept Supervisor', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
+                    $status_step_map = [
+                        'Draft'                    => 0,
+                        'Returned'                 => 0,
+                        'Pending Self-Rating'      => 0,
+                        'Pending Dept Supervisor'  => 1,
+                        'Pending Supervisor'       => 1,
+                        'Pending Dept Manager'     => 2,
+                        'Supervisor Confirmed'     => 3,
+                        'Pending HR Consolidation' => 3,
+                        'Pending Manager'          => 4,
+                        'Approved'                 => 5,
+                        'Rejected'                 => 5,
+                    ];
+                } else {
+                    // HRD / direct-to-HR workflow (no dept supervisor or manager)
+                    $workflow_steps  = ['Pending Self-Rating', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                    $workflow_labels = ['Self-Rating', 'HR Consolidation', 'HR Manager', 'Approved'];
+                    $status_step_map = [
+                        'Draft'                    => 0,
+                        'Returned'                 => 0,
+                        'Pending Self-Rating'      => 0,
+                        'Pending Dept Supervisor'  => 1,
+                        'Pending Supervisor'       => 1,
+                        'Pending Dept Manager'     => 1,
+                        'Supervisor Confirmed'     => 1,
+                        'Pending HR Consolidation' => 1,
+                        'Pending Manager'          => 2,
+                        'Approved'                 => 3,
+                        'Rejected'                 => 3,
+                    ];
+                }
+
                 $step_index = $status_step_map[$current_status] ?? null;
                 if ($step_index === null) {
                     $step_index = array_search($current_status, $workflow_steps, true);
                 }
                 if ($step_index === false || $step_index === null) {
-                    $step_index = ($current_status === 'Approved') ? 5 : 0;
+                    $step_index = count($workflow_steps) - 1;
                 }
-                $progress_pct = round(($step_index / (count($workflow_steps) - 1)) * 100);
+                $total_steps  = count($workflow_steps) - 1;
+                $progress_pct = $total_steps > 0 ? round(($step_index / $total_steps) * 100) : 100;
+                $is_approved  = ($current_status === 'Approved');
+                $is_rejected  = ($current_status === 'Rejected');
                 ?>
-                <div class="mt-2">
-                    <div class="d-flex justify-content-between mb-1" style="font-size:.65rem;color:var(--text-muted);">
-                        <?php foreach ($workflow_labels as $label): ?>
-                        <span><?php echo e($label); ?></span>
+                <div class="mt-3">
+                    <!-- Step dots -->
+                    <div class="d-flex align-items-center justify-content-between mb-2" style="gap:4px;">
+                        <?php foreach ($workflow_labels as $i => $label):
+                            $done    = ($i < $step_index);
+                            $current = ($i === $step_index);
+                            $dot_color = $done    ? 'var(--primary-blue)'
+                                       : ($current ? ($is_rejected ? '#dc3545' : 'var(--primary-blue)') : '#dee2e6');
+                            $dot_bg    = $done    ? $dot_color
+                                       : ($current ? 'rgba(67,104,254,.12)' : '#f0f4eb');
+                            $text_w    = $current ? '700' : '500';
+                            $text_col  = ($done || $current) ? 'var(--text-dark)' : 'var(--text-muted)';
+                        ?>
+                        <div class="text-center" style="flex:1;min-width:0;">
+                            <div style="width:28px;height:28px;border-radius:50%;background:<?php echo $dot_bg; ?>;border:2px solid <?php echo $dot_color; ?>;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">
+                                <?php if ($done): ?>
+                                    <i class="fas fa-check" style="font-size:.55rem;color:<?php echo $dot_color; ?>;"></i>
+                                <?php elseif ($current && $is_rejected): ?>
+                                    <i class="fas fa-times" style="font-size:.55rem;color:#dc3545;"></i>
+                                <?php else: ?>
+                                    <span style="font-size:.6rem;font-weight:700;color:<?php echo $dot_color; ?>;"><?php echo $i + 1; ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div style="font-size:.58rem;font-weight:<?php echo $text_w; ?>;color:<?php echo $text_col; ?>;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?php echo e($label); ?></div>
+                        </div>
+                        <?php if ($i < count($workflow_labels) - 1): ?>
+                        <div style="flex:1;height:2px;background:<?php echo $done ? 'var(--primary-blue)' : '#dee2e6'; ?>;margin-bottom:20px;transition:background .4s;"></div>
+                        <?php endif; ?>
                         <?php endforeach; ?>
                     </div>
-                    <div class="progress" style="height:8px;border-radius:10px;">
-                        <div class="progress-bar bg-primary" style="width:<?php echo $progress_pct; ?>%;border-radius:10px;transition:width .6s;"></div>
+                    <!-- Progress bar -->
+                    <div class="progress" style="height:5px;border-radius:10px;">
+                        <div class="progress-bar <?php echo $is_rejected ? 'bg-danger' : 'bg-primary'; ?>" style="width:<?php echo $progress_pct; ?>%;border-radius:10px;transition:width .6s;"></div>
                     </div>
                 </div>
 
@@ -517,6 +585,7 @@ function movementIcon(string $type): string {
         </div>
 
     </div><!-- /RIGHT COL -->
+
 </div>
 
 <style>

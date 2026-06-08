@@ -5,7 +5,12 @@ checkRole(['HR Supervisor']);
 require_once '../includes/header.php';
 
 // Fetch stats
-$pending_validations = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE status = 'Pending HR Consolidation'")->fetch_assoc()['c'];
+$pending_validations = $conn->query("SELECT COUNT(*) as c 
+    FROM evaluations ev 
+    INNER JOIN employees e ON ev.employee_id = e.employee_id 
+    WHERE ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+      AND e.is_active = 1 
+      AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['c'];
 
 $validated_month = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE endorsed_by = {$_SESSION['user_id']} AND MONTH(endorsed_date) = MONTH(CURRENT_DATE()) AND YEAR(endorsed_date) = YEAR(CURRENT_DATE())")->fetch_assoc()['c'];
 
@@ -16,10 +21,12 @@ $pending_result = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_na
     e.job_title, e.profile_picture, et.template_name,
     u.full_name as submitted_by_name
     FROM evaluations ev
-    LEFT JOIN employees e ON ev.employee_id = e.employee_id
+    INNER JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN users u ON ev.submitted_by = u.user_id
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
-    WHERE ev.status = 'Pending HR Consolidation'
+    WHERE ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+      AND e.is_active = 1
+      AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
     ORDER BY ev.submitted_date DESC");
 while ($row = $pending_result->fetch_assoc()) {
     $pending_rows[] = $row;
@@ -347,9 +354,9 @@ $queue_employee_count = count($pending_groups);
                                         </div>
                                     </div>
                                     <div class="score-meter d-none d-md-block">
-                                        <span class="score-val"><?php echo $row['total_score']; ?>% Score</span>
+                                        <span class="score-val"><?php echo number_format($score, 2); ?> / 4</span>
                                         <div class="progress" style="height: 4px;">
-                                            <div class="progress-bar <?php echo ($score >= 80) ? 'bg-success' : (($score >= 60) ? 'bg-primary' : 'bg-warning'); ?>" style="width: <?php echo min(100, max(0, $score)); ?>%;"></div>
+                                            <div class="progress-bar <?php echo ($score >= 3) ? 'bg-success' : (($score >= 2) ? 'bg-primary' : 'bg-warning'); ?>" style="width: <?php echo min(100, max(0, ($score / 4) * 100)); ?>%;"></div>
                                         </div>
                                     </div>
                                     <div class="status-meta d-none d-sm-block">

@@ -182,6 +182,24 @@ switch ($effective_role) {
             $self_service_menu[] = ['icon' => 'fas fa-user-shield', 'label' => 'Dept Manager Review', 'url' => BASE_URL . '/employee/dept-manager-review.php', 'page' => 'dept-manager-review.php'];
         }
 
+        // Add My Team link for supervisors/managers — excluding Human Resources department
+        $is_supervisor_menu  = false;
+        $hdr_sup_dept_name   = '';
+        if (isset($_SESSION['employee_id']) && $conn) {
+            $_hdr_sup_id = (int)$_SESSION['employee_id'];
+            $is_supervisor_menu = hasSupervisorPrivileges($conn, $_hdr_sup_id);
+            if ($is_supervisor_menu) {
+                $_hdr_dep_stmt = $conn->prepare('SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = ? LIMIT 1');
+                $_hdr_dep_stmt->bind_param('i', $_hdr_sup_id);
+                $_hdr_dep_stmt->execute();
+                $hdr_sup_dept_name = $_hdr_dep_stmt->get_result()->fetch_assoc()['department_name'] ?? '';
+                $_hdr_dep_stmt->close();
+            }
+        }
+        if ($is_supervisor_menu && $hdr_sup_dept_name !== 'Human Resources') {
+            $self_service_menu[] = ['icon' => 'fas fa-users', 'label' => 'My Team', 'url' => BASE_URL . '/employee/team-list.php', 'page' => 'team-list.php'];
+        }
+
         $self_service_menu[] = ['icon' => 'fas fa-bell', 'label' => 'Notifications', 'url' => BASE_URL . '/employee/notifications.php', 'page' => 'notifications.php'];
 
         $sidebar_menus = [
@@ -382,6 +400,25 @@ switch ($effective_role) {
                                 </a>
                             </li>
                         <?php endif; ?>
+                        <?php
+                        // My Team — for supervisors/managers excluding Human Resources dept
+                        if (isset($_SESSION['employee_id']) && $conn) {
+                            $_gear_sup_id = (int)$_SESSION['employee_id'];
+                            if (hasSupervisorPrivileges($conn, $_gear_sup_id)) {
+                                $_gear_dep = $conn->query("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = $_gear_sup_id LIMIT 1");
+                                $_gear_dept_name = $_gear_dep ? ($_gear_dep->fetch_assoc()['department_name'] ?? '') : '';
+                                if ($_gear_dept_name !== 'Human Resources'):
+                        ?>
+                            <li>
+                                <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/team-list.php">
+                                    <i class="fas fa-users me-2" style="width: 20px; text-align: center;"></i>My Team
+                                </a>
+                            </li>
+                        <?php
+                                endif;
+                            }
+                        }
+                        ?>
                         <li>
                             <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/profile-settings.php">
                                 <i class="fas fa-user-cog me-2" style="width: 20px; text-align: center;"></i>Change Password

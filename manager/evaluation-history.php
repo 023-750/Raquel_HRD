@@ -659,6 +659,16 @@ document.addEventListener("DOMContentLoaded", function() {
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    // Enforce max rating of 4.00 on score input fields
+    document.querySelectorAll('.score-input').forEach(input => {
+        input.addEventListener('input', function() {
+            let val = parseFloat(this.value);
+            if (val > 4) {
+                this.value = "4.00";
+            }
+        });
+    });
 });
 
 function toggleEditRatings(evalId, cancel = false) {

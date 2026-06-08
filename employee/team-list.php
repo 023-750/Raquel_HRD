@@ -548,7 +548,7 @@ foreach ($team as $member):
                 <div style="font-size:.6rem;color:var(--text-muted);white-space:nowrap;">No score</div>
             <?php endif; ?>
 
-            <?php if ($is_direct && in_array($eval_status, ['Pending Dept Supervisor','Pending Supervisor'])): ?>
+            <?php if ($is_direct && in_array($eval_status, ['Pending Dept Supervisor','Pending Supervisor']) && $dept_name !== 'Human Resources'): ?>
                 <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php"
                    class="btn btn-primary btn-xs mt-2 w-100"
                    style="font-size:.68rem;">

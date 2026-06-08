@@ -574,6 +574,38 @@ function getPerformanceLevel($score)
 
 }
 
+/**
+ * Return the hex color for a given performance level.
+ * Outstanding        → #198754 (Green)
+ * Exceeds Expectations → #0DCAF0 (Cyan/Info)
+ * Meets Expectations → #FFC107 (Yellow/Warning)
+ * Needs Improvement  → #DC3545 (Red/Danger)
+ */
+function getPerformanceLevelColor(string $level): string
+{
+    $map = [
+        'Outstanding'          => '#198754',
+        'Exceeds Expectations' => '#0DCAF0',
+        'Meets Expectations'   => '#FFC107',
+        'Needs Improvement'    => '#DC3545',
+    ];
+    return $map[$level] ?? '#6c757d';
+}
+
+/**
+ * Return a Bootstrap badge class for a performance level.
+ */
+function getPerformanceLevelBadgeClass(string $level): string
+{
+    $map = [
+        'Outstanding'          => 'bg-success',
+        'Exceeds Expectations' => 'bg-info text-dark',
+        'Meets Expectations'   => 'bg-warning text-dark',
+        'Needs Improvement'    => 'bg-danger',
+    ];
+    return $map[$level] ?? 'bg-secondary';
+}
+
 
 
 /**

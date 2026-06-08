@@ -17,6 +17,88 @@ $evaluations = $conn->query("
 ");
 $evaluation_rows = $evaluations ? $evaluations->fetch_all(MYSQLI_ASSOC) : [];
 
+// ── Determine this employee's workflow path ──────────────────────────────────
+ensureEmployeesReportsTo($conn);
+$my_supervisor      = getEmployeeSupervisor($conn, $employee_id);
+$has_dept_supervisor = ($my_supervisor !== null && !empty($my_supervisor['user_id']));
+$my_dept_manager    = getDeptManagerOfEmployee($conn, $employee_id);
+$has_dept_manager   = ($my_dept_manager !== null && !empty($my_dept_manager['user_id']));
+
+if ($has_dept_supervisor || $has_dept_manager) {
+    $wf_steps  = ['Pending Self-Rating', 'Pending Dept Supervisor', 'Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+    $wf_labels = ['Self-Rating', 'Dept Supervisor', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
+    $wf_map    = [
+        'Draft'                    => 0,
+        'Returned'                 => 0,
+        'Pending Self-Rating'      => 0,
+        'Pending Dept Supervisor'  => 1,
+        'Pending Supervisor'       => 1,
+        'Pending Dept Manager'     => 2,
+        'Supervisor Confirmed'     => 3,
+        'Pending HR Consolidation' => 3,
+        'Pending Manager'          => 4,
+        'Approved'                 => 5,
+        'Rejected'                 => 5,
+    ];
+} else {
+    // HRD / direct-to-HR: no Dept Supervisor or Dept Manager step
+    $wf_steps  = ['Pending Self-Rating', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+    $wf_labels = ['Self-Rating', 'HR Consolidation', 'HR Manager', 'Approved'];
+    $wf_map    = [
+        'Draft'                    => 0,
+        'Returned'                 => 0,
+        'Pending Self-Rating'      => 0,
+        'Pending Dept Supervisor'  => 1,
+        'Pending Supervisor'       => 1,
+        'Pending Dept Manager'     => 1,
+        'Supervisor Confirmed'     => 1,
+        'Pending HR Consolidation' => 1,
+        'Pending Manager'          => 2,
+        'Approved'                 => 3,
+        'Rejected'                 => 3,
+    ];
+}
+
+/**
+ * Render a compact workflow step-track strip.
+ * @param string $status  Current evaluation status
+ * @param array  $labels  Workflow step labels
+ * @param array  $map     Status → step-index map
+ * @return string         HTML string
+ */
+function renderWorkflowStrip(string $status, array $labels, array $map): string {
+    $total   = count($labels);
+    $idx     = $map[$status] ?? 0;
+    $rejected = ($status === 'Rejected');
+    $html = '<div class="wf-strip" style="display:flex;align-items:center;gap:0;">';
+    foreach ($labels as $i => $label) {
+        $done    = ($i < $idx);
+        $cur     = ($i === $idx);
+        $dc = $done ? 'var(--primary-blue)' : ($cur ? ($rejected ? '#dc3545' : 'var(--primary-blue)') : '#dee2e6');
+        $bg = $done ? $dc : ($cur ? 'rgba(67,104,254,.10)' : '#f4f6f9');
+        $tw = $cur  ? '700' : '500';
+        $tc = ($done || $cur) ? 'var(--text-dark)' : 'var(--text-muted)';
+        $html .= '<div style="flex:1;min-width:0;text-align:center;">';
+        $html .= '<div style="width:22px;height:22px;border-radius:50%;background:' . $bg . ';border:2px solid ' . $dc . ';display:flex;align-items:center;justify-content:center;margin:0 auto 2px;">';
+        if ($done) {
+            $html .= '<i class="fas fa-check" style="font-size:.45rem;color:' . $dc . ';"></i>';
+        } elseif ($cur && $rejected) {
+            $html .= '<i class="fas fa-times" style="font-size:.45rem;color:#dc3545;"></i>';
+        } else {
+            $html .= '<span style="font-size:.5rem;font-weight:700;color:' . $dc . ';">' . ($i + 1) . '</span>';
+        }
+        $html .= '</div>';
+        $html .= '<div style="font-size:.52rem;font-weight:' . $tw . ';color:' . $tc . ';line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' . htmlspecialchars($label) . '</div>';
+        $html .= '</div>';
+        if ($i < $total - 1) {
+            $lc = $done ? 'var(--primary-blue)' : '#dee2e6';
+            $html .= '<div style="flex:0 0 8px;height:2px;background:' . $lc . ';margin-bottom:16px;"></div>';
+        }
+    }
+    $html .= '</div>';
+    return $html;
+}
+
 require_once '../includes/header.php';
 ?>
 
@@ -188,15 +270,25 @@ require_once '../includes/header.php';
                                 <div class="eval-status-field">
                                     <span class="eval-status-field-label">Score</span>
                                     <span class="eval-status-field-value">
-                                        <?php echo e($eval['total_score'] ?? '0.00'); ?>
-                                        <?php if (!empty($eval['performance_level'])): ?>
-                                            <span class="badge bg-primary ms-1"><?php echo e($eval['performance_level']); ?></span>
+                                        <?php
+                                        $cr_level = $eval['performance_level'] ?? '';
+                                        $cr_color = $cr_level ? getPerformanceLevelColor($cr_level) : 'var(--text-dark)';
+                                        $cr_badge = $cr_level ? getPerformanceLevelBadgeClass($cr_level) : 'bg-secondary';
+                                        ?>
+                                        <span style="color:<?php echo $cr_color; ?>;font-weight:700;"><?php echo e($eval['total_score'] ?? '—'); ?></span>
+                                        <?php if ($cr_level): ?>
+                                            <span class="badge <?php echo $cr_badge; ?> ms-1"><?php echo e($cr_level); ?></span>
                                         <?php endif; ?>
                                     </span>
                                 </div>
                                 <div class="eval-status-field" style="grid-column: 1 / -1;">
                                     <span class="eval-status-field-label">Last Updated</span>
                                     <span class="eval-status-field-value"><?php echo formatDateTime($eval['updated_at'] ?? $eval['submitted_date'] ?? ''); ?></span>
+                                </div>
+                                <!-- Workflow stepper -->
+                                <div class="eval-status-field" style="grid-column: 1 / -1; margin-top:6px;">
+                                    <span class="eval-status-field-label mb-1">Workflow Progress</span>
+                                    <?php echo renderWorkflowStrip($eval['status'] ?? '', $wf_labels, $wf_map); ?>
                                 </div>
                             </div>
                             <div class="eval-status-card-footer">
@@ -219,6 +311,7 @@ require_once '../includes/header.php';
                                     <th>Period</th>
                                     <th>Score</th>
                                     <th>Last Updated</th>
+                                    <th>Workflow</th>
                                     <th class="text-end pe-3">Action</th>
                                 </tr>
                             </thead>
@@ -237,12 +330,20 @@ require_once '../includes/header.php';
                                             <?php echo formatDate($eval['evaluation_period_end'] ?? ''); ?>
                                         </td>
                                         <td>
-                                            <strong><?php echo e($eval['total_score'] ?? '0.00'); ?></strong>
-                                            <?php if (!empty($eval['performance_level'])): ?>
-                                                <span class="badge bg-primary"><?php echo e($eval['performance_level']); ?></span>
+                                            <?php
+                                            $tr_level = $eval['performance_level'] ?? '';
+                                            $tr_color = $tr_level ? getPerformanceLevelColor($tr_level) : 'var(--text-dark)';
+                                            $tr_badge = $tr_level ? getPerformanceLevelBadgeClass($tr_level) : 'bg-secondary';
+                                            ?>
+                                            <strong style="color:<?php echo $tr_color; ?>;"><?php echo e($eval['total_score'] ?? '—'); ?></strong>
+                                            <?php if ($tr_level): ?>
+                                                <span class="badge <?php echo $tr_badge; ?>"><?php echo e($tr_level); ?></span>
                                             <?php endif; ?>
                                         </td>
                                         <td><?php echo formatDateTime($eval['updated_at'] ?? $eval['submitted_date'] ?? ''); ?></td>
+                                        <td style="min-width:260px;">
+                                            <?php echo renderWorkflowStrip($eval['status'] ?? '', $wf_labels, $wf_map); ?>
+                                        </td>
                                         <td class="text-end pe-3">
                                             <a href="<?php echo $view_url; ?>" class="btn btn-sm btn-outline-<?php echo $can_edit ? 'primary' : 'info'; ?>">
                                                 <i class="fas fa-<?php echo $can_edit ? 'edit' : 'eye'; ?> me-1"></i><?php echo $can_edit ? 'Continue' : 'View'; ?>

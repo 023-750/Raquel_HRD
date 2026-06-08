@@ -1130,19 +1130,7 @@ foreach ($all_pending as $row):
                     <?php
                     $can_edit_scores = in_array($row['eval_status'] ?? $row['status'] ?? '', ['Pending Supervisor', 'Pending HR Consolidation'], true) && ((int)($row['rank_category_id'] ?? 0) === 5 || getEmployeeHRRole($conn, $row['employee_id']) === 'HR Manager');
                     ?>
-                    <?php if ($can_edit_scores): ?>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-4 d-print-none eval-rating-toolbar">
-                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold btn-edit-ratings" onclick="toggleEditRatings(<?php echo $modal_eval_id; ?>)">
-                            <i class="fas fa-edit me-1"></i>Edit Ratings
-                        </button>
-                        <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold btn-save-ratings d-none" onclick="saveRatings(<?php echo $modal_eval_id; ?>)">
-                            <i class="fas fa-save me-1"></i>Save Changes
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold btn-cancel-ratings d-none" onclick="toggleEditRatings(<?php echo $modal_eval_id; ?>, true)">
-                            <i class="fas fa-times me-1"></i>Cancel
-                        </button>
-                    </div>
-                    <?php endif; ?>
+                    
 
                     <div class="eval-summary-header">
                         <div class="d-flex align-items-center gap-3">
@@ -1465,6 +1453,17 @@ foreach ($all_pending as $row):
                             <div class="form-text x-small text-danger">* Comments are required when returning an evaluation for revision.</div>
                         </div>
                         <div class="fixed-action-bar d-flex gap-2 justify-content-end">
+                            <?php if ($can_edit_scores): ?>
+                                <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold btn-edit-ratings" onclick="toggleEditRatings(<?php echo $modal_eval_id; ?>)">
+                                    <i class="fas fa-edit me-1"></i>Edit Ratings
+                                </button>
+                                <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold btn-save-ratings d-none" onclick="saveRatings(<?php echo $modal_eval_id; ?>)">
+                                    <i class="fas fa-save me-1"></i>Save Changes
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold btn-cancel-ratings d-none" onclick="toggleEditRatings(<?php echo $modal_eval_id; ?>, true)">
+                                    <i class="fas fa-times me-1"></i>Cancel
+                                </button>
+                            <?php endif; ?>
                             <button type="submit" name="action" value="return" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm">
                                 <i class="fas fa-undo me-2"></i>Return for Revision
                             </button>
@@ -1487,6 +1486,16 @@ document.addEventListener("DOMContentLoaded", function() {
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
+
+    // Enforce max rating of 4.00 on score input fields
+    document.querySelectorAll('.score-input').forEach(input => {
+        input.addEventListener('input', function() {
+            let val = parseFloat(this.value);
+            if (val > 4) {
+                this.value = "4.00";
+            }
+        });
+    });
 });
 
 function toggleEditRatings(evalId, cancel = false) {
@@ -1499,6 +1508,7 @@ function toggleEditRatings(evalId, cancel = false) {
     const editBtn = modal.querySelector('.btn-edit-ratings');
     const saveBtn = modal.querySelector('.btn-save-ratings');
     const cancelBtn = modal.querySelector('.btn-cancel-ratings');
+    const actionBtns = modal.querySelectorAll('.fixed-action-bar button:not(.btn-edit-ratings):not(.btn-save-ratings):not(.btn-cancel-ratings)');
 
     if (!inputs.length) {
         alert('No rating fields are available to edit for this evaluation.');
@@ -1522,6 +1532,7 @@ function toggleEditRatings(evalId, cancel = false) {
         if (editBtn) editBtn.classList.add('d-none');
         if (saveBtn) saveBtn.classList.remove('d-none');
         if (cancelBtn) cancelBtn.classList.remove('d-none');
+        actionBtns.forEach(btn => btn.classList.add('d-none'));
     } else {
         displays.forEach(d => d.classList.remove('d-none'));
         badgeAudits.forEach(b => b.classList.remove('d-none'));
@@ -1530,6 +1541,7 @@ function toggleEditRatings(evalId, cancel = false) {
         if (editBtn) editBtn.classList.remove('d-none');
         if (saveBtn) saveBtn.classList.add('d-none');
         if (cancelBtn) cancelBtn.classList.add('d-none');
+        actionBtns.forEach(btn => btn.classList.remove('d-none'));
     }
 }
 
