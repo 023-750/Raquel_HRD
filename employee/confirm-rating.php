@@ -1275,12 +1275,12 @@ require_once '../includes/header.php';
                             <?php else: ?>
                                 <div class="d-flex gap-2">
                                     <button type="submit" name="confirm_action" value="reject" class="btn btn-warning text-dark"
-                                            onclick="return confirm('Are you sure you want to reject this self-rating and forward to HR Supervisor? Comments/justification are required.');">
+                                            onclick="return confirm('Are you sure you want to reject this self-rating? It goes back to employee for revision. Comments/justification are required.');">
                                         <i class="fas fa-times-circle me-1"></i>Reject
                                     </button>
                                     <button type="submit" name="confirm_action" value="confirm_and_send" 
                                             class="btn btn-primary" id="submitBtn"
-                                            onclick="return confirm('Confirm this self-rating and send to HRD?');">
+                                            onclick="return confirm('Confirm this self-rating and send to branch manager?');">
                                         <i class="fas fa-check-circle me-2"></i>Confirm &amp; Send
                                     </button>
                                 </div>

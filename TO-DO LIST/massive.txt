@@ -15,6 +15,7 @@ department
 > General Services
 > Human resources
 > Information Technology
+> Marketing
 > Office of the President
 > Operations
 > Purchasing
@@ -152,6 +153,15 @@ Each department must have all employee positions:
 > Technical Support Staff IV (R&F)
 > Technical Support Staff V (R&F)
 
+-Marketing-
+> Marketing Manager I (Manager)
+> Marketing Manager II (Manager)
+> Marketing Staff I (R&F)
+> Marketing Staff II (R&F)
+> Marketing Staff on Probation (R&F)
+> Marketing Supervisor I (Supervisor)
+> Marketing Supervisor II (Supervisor)
+
 -Office of the President-
 > Executive Assistant I (R&F)
 > Executive Assistant II (R&F)
@@ -183,6 +193,3 @@ Each department must have all employee positions:
 
 
 each branch should have fictional employee based on positions!
-
-
-gawin mo bukas tanginamo
