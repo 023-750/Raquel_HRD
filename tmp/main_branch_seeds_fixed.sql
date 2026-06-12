@@ -51,10 +51,11 @@ REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middl
 (3211, 'AUD-012', 'Justin', 'Young', 'Jimenez', '2016-05-10', '1989-08-12', 'Manila, Metro Manila', 'Male', 'Married', 211, 'Auditor V', 2, 5, 102, 'Regular', 'Full-time', NULL),
 
 -- Business Development (Department 3)
-(4300, 'BD-001', 'William', 'King', 'Alvarez', '2015-04-01', '1981-05-20', 'Makati, Metro Manila', 'Male', 'Married', 300, 'Business Development Officer I', 3, 3, 102, 'Regular', 'Full-time', NULL),
+(4300, 'BD-001', 'William', 'King', 'Alvarez', '2015-04-01', '1981-05-20', 'Makati, Metro Manila', 'Male', 'Married', 300, 'Business Development Manager I', 3, 3, 102, 'Regular', 'Full-time', NULL),
 (4301, 'BD-002', 'Emily', 'Wright', 'Castillo', '2022-01-15', '1999-07-25', 'Quezon City, Metro Manila', 'Female', 'Single', 301, 'Business Development Staff on Training', 3, 5, 102, 'Trainee', 'Full-time', NULL),
 (4302, 'BD-003', 'Olivia', 'Scott', 'Ruiz', '2020-05-20', '1995-09-30', 'Pasig, Metro Manila', 'Female', 'Single', 302, 'Business Development Staff I', 3, 5, 102, 'Regular', 'Full-time', NULL),
 (4303, 'BD-004', 'Ethan', 'Green', 'Morales', '2019-08-10', '1993-11-05', 'Taguig, Metro Manila', 'Male', 'Married', 303, 'Business Development Staff II', 3, 5, 102, 'Regular', 'Full-time', NULL),
+(4304, 'BD-005', 'Camille', 'Navarro', 'Reyes', '2021-03-01', '1990-07-14', 'Quezon City, Metro Manila', 'Female', 'Single', 300, 'Business Development Manager I', 3, 3, 102, 'Regular', 'Full-time', NULL),
 
 -- Compliance (Department 4)
 (5400, 'COM-001', 'Thomas', 'Adams', 'Fernandez', '2016-02-01', '1983-03-15', 'Manila, Metro Manila', 'Male', 'Married', 400, 'Compliance Supervisor I', 4, 4, 102, 'Regular', 'Full-time', NULL),
@@ -228,6 +229,7 @@ REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, tele
 (4301, 'emily.wright@email.com', '09511234535', '042-373-4002'),
 (4302, 'olivia.scott@email.com', '09521234536', '042-373-4003'),
 (4303, 'ethan.green@email.com', '09531234537', '042-373-4004'),
+(4304, 'camille.navarro@email.com', '09541234648', '042-373-4005'),
 -- Compliance
 (5400, 'thomas.adams@email.com', '09541234538', '042-373-5001'),
 (5401, 'linda.baker@email.com', '09551234539', '042-373-5002'),
@@ -393,6 +395,7 @@ REPLACE INTO employee_details (employee_id, height_m, weight_kg, blood_type, cit
 (4301, 1.61, 53.0, 'A+', 'Filipino'),
 (4302, 1.64, 57.0, 'B+', 'Filipino'),
 (4303, 1.71, 72.0, 'O+', 'Filipino'),
+(4304, 1.65, 56.0, 'A+', 'Filipino'),
 -- Compliance
 (5400, 1.75, 77.0, 'A+', 'Filipino'),
 (5401, 1.66, 60.0, 'B+', 'Filipino'),
@@ -593,6 +596,10 @@ REPLACE INTO employee_education (employee_id, education_level, school_name, degr
 (4300, 'Secondary', 'Makati Science High School', NULL, '1997', NULL),
 (4300, 'College', 'University of the Philippines', 'BS Economics', '2001', NULL),
 (4300, 'Graduate Studies', 'Asian Institute of Management', 'MBA', '2007', NULL),
+(4304, 'Elementary', 'Quezon City Central School', NULL, '2002', NULL),
+(4304, 'Secondary', 'Quezon City Science High School', NULL, '2006', NULL),
+(4304, 'College', 'Ateneo de Manila University', 'BS Management', '2010', NULL),
+(4304, 'Graduate Studies', 'Asian Institute of Management', 'MBA', '2016', NULL),
 -- Compliance
 (5400, 'Elementary', 'Manila Central School', NULL, '1995', NULL),
 (5400, 'Secondary', 'Manila Science High School', NULL, '1999', NULL),
@@ -651,6 +658,8 @@ REPLACE INTO employee_work_experience (employee_id, date_from, date_to, job_titl
 -- Business Development
 (4300, '2001-07-01', '2008-12-31', 'Business Analyst', 'Metro Pacific Investments', 35000.00),
 (4300, '2009-01-01', '2015-03-31', 'Business Development Manager', 'JG Summit Holdings', 55000.00),
+(4304, '2010-07-01', '2016-02-28', 'Business Development Associate', 'SM Investments Corporation', 38000.00),
+(4304, '2016-03-01', '2021-02-28', 'Business Development Officer', 'Robinsons Land Corporation', 52000.00),
 -- Compliance
 (5400, '2003-08-01', '2010-12-31', 'Compliance Officer', 'BDO Unibank', 32000.00),
 (5400, '2011-01-01', '2016-01-31', 'Compliance Manager', 'Metrobank', 50000.00),
@@ -705,6 +714,9 @@ REPLACE INTO employee_trainings (employee_id, training_title, conducted_by, no_o
 (4300, 'Strategic Business Development', 'Asian Institute of Management', 40.0),
 (4300, 'Market Analysis and Feasibility Studies', 'Philippine Chamber of Commerce', 32.0),
 (4300, 'Negotiation Skills for Business Leaders', 'Harvard Business Publishing', 24.0),
+(4304, 'Business Development Strategies', 'Asian Institute of Management', 36.0),
+(4304, 'Strategic Partnership Management', 'Philippine Chamber of Commerce', 24.0),
+(4304, 'Project Feasibility and Investment Analysis', 'Management Association of the Philippines', 20.0),
 -- Compliance
 (5400, 'Regulatory Compliance Management', 'Bangko Sentral ng Pilipinas', 32.0),
 (5400, 'Anti-Money Laundering Act Implementation', 'AMLC Philippines', 24.0),
@@ -793,6 +805,9 @@ REPLACE INTO employee_skills (employee_id, skill_name) VALUES
 (4300, 'Market Research'),
 (4300, 'Business Analysis'),
 (4300, 'Partnership Development'),
+(4304, 'Business Development'),
+(4304, 'Strategic Planning'),
+(4304, 'Client Relations'),
 (5400, 'Regulatory Compliance'),
 (5400, 'Policy Development'),
 (5400, 'Legal Research'),
@@ -854,6 +869,8 @@ REPLACE INTO employee_memberships (employee_id, organization_name) VALUES
 (3200, 'Institute of Internal Auditors - Philippines'),
 (3201, 'Philippine Institute of Certified Public Accountants'),
 (4300, 'Philippine Chamber of Commerce and Industry'),
+(4304, 'Philippine Chamber of Commerce and Industry'),
+(4304, 'Management Association of the Philippines'),
 (5400, 'Integrated Bar of the Philippines'),
 (5400, 'Compliance Officers Association of the Philippines'),
 (6500, 'Philippine Institute of Certified Public Accountants'),
@@ -909,6 +926,7 @@ REPLACE INTO employee_disclosures (employee_id, is_related_to_company, has_admin
 (4301, 0, 0, 0, 0, 0, 0, 0, 0, 0),
 (4302, 0, 0, 0, 0, 0, 0, 0, 0, 0),
 (4303, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+(4304, 0, 0, 0, 0, 0, 0, 0, 0, 0),
 (5400, 0, 0, 0, 0, 0, 0, 0, 0, 0),
 (5401, 0, 0, 0, 0, 0, 0, 0, 0, 0),
 (5402, 0, 0, 0, 0, 0, 0, 0, 0, 0),
@@ -969,6 +987,7 @@ REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number
 (4301, '36-5234567-2', '12-523456805-4', '5234-5681-9012', '523-456-805-004'),
 (4302, '36-6234567-3', '12-623456806-5', '6234-5681-9012', '623-456-806-005'),
 (4303, '36-7234567-4', '12-723456807-6', '7234-5681-9012', '723-456-807-006'),
+(4304, '36-8234567-5', '12-823456808-6', '8234-5682-9012', '823-456-808-007'),
 (5400, '36-8234567-5', '12-823456808-7', '8234-5681-9012', '823-456-808-007'),
 (5401, '36-9234567-6', '12-923456809-8', '9234-5681-9012', '923-456-809-008'),
 (5402, '37-0234567-7', '12-023456810-9', '0234-5681-9013', '023-456-810-009'),
@@ -1029,6 +1048,7 @@ REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationshi
 (4301, 'Robert Castillo Wright', 'Father', '09511111145'),
 (4302, 'Thomas Ruiz Scott', 'Father', '09521111146'),
 (4303, 'Linda Morales Green', 'Spouse', '09531111147'),
+(4304, 'Jose Antonio Navarro', 'Father', '09541111248'),
 (5400, 'Barbara Fernandez Adams', 'Spouse', '09541111148'),
 (5401, 'James Navarro Baker', 'Spouse', '09551111149'),
 (5402, 'Richard Castro Nelson', 'Father', '09561111150'),

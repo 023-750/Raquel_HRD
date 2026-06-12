@@ -11,6 +11,7 @@ $per_page = 5;
 $current_page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($current_page - 1) * $per_page;
 $selected_department = isset($_GET['department']) && $_GET['department'] !== '' ? max(0, (int)$_GET['department']) : 0;
+$selected_position   = isset($_GET['position'])   && $_GET['position']   !== '' ? trim($_GET['position'])   : '';
 
 $department_options = $conn->query("
     SELECT department_id, department_name
@@ -18,6 +19,29 @@ $department_options = $conn->query("
     WHERE is_active = 1 AND deleted_at IS NULL
     ORDER BY department_name
 ");
+
+$position_options = $conn->query("
+    SELECT DISTINCT job_title
+    FROM employees
+    WHERE job_title IS NOT NULL AND job_title <> ''
+      AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
+    ORDER BY job_title
+");
+
+// Build a dept_id → [job_titles] map for JS-driven filtering
+$positions_by_dept_result = $conn->query("
+    SELECT DISTINCT department_id, job_title
+    FROM employees
+    WHERE job_title IS NOT NULL AND job_title <> ''
+      AND department_id IS NOT NULL
+      AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
+    ORDER BY department_id, job_title
+");
+$positions_by_dept = [];
+while ($row = $positions_by_dept_result->fetch_assoc()) {
+    $positions_by_dept[(int)$row['department_id']][] = $row['job_title'];
+}
+$positions_by_dept_json = json_encode($positions_by_dept, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT);
 
 $hr_exists_condition = "EXISTS (
     SELECT 1
@@ -53,6 +77,11 @@ $base_where = "
 
 if ($selected_department > 0) {
     $base_where .= " AND e.department_id = $selected_department";
+}
+
+if ($selected_position !== '') {
+    $safe_position = $conn->real_escape_string($selected_position);
+    $base_where .= " AND e.job_title = '$safe_position'";
 }
 
 // Count all employees shown in this page
@@ -197,8 +226,8 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
         <h5 class="mb-0"><i class="fas fa-user-lock me-2"></i>Portal Account Status</h5>
         <div class="d-flex align-items-center justify-content-end gap-2 flex-wrap ms-auto" style="flex: 1 1 420px;">
-            <form method="GET" class="mb-0">
-                <select class="form-select form-select-sm" id="department_filter" name="department" onchange="this.form.submit()" aria-label="Filter portal accounts by department" style="width: 220px;">
+            <form method="GET" class="mb-0 d-flex align-items-center gap-2 flex-wrap">
+                <select class="form-select form-select-sm" id="department_filter" name="department" aria-label="Filter portal accounts by department" style="width: 200px;">
                     <option value="">All Departments</option>
                     <?php while ($department = $department_options->fetch_assoc()): ?>
                         <option value="<?php echo (int) $department['department_id']; ?>" <?php echo $selected_department === (int) $department['department_id'] ? 'selected' : ''; ?>>
@@ -206,6 +235,19 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                         </option>
                     <?php endwhile; ?>
                 </select>
+                <select class="form-select form-select-sm" id="position_filter" name="position" aria-label="Filter portal accounts by position" style="width: 200px;">
+                    <option value="">All Positions</option>
+                    <?php while ($pos = $position_options->fetch_assoc()): ?>
+                        <option value="<?php echo e($pos['job_title']); ?>" <?php echo $selected_position === $pos['job_title'] ? 'selected' : ''; ?>>
+                            <?php echo e($pos['job_title']); ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+                <?php if ($selected_department > 0 || $selected_position !== ''): ?>
+                    <a href="employee-accounts.php" class="btn btn-sm btn-outline-secondary" title="Clear filters">
+                        <i class="fas fa-times me-1"></i>Clear
+                    </a>
+                <?php endif; ?>
             </form>
             <div class="search-box" style="min-width: 240px; flex: 1 1 240px; max-width: 320px;">
                 <i class="fas fa-search search-icon"></i>
@@ -408,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                     <input type="hidden" name="full_name" id="modal_full_name">
                     <input type="hidden" name="email" id="modal_email">
                     <input type="hidden" name="role" value="Employee">
-                    <input type="hidden" name="redirect" value="employee-accounts.php?page=<?php echo $current_page; ?><?php echo $selected_department > 0 ? '&department=' . (int) $selected_department : ''; ?>">
+                    <input type="hidden" name="redirect" value="employee-accounts.php?page=<?php echo $current_page; ?><?php echo $selected_department > 0 ? '&department=' . (int) $selected_department : ''; ?><?php echo $selected_position !== '' ? '&position=' . urlencode($selected_position) : ''; ?>">
                     
                     <!-- Employee Badge Info -->
                     <div class="portal-emp-badge">
@@ -484,6 +526,56 @@ function filterTable(inputId, tableId) {
         tr[i].style.display = text.includes(filter) ? "" : "none";
     }
 }
+
+// ── Department ↔ Position filter coupling ────────────────────────────────────
+(function () {
+    const positionsByDept = <?php echo $positions_by_dept_json; ?>;
+    const deptSelect     = document.getElementById('department_filter');
+    const posSelect      = document.getElementById('position_filter');
+    const filterForm     = deptSelect.closest('form');
+    const currentPos     = <?php echo json_encode($selected_position); ?>;
+
+    function rebuildPositions(deptId, selectValue) {
+        // Collect the positions to show
+        let positions;
+        if (!deptId) {
+            // All departments — flatten all lists
+            positions = Object.values(positionsByDept)
+                .flat()
+                .filter((v, i, a) => a.indexOf(v) === i)
+                .sort((a, b) => a.localeCompare(b));
+        } else {
+            positions = positionsByDept[deptId] || [];
+        }
+
+        // Rebuild options
+        posSelect.innerHTML = '<option value="">All Positions</option>';
+        positions.forEach(pos => {
+            const opt = document.createElement('option');
+            opt.value = pos;
+            opt.textContent = pos;
+            if (pos === selectValue) opt.selected = true;
+            posSelect.appendChild(opt);
+        });
+    }
+
+    // On department change: rebuild positions, clear stale position, submit
+    deptSelect.addEventListener('change', function () {
+        const deptId = this.value ? parseInt(this.value) : null;
+        rebuildPositions(deptId, '');   // reset position selection
+        filterForm.submit();
+    });
+
+    // On position change: just submit
+    posSelect.addEventListener('change', function () {
+        filterForm.submit();
+    });
+
+    // On page load: rebuild positions to match current department
+    // (so the dropdown shows only relevant options even on a fresh load)
+    const initDept = deptSelect.value ? parseInt(deptSelect.value) : null;
+    rebuildPositions(initDept, currentPos);
+})();
 </script>
 
 <?php require_once '../includes/footer.php'; ?>
