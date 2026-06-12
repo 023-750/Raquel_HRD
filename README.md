@@ -1,67 +1,103 @@
-Employee Portal – Evaluation Flow Issues and Required Changes
-1. Evaluation Approval Flow Based on Employee Rank
+# Raquel Pawnshop HRD System
 
-The evaluation routing should be determined by the employee's position/rank.
+A web-based **Human Resource Department (HRD) Management System** built for Raquel Pawnshop. The system centralizes employee records, performance evaluations, and career movement workflows across the organization's branches and departments, with dedicated portals for each user role.
 
-Example: Supervisor-Level Employees
+## Overview
 
-If an employee holds a Supervisor position, their self-rating evaluation must not be routed to another Supervisor for approval. Instead, it should be routed directly to their immediate higher-ranking manager.
+The system is a PHP/MySQL application that supports the full HR lifecycle:
 
-Expected Flow:
+- **Employee records management** with Personal Data Sheets (PDS)
+- **Performance evaluation** using configurable templates and criteria
+- **Career movement and progression** requests, endorsements, and approvals
+- **Organization management** for branches, departments, and positions
+- **Notifications, audit trails, analytics, and printable reports**
 
-Supervisor (Employee Self-Rating) → Branch/Department Manager → HR Supervisor → HR Manager (Final Approval)
+## User Roles & Portals
 
-2. Current Testing Scenario
+Each role has its own portal with role-specific features:
 
-Employee:
+### Admin (`/admin`)
+- Manage system users and employee portal accounts (add, edit, deactivate)
+- View members and employee accounts
+- System configuration and database backup
+- Audit trail and notifications
 
-Sarah Miller
-Marketing Supervisor I
-Marketing Department
-Raquel Pawnshop Main Office
+### HR Manager (`/manager`)
+- Full employee management (add, edit, view employees)
+- Manage organization structure: branches, departments, and positions
+- Create, edit, and archive evaluation templates
+- Review PDS submissions and pending approvals
+- Track career movements and career progression
+- Analytics dashboard, evaluation history, and exportable/printable reports (evaluation and organization printouts, sample downloads)
+- Operation management, audit trail, and notifications
 
-Issue:
-When Sarah Miller submits her self-rating evaluation, the system routes the form to a Branch Supervisor for approval.
+### Supervisor (`/supervisor`)
+- View and edit employees within their scope
+- Handle pending endorsements for career movements
+- Track career movements and progression
+- View evaluation templates and evaluation history
+- Analytics, reports, roster export, audit trail, and notifications
 
-Expected Behavior:
-Since Sarah Miller is already a Supervisor, the evaluation should be routed directly to:
+### HR Staff (`/staff`)
+- Search and view employee records
+- View evaluation templates and criteria
+- Track career movements and evaluation history
+- Notifications and profile settings
 
-Marcus Reyes
+### Employee (`/employee`)
+- Personal dashboard with notifications
+- Fill out and update Personal Data Sheet via a step-by-step **PDS wizard**
+- View employment details ("My Employment")
+- Perform **self-rating** evaluations and confirm ratings
+- View completed ratings and department manager reviews
+- Submit career movement requests
+- Profile settings
 
-Marketing Manager I
-Marketing Department
-Raquel Pawnshop Main Office
+## Performance Evaluation Workflow
 
-The approval flow should follow:
+1. HR Manager creates an evaluation template with criteria.
+2. Employee completes a self-rating.
+3. Supervisor/Department Manager reviews and rates the employee.
+4. Employee confirms the final rating.
+5. Results are stored in evaluation history and available in reports and printouts.
 
-Sarah Miller (Self-Rating) → Marcus Reyes (Marketing Manager I) → HR Supervisor → HR Manager (Final Approval)
+## Project Structure
 
-3. Human Resources Department Exception
+```
+├── admin/            # Admin portal (users, accounts, backup, audit trail)
+├── manager/          # HR Manager portal (employees, org structure, templates, reports)
+├── supervisor/       # Supervisor portal (endorsements, evaluations, rosters)
+├── staff/            # HR Staff portal (employee search, templates, history)
+├── employee/         # Employee portal (PDS, self-rating, career requests)
+├── new_login_page/   # Redesigned login page
+├── includes/         # Shared PHP includes (auth, helpers, layout)
+├── config/           # Configuration (database connection)
+├── database/         # SQL setup and seed scripts
+├── assets/           # CSS, JavaScript, images
+├── index.php         # Entry point / login
+└── logout.php        # Session logout
+```
 
-Employees who belong exclusively to the Human Resources Department at the Main Branch/Main Office should be excluded from the standard branch approval hierarchy.
+## Database Setup
 
-Their evaluation workflow should follow a separate HR-specific approval process as defined by management.
+Run the SQL scripts in `database/` in order:
 
-4. Evaluation Status Monitoring Issue
+1. `1st_setup_tables.sql` – creates all tables
+2. `2nd_seed_organization.sql` – seeds branches, departments, and positions
+3. `3rd_HRD_ADMIN.sql` – creates the HRD admin account
+4. `4th_seed_accounts_.sql` – seeds user accounts
+5. `5th_seed_it_agdangan.sql` – seeds IT Agdangan data
+6. `seed_evaluation.sql` – seeds evaluation templates and criteria
 
-The Employee Portal → Evaluation Status page does not display evaluations that are currently in the Self-Rating stage.
+## Tech Stack
 
-This is a critical issue because employees and administrators cannot monitor evaluations that have been started but not yet submitted for approval.
+- **Backend:** PHP
+- **Database:** MySQL / MariaDB
+- **Frontend:** HTML, CSS, JavaScript (AJAX for dynamic portal interactions)
 
-Expected Behavior:
-The Evaluation Status page should display all evaluation records, including those currently in:
+## Getting Started
 
-Self-Rating
-Pending Manager Approval
-Pending HR Supervisor Approval
-Pending HR Manager Approval
-Approved/Completed
-
-This will provide complete visibility and tracking of the evaluation process.
-
-Summary of Required Fixes
-Route evaluations based on employee rank/position hierarchy.
-Supervisor-level employees should submit directly to their respective Manager, not another Supervisor.
-Sarah Miller's evaluation should be routed to Marcus Reyes (Marketing Manager I).
-Exclude Main Office Human Resources employees from the standard branch approval workflow.
-Display Self-Rating evaluations in the Evaluation Status page for proper monitoring and tracking.
+1. Clone the repository into your web server directory (e.g., XAMPP `htdocs`).
+2. Create a MySQL database and run the scripts in `database/` in the order listed above.
+3. Update the database credentials in `config/database.php`.
+4. Open the app in your browser and log in with the seeded admin account.
