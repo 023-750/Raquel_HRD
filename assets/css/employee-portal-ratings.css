@@ -1,0 +1,172 @@
+/**
+ * Employee Portal Rating Components
+ * 
+ * Rating interface for self-rating and 360-evaluation pages
+ */
+
+/* ===== RATING ITEM STRUCTURE ===== */
+
+.rating-item {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.rating-header {
+  margin-bottom: var(--space-lg);
+}
+
+.rating-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-sm);
+}
+
+.rating-description {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: var(--line-height-base);
+}
+
+/* ===== RATING SCALE ===== */
+
+.rating-scale {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.rating-option {
+  position: relative;
+}
+
+.rating-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.rating-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: 56px;
+  padding: var(--space-md);
+  background: var(--color-bg-secondary);
+  border: 2px solid var(--color-border-light);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.rating-number {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-border-medium);
+  border-radius: 50%;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-primary);
+  transition: all var(--transition-fast);
+}
+
+.rating-text {
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+/* Hover state */
+.rating-label:hover {
+  background: var(--color-bg-primary);
+  border-color: var(--color-primary);
+  transform: translateX(4px);
+  box-shadow: var(--shadow-sm);
+}
+
+.rating-label:hover .rating-number {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Focus state */
+.rating-input:focus + .rating-label {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(8, 46, 6, 0.15);
+}
+
+/* Checked state */
+.rating-input:checked + .rating-label {
+  background: rgba(8, 46, 6, 0.08);
+  border-color: var(--color-primary);
+  font-weight: 600;
+}
+
+.rating-input:checked + .rating-label .rating-number {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+  position: relative;
+}
+
+/* Checkmark animation */
+.rating-input:checked + .rating-label .rating-number::after {
+  content: "✓";
+  position: absolute;
+  font-size: 1.5rem;
+  color: white;
+  animation: checkmark-pop 0.3s ease-in-out;
+}
+
+@keyframes checkmark-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Mobile: Reduce height */
+@media (max-width: 767px) {
+  .rating-label {
+    min-height: 48px;
+  }
+  
+  .rating-item {
+    padding: var(--space-md);
+  }
+}
+
+/* ===== RATING SECTION GROUPS ===== */
+
+.rating-section {
+  margin-bottom: var(--space-2xl);
+}
+
+.rating-section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-lg);
+  padding-bottom: var(--space-sm);
+  border-bottom: 2px solid var(--color-border-light);
+}

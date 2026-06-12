@@ -53,6 +53,8 @@ if ($filter === 'direct') {
                e.profile_picture, e.reports_to,
                d.department_name, b.branch_name,
                rc.rank_name,
+               u.email,
+               ec.mobile_number, ec.telephone_number,
                (SELECT ev.status
                 FROM evaluations ev
                 WHERE ev.employee_id = e.employee_id
@@ -77,6 +79,8 @@ if ($filter === 'direct') {
         LEFT JOIN departments  d  ON e.department_id      = d.department_id
         LEFT JOIN branches     b  ON e.branch_id          = b.branch_id
         LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
+        LEFT JOIN users        u  ON u.employee_id        = e.employee_id
+        LEFT JOIN employee_contacts ec ON ec.employee_id  = e.employee_id
         WHERE e.reports_to = ?
           AND e.is_active  = 1
           AND e.deleted_at IS NULL
@@ -98,6 +102,8 @@ if ($filter === 'direct') {
                e.profile_picture, e.reports_to,
                d.department_name, b.branch_name,
                rc.rank_name,
+               u.email,
+               ec.mobile_number, ec.telephone_number,
                (SELECT ev.status
                 FROM evaluations ev
                 WHERE ev.employee_id = e.employee_id
@@ -122,6 +128,8 @@ if ($filter === 'direct') {
         LEFT JOIN departments  d  ON e.department_id      = d.department_id
         LEFT JOIN branches     b  ON e.branch_id          = b.branch_id
         LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
+        LEFT JOIN users        u  ON u.employee_id        = e.employee_id
+        LEFT JOIN employee_contacts ec ON ec.employee_id  = e.employee_id
         WHERE e.department_id = ?
           AND e.is_active     = 1
           AND e.deleted_at    IS NULL
@@ -195,6 +203,7 @@ require_once '../includes/header.php';
     transition: box-shadow .2s, transform .2s;
     position: relative;
     overflow: hidden;
+    min-height: 80px;
 }
 .member-card:hover {
     box-shadow: 0 8px 28px rgba(67,104,254,.11);
@@ -298,7 +307,10 @@ require_once '../includes/header.php';
     display: flex; gap: 6px;
 }
 .filter-tab {
-    padding: 6px 16px;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 16px;
     border-radius: 20px;
     font-size: .8rem;
     font-weight: 600;
@@ -340,16 +352,64 @@ require_once '../includes/header.php';
 /* ── Responsive grid ────────────────────────────────────────────────────── */
 .team-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: 1fr;
     gap: 16px;
 }
-@media (max-width: 576px) {
-    .team-grid { grid-template-columns: 1fr; }
+@media (min-width: 768px) {
+    .team-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 992px) {
+    .team-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 767px) {
     .member-card { padding: 1rem; gap: .75rem; }
     .member-avatar, .member-avatar-placeholder { width: 46px; height: 46px; }
     .score-circle { width: 46px; height: 46px; font-size: .75rem; }
     .team-hero-stat { padding: .6rem .75rem; min-width: 70px; }
     .team-hero-stat .stat-num { font-size: 1.4rem; }
+}
+
+/* ── Contact action buttons ─────────────────────────────────────────────── */
+.contact-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: .6rem;
+    flex-wrap: wrap;
+}
+.contact-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: .75rem;
+    font-weight: 600;
+    text-decoration: none;
+    gap: 4px;
+    transition: background .2s, color .2s, box-shadow .2s;
+    border: 1.5px solid transparent;
+}
+.contact-btn-email {
+    background: rgba(67,104,254,.08);
+    color: var(--primary-blue, #4368fe);
+    border-color: rgba(67,104,254,.2);
+}
+.contact-btn-email:hover {
+    background: var(--primary-blue, #4368fe);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(67,104,254,.25);
+}
+.contact-btn-call {
+    background: rgba(40,167,69,.08);
+    color: #28a745;
+    border-color: rgba(40,167,69,.2);
+}
+.contact-btn-call:hover {
+    background: #28a745;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(40,167,69,.2);
 }
 </style>
 
@@ -390,6 +450,14 @@ require_once '../includes/header.php';
     </div>
 </div>
 
+<!-- Breadcrumb navigation -->
+<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">My Team</li>
+    </ol>
+</nav>
+
 <!-- ── TOOLBAR ───────────────────────────────────────────────────────────── -->
 <div class="content-card fadeup mb-4" style="padding: 1rem 1.25rem;">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -398,7 +466,7 @@ require_once '../includes/header.php';
         <div class="filter-tab-group">
             <a href="?filter=all<?php echo $search ? '&search='.urlencode($search) : ''; ?>"
                class="filter-tab <?php echo $filter !== 'direct' ? 'active' : ''; ?>">
-                <i class="fas fa-users me-1"></i>All Dept
+                <i class="fas fa-users me-1"></i>All Team
             </a>
             <a href="?filter=direct<?php echo $search ? '&search='.urlencode($search) : ''; ?>"
                class="filter-tab <?php echo $filter === 'direct' ? 'active' : ''; ?>">
@@ -409,10 +477,12 @@ require_once '../includes/header.php';
         <!-- Search -->
         <form method="GET" action="" class="team-search-wrap" style="min-width: 220px; max-width: 320px; width: 100%;">
             <input type="hidden" name="filter" value="<?php echo e($filter); ?>">
-            <i class="fas fa-search"></i>
+            <i class="fas fa-search" aria-hidden="true"></i>
             <input type="text" class="form-control" name="search"
                    placeholder="Search name, position…"
                    value="<?php echo e($search); ?>"
+                   aria-label="Search team members by name or position"
+                   style="min-height: 48px;"
                    id="teamSearchInput">
         </form>
     </div>
@@ -482,12 +552,13 @@ foreach ($team as $member):
     [$eval_color, $eval_icon] = $eval_badge_map[$eval_status] ?? ['secondary', 'fa-circle'];
     $idx++;
 ?>
-    <div class="member-card">
+    <div class="member-card" role="article" aria-label="<?php echo e($full_name); ?>">
         <!-- Avatar -->
         <?php if ($has_avatar): ?>
             <img src="<?php echo $avatar_url; ?>?v=<?php echo time(); ?>"
                  alt="<?php echo e($full_name); ?>"
-                 class="member-avatar">
+                 class="member-avatar"
+                 loading="lazy">
         <?php else: ?>
             <div class="member-avatar-placeholder"
                  style="background: <?php echo $avatar_color; ?>;">
@@ -527,6 +598,48 @@ foreach ($team as $member):
                 <?php else: ?>
                     <span class="badge bg-light text-muted border" style="font-size:.68rem;">
                         <i class="fas fa-minus me-1"></i>No Evaluation Yet
+                    </span>
+                <?php endif; ?>
+            </div>
+
+            <!-- Contact actions (Req 12.2, 12.7) -->
+            <?php
+                $member_email = $member['email'] ?? null;
+                $member_phone = $member['mobile_number'] ?? ($member['telephone_number'] ?? null);
+            ?>
+            <div class="contact-actions" aria-label="Contact <?php echo e($full_name); ?>">
+                <?php if (!empty($member_email)): ?>
+                    <a href="mailto:<?php echo e($member_email); ?>"
+                       class="contact-btn contact-btn-email"
+                       title="Email <?php echo e($full_name); ?>"
+                       aria-label="Email <?php echo e($full_name); ?>">
+                        <i class="fas fa-envelope" aria-hidden="true"></i>
+                        <span>Email</span>
+                    </a>
+                <?php else: ?>
+                    <span class="contact-btn contact-btn-email"
+                          title="No email on record"
+                          style="opacity:.45;cursor:default;"
+                          aria-label="No email available for <?php echo e($full_name); ?>">
+                        <i class="fas fa-envelope" aria-hidden="true"></i>
+                        <span>Email</span>
+                    </span>
+                <?php endif; ?>
+                <?php if (!empty($member_phone)): ?>
+                    <a href="tel:<?php echo e(preg_replace('/\s+/', '', $member_phone)); ?>"
+                       class="contact-btn contact-btn-call"
+                       title="Call <?php echo e($full_name); ?>"
+                       aria-label="Call <?php echo e($full_name); ?>">
+                        <i class="fas fa-phone" aria-hidden="true"></i>
+                        <span>Call</span>
+                    </a>
+                <?php else: ?>
+                    <span class="contact-btn contact-btn-call"
+                          title="No phone on record"
+                          style="opacity:.45;cursor:default;"
+                          aria-label="No phone available for <?php echo e($full_name); ?>">
+                        <i class="fas fa-phone" aria-hidden="true"></i>
+                        <span>Call</span>
                     </span>
                 <?php endif; ?>
             </div>

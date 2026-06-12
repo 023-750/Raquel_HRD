@@ -1,0 +1,255 @@
+/**
+ * Employee Portal Card Components
+ * 
+ * Stat cards for dashboard and generic content cards
+ */
+
+/* ===== STAT CARD (DASHBOARD) ===== */
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  min-height: 100px;
+  padding: var(--space-lg);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-icon {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  font-size: 2rem;
+}
+
+.stat-icon-success {
+  background: rgba(15, 107, 46, 0.1);
+  color: var(--color-success);
+}
+
+.stat-icon-warning {
+  background: rgba(127, 92, 0, 0.1);
+  color: var(--color-warning);
+}
+
+.stat-icon-info {
+  background: rgba(6, 95, 115, 0.1);
+  color: var(--color-info);
+}
+
+.stat-icon-danger {
+  background: rgba(153, 27, 27, 0.1);
+  color: var(--color-danger);
+}
+
+.stat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: var(--line-height-tight);
+  margin: 0 0 var(--space-xs);
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.stat-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/* Mobile: Stack icon and content vertically */
+@media (max-width: 767px) {
+  .stat-card {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+/* ===== CONTENT CARD (GENERIC) ===== */
+
+.content-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-lg);
+  overflow: hidden;
+}
+
+.content-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--color-border-light);
+  background: var(--color-bg-secondary);
+}
+
+.content-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.content-card-title i {
+  color: var(--color-primary-light);
+  font-size: 1.75rem;
+}
+
+.content-card-body {
+  padding: var(--space-lg);
+}
+
+/* Mobile: Reduce padding */
+@media (max-width: 767px) {
+  .content-card-header,
+  .content-card-body {
+    padding: var(--space-md);
+  }
+  
+  .content-card-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* ===== STATUS BADGES — DUAL SIGNALING (Req 6.6, 14.3) ===== */
+/*
+ * All status badges use BOTH color AND an icon or text label.
+ * Color alone is never used to convey status (WCAG SC 1.4.1 / Req 4.6).
+ * Icon is aria-hidden; the visible text label carries semantic meaning.
+ */
+
+/* Override Bootstrap badge colours with WCAG AAA compliant portal variables */
+.badge.bg-success,
+.status-badge-success {
+  background-color: rgba(15, 107, 46, 0.12) !important;
+  color: var(--color-success) !important;
+  border: 1px solid var(--color-success);
+}
+
+.badge.bg-warning,
+.status-badge-warning {
+  background-color: rgba(127, 92, 0, 0.12) !important;
+  color: var(--color-warning) !important;
+  border: 1px solid var(--color-warning);
+}
+
+.badge.bg-danger,
+.status-badge-danger {
+  background-color: rgba(153, 27, 27, 0.12) !important;
+  color: var(--color-danger) !important;
+  border: 1px solid var(--color-danger);
+}
+
+.badge.bg-info,
+.status-badge-info {
+  background-color: rgba(6, 95, 115, 0.12) !important;
+  color: var(--color-info) !important;
+  border: 1px solid var(--color-info);
+}
+
+.badge.bg-primary,
+.status-badge-primary {
+  background-color: rgba(8, 46, 6, 0.12) !important;
+  color: var(--color-primary) !important;
+  border: 1px solid var(--color-primary);
+}
+
+.badge.bg-secondary,
+.status-badge-secondary {
+  background-color: rgba(94, 107, 92, 0.12) !important;
+  color: var(--color-text-secondary) !important;
+  border: 1px solid var(--color-border-medium);
+}
+
+/* Ensure icon inside badge has no extra margin issues */
+.badge i,
+.status-badge i {
+  font-size: 0.75em;
+  vertical-align: middle;
+}
+
+/* Hero banner employment status badge — white-on-dark context */
+.page-hero .badge {
+  /* Inherits inline styles; ensure icon is visible */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ===== STATUS INDICATOR VARIANTS (semantic color classes) ===== */
+/*
+ * Named semantic colour variants for direct use in templates.
+ * Each variant pairs a background tint, border, and text colour
+ * from the WCAG AAA compliant palette in employee-portal-variables.css.
+ */
+
+/* Success — completed, approved, regular employment */
+.status-success {
+  --status-bg:     rgba(15, 107, 46, 0.10);
+  --status-border: var(--color-success);
+  --status-text:   var(--color-success);
+}
+
+/* Warning — pending, probationary, in-progress, due soon */
+.status-warning {
+  --status-bg:     rgba(127, 92, 0, 0.10);
+  --status-border: var(--color-warning);
+  --status-text:   var(--color-warning);
+}
+
+/* Danger — rejected, overdue, error, critical */
+.status-danger {
+  --status-bg:     rgba(153, 27, 27, 0.10);
+  --status-border: var(--color-danger);
+  --status-text:   var(--color-danger);
+}
+
+/* Info — in-review, dept manager, informational */
+.status-info {
+  --status-bg:     rgba(6, 95, 115, 0.10);
+  --status-border: var(--color-info);
+  --status-text:   var(--color-info);
+}
+
+/* Apply variant tokens to a .status-badge element */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--status-border, var(--color-border-medium));
+  background: var(--status-bg, var(--color-bg-secondary));
+  color: var(--status-text, var(--color-text-secondary));
+  letter-spacing: var(--letter-spacing-base);
+}

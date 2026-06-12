@@ -1,0 +1,33 @@
+/**
+ * Employee Portal Critical CSS — Inlined for above-the-fold render
+ * Task 24.4: Inline critical CSS to achieve <2s first render
+ *
+ * Contains only the styles needed for the page-hero, main-content wrapper,
+ * sidebar skeleton, and body base — everything visible before scroll.
+ *
+ * This file should be <style> inlined in <head> for Employee pages.
+ * All other CSS loads async via <link rel="stylesheet">.
+ */
+
+/* Base reset */
+*,*::before,*::after{box-sizing:border-box;max-width:100%;}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-size:1.1rem;line-height:1.5;color:#1C271B;background:#F4F6F2;}
+
+/* Skip nav — hidden until focused */
+.skip-navigation{position:absolute;top:-100px;left:0;background:#082E06;color:#fff;padding:.75rem 1.5rem;text-decoration:none;font-weight:600;z-index:10000;border-radius:0 0 8px 0;}
+.skip-navigation:focus{top:0;}
+
+/* Sidebar placeholder (prevents layout shift) */
+@media(min-width:768px){
+  .main-content{margin-left:260px;padding:1.5rem;}
+}
+@media(max-width:767px){
+  .main-content{padding:1rem;}
+  body{padding-bottom:64px;}
+}
+
+/* Page hero base */
+.page-hero{background:linear-gradient(135deg,#082E06 0%,#041D03 100%);padding:1.5rem;border-radius:0 0 16px 16px;color:#fff;margin-bottom:1.5rem;}
+
+/* Prevent invisible content flash */
+.fadeup{opacity:1;}

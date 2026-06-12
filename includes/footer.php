@@ -134,6 +134,15 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
             </a>
         <?php endif; ?>
 
+        <a href="<?php echo BASE_URL; ?>/employee/notifications.php" class="nav-item <?php echo ($curr_p === 'notifications.php') ? 'active' : ''; ?>" aria-label="Notifications<?php echo $m_notif_count > 0 ? ', ' . $m_notif_count . ' unread' : ''; ?>">
+            <div class="position-relative">
+                <i class="fas fa-bell nav-icon"></i>
+                <?php if ($m_notif_count > 0): ?>
+                    <span class="badge-dot" style="font-size:0.85rem;" aria-hidden="true"><?php echo $m_notif_count > 9 ? '9+' : $m_notif_count; ?></span>
+                <?php endif; ?>
+            </div>
+            <span class="nav-label">Alerts</span>
+        </a>
     </nav>
 
 
@@ -158,5 +167,11 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/zebra-stripe.js?v=<?php echo time(); ?>"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/main.js?v=<?php echo time(); ?>"></script>
+<?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'): ?>
+<!-- Employee Portal UX JS utilities — deferred for performance -->
+<script src="<?php echo BASE_URL; ?>/assets/js/auto-save.js?v=<?php echo time(); ?>" defer></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js?v=<?php echo time(); ?>" defer></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/employee-portal-feedback.js?v=<?php echo time(); ?>" defer></script>
+<?php endif; ?>
 </body>
 </html>

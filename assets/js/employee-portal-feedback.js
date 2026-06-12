@@ -1,0 +1,298 @@
+/**
+ * Employee Portal Visual Feedback System
+ * Tasks 22.1–22.3: Touch feedback, loading indicators, toast messages
+ * Tasks 23.1–23.4: Accessibility — focus, keyboard nav, ARIA
+ *
+ * Requirements: 15.1–15.7, 20.1–20.8
+ */
+
+(function () {
+  'use strict';
+
+  /* ================================================================
+     ARIA LIVE ANNOUNCER (Req 20.8)
+     Screen readers announce dynamic changes via this hidden region
+  ================================================================ */
+  var announcer = document.getElementById('ep-announcer');
+  if (!announcer) {
+    announcer = document.createElement('div');
+    announcer.id = 'ep-announcer';
+    announcer.setAttribute('aria-live', 'polite');
+    announcer.setAttribute('aria-atomic', 'true');
+    document.body.appendChild(announcer);
+  }
+
+  function announce(message, urgency) {
+    announcer.setAttribute('aria-live', urgency === 'assertive' ? 'assertive' : 'polite');
+    announcer.textContent = '';
+    // Small delay so screen reader picks up the change
+    setTimeout(function () {
+      announcer.textContent = message;
+    }, 50);
+  }
+
+  /* ================================================================
+     TOAST NOTIFICATION SYSTEM (Req 15.3, 15.4)
+     showToast(message, type, duration)
+       type: 'success' | 'error' | 'warning' | 'info'
+       duration: ms (0 = persistent, must be dismissed)
+  ================================================================ */
+  var toastContainer = null;
+
+  function getToastContainer() {
+    if (!toastContainer) {
+      toastContainer = document.querySelector('.toast-container');
+    }
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.className = 'toast-container';
+      toastContainer.setAttribute('aria-live', 'polite');
+      toastContainer.setAttribute('aria-atomic', 'false');
+      toastContainer.setAttribute('role', 'region');
+      toastContainer.setAttribute('aria-label', 'Notifications');
+      document.body.appendChild(toastContainer);
+    }
+    return toastContainer;
+  }
+
+  var iconMap = {
+    success : '✓',
+    error   : '⚠',
+    warning : '⚠',
+    info    : 'ℹ'
+  };
+
+  var labelMap = {
+    success : 'Success',
+    error   : 'Error',
+    warning : 'Warning',
+    info    : 'Information'
+  };
+
+  function showToast(message, type, duration) {
+    type     = type     || 'success';
+    duration = (duration === undefined) ? (type === 'error' ? 0 : 3000) : duration;
+
+    var toast = document.createElement('div');
+    toast.className = 'toast toast-' + type;
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.setAttribute('aria-label', labelMap[type] + ': ' + message);
+    toast.innerHTML =
+      '<span class="toast-icon" aria-hidden="true">' + (iconMap[type] || '•') + '</span>' +
+      '<div class="toast-content"><p class="toast-message">' + message + '</p></div>' +
+      '<button class="toast-close" aria-label="Dismiss notification">×</button>';
+
+    toast.querySelector('.toast-close').addEventListener('click', function () {
+      removeToast(toast);
+    });
+
+    getToastContainer().appendChild(toast);
+
+    // Announce to screen readers
+    announce(labelMap[type] + ': ' + message, type === 'error' ? 'assertive' : 'polite');
+
+    if (duration > 0) {
+      setTimeout(function () { removeToast(toast); }, duration);
+    }
+
+    return toast;
+  }
+
+  function removeToast(toast) {
+    if (!toast || !toast.parentNode) return;
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    toast.style.transition = 'opacity 0.3s, transform 0.3s';
+    setTimeout(function () {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 320);
+  }
+
+  // Expose globally
+  window.showToast = showToast;
+  window.epAnnounce = announce;
+
+  /* ================================================================
+     HAPTIC FEEDBACK (Req 15.7)
+     Vibrates device (if supported) on important actions
+  ================================================================ */
+  function vibrate(pattern) {
+    if (navigator.vibrate) {
+      navigator.vibrate(pattern || 50);
+    }
+  }
+
+  // Attach haptic to elements with class .haptic-feedback
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('.haptic-feedback, [data-haptic]');
+    if (el) {
+      var pattern = el.dataset.haptic ? parseInt(el.dataset.haptic) : 50;
+      vibrate(pattern);
+    }
+  });
+
+  // Apply haptic to all submit buttons automatically
+  document.querySelectorAll('button[type="submit"], .btn-primary, .btn-danger').forEach(function (btn) {
+    btn.classList.add('haptic-feedback');
+  });
+
+  /* ================================================================
+     FORM SUBMIT LOADING STATE (Req 15.2)
+     Disables submit button + shows spinner on form submit
+  ================================================================ */
+  document.querySelectorAll('form').forEach(function (form) {
+    form.addEventListener('submit', function () {
+      var submitBtns = form.querySelectorAll('[type="submit"]');
+      submitBtns.forEach(function (btn) {
+        // Only disable if not already loading (prevents double-fire)
+        if (!btn.classList.contains('is-loading')) {
+          btn.classList.add('is-loading');
+          btn.disabled = true;
+          btn.setAttribute('aria-busy', 'true');
+        }
+      });
+    });
+  });
+
+  /* ================================================================
+     SKIP NAVIGATION (Req 20.4)
+     Ensure skip-nav link is functional
+  ================================================================ */
+  var skipLink = document.querySelector('.skip-navigation');
+  if (skipLink) {
+    skipLink.addEventListener('click', function (e) {
+      var target = document.querySelector(skipLink.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.setAttribute('tabindex', '-1');
+        target.focus();
+      }
+    });
+  }
+
+  /* ================================================================
+     KEYBOARD NAVIGATION ENHANCEMENTS (Req 20.2, 20.3)
+     Enter/Space on non-button interactive elements
+  ================================================================ */
+  document.addEventListener('keydown', function (e) {
+    var el = e.target;
+
+    // Enter or Space activates div/span with role=button or tabindex
+    if ((e.key === 'Enter' || e.key === ' ') &&
+        (el.getAttribute('role') === 'button' ||
+         (el.getAttribute('tabindex') === '0' && !['INPUT','BUTTON','A','SELECT','TEXTAREA'].includes(el.tagName)))) {
+      e.preventDefault();
+      el.click();
+    }
+
+    // Escape closes any open dropdown or modal
+    if (e.key === 'Escape') {
+      var openDropdown = document.querySelector('.dropdown-menu.show');
+      if (openDropdown) {
+        var toggle = openDropdown.previousElementSibling;
+        openDropdown.classList.remove('show');
+        if (toggle) toggle.focus();
+      }
+    }
+  });
+
+  /* ================================================================
+     LAZY IMAGE LOADING POLYFILL (Req 19.3)
+     IntersectionObserver for browsers lacking native lazy loading
+  ================================================================ */
+  if ('IntersectionObserver' in window) {
+    var imgObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          var img = entry.target;
+          if (img.dataset.src) {
+            img.src = img.dataset.src;
+            img.removeAttribute('data-src');
+          }
+          imgObserver.unobserve(img);
+        }
+      });
+    }, { rootMargin: '200px' });
+
+    document.querySelectorAll('img[data-src]').forEach(function (img) {
+      imgObserver.observe(img);
+    });
+  } else {
+    // Fallback: load all data-src images immediately
+    document.querySelectorAll('img[data-src]').forEach(function (img) {
+      img.src = img.dataset.src;
+    });
+  }
+
+  /* ================================================================
+     ARIA CURRENT PAGE — auto-set on navigation links (Req 20.6)
+  ================================================================ */
+  var currentPath = window.location.pathname.split('/').pop() || 'index.php';
+  document.querySelectorAll('.sidebar-link, .bottom-nav-item').forEach(function (link) {
+    var href = link.getAttribute('href') || '';
+    var page = href.split('/').pop();
+    if (page && page === currentPath) {
+      link.setAttribute('aria-current', 'page');
+      link.classList.add('active');
+    }
+  });
+
+  /* ================================================================
+     NOTIFICATION BADGE LIVE UPDATE (Req 9.1, 9.2)
+     Updates badge aria-label when count changes
+  ================================================================ */
+  var badgeDot = document.querySelector('.badge-dot');
+  if (badgeDot) {
+    var count = parseInt(badgeDot.textContent) || 0;
+    if (count > 0) {
+      badgeDot.setAttribute('aria-label', count + ' unread notification' + (count !== 1 ? 's' : ''));
+    }
+  }
+
+  /* ================================================================
+     AUTO-DISMISS SUCCESS ALERTS (Req 15.3)
+     Auto-hide Bootstrap .alert-success after 3 seconds
+  ================================================================ */
+  document.querySelectorAll('.alert-success, .alert-ep-success').forEach(function (alert) {
+    setTimeout(function () {
+      alert.style.transition = 'opacity 0.4s ease-out';
+      alert.style.opacity    = '0';
+      setTimeout(function () {
+        if (alert.parentNode) alert.style.display = 'none';
+      }, 420);
+    }, 3000);
+  });
+
+  /* ================================================================
+     DISMISSIBLE ERROR ALERTS (Req 15.4)
+     Error messages stay visible until user dismisses them
+  ================================================================ */
+  document.querySelectorAll('.alert-ep-error, .alert-ep-dismiss').forEach(function (btn) {
+    if (btn.classList.contains('alert-ep-dismiss')) {
+      btn.addEventListener('click', function () {
+        var alert = btn.closest('.alert-ep-error');
+        if (alert) {
+          alert.style.transition = 'opacity 0.3s';
+          alert.style.opacity    = '0';
+          setTimeout(function () { if (alert.parentNode) alert.parentNode.removeChild(alert); }, 320);
+        }
+      });
+    }
+  });
+
+  /* ================================================================
+     SEMANTIC HEADING ORDER CHECK (dev-only, console warn)
+  ================================================================ */
+  if (window.location.hostname === 'localhost') {
+    var headings = Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6'));
+    var prevLevel = 0;
+    headings.forEach(function (h) {
+      var level = parseInt(h.tagName[1]);
+      if (level > prevLevel + 1) {
+        console.warn('[A11y] Heading level skipped:', h.tagName, h.textContent.trim().slice(0, 40));
+      }
+      prevLevel = level;
+    });
+  }
+
+})();

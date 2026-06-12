@@ -182,6 +182,7 @@ function movementIcon(string $type): string {
             <img src="<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>?v=<?php echo time(); ?>"
                  onclick="viewFullImage('<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>', '<?php echo e(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? '')); ?>')"
                  class="cursor-pointer"
+                 loading="lazy"
                  style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.35);box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .2s;">
             <div>
                 <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.55);">Employee Portal · Welcome Back</div>
@@ -199,7 +200,7 @@ function movementIcon(string $type): string {
                         <i class="fas fa-layer-group me-1"></i><?php echo e($emp['rank_name']); ?>
                     </span>
                     <span class="badge ms-1" style="background:rgba(255,255,255,.18);color:#fff;font-size:.72rem;">
-                        <i class="fas fa-circle me-1" style="font-size:.5rem;"></i><?php echo e($emp['employment_status'] ?? '—'); ?>
+                        <i class="fas fa-id-badge me-1"></i><?php echo e($emp['employment_status'] ?? '—'); ?>
                     </span>
                 </p>
                 <?php endif; ?>
@@ -219,91 +220,123 @@ function movementIcon(string $type): string {
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     STATS ROW
+     BREADCRUMB
+══════════════════════════════════════════════════════════════════════════ -->
+<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item active" aria-current="page">My Dashboard</li>
+    </ol>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     STATS ROW (UX-revamp stat-cards)
 ══════════════════════════════════════════════════════════════════════════ -->
 <div class="row g-3 mb-4 fadeup">
     <!-- Years of Service -->
     <div class="col-6 col-md-3">
-        <div class="content-card h-100 text-center" style="padding:1.25rem;">
-            <div style="width:50px;height:50px;background:linear-gradient(135deg, var(--primary-light) 0%, #e0b324 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
-                <i class="fas fa-star text-white" style="font-size:1.1rem;"></i>
+        <div class="stat-card h-100">
+            <div class="stat-icon stat-icon-warning" aria-hidden="true">
+                <i class="fas fa-star"></i>
             </div>
-            <div style="font-size:2rem;font-weight:800;line-height:1;color:var(--text-dark);"><?php echo $years_of_service; ?><span style="font-size:1rem;font-weight:500;color:var(--text-muted);"> yr<?php echo $years_of_service != 1 ? 's' : ''; ?></span></div>
-            <?php if ($months_of_service > 0): ?>
-            <div style="font-size:.75rem;color:var(--text-muted);"><?php echo $months_of_service; ?> month<?php echo $months_of_service != 1 ? 's' : ''; ?> more</div>
-            <?php endif; ?>
-            <div class="mt-1" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Years of Service</div>
+            <div class="stat-content">
+                <h3 class="stat-value">
+                    <?php echo $years_of_service; ?><span style="font-size:1rem;font-weight:500;"> yr<?php echo $years_of_service != 1 ? 's' : ''; ?></span>
+                </h3>
+                <?php if ($months_of_service > 0): ?>
+                <p class="stat-label" style="font-size:.75rem;text-transform:none;letter-spacing:0;"><?php echo $months_of_service; ?> month<?php echo $months_of_service != 1 ? 's' : ''; ?> more</p>
+                <?php endif; ?>
+                <p class="stat-label">Years of Service</p>
+            </div>
         </div>
     </div>
 
     <!-- Total Evaluations -->
     <div class="col-6 col-md-3">
-        <div class="content-card h-100 text-center" style="padding:1.25rem;">
-            <div style="width:50px;height:50px;background:linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-dark) 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
-                <i class="fas fa-clipboard-list text-white" style="font-size:1.1rem;"></i>
+        <div class="stat-card h-100">
+            <div class="stat-icon stat-icon-info" aria-hidden="true">
+                <i class="fas fa-clipboard-list"></i>
             </div>
-            <div style="font-size:2rem;font-weight:800;line-height:1;color:var(--text-dark);"><?php echo $total_evals; ?></div>
-            <div style="font-size:.75rem;color:var(--text-muted);"><?php echo $completed_evals; ?> approved · <?php echo $pending_template_count; ?> pending</div>
-            <div class="mt-1" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Total Evaluations</div>
+            <div class="stat-content">
+                <h3 class="stat-value"><?php echo $total_evals; ?></h3>
+                <p class="stat-label" style="text-transform:none;letter-spacing:0;font-size:.75rem;"><?php echo $completed_evals; ?> approved · <?php echo $pending_template_count; ?> pending</p>
+                <p class="stat-label">Total Evaluations</p>
+            </div>
         </div>
     </div>
 
     <!-- Latest Score -->
     <div class="col-6 col-md-3">
-        <div class="content-card h-100 text-center" style="padding:1.25rem;">
-            <div style="width:50px;height:50px;background:linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-light) 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
-                <i class="fas fa-chart-line text-white" style="font-size:1.1rem;"></i>
+        <?php if ($latest_score):
+            $ls_level = $latest_score['performance_level'] ?? '';
+            $ls_color = $ls_level ? getPerformanceLevelColor($ls_level) : 'var(--text-dark)';
+            $ls_badge = $ls_level ? getPerformanceLevelBadgeClass($ls_level) : 'bg-secondary';
+        ?>
+        <div class="stat-card h-100">
+            <div class="stat-icon stat-icon-success" aria-hidden="true">
+                <i class="fas fa-chart-line"></i>
             </div>
-            <?php if ($latest_score):
-                $ls_level = $latest_score['performance_level'] ?? '';
-                $ls_color = $ls_level ? getPerformanceLevelColor($ls_level) : 'var(--text-dark)';
-                $ls_badge = $ls_level ? getPerformanceLevelBadgeClass($ls_level) : 'bg-secondary';
-            ?>
-                <div style="font-size:2rem;font-weight:800;line-height:1;color:<?php echo $ls_color; ?>;"><?php echo number_format((float)$latest_score['total_score'], 1); ?></div>
+            <div class="stat-content">
+                <h3 class="stat-value" style="color:<?php echo $ls_color; ?>;"><?php echo number_format((float)$latest_score['total_score'], 1); ?></h3>
                 <?php if ($ls_level): ?>
-                <span class="badge <?php echo $ls_badge; ?>" style="font-size:.65rem;margin-top:3px;"><?php echo e($ls_level); ?></span>
+                <span class="badge <?php echo $ls_badge; ?>" style="font-size:.65rem;">
+                    <i class="fas fa-award me-1"></i><?php echo e($ls_level); ?>
+                </span>
                 <?php endif; ?>
-            <?php else: ?>
-                <div style="font-size:1.4rem;font-weight:700;line-height:1;color:var(--text-muted);">N/A</div>
-                <div style="font-size:.75rem;color:var(--text-muted);">No approved score yet</div>
-            <?php endif; ?>
-            <div class="mt-1" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Latest Score</div>
+                <p class="stat-label">Latest Score</p>
+            </div>
         </div>
+        <?php else: ?>
+        <div class="stat-card h-100">
+            <div class="stat-icon stat-icon-success" aria-hidden="true">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-content">
+                <h3 class="stat-value" style="font-size:1.4rem;color:var(--color-text-muted,#5E6B5C);">N/A</h3>
+                <p class="stat-label" style="text-transform:none;font-size:.75rem;letter-spacing:0;">No approved score yet</p>
+                <p class="stat-label">Latest Score</p>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- Career Movements -->
     <div class="col-6 col-md-3">
-        <div class="content-card h-100 text-center" style="padding:1.25rem;">
-            <div style="width:50px;height:50px;background:linear-gradient(135deg, var(--accent) 0%, #b31218 100%);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem;">
-                <i class="fas fa-route text-white" style="font-size:1.1rem;"></i>
+        <div class="stat-card h-100">
+            <div class="stat-icon stat-icon-danger" aria-hidden="true">
+                <i class="fas fa-route"></i>
             </div>
-            <div style="font-size:2rem;font-weight:800;line-height:1;color:var(--text-dark);"><?php echo count($career_movements); ?></div>
-            <div style="font-size:.75rem;color:var(--text-muted);">recorded movements</div>
-            <div class="mt-1" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);">Career Movements</div>
+            <div class="stat-content">
+                <h3 class="stat-value"><?php echo count($career_movements); ?></h3>
+                <p class="stat-label" style="text-transform:none;letter-spacing:0;font-size:.75rem;">recorded movements</p>
+                <p class="stat-label">Career Movements</p>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
-     MAIN BODY — 2 columns
+     MAIN BODY — 2 columns (responsive: single col on mobile, 2-col on md+)
 ══════════════════════════════════════════════════════════════════════════ -->
-<div class="row g-4 fadeup">
+<div class="dashboard-grid row g-4 fadeup">
 
     <!-- LEFT COL ─────────────────────────────────────────────────────────── -->
-    <div class="col-lg-6">
+    <div class="col-12 col-md-6">
 
         <!-- Current Evaluation Status -->
         <div class="content-card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="fas fa-clipboard-check me-2"></i>My Evaluation Status</h5>
+            <div class="content-card-header">
+                <h2 class="content-card-title">
+                    <i class="fas fa-clipboard-check" aria-hidden="true"></i>
+                    My Evaluation Status
+                </h2>
                 <div class="d-flex align-items-center gap-2">
                     <a href="<?php echo BASE_URL; ?>/employee/self-rating.php" class="badge bg-warning text-dark text-decoration-none">
-                        <?php echo $pending_template_count; ?> pending
+                        <i class="fas fa-clock me-1"></i><?php echo $pending_template_count; ?> pending
                     </a>
                     <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php" class="btn btn-sm btn-outline-primary">View All</a>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="content-card-body">
                 <?php if ($active_eval): ?>
                 <div style="background:var(--bg-gray);border-radius:12px;padding:1.25rem;" class="mb-3">
                     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -327,7 +360,7 @@ function movementIcon(string $type): string {
                         <div class="text-end">
                             <div style="font-size:2rem;font-weight:800;color:<?php echo $ae_color; ?>;line-height:1;"><?php echo number_format((float)$active_eval['total_score'], 1); ?></div>
                             <?php if ($ae_level): ?>
-                            <span class="badge <?php echo $ae_badge; ?>" style="font-size:.65rem;margin-top:2px;"><?php echo e($ae_level); ?></span>
+                            <span class="badge <?php echo $ae_badge; ?>" style="font-size:.65rem;margin-top:2px;"><i class="fas fa-award me-1"></i><?php echo e($ae_level); ?></span>
                             <?php endif; ?>
                         </div>
                         <?php endif; ?>
@@ -499,11 +532,14 @@ function movementIcon(string $type): string {
 
         <!-- Employment Snapshot -->
         <div class="content-card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="fas fa-id-badge me-2"></i>Employment Snapshot</h5>
+            <div class="content-card-header">
+                <h2 class="content-card-title">
+                    <i class="fas fa-id-badge" aria-hidden="true"></i>
+                    Employment Snapshot
+                </h2>
                 <a href="<?php echo BASE_URL; ?>/employee/my-employment.php" class="btn btn-sm btn-outline-primary">Full Details</a>
             </div>
-            <div class="card-body p-0">
+            <div class="content-card-body" style="padding: 0;">
                 <table class="table table-borderless table-sm mb-0" style="font-size:.85rem;">
                     <tr style="border-bottom:1px solid var(--border-color);">
                         <td class="text-muted px-3 py-2" style="width:40%;">Company ID</td>
@@ -529,7 +565,7 @@ function movementIcon(string $type): string {
                         <td class="text-muted px-3 py-2">Rank</td>
                         <td class="px-3 py-2">
                             <?php if (!empty($emp['rank_name'])): ?>
-                            <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:.72rem;"><?php echo e($emp['rank_name']); ?></span>
+                            <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:.72rem;"><i class="fas fa-layer-group me-1"></i><?php echo e($emp['rank_name']); ?></span>
                             <?php else: ?>—<?php endif; ?>
                         </td>
                     </tr>
@@ -538,8 +574,14 @@ function movementIcon(string $type): string {
                         <td class="px-3 py-2">
                             <?php
                             $st = $emp['employment_status'] ?? '—';
-                            $stc = in_array($st, ['Regular','Full-time']) ? 'success' : (in_array($st, ['Probationary','OJT','Trainee']) ? 'warning' : 'secondary');
-                            echo "<span class=\"badge bg-{$stc} text-white\" style=\"font-size:.72rem;\">" . e($st) . "</span>";
+                            if (in_array($st, ['Regular', 'Full-time'])) {
+                                $stc = 'success'; $sti = 'fa-check-circle';
+                            } elseif (in_array($st, ['Probationary', 'OJT', 'Trainee'])) {
+                                $stc = 'warning'; $sti = 'fa-clock';
+                            } else {
+                                $stc = 'secondary'; $sti = 'fa-circle';
+                            }
+                            echo "<span class=\"badge bg-{$stc} text-white\" style=\"font-size:.72rem;\"><i class=\"fas {$sti} me-1\"></i>" . e($st) . "</span>";
                             ?>
                         </td>
                     </tr>
@@ -558,15 +600,18 @@ function movementIcon(string $type): string {
     </div><!-- /LEFT COL -->
 
     <!-- RIGHT COL ────────────────────────────────────────────────────────── -->
-    <div class="col-lg-6">
+    <div class="col-12 col-md-6">
 
         <!-- Career Timeline -->
         <div class="content-card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="fas fa-route me-2"></i>Career Timeline</h5>
+            <div class="content-card-header">
+                <h2 class="content-card-title">
+                    <i class="fas fa-route" aria-hidden="true"></i>
+                    Career Timeline
+                </h2>
                 <a href="<?php echo BASE_URL; ?>/employee/career-movement-request.php" class="btn btn-sm btn-outline-primary">Request Movement</a>
             </div>
-            <div class="card-body">
+            <div class="content-card-body">
                 <?php if (!empty($career_movements)): ?>
                 <div class="timeline">
                     <?php foreach ($career_movements as $i => $cm): ?>
@@ -591,9 +636,11 @@ function movementIcon(string $type): string {
                                     <div style="font-size:.72rem;color:var(--text-muted);"><?php echo formatDate($cm['effective_date']); ?></div>
                                     <?php
                                     $statusColors = ['Approved'=>'success','Rejected'=>'danger','Pending'=>'warning'];
+                                    $statusIcons  = ['Approved'=>'fa-check-circle','Rejected'=>'fa-times-circle','Pending'=>'fa-clock'];
                                     $sc = $statusColors[$cm['approval_status']] ?? 'secondary';
+                                    $si = $statusIcons[$cm['approval_status']] ?? 'fa-circle';
                                     ?>
-                                    <span class="badge bg-<?php echo $sc; ?>" style="font-size:.65rem;"><?php echo e($cm['approval_status']); ?></span>
+                                    <span class="badge bg-<?php echo $sc; ?>" style="font-size:.65rem;"><i class="fas <?php echo $si; ?> me-1"></i><?php echo e($cm['approval_status']); ?></span>
                                 </div>
                             </div>
                         </div>
@@ -611,11 +658,14 @@ function movementIcon(string $type): string {
 
         <!-- Recent Notifications -->
         <div class="content-card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="fas fa-bell me-2"></i>Recent Notifications</h5>
+            <div class="content-card-header">
+                <h2 class="content-card-title">
+                    <i class="fas fa-bell" aria-hidden="true"></i>
+                    Recent Notifications
+                </h2>
                 <a href="<?php echo BASE_URL; ?>/employee/notifications.php" class="btn btn-sm btn-outline-primary">All</a>
             </div>
-            <div class="card-body p-0">
+            <div class="content-card-body" style="padding: 0;">
                 <?php if (!empty($recent_notifs)): ?>
                     <?php foreach ($recent_notifs as $n): ?>
                     <a href="<?php echo e($n['link'] ?? '#'); ?>"
@@ -645,8 +695,152 @@ function movementIcon(string $type): string {
 
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════════════════
+     QUICK ACTIONS — grouped with visual hierarchy (Req 6.2, 6.3, 6.5, 17.2)
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="content-card mb-4 fadeup">
+    <div class="content-card-header">
+        <h2 class="content-card-title">
+            <i class="fas fa-bolt" aria-hidden="true"></i>
+            Quick Actions
+        </h2>
+    </div>
+    <div class="content-card-body">
+
+        <!-- Section: Evaluations (highest priority) -->
+        <h3 class="quick-actions-section-heading">
+            <i class="fas fa-clipboard-check me-2" aria-hidden="true"></i>Evaluations
+        </h3>
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-sm-4 col-md-3">
+                <a href="<?php echo BASE_URL; ?>/employee/self-rating.php"
+                   class="btn btn-primary quick-action-btn-list w-100"
+                   aria-label="Start or continue self-rating evaluation">
+                    <i class="fas fa-user-edit" aria-hidden="true"></i>
+                    My Self-Rating
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3">
+                <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php"
+                   class="btn btn-outline-primary quick-action-btn-list w-100"
+                   aria-label="View all completed evaluations">
+                    <i class="fas fa-clipboard-list" aria-hidden="true"></i>
+                    View Evaluations
+                </a>
+            </div>
+            <?php if ($is_supervisor && $pending_sub_count > 0): ?>
+            <div class="col-6 col-sm-4 col-md-3">
+                <a href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php"
+                   class="btn btn-outline-primary quick-action-btn-list w-100 position-relative"
+                   aria-label="Review pending subordinate evaluations">
+                    <i class="fas fa-users-cog" aria-hidden="true"></i>
+                    Review Team
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                          style="font-size:.6rem;"><?php echo $pending_sub_count; ?></span>
+                </a>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Section: My Information -->
+        <h3 class="quick-actions-section-heading">
+            <i class="fas fa-id-card me-2" aria-hidden="true"></i>My Information
+        </h3>
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-sm-4 col-md-3">
+                <a href="<?php echo BASE_URL; ?>/employee/my-pds.php"
+                   class="btn btn-primary quick-action-btn-list w-100"
+                   aria-label="View or update my Personal Data Sheet">
+                    <i class="fas fa-id-badge" aria-hidden="true"></i>
+                    My PDS
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3">
+                <a href="<?php echo BASE_URL; ?>/employee/my-employment.php"
+                   class="btn btn-outline-primary quick-action-btn-list w-100"
+                   aria-label="View my employment details">
+                    <i class="fas fa-briefcase" aria-hidden="true"></i>
+                    Employment Details
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3">
+                <a href="<?php echo BASE_URL; ?>/employee/profile-settings.php"
+                   class="btn btn-outline-primary quick-action-btn-list w-100"
+                   aria-label="Manage my profile and account settings">
+                    <i class="fas fa-user-cog" aria-hidden="true"></i>
+                    Profile Settings
+                </a>
+            </div>
+        </div>
+
+        <!-- Section: Team & Career -->
+        <h3 class="quick-actions-section-heading">
+            <i class="fas fa-users me-2" aria-hidden="true"></i>Team &amp; Career
+        </h3>
+        <div class="row g-3">
+            <div class="col-6 col-sm-4 col-md-3">
+                <a href="<?php echo BASE_URL; ?>/employee/career-movement-request.php"
+                   class="btn btn-primary quick-action-btn-list w-100"
+                   aria-label="Submit a career movement request">
+                    <i class="fas fa-trending-up" aria-hidden="true"></i>
+                    Career Request
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3">
+                <a href="<?php echo BASE_URL; ?>/employee/team-list.php"
+                   class="btn btn-outline-primary quick-action-btn-list w-100"
+                   aria-label="View my team list">
+                    <i class="fas fa-sitemap" aria-hidden="true"></i>
+                    My Team
+                </a>
+            </div>
+            <div class="col-6 col-sm-4 col-md-3">
+                <a href="<?php echo BASE_URL; ?>/employee/notifications.php"
+                   class="btn btn-outline-primary quick-action-btn-list w-100"
+                   aria-label="View all notifications">
+                    <i class="fas fa-bell" aria-hidden="true"></i>
+                    Notifications
+                </a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
 <style>
-/* ── Quick Action Buttons ─────────────────────────────────────────────────── */
+/* ── Quick Actions Section Headings (Req 6.2, 17.2 — 1.5rem, 24px margin-top) */
+.quick-actions-section-heading {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text-primary, #1C271B);
+    margin-top: 1.5rem;
+    margin-bottom: .75rem;
+    padding-bottom: .4rem;
+    border-bottom: 2px solid var(--color-border-light, #D1D5CE);
+    letter-spacing: .01em;
+}
+.quick-actions-section-heading:first-child { margin-top: 0; }
+
+/* ── Quick Action List-style Buttons (Req 6.3, 6.5 — primary for top priority) */
+.quick-action-btn-list {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 48px;   /* touch-friendly (Req 3.1) */
+    font-size: .95rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all .2s;
+}
+.quick-action-btn-list i {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* Legacy icon-grid style (kept for backward compat if used elsewhere) */
 .quick-action-btn {
     display: flex;
     flex-direction: column;

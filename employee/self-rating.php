@@ -625,6 +625,59 @@ require_once '../includes/header.php';
         self-rating to provide insights for your performance review.</p>
 </div>
 
+<!-- Breadcrumb + Evaluation Progress Indicator -->
+<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">My Evaluations</li>
+    </ol>
+</nav>
+
+<?php if ($edit_eval || $view_mode): ?>
+<!-- Progress indicator for evaluation workflow -->
+<div class="progress-indicator" role="navigation" aria-label="Evaluation progress">
+    <?php
+    $prog_steps = [
+        ['label' => 'Select Template', 'icon' => 'fas fa-list'],
+        ['label' => 'KRA Ratings',     'icon' => 'fas fa-tasks'],
+        ['label' => 'Behaviour',        'icon' => 'fas fa-user'],
+        ['label' => 'Review & Submit',  'icon' => 'fas fa-paper-plane'],
+    ];
+    // Determine progress: if editing, count scored KRA criteria
+    $prog_kra_done  = !empty($edit_scores) ? count(array_filter($edit_scores, fn($v) => $v > 0)) : 0;
+    $prog_kra_total = count($criteria_kra);
+    $prog_beh_done  = 0;
+    foreach ($criteria_behavior as $bc) {
+        if (isset($edit_scores[(int)$bc['criterion_id']]) && $edit_scores[(int)$bc['criterion_id']] > 0) $prog_beh_done++;
+    }
+    $prog_beh_total = count($criteria_behavior);
+
+    if ($view_mode)           { $prog_active = 3; }
+    elseif ($prog_beh_total > 0 && $prog_beh_done === $prog_beh_total) { $prog_active = 3; }
+    elseif ($prog_kra_total > 0 && $prog_kra_done === $prog_kra_total) { $prog_active = 2; }
+    elseif ($prog_kra_done > 0)                                         { $prog_active = 1; }
+    else                                                                 { $prog_active = 1; }
+
+    foreach ($prog_steps as $pi => $ps):
+        $ps_state = $pi < $prog_active ? 'completed' : ($pi === $prog_active ? 'active' : '');
+    ?>
+    <div class="progress-step <?php echo $ps_state; ?>" aria-current="<?php echo $pi === $prog_active ? 'step' : 'false'; ?>">
+        <div class="progress-step-number">
+            <?php if ($pi < $prog_active): ?>
+                <i class="fas fa-check" aria-hidden="true"></i>
+            <?php else: ?>
+                <?php echo $pi + 1; ?>
+            <?php endif; ?>
+        </div>
+        <div class="progress-step-label"><?php echo e($ps['label']); ?></div>
+    </div>
+    <?php if ($pi < count($prog_steps) - 1): ?>
+    <div class="progress-line <?php echo $pi < $prog_active ? 'completed' : ''; ?>"></div>
+    <?php endif; ?>
+    <?php endforeach; ?>
+</div>
+<?php endif; ?>
+
 <!-- Mobile-only section -->
 <div class="d-md-none d-flex justify-content-between align-items-center mt-3 mb-4 flex-wrap gap-3 fadeup"
     style="animation-delay: 0.1s;">
@@ -1004,7 +1057,7 @@ require_once '../includes/header.php';
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="">
+                    <form method="POST" action="" data-autosave="self-rating-form" data-validate novalidate>
                         <?php if ($edit_eval): ?>
                             <input type="hidden" name="edit_id" value="<?php echo (int) $edit_eval['evaluation_id']; ?>">
                         <?php endif; ?>
@@ -1149,73 +1202,118 @@ require_once '../includes/header.php';
                         </div>
 
                         <?php if ($selected_template_id > 0 && (!empty($criteria_kra) || !empty($criteria_behavior))): ?>
-                            <div class="section-premium-label mb-3">
-                                <i class="fas fa-bullseye"></i>KRA Self Rating
-                            </div>
-                            <div class="table-responsive mb-4">
-                                <table class="table table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Criterion</th>
-                                            <th style="width:110px;">Weight</th>
-                                            <th style="width:160px;">Your Rating</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($criteria_kra as $criterion): ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="fw-semibold"><?php echo e($criterion['criterion_name']); ?></div>
-                                                    <?php if (!empty($criterion['description'])): ?>
-                                                        <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td><?php echo e($criterion['weight']); ?>%</td>
-                                                <td>
-                                                    <input type="number" class="form-control self-rating-input"
-                                                        name="kra_scores[<?php echo (int) $criterion['criterion_id']; ?>]" min="0"
-                                                        max="4" step="0.01"
-                                                        value="<?php echo e($edit_scores[(int) $criterion['criterion_id']] ?? ''); ?>"
-                                                        placeholder="0.00 - 4.00">
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
+                            <?php
+                            // Rating scale definitions (1–4 matching the system's 0.00–4.00 range)
+                            $rating_scale = [
+                                1 => ['label' => '1 - Needs Improvement', 'text' => 'Needs Improvement'],
+                                2 => ['label' => '2 - Developing',        'text' => 'Developing'],
+                                3 => ['label' => '3 - Meets Expectations','text' => 'Meets Expectations'],
+                                4 => ['label' => '4 - Exceptional',       'text' => 'Exceptional'],
+                            ];
+                            ?>
 
-                            <div class="section-premium-label mb-3">
-                                <i class="fas fa-heart"></i>Behavior Self Rating
-                            </div>
-                            <div class="table-responsive mb-4">
-                                <table class="table table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Criterion</th>
-                                            <th style="width:160px;">Your Rating</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($criteria_behavior as $criterion): ?>
-                                            <tr>
-                                                <td>
-                                                    <div class="fw-semibold"><?php echo e($criterion['criterion_name']); ?></div>
-                                                    <?php if (!empty($criterion['description'])): ?>
-                                                        <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <input type="number" class="form-control self-rating-input"
-                                                        name="beh_scores[<?php echo (int) $criterion['criterion_id']; ?>]" min="0"
-                                                        max="4" step="0.01"
-                                                        value="<?php echo e($edit_scores[(int) $criterion['criterion_id']] ?? ''); ?>"
-                                                        placeholder="0.00 - 4.00">
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
+                            <!-- KRA Ratings Section -->
+                            <div class="rating-section">
+                                <h2 class="rating-section-title">
+                                    <i class="fas fa-bullseye me-2" aria-hidden="true"></i>KRA Self Rating
+                                </h2>
+
+                                <?php foreach ($criteria_kra as $criterion): ?>
+                                    <?php
+                                    $cid      = (int) $criterion['criterion_id'];
+                                    $saved    = isset($edit_scores[$cid]) && $edit_scores[$cid] > 0
+                                                    ? (int) round((float) $edit_scores[$cid])
+                                                    : 0;
+                                    $field_id = 'kra_criterion_' . $cid;
+                                    ?>
+                                    <div class="rating-item">
+                                        <div class="rating-header">
+                                            <h3 class="rating-title">
+                                                <?php echo e($criterion['criterion_name']); ?>
+                                                <span class="badge bg-secondary ms-2" style="font-size:0.75rem;font-weight:600;">
+                                                    Weight: <?php echo e($criterion['weight']); ?>%
+                                                </span>
+                                            </h3>
+                                            <?php if (!empty($criterion['description'])): ?>
+                                                <p class="rating-description"><?php echo e($criterion['description']); ?></p>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <fieldset>
+                                            <legend class="visually-hidden">Rating for <?php echo e($criterion['criterion_name']); ?></legend>
+                                            <div class="rating-scale" role="radiogroup" aria-label="Rating scale for <?php echo e($criterion['criterion_name']); ?>">
+                                                <?php foreach ($rating_scale as $val => $scale): ?>
+                                                    <div class="rating-option">
+                                                        <input
+                                                            type="radio"
+                                                            class="rating-input"
+                                                            id="<?php echo $field_id . '_' . $val; ?>"
+                                                            name="kra_scores[<?php echo $cid; ?>]"
+                                                            value="<?php echo $val; ?>"
+                                                            <?php echo $saved === $val ? 'checked' : ''; ?>
+                                                            required
+                                                            aria-label="<?php echo e($scale['label']); ?>"
+                                                        >
+                                                        <label class="rating-label" for="<?php echo $field_id . '_' . $val; ?>">
+                                                            <span class="rating-number" aria-hidden="true"><?php echo $val; ?></span>
+                                                            <span class="rating-text"><?php echo e($scale['text']); ?></span>
+                                                        </label>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </fieldset>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div><!-- /.rating-section (KRA) -->
+
+                            <!-- Behavior Ratings Section -->
+                            <div class="rating-section">
+                                <h2 class="rating-section-title">
+                                    <i class="fas fa-heart me-2" aria-hidden="true"></i>Behavior Self Rating
+                                </h2>
+
+                                <?php foreach ($criteria_behavior as $criterion): ?>
+                                    <?php
+                                    $cid      = (int) $criterion['criterion_id'];
+                                    $saved    = isset($edit_scores[$cid]) && $edit_scores[$cid] > 0
+                                                    ? (int) round((float) $edit_scores[$cid])
+                                                    : 0;
+                                    $field_id = 'beh_criterion_' . $cid;
+                                    ?>
+                                    <div class="rating-item">
+                                        <div class="rating-header">
+                                            <h3 class="rating-title"><?php echo e($criterion['criterion_name']); ?></h3>
+                                            <?php if (!empty($criterion['description'])): ?>
+                                                <p class="rating-description"><?php echo e($criterion['description']); ?></p>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <fieldset>
+                                            <legend class="visually-hidden">Rating for <?php echo e($criterion['criterion_name']); ?></legend>
+                                            <div class="rating-scale" role="radiogroup" aria-label="Rating scale for <?php echo e($criterion['criterion_name']); ?>">
+                                                <?php foreach ($rating_scale as $val => $scale): ?>
+                                                    <div class="rating-option">
+                                                        <input
+                                                            type="radio"
+                                                            class="rating-input"
+                                                            id="<?php echo $field_id . '_' . $val; ?>"
+                                                            name="beh_scores[<?php echo $cid; ?>]"
+                                                            value="<?php echo $val; ?>"
+                                                            <?php echo $saved === $val ? 'checked' : ''; ?>
+                                                            required
+                                                            aria-label="<?php echo e($scale['label']); ?>"
+                                                        >
+                                                        <label class="rating-label" for="<?php echo $field_id . '_' . $val; ?>">
+                                                            <span class="rating-number" aria-hidden="true"><?php echo $val; ?></span>
+                                                            <span class="rating-text"><?php echo e($scale['text']); ?></span>
+                                                        </label>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </fieldset>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div><!-- /.rating-section (Behavior) -->
 
                             <div class="mb-3">
                                 <label class="form-label">Self Comments</label>
@@ -1235,8 +1333,6 @@ require_once '../includes/header.php';
                                 <button type="button" class="btn btn-primary" onclick="showReviewModal()">
                                     <i class="fas fa-paper-plane me-2"></i>Submit Self Rating
                                 </button>
-                                <!-- Hidden real submit button -->
-                                <button type="submit" name="submit_action" value="submit" id="realSubmitBtn" class="d-none"></button>
                             </div>
                         <?php else: ?>
                             <?php if (!empty($in_progress_evals)): ?>
@@ -1391,34 +1487,26 @@ require_once '../includes/header.php';
 </div>
 
 <script>
-function clampSelfRatingInput(input) {
-    if (input.value === '') {
-        return;
-    }
-
-    const value = parseFloat(input.value);
-    if (Number.isNaN(value)) {
-        input.value = '';
-        return;
-    }
-
-    if (value > 4) {
-        input.value = '4';
-    } else if (value < 0) {
-        input.value = '0';
-    }
+/**
+ * Get the selected value for a radio group by name.
+ * Returns null if nothing is selected.
+ */
+function getRadioValue(name) {
+    const checked = document.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
+    return checked ? checked.value : null;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.self-rating-input').forEach(input => {
-        input.addEventListener('input', () => clampSelfRatingInput(input));
-        input.addEventListener('change', () => clampSelfRatingInput(input));
-    });
-});
+/**
+ * Get the label text for a selected radio option.
+ */
+function getRadioLabel(name) {
+    const checked = document.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
+    if (!checked) return null;
+    const label = document.querySelector(`label[for="${CSS.escape(checked.id)}"]`);
+    return label ? label.querySelector('.rating-text')?.innerText || checked.value : checked.value;
+}
 
 function showReviewModal() {
-    document.querySelectorAll('.self-rating-input').forEach(input => clampSelfRatingInput(input));
-
     const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
     const reviewContent = document.getElementById('reviewContent');
     let html = '';
@@ -1434,29 +1522,42 @@ function showReviewModal() {
         </div>
     `;
 
-    // KRA Ratings
+    // KRA Ratings — read checked radios from .rating-section containing KRA items
     html += '<h6 class="fw-bold text-uppercase small text-muted mb-3">KRA Ratings</h6>';
     html += '<div class="table-responsive mb-4"><table class="table table-sm table-bordered align-middle" style="font-size: 0.85rem;">';
-    html += '<thead class="bg-light"><tr><th>Criterion</th><th class="text-center" style="width: 80px;">Rating</th></tr></thead><tbody>';
-    
-    document.querySelectorAll('input[name^="kra_scores"]').forEach(input => {
-        const row = input.closest('tr');
-        const name = row.querySelector('.fw-semibold').innerText;
-        const val = input.value || '0.00';
-        html += `<tr><td>${name}</td><td class="text-center fw-bold text-primary">${val}</td></tr>`;
+    html += '<thead class="bg-light"><tr><th>Criterion</th><th class="text-center" style="width: 110px;">Rating</th></tr></thead><tbody>';
+
+    // Collect unique kra_scores group names
+    const kraNames = new Set();
+    document.querySelectorAll('input[name^="kra_scores"]').forEach(input => kraNames.add(input.name));
+    kraNames.forEach(name => {
+        const checkedInput = document.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
+        const ratingItem   = document.querySelector(`input[name="${CSS.escape(name)}"]`)?.closest('.rating-item');
+        const title        = ratingItem?.querySelector('.rating-title')?.childNodes[0]?.textContent?.trim() || name;
+        const val          = checkedInput ? checkedInput.value : '<span class="text-danger">Not rated</span>';
+        const labelText    = checkedInput
+            ? (document.querySelector(`label[for="${CSS.escape(checkedInput.id)}"] .rating-text`)?.innerText || val)
+            : '—';
+        html += `<tr><td>${title}</td><td class="text-center fw-bold text-primary">${val} <small class="text-muted fw-normal">– ${labelText}</small></td></tr>`;
     });
     html += '</tbody></table></div>';
 
     // Behavior Ratings
     html += '<h6 class="fw-bold text-uppercase small text-muted mb-3">Behavior Ratings</h6>';
     html += '<div class="table-responsive mb-4"><table class="table table-sm table-bordered align-middle" style="font-size: 0.85rem;">';
-    html += '<thead class="bg-light"><tr><th>Criterion</th><th class="text-center" style="width: 80px;">Rating</th></tr></thead><tbody>';
-    
-    document.querySelectorAll('input[name^="beh_scores"]').forEach(input => {
-        const row = input.closest('tr');
-        const name = row.querySelector('.fw-semibold').innerText;
-        const val = input.value || '0.00';
-        html += `<tr><td>${name}</td><td class="text-center fw-bold text-info">${val}</td></tr>`;
+    html += '<thead class="bg-light"><tr><th>Criterion</th><th class="text-center" style="width: 110px;">Rating</th></tr></thead><tbody>';
+
+    const behNames = new Set();
+    document.querySelectorAll('input[name^="beh_scores"]').forEach(input => behNames.add(input.name));
+    behNames.forEach(name => {
+        const checkedInput = document.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
+        const ratingItem   = document.querySelector(`input[name="${CSS.escape(name)}"]`)?.closest('.rating-item');
+        const title        = ratingItem?.querySelector('.rating-title')?.childNodes[0]?.textContent?.trim() || name;
+        const val          = checkedInput ? checkedInput.value : '<span class="text-danger">Not rated</span>';
+        const labelText    = checkedInput
+            ? (document.querySelector(`label[for="${CSS.escape(checkedInput.id)}"] .rating-text`)?.innerText || val)
+            : '—';
+        html += `<tr><td>${title}</td><td class="text-center fw-bold text-info">${val} <small class="text-muted fw-normal">– ${labelText}</small></td></tr>`;
     });
     html += '</tbody></table></div>';
 
@@ -1476,7 +1577,27 @@ function showReviewModal() {
 }
 
 function confirmFinalSubmit() {
-    const btn = document.getElementById('realSubmitBtn');
-    btn.click();
+    // Find the form and set submit_action to 'submit' via a hidden input,
+    // then submit — this avoids browser quirks with clicking hidden submit buttons.
+    const form = document.querySelector('form[data-autosave]');
+    if (!form) return;
+
+    // Remove any stale override input from a previous attempt
+    const existing = form.querySelector('input[name="submit_action"][data-final]');
+    if (existing) existing.remove();
+
+    // Add a hidden input that guarantees submit_action = 'submit'
+    const input = document.createElement('input');
+    input.type  = 'hidden';
+    input.name  = 'submit_action';
+    input.value = 'submit';
+    input.setAttribute('data-final', '1');
+    form.appendChild(input);
+
+    // Disable the draft submit button so it is not included in the POST
+    const draftBtn = form.querySelector('button[name="submit_action"][value="draft"]');
+    if (draftBtn) draftBtn.disabled = true;
+
+    form.submit();
 }
 </script>

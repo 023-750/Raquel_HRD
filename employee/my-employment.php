@@ -42,6 +42,8 @@ require_once '../includes/header.php';
             <img src="<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>?v=<?php echo time(); ?>"
                 onclick="viewFullImage('<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>', '<?php echo e(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? '')); ?>')"
                 class="cursor-pointer"
+                loading="lazy"
+                alt="Profile photo of <?php echo e(trim(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? ''))); ?>"
                 style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:4px solid rgba(255,255,255,.3); box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s;">
             <div>
                 <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">
@@ -82,6 +84,13 @@ require_once '../includes/header.php';
         <span class="text-muted fw-500">Read-only. Contact HR for updates.</span>
     </div>
 </div>
+
+<nav aria-label="Breadcrumb" class="breadcrumb-nav">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">My Employment</li>
+    </ol>
+</nav>
 
 <div class="pds-info-grid">
     <div class="pds-card fadeup-1">

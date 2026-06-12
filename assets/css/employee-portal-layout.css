@@ -1,0 +1,53 @@
+/**
+ * Employee Portal Layout CSS
+ * 
+ * Mobile-first responsive layout system with horizontal scroll prevention
+ * Breakpoint: 768px (mobile vs desktop)
+ */
+
+/* Ensure no horizontal scroll on any screen size */
+.container-fluid {
+  max-width: 100vw;
+  overflow-x: hidden;
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+/* Prevent content overflow on all screen sizes */
+* {
+  max-width: 100%;
+  word-wrap: break-word;
+}
+
+img {
+  height: auto;
+}
+
+/* Mobile-first: single column by default */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Tablet and up: use grid for complex layouts */
+@media (min-width: 768px) {
+  .main-content {
+    gap: var(--space-lg);
+    margin-left: 260px;
+    padding: var(--space-lg);
+  }
+  
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-lg);
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 767px) {
+  .main-content {
+    padding: var(--space-md);
+  }
+}

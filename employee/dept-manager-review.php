@@ -305,6 +305,13 @@ require_once '../includes/header.php';
     </div>
 </div>
 
+<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Dept Manager Review</li>
+    </ol>
+</nav>
+
 <?php if (!$is_dept_manager): ?>
     <div class="content-card fadeup-1">
         <div class="card-body text-center py-5">
@@ -371,6 +378,44 @@ require_once '../includes/header.php';
         </div>
     </div>
 <?php else: ?>
+    <!-- Progress Indicator for evaluation review workflow -->
+    <?php
+    // Determine active step:
+    // Step 0 (Review Scores)  – always active when first opening; status = 'Pending Dept Manager'
+    // Step 1 (Adjust & Comment) – active if we have supervisor/employee comments loaded (still pending)
+    // Step 2 (Endorse)        – active if read-only (already endorsed / forwarded)
+    $dm_step = 0;
+    if ($is_readonly) {
+        $dm_step = 2; // Endorsed or view-only
+    } elseif (!empty($evaluation['supervisor_comments']) || !empty($criteria_kra) || !empty($criteria_behavior)) {
+        $dm_step = 1; // Scores loaded, ready to adjust & comment
+    }
+    $dm_steps = [
+        ['label' => 'Review Scores',    'icon' => 'fas fa-eye'],
+        ['label' => 'Adjust & Comment', 'icon' => 'fas fa-pen'],
+        ['label' => 'Endorse',          'icon' => 'fas fa-check-circle'],
+    ];
+    ?>
+    <div class="progress-indicator" role="navigation" aria-label="Review progress">
+        <?php foreach ($dm_steps as $di => $ds):
+            $ds_state = $di < $dm_step ? 'completed' : ($di === $dm_step ? 'active' : '');
+        ?>
+        <div class="progress-step <?php echo $ds_state; ?>" aria-current="<?php echo $di === $dm_step ? 'step' : 'false'; ?>">
+            <div class="progress-step-number">
+                <?php if ($di < $dm_step): ?>
+                    <i class="fas fa-check" aria-hidden="true"></i>
+                <?php else: ?>
+                    <?php echo $di + 1; ?>
+                <?php endif; ?>
+            </div>
+            <div class="progress-step-label"><?php echo e($ds['label']); ?></div>
+        </div>
+        <?php if ($di < count($dm_steps) - 1): ?>
+        <div class="progress-line <?php echo $di < $dm_step ? 'completed' : ''; ?>"></div>
+        <?php endif; ?>
+        <?php endforeach; ?>
+    </div>
+
     <!-- Review and Endorse Form -->
 
     <style>
@@ -629,140 +674,119 @@ require_once '../includes/header.php';
 
                         <!-- KRA Scores -->
                         <?php if (!empty($criteria_kra)): ?>
-                            <div class="section-premium-label mb-3 mt-4">
-                                <i class="fas fa-bullseye me-1"></i>KRA Ratings
-                                <span class="ms-2 text-muted fw-normal" style="font-size:.8rem;">(You may adjust scores before endorsing)</span>
-                            </div>
-                            <div class="table-responsive mb-4">
-                                <table class="table table-hover align-middle border" id="kraTable">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-start">Criterion</th>
-                                            <th class="text-center" style="width:90px;">Weight</th>
-                                            <th class="text-center" style="width:140px;">Current Rating</th>
-                                            <th class="text-center" style="width:155px;">Your Adjustment</th>
-                                            <th class="text-end" style="width:110px;">Weighted</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($criteria_kra as $criterion):
-                                            $orig   = (float)$criterion['score_value'];
-                                            $weight = (float)$criterion['weight'];
-                                            $weighted_orig = round(($weight / 100) * $orig, 2);
-                                        ?>
-                                            <tr class="kra-row"
-                                                data-orig="<?php echo $orig; ?>"
-                                                data-weight="<?php echo $weight; ?>"
-                                                data-criterion="<?php echo (int)$criterion['criterion_id']; ?>">
-                                                <td class="text-start">
-                                                    <div class="fw-semibold text-dark"><?php echo e($criterion['criterion_name']); ?></div>
-                                                    <?php if (!empty($criterion['description'])): ?>
-                                                        <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="text-center fw-semibold"><?php echo e($weight); ?>%</td>
-                                                <td class="text-center">
-                                                    <span class="badge bg-primary text-white fs-6">
-                                                        <?php echo number_format($orig, 2); ?>
-                                                    </span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="d-flex flex-column align-items-center">
-                                                        <input type="number" class="form-control kra-input"
-                                                               name="kra_scores[<?php echo (int)$criterion['criterion_id']; ?>]"
-                                                               id="kra_<?php echo (int)$criterion['criterion_id']; ?>"
-                                                               min="0" max="4" step="0.01"
-                                                               value="<?php echo number_format($orig, 2); ?>"
-                                                               <?php echo $disabled_attr; ?>
-                                                               placeholder="0.00 – 4.00"
-                                                               style="max-width: 90px; text-align: center;">
-                                                        <div class="change-badge d-none" id="chg_kra_<?php echo (int)$criterion['criterion_id']; ?>">
-                                                            <i class="fas fa-pen"></i> Adjusted
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td class="weighted-cell text-end fw-semibold text-primary">
-                                                    <?php echo number_format($weighted_orig, 2); ?>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="total-row">
-                                            <td colspan="4" class="text-end">
-                                                <i class="fas fa-sigma me-1"></i>KRA Total
-                                            </td>
-                                            <td class="text-end" id="kraTotal">
-                                                <?php echo number_format($orig_kra_total, 2); ?>
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                            <div class="rating-section">
+                                <h2 class="rating-section-title">
+                                    <i class="fas fa-bullseye me-2" aria-hidden="true"></i>KRA Ratings
+                                    <span class="ms-2 text-muted fw-normal" style="font-size:.8rem;">(You may adjust scores before endorsing)</span>
+                                </h2>
+
+                                <?php foreach ($criteria_kra as $criterion):
+                                    $orig   = (float)$criterion['score_value'];
+                                    $weight = (float)$criterion['weight'];
+                                    $weighted_orig = round(($weight / 100) * $orig, 2);
+                                ?>
+                                    <div class="rating-item kra-row"
+                                         data-orig="<?php echo $orig; ?>"
+                                         data-weight="<?php echo $weight; ?>"
+                                         data-criterion="<?php echo (int)$criterion['criterion_id']; ?>">
+                                        <div class="rating-header">
+                                            <h3 class="rating-title">
+                                                <?php echo e($criterion['criterion_name']); ?>
+                                                <span class="badge bg-secondary ms-2" style="font-size:0.75rem;font-weight:600;">
+                                                    Weight: <?php echo e($weight); ?>%
+                                                </span>
+                                            </h3>
+                                            <?php if (!empty($criterion['description'])): ?>
+                                                <p class="rating-description"><?php echo e($criterion['description']); ?></p>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="text-muted small fw-semibold">Current Rating:</span>
+                                                <span class="badge bg-primary text-white fs-6">
+                                                    <?php echo number_format($orig, 2); ?>
+                                                </span>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <label class="text-muted small fw-semibold mb-0" for="kra_<?php echo (int)$criterion['criterion_id']; ?>">Your Adjustment:</label>
+                                                <input type="number" class="form-control kra-input"
+                                                       name="kra_scores[<?php echo (int)$criterion['criterion_id']; ?>]"
+                                                       id="kra_<?php echo (int)$criterion['criterion_id']; ?>"
+                                                       min="0" max="4" step="0.01"
+                                                       value="<?php echo number_format($orig, 2); ?>"
+                                                       <?php echo $disabled_attr; ?>
+                                                       placeholder="0.00 – 4.00"
+                                                       style="max-width: 90px; text-align: center;">
+                                                <div class="change-badge d-none" id="chg_kra_<?php echo (int)$criterion['criterion_id']; ?>">
+                                                    <i class="fas fa-pen"></i> Adjusted
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2 ms-auto">
+                                                <span class="text-muted small fw-semibold">Weighted:</span>
+                                                <span class="weighted-cell fw-semibold text-primary"><?php echo number_format($weighted_orig, 2); ?></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <div class="total-row d-flex justify-content-end align-items-center gap-2 px-3 py-2 rounded mt-1">
+                                    <span class="fw-bold"><i class="fas fa-sigma me-1"></i>KRA Total:</span>
+                                    <span class="fw-bold text-primary" id="kraTotal"><?php echo number_format($orig_kra_total, 2); ?></span>
+                                </div>
                             </div>
                         <?php endif; ?>
 
                         <!-- Behavior Scores -->
                         <?php if (!empty($criteria_behavior)): ?>
-                            <div class="section-premium-label mb-3 mt-4">
-                                <i class="fas fa-heart me-1"></i>Behavior Ratings
-                                <span class="ms-2 text-muted fw-normal" style="font-size:.8rem;">(You may adjust scores before endorsing)</span>
-                            </div>
-                            <div class="table-responsive mb-4">
-                                <table class="table table-hover align-middle border" id="behTable">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-start">Criterion</th>
-                                            <th class="text-center" style="width:140px;">Current Rating</th>
-                                            <th class="text-center" style="width:155px;">Your Adjustment</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($criteria_behavior as $criterion):
-                                            $orig = (float)$criterion['score_value'];
-                                        ?>
-                                            <tr class="beh-row"
-                                                data-orig="<?php echo $orig; ?>"
-                                                data-criterion="<?php echo (int)$criterion['criterion_id']; ?>">
-                                                <td class="text-start">
-                                                    <div class="fw-semibold text-dark"><?php echo e($criterion['criterion_name']); ?></div>
-                                                    <?php if (!empty($criterion['description'])): ?>
-                                                        <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="text-center">
-                                                    <span class="badge bg-info text-dark fs-6">
-                                                        <?php echo number_format($orig, 2); ?>
-                                                    </span>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="d-flex flex-column align-items-center">
-                                                        <input type="number" class="form-control beh-input"
-                                                               name="beh_scores[<?php echo (int)$criterion['criterion_id']; ?>]"
-                                                               id="beh_<?php echo (int)$criterion['criterion_id']; ?>"
-                                                               min="0" max="4" step="0.01"
-                                                               value="<?php echo number_format($orig, 2); ?>"
-                                                               <?php echo $disabled_attr; ?>
-                                                               placeholder="0.00 – 4.00"
-                                                               style="max-width: 90px; text-align: center;">
-                                                        <div class="change-badge d-none" id="chg_beh_<?php echo (int)$criterion['criterion_id']; ?>">
-                                                            <i class="fas fa-pen"></i> Adjusted
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr class="total-row">
-                                            <td colspan="2" class="text-end">
-                                                <i class="fas fa-calculator me-1"></i>Behavior Average
-                                            </td>
-                                            <td class="text-end" id="behAvg">
-                                                <?php echo number_format($orig_beh_avg, 2); ?>
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                            <div class="rating-section">
+                                <h2 class="rating-section-title">
+                                    <i class="fas fa-heart me-2" aria-hidden="true"></i>Behavior Ratings
+                                    <span class="ms-2 text-muted fw-normal" style="font-size:.8rem;">(You may adjust scores before endorsing)</span>
+                                </h2>
+
+                                <?php foreach ($criteria_behavior as $criterion):
+                                    $orig = (float)$criterion['score_value'];
+                                ?>
+                                    <div class="rating-item beh-row"
+                                         data-orig="<?php echo $orig; ?>"
+                                         data-criterion="<?php echo (int)$criterion['criterion_id']; ?>">
+                                        <div class="rating-header">
+                                            <h3 class="rating-title"><?php echo e($criterion['criterion_name']); ?></h3>
+                                            <?php if (!empty($criterion['description'])): ?>
+                                                <p class="rating-description"><?php echo e($criterion['description']); ?></p>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="text-muted small fw-semibold">Current Rating:</span>
+                                                <span class="badge bg-info text-dark fs-6">
+                                                    <?php echo number_format($orig, 2); ?>
+                                                </span>
+                                            </div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <label class="text-muted small fw-semibold mb-0" for="beh_<?php echo (int)$criterion['criterion_id']; ?>">Your Adjustment:</label>
+                                                <input type="number" class="form-control beh-input"
+                                                       name="beh_scores[<?php echo (int)$criterion['criterion_id']; ?>]"
+                                                       id="beh_<?php echo (int)$criterion['criterion_id']; ?>"
+                                                       min="0" max="4" step="0.01"
+                                                       value="<?php echo number_format($orig, 2); ?>"
+                                                       <?php echo $disabled_attr; ?>
+                                                       placeholder="0.00 – 4.00"
+                                                       style="max-width: 90px; text-align: center;">
+                                                <div class="change-badge d-none" id="chg_beh_<?php echo (int)$criterion['criterion_id']; ?>">
+                                                    <i class="fas fa-pen"></i> Adjusted
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+
+                                <div class="total-row d-flex justify-content-end align-items-center gap-2 px-3 py-2 rounded mt-1">
+                                    <span class="fw-bold"><i class="fas fa-calculator me-1"></i>Behavior Average:</span>
+                                    <span class="fw-bold text-info" id="behAvg"><?php echo number_format($orig_beh_avg, 2); ?></span>
+                                </div>
                             </div>
                         <?php endif; ?>
 

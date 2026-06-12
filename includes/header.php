@@ -300,8 +300,31 @@ switch ($effective_role) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>/assets/css/style.css?v=<?php echo time(); ?>" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="<?php echo BASE_URL; ?>/assets/js/pjax.js?v=<?php echo time(); ?>"></script>
+    <?php if ($effective_role === 'Employee'): ?>
+    <!-- Employee Portal UX Revamp CSS — loaded for Employee role only -->
+    <!-- Critical CSS inlined for above-the-fold render speed (Task 24.4) -->
+    <style>
+    *,*::before,*::after{box-sizing:border-box;max-width:100%;}
+    .skip-navigation{position:absolute;top:-100px;left:0;background:#082E06;color:#fff;padding:.75rem 1.5rem;text-decoration:none;font-weight:600;z-index:10000;border-radius:0 0 8px 0;}
+    .skip-navigation:focus{top:0;}
+    @media(min-width:768px){.main-content{margin-left:260px;padding:1.5rem;}.top-navbar{left:260px;}}
+    @media(max-width:767px){.main-content{padding:1rem;}body{padding-bottom:64px;}}
+    </style>
+    <link rel="preload" href="<?php echo BASE_URL; ?>/assets/css/employee-portal-variables.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-variables.css" rel="stylesheet"></noscript>
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-variables.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-layout.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-navigation.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-cards.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-forms.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-buttons.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-ratings.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-progress.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-notifications.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-feedback.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <?php endif; ?>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <script src="<?php echo BASE_URL; ?>/assets/js/pjax.js?v=<?php echo time(); ?>" defer></script>
     <script>
         // Prevent FOUC for collapsed sidebar
         if (localStorage.getItem('sidebar_collapsed') === 'true') {
@@ -314,6 +337,11 @@ switch ($effective_role) {
 </head>
 
 <body class="<?php echo ($current_dir === 'admin' ? 'admin-area' : '') . ($effective_role === 'Employee' ? ' role-employee' : ''); ?>">
+
+    <?php if ($effective_role === 'Employee'): ?>
+    <!-- Skip Navigation for accessibility (WCAG AAA) -->
+    <a href="#main-content" class="skip-navigation">Skip to main content</a>
+    <?php endif; ?>
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -512,7 +540,7 @@ switch ($effective_role) {
     </header>
 
     <!-- Main Content Wrapper -->
-    <main class="main-content">
+    <main class="main-content" id="main-content">
         <?php
         // Always consume the flash session to prevent it leaking to the next page.
         // Suppress the visual banner on pages that have their own inline feedback:

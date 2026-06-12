@@ -206,6 +206,14 @@ $base_url = strtok($_SERVER['REQUEST_URI'], '?');
     </div>
 </div>
 
+<!-- Breadcrumb navigation -->
+<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Notifications</li>
+    </ol>
+</nav>
+
 <div class="notif-stats-row fadeup-1">
     <div class="notif-stat-card">
         <div class="nsc-icon" style="background:rgba(41,67,6,0.1); color:var(--primary-blue);"><i class="fas fa-layer-group"></i></div>
@@ -229,7 +237,11 @@ $base_url = strtok($_SERVER['REQUEST_URI'], '?');
         <form method="GET" action="" style="display:contents;"><input type="hidden" name="filter" value="<?php echo e($filter); ?>"><div class="notif-search-box"><i class="fas fa-search search-icon"></i><input type="text" name="search" value="<?php echo e($search); ?>" placeholder="Search notifications..."></div></form>
     </div>
     <div class="notif-actions">
-        <?php if ($total_unread > 0): ?><button class="notif-action-btn" onclick="bulkAction('mark_all_read')"><i class="fas fa-check-double"></i> Mark All Read</button><?php endif; ?>
+        <?php if ($total_unread > 0): ?>
+            <button class="notif-action-btn btn btn-outline-primary" style="min-height:48px;" onclick="bulkAction('mark_all_read')" aria-label="Mark all notifications as read">
+                <i class="fas fa-check-double"></i> Mark All Read
+            </button>
+        <?php endif; ?>
         <?php if ($total_read > 0): ?><button class="notif-action-btn danger" onclick="bulkAction('delete_all_read')"><i class="fas fa-trash-alt"></i> Clear Read</button><?php endif; ?>
     </div>
 </div>
@@ -237,9 +249,9 @@ $base_url = strtok($_SERVER['REQUEST_URI'], '?');
 <?php if (empty($notifications)): ?>
     <div class="notif-empty-state"><div class="notif-empty-icon"><i class="fas fa-bell-slash"></i></div><h5>No notifications<?php echo $filter !== 'all' || $search !== '' ? ' matching your filter' : ''; ?></h5><p><?php echo ($filter !== 'all' || $search !== '') ? 'Try changing your filter or search terms.' : "You're all caught up! New notifications will appear here when actions occur in the system."; ?></p></div>
 <?php else: ?>
-    <div class="notif-list" id="notifList">
+    <div class="notif-list notification-list" id="notifList">
         <?php foreach ($notifications as $i => $notif): $icon_cls = getNotifIconClass($notif['title']); $icon_fa = getNotifFA($icon_cls); $is_unread = !$notif['is_read']; ?>
-        <div class="notif-card <?php echo $is_unread ? 'unread' : ''; ?>" id="notif-<?php echo $notif['notification_id']; ?>" style="--i: <?php echo $i; ?>;" data-id="<?php echo $notif['notification_id']; ?>" data-read="<?php echo $notif['is_read']; ?>">
+        <div class="notif-card notification-item <?php echo $is_unread ? 'unread' : ''; ?>" id="notif-<?php echo $notif['notification_id']; ?>" style="--i: <?php echo $i; ?>;" data-id="<?php echo $notif['notification_id']; ?>" data-read="<?php echo $notif['is_read']; ?>">
             <div class="notif-card-icon <?php echo $icon_cls; ?>"><i class="<?php echo $icon_fa; ?>"></i></div>
             <div class="notif-card-body" onclick="navigateNotif(<?php echo $notif['notification_id']; ?>, '<?php echo e($notif['link'] ?? ''); ?>', <?php echo $is_unread ? 'true' : 'false'; ?>)">
                 <div class="notif-card-title"><?php echo e($notif['title']); ?></div>
