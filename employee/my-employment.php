@@ -85,12 +85,7 @@ require_once '../includes/header.php';
     </div>
 </div>
 
-<nav aria-label="Breadcrumb" class="breadcrumb-nav">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">My Employment</li>
-    </ol>
-</nav>
+
 
 <div class="pds-info-grid">
     <div class="pds-card fadeup-1">

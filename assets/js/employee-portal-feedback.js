@@ -147,8 +147,10 @@
         // Only disable if not already loading (prevents double-fire)
         if (!btn.classList.contains('is-loading')) {
           btn.classList.add('is-loading');
-          btn.disabled = true;
           btn.setAttribute('aria-busy', 'true');
+          setTimeout(function() {
+            btn.disabled = true;
+          }, 1);
         }
       });
     });

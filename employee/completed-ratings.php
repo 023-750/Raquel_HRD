@@ -402,6 +402,7 @@ require_once '../includes/header.php';
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
         <div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">Employee Portal · Evaluation Status</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-clipboard-check me-2" style="color:var(--primary-light);"></i>Current Evaluation Status</h4>
         </div>
         <div class="d-none d-md-block text-end">
@@ -423,13 +424,6 @@ require_once '../includes/header.php';
         <span class="text-muted fw-500">Track your evaluation status.</span>
     </div>
 </div>
-
-<nav aria-label="Breadcrumb" class="breadcrumb-nav">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Evaluation Status</li>
-    </ol>
-</nav>
 
 <div class="row g-4 eval-status-page">
     <div class="col-12">

@@ -576,15 +576,20 @@ require_once '../includes/header.php';
                 <i class="fas fa-check-double me-1"></i>Review and confirm self-ratings from your team members
             </p>
         </div>
+        <div class="d-none d-md-block text-end">
+            <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-outline-light btn-sm rounded-pill px-3 mb-2">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
     </div>
 </div>
 
-<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Confirm Self-Rating</li>
-    </ol>
-</nav>
+<!-- Mobile-only section -->
+<div class="d-md-none d-flex justify-content-between align-items-center mt-3 mb-4 flex-wrap gap-3 fadeup" style="animation-delay: 0.1s;">
+    <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+        <i class="fas fa-arrow-left me-2"></i>Back to My Dashboard
+    </a>
+</div>
 
 <?php if (!$is_supervisor): ?>
     <!-- Not a supervisor - informational message -->

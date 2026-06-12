@@ -1401,6 +1401,14 @@ function ensureEvaluationWorkflowSchema($conn)
 
             'dept_manager_comments' => "ALTER TABLE evaluations ADD COLUMN dept_manager_comments TEXT NULL AFTER supervisor_comments",
 
+            'supervisor_lock_user_id' => "ALTER TABLE evaluations ADD COLUMN supervisor_lock_user_id INT NULL AFTER dept_manager_endorsed_date",
+
+            'supervisor_lock_expires' => "ALTER TABLE evaluations ADD COLUMN supervisor_lock_expires DATETIME NULL AFTER supervisor_lock_user_id",
+
+            'manager_lock_user_id' => "ALTER TABLE evaluations ADD COLUMN manager_lock_user_id INT NULL AFTER supervisor_lock_expires",
+
+            'manager_lock_expires' => "ALTER TABLE evaluations ADD COLUMN manager_lock_expires DATETIME NULL AFTER manager_lock_user_id",
+
         ];
 
 
@@ -1645,39 +1653,66 @@ function getEmployeeSupervisor($conn, $employee_id)
 
 function notifySupervisorOfSelfRating($conn, $employee_id, $evaluation_id)
 {
+    $employee_id = (int)$employee_id;
+    $evaluation_id = (int)$evaluation_id;
 
-    $supervisor = getEmployeeSupervisor($conn, $employee_id);
+    // Get employee details
+    $emp_stmt = $conn->prepare("SELECT reports_to, branch_id, department_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $emp_stmt->bind_param("i", $employee_id);
+    $emp_stmt->execute();
+    $emp_info = $emp_stmt->get_result()->fetch_assoc();
+    $emp_stmt->close();
 
-    if (!$supervisor || empty($supervisor['user_id'])) {
-
+    if (!$emp_info) {
         return false;
-
     }
 
+    $reports_to = $emp_info['reports_to'] ? (int) $emp_info['reports_to'] : 0;
+    $branch_id = $emp_info['branch_id'] ? (int) $emp_info['branch_id'] : 0;
+    $department_id = $emp_info['department_id'] ? (int) $emp_info['department_id'] : 0;
 
+    // We want to find ALL supervisor user accounts who are:
+    // 1. The direct supervisor (reports_to) OR
+    // 2. Active supervisors/managers in the same branch & department as the employee.
+    $query = "
+        SELECT DISTINCT u.user_id
+        FROM users u
+        JOIN employees s ON u.employee_id = s.employee_id
+        WHERE s.is_active = 1 
+          AND s.deleted_at IS NULL
+          AND (
+            (s.employee_id = ? AND ? > 0)
+            OR (
+              s.branch_id = ? 
+              AND s.department_id = ? 
+              AND s.employee_id != ?
+              AND (s.rank_category_id IN (3, 4) OR s.job_title LIKE '%Supervisor%' OR s.job_title LIKE '%Manager%')
+            )
+          )
+    ";
 
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("iiiii", $reports_to, $reports_to, $branch_id, $department_id, $employee_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $notified = false;
     $employee_name = getEmployeeNameById($conn, $employee_id);
 
+    while ($row = $result->fetch_assoc()) {
+        $supervisor_user_id = (int)$row['user_id'];
+        createNotification(
+            $conn,
+            $supervisor_user_id,
+            'Self-Rating Pending Confirmation',
+            $employee_name . ' submitted a self-rating awaiting your confirmation.',
+            BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id
+        );
+        $notified = true;
+    }
+    $stmt->close();
 
-
-    createNotification(
-
-        $conn,
-
-        (int) $supervisor['user_id'],
-
-        'Self-Rating Pending Confirmation',
-
-        $employee_name . ' submitted a self-rating awaiting your confirmation.',
-
-        BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id
-
-    );
-
-
-
-    return true;
-
+    return $notified;
 }
 
 
@@ -1693,20 +1728,58 @@ function isSupervisorOfEmployee($conn, $supervisor_user_id, $employee_id)
     $supervisor_user_id = (int) $supervisor_user_id;
     $employee_id = (int) $employee_id;
 
-    // Get the employee_id of the supervisor user
-    $stmt = $conn->prepare("SELECT employee_id FROM users WHERE user_id = ? LIMIT 1");
+    // Get the supervisor details
+    $stmt = $conn->prepare("
+        SELECT e.employee_id, e.branch_id, e.department_id, e.rank_category_id, e.job_title
+        FROM users u
+        JOIN employees e ON u.employee_id = e.employee_id
+        WHERE u.user_id = ? AND e.is_active = 1 AND e.deleted_at IS NULL
+        LIMIT 1
+    ");
     $stmt->bind_param("i", $supervisor_user_id);
     $stmt->execute();
-    $supervisor_employee_id = $stmt->get_result()->fetch_assoc()['employee_id'] ?? 0;
+    $supervisor = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    if (!$supervisor_employee_id) {
+    if (!$supervisor) {
         return false;
     }
 
-    // Use getEmployeeSupervisor fallback strategy
-    $supervisor = getEmployeeSupervisor($conn, $employee_id);
-    if ($supervisor && (int)$supervisor['supervisor_employee_id'] === (int)$supervisor_employee_id) {
+    $supervisor_employee_id = (int)$supervisor['employee_id'];
+
+    // Get employee details
+    $stmt = $conn->prepare("SELECT reports_to, branch_id, department_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $stmt->bind_param("i", $employee_id);
+    $stmt->execute();
+    $employee = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$employee) {
+        return false;
+    }
+
+    $reports_to = $employee['reports_to'] ? (int)$employee['reports_to'] : 0;
+    if ($reports_to > 0 && $reports_to === $supervisor_employee_id) {
+        return true;
+    }
+
+    // Check same branch/department supervisor or manager
+    if ((int)$supervisor['branch_id'] === (int)$employee['branch_id'] && 
+        (int)$supervisor['department_id'] === (int)$employee['department_id'] &&
+        $supervisor_employee_id !== $employee_id) {
+        
+        $rank_cat = (int)$supervisor['rank_category_id'];
+        $job_title = $supervisor['job_title'];
+        if ($rank_cat === 3 || $rank_cat === 4 || 
+            stripos($job_title, 'Supervisor') !== false || 
+            stripos($job_title, 'Manager') !== false) {
+            return true;
+        }
+    }
+
+    // Fallback to the default getEmployeeSupervisor matching logic
+    $fallback_sup = getEmployeeSupervisor($conn, $employee_id);
+    if ($fallback_sup && (int)$fallback_sup['supervisor_employee_id'] === $supervisor_employee_id) {
         return true;
     }
 
@@ -1933,6 +2006,118 @@ function getDeptManagerOfEmployee($conn, $employee_id)
 
     return null;
 }
+/**
+ * Get all active department managers of employee (either via reports_to chain or same branch & department fallback)
+ */
+function getDeptManagersOfEmployee($conn, $employee_id)
+{
+    $employee_id = (int)$employee_id;
+    if ($employee_id <= 0) {
+        return [];
+    }
+
+    // Get immediate supervisor (reports_to), branch_id, and rank/job title
+    $stmt = $conn->prepare("SELECT reports_to, branch_id, department_id, job_title, rank_category_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $stmt->bind_param("i", $employee_id);
+    $stmt->execute();
+    $emp_info = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$emp_info) {
+        return [];
+    }
+
+    $reports_to = $emp_info['reports_to'] ? (int)$emp_info['reports_to'] : 0;
+    $branch_id = $emp_info['branch_id'] ? (int)$emp_info['branch_id'] : 0;
+    $department_id = $emp_info['department_id'] ? (int)$emp_info['department_id'] : 0;
+    $job_title = $emp_info['job_title'] ?? '';
+    $rank_category_id = (int)($emp_info['rank_category_id'] ?? 0);
+
+    $managers = [];
+
+    // 1. If employee is a supervisor and reports_to is set, get that manager
+    if (($rank_category_id === 4 || stripos($job_title, 'Supervisor') !== false) && $reports_to > 0) {
+        $stmt = $conn->prepare("
+            SELECT m.reports_to, m.employee_id as supervisor_employee_id,
+                   m.first_name, m.last_name, m.job_title,
+                   u.user_id, u.full_name, u.email
+            FROM employees m
+            LEFT JOIN users u ON m.employee_id = u.employee_id AND u.is_active = 1
+            WHERE m.employee_id = ?
+              AND m.is_active = 1
+              AND m.deleted_at IS NULL
+        ");
+        $stmt->bind_param("i", $reports_to);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            if (!empty($row['user_id'])) {
+                $managers[$row['user_id']] = $row;
+            }
+        }
+        $stmt->close();
+    }
+
+    // 2. Try reports_to chain: employee -> supervisor -> manager
+    if ($reports_to > 0) {
+        $stmt = $conn->prepare("
+            SELECT m.reports_to, m.employee_id as supervisor_employee_id,
+                   m.first_name, m.last_name, m.job_title,
+                   u.user_id, u.full_name, u.email
+            FROM employees s
+            JOIN employees m ON s.reports_to = m.employee_id
+            LEFT JOIN users u ON m.employee_id = u.employee_id AND u.is_active = 1
+            WHERE s.employee_id = ?
+              AND s.is_active = 1
+              AND s.deleted_at IS NULL
+              AND m.is_active = 1
+              AND m.deleted_at IS NULL
+        ");
+        $stmt->bind_param("i", $reports_to);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            if (!empty($row['user_id'])) {
+                $managers[$row['user_id']] = $row;
+            }
+        }
+        $stmt->close();
+    }
+
+    // 3. Fallback to branch-based hierarchy if reports_to chain is not set or doesn't yield a manager
+    if (empty($managers) && $branch_id > 0) {
+        // If the employee is a Manager themselves, they don't have a department manager above them.
+        if ($rank_category_id === 3 || stripos($job_title, 'Manager') !== false) {
+            return [];
+        }
+
+        // Get all active managers in the same branch/department
+        $mgr_stmt = $conn->prepare("
+            SELECT m.employee_id as supervisor_employee_id, m.reports_to,
+                   m.first_name, m.last_name, m.job_title,
+                   u.user_id, u.full_name, u.email
+            FROM employees m
+            LEFT JOIN users u ON m.employee_id = u.employee_id AND u.is_active = 1
+            WHERE m.branch_id = ? 
+              AND m.is_active = 1 
+              AND m.deleted_at IS NULL
+              AND m.employee_id != ?
+              AND (? = 0 OR m.department_id = ?)
+              AND (m.rank_category_id = 3 OR m.job_title LIKE '%Manager%')
+        ");
+        $mgr_stmt->bind_param("iiii", $branch_id, $employee_id, $department_id, $department_id);
+        $mgr_stmt->execute();
+        $res = $mgr_stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            if (!empty($row['user_id'])) {
+                $managers[$row['user_id']] = $row;
+            }
+        }
+        $mgr_stmt->close();
+    }
+
+    return array_values($managers);
+}
 
 /**
  * Check if user is department manager of specific employee (supervisor's supervisor)
@@ -1970,13 +2155,99 @@ function isDeptManagerOfEmployee($conn, $manager_user_id, $employee_id)
         return true;
     }
 
-    // 2. Fallback: Resolve employee's department manager using fallback logic
-    $dept_manager = getDeptManagerOfEmployee($conn, $employee_id);
-    if ($dept_manager && (int)$dept_manager['supervisor_employee_id'] === $manager_employee_id) {
-        return true;
+    // 2. Fallback: Resolve employee's department managers using new logic
+    $dept_managers = getDeptManagersOfEmployee($conn, $employee_id);
+    foreach ($dept_managers as $mgr) {
+        if ((int)$mgr['supervisor_employee_id'] === $manager_employee_id) {
+            return true;
+        }
     }
 
     return false;
+}
+
+/**
+ * Notify all Branch Supervisors of an employee when department manager returns/rejects the evaluation
+ */
+function notifySupervisorOfReturnedEvaluation($conn, $employee_id, $evaluation_id, $manager_name)
+{
+    $employee_id = (int)$employee_id;
+    $evaluation_id = (int)$evaluation_id;
+
+    // Get employee details
+    $emp_stmt = $conn->prepare("SELECT reports_to, branch_id, department_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $emp_stmt->bind_param("i", $employee_id);
+    $emp_stmt->execute();
+    $emp_info = $emp_stmt->get_result()->fetch_assoc();
+    $emp_stmt->close();
+
+    if (!$emp_info) {
+        return false;
+    }
+
+    $reports_to = $emp_info['reports_to'] ? (int)$emp_info['reports_to'] : 0;
+    $branch_id = $emp_info['branch_id'] ? (int)$emp_info['branch_id'] : 0;
+    $department_id = $emp_info['department_id'] ? (int)$emp_info['department_id'] : 0;
+
+    // Find all supervisors/managers who can confirm the rating (excluding the returning manager)
+    $query = "
+        SELECT DISTINCT u.user_id
+        FROM users u
+        JOIN employees s ON u.employee_id = s.employee_id
+        WHERE s.is_active = 1 
+          AND s.deleted_at IS NULL
+          AND (
+            (s.employee_id = ? AND ? > 0)
+            OR (
+              s.branch_id = ? 
+              AND s.department_id = ? 
+              AND s.employee_id != ?
+              AND (s.rank_category_id = 4 OR s.job_title LIKE '%Supervisor%')
+            )
+          )
+    ";
+
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("iiiii", $reports_to, $reports_to, $branch_id, $department_id, $employee_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $notified = false;
+    $employee_name = getEmployeeNameById($conn, $employee_id);
+
+    while ($row = $result->fetch_assoc()) {
+        $supervisor_user_id = (int)$row['user_id'];
+        createNotification(
+            $conn,
+            $supervisor_user_id,
+            'Evaluation Returned by Department Manager',
+            $manager_name . ' returned the evaluation for ' . $employee_name . ' to your level for re-evaluation.',
+            BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id
+        );
+        $notified = true;
+    }
+    $stmt->close();
+
+    // Fallback: Notify HR Supervisor if no branch supervisors found
+    if (!$notified) {
+        $hr_supervisors_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND branch_id = ? AND is_active = 1");
+        $hr_supervisors_stmt->bind_param("i", $branch_id);
+        $hr_supervisors_stmt->execute();
+        $hr_supervisors = $hr_supervisors_stmt->get_result();
+        while ($hr_sup = $hr_supervisors->fetch_assoc()) {
+            createNotification(
+                $conn,
+                (int)$hr_sup['user_id'],
+                'Evaluation Returned by Department Manager',
+                $manager_name . ' returned the evaluation for ' . $employee_name . ' for re-evaluation. (No supervisor assigned)',
+                BASE_URL . '/supervisor/pending-endorsements.php'
+            );
+            $notified = true;
+        }
+        $hr_supervisors_stmt->close();
+    }
+
+    return $notified;
 }
 
 /**

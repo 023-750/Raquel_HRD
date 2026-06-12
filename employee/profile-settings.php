@@ -115,13 +115,6 @@ require_once '../includes/header.php';
     </a>
 </div>
 
-<!-- Breadcrumb -->
-<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Profile Settings</li>
-    </ol>
-</nav>
 
 <!-- ══════════════════════════════════════════════════════════════════
      TASK 14.5 — Section Completion Indicator

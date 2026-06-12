@@ -357,11 +357,42 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                     <li class="page-item <?php echo $current_page <= 1 ? 'disabled' : ''; ?>">
                         <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page - 1])); ?>">Previous</a>
                     </li>
-                    <?php for ($p = 1; $p <= $total_pages; $p++): ?>
+                    <?php 
+                    $start_page = max(1, $current_page - 2);
+                    $end_page = min($total_pages, $start_page + 4);
+                    if ($end_page - $start_page < 4) {
+                        $start_page = max(1, $end_page - 4);
+                    }
+
+                    if ($start_page > 1) {
+                        ?>
+                        <li class="page-item">
+                            <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => 1])); ?>">1</a>
+                        </li>
+                        <?php if ($start_page > 2): ?>
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        <?php endif; ?>
+                        <?php
+                    }
+
+                    for ($p = $start_page; $p <= $end_page; $p++) {
+                        ?>
                         <li class="page-item <?php echo $p === $current_page ? 'active' : ''; ?>">
                             <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $p])); ?>"><?php echo $p; ?></a>
                         </li>
-                    <?php endfor; ?>
+                        <?php
+                    }
+
+                    if ($end_page < $total_pages) {
+                        if ($end_page < $total_pages - 1): ?>
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        <?php endif; ?>
+                        <li class="page-item">
+                            <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $total_pages])); ?>"><?php echo $total_pages; ?></a>
+                        </li>
+                        <?php
+                    }
+                    ?>
                     <li class="page-item <?php echo $current_page >= $total_pages ? 'disabled' : ''; ?>">
                         <a class="page-link" href="?<?php echo http_build_query(array_merge($query_params, ['page' => $current_page + 1])); ?>">Next</a>
                     </li>

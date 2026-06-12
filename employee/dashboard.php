@@ -114,8 +114,7 @@ $cm_stmt->execute();
 $career_movements = $cm_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $cm_stmt->close();
 
-// ── Recent notifications ────────────────────────────────────────────────────
-$recent_notifs = getRecentNotifications($conn, $user_id, 4, 'employee');
+
 
 // ── Has supervisor privileges? (subordinates in DB OR supervisor/manager role) ─
 $is_supervisor = hasSupervisorPrivileges($conn, $employee_id);
@@ -656,156 +655,13 @@ function movementIcon(string $type): string {
             </div>
         </div>
 
-        <!-- Recent Notifications -->
-        <div class="content-card mb-4">
-            <div class="content-card-header">
-                <h2 class="content-card-title">
-                    <i class="fas fa-bell" aria-hidden="true"></i>
-                    Recent Notifications
-                </h2>
-                <a href="<?php echo BASE_URL; ?>/employee/notifications.php" class="btn btn-sm btn-outline-primary">All</a>
-            </div>
-            <div class="content-card-body" style="padding: 0;">
-                <?php if (!empty($recent_notifs)): ?>
-                    <?php foreach ($recent_notifs as $n): ?>
-                    <a href="<?php echo e($n['link'] ?? '#'); ?>"
-                       class="d-flex gap-3 p-3 text-decoration-none <?php echo $n['is_read'] ? '' : 'notif-unread-item'; ?>"
-                       style="border-bottom:1px solid var(--border-color);transition:background .2s;"
-                       onmouseover="this.style.background='var(--bg-gray)'" onmouseout="this.style.background=''">
-                        <div style="width:36px;height:36px;border-radius:50%;background:<?php echo $n['is_read'] ? 'var(--bg-gray)' : 'rgba(67,104,254,.12)'; ?>;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="fas fa-bell" style="font-size:.75rem;color:<?php echo $n['is_read'] ? 'var(--text-muted)' : 'var(--primary-blue)'; ?>;"></i>
-                        </div>
-                        <div style="min-width:0;">
-                            <div class="fw-semibold" style="font-size:.82rem;color:var(--text-dark);"><?php echo e($n['title']); ?></div>
-                            <div class="text-muted" style="font-size:.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?php echo e($n['message']); ?></div>
-                            <div style="font-size:.68rem;color:var(--text-muted);margin-top:2px;"><?php echo formatDateTime($n['created_at']); ?></div>
-                        </div>
-                    </a>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                <div class="text-center py-4">
-                    <i class="fas fa-bell-slash" style="font-size:2rem;opacity:.2;"></i>
-                    <p class="text-muted small mt-2 mb-0">No new notifications.</p>
-                </div>
-                <?php endif; ?>
-            </div>
-        </div>
+
 
     </div><!-- /RIGHT COL -->
 
 </div>
 
-<!-- ══════════════════════════════════════════════════════════════════════════
-     QUICK ACTIONS — grouped with visual hierarchy (Req 6.2, 6.3, 6.5, 17.2)
-══════════════════════════════════════════════════════════════════════════ -->
-<div class="content-card mb-4 fadeup">
-    <div class="content-card-header">
-        <h2 class="content-card-title">
-            <i class="fas fa-bolt" aria-hidden="true"></i>
-            Quick Actions
-        </h2>
-    </div>
-    <div class="content-card-body">
 
-        <!-- Section: Evaluations (highest priority) -->
-        <h3 class="quick-actions-section-heading">
-            <i class="fas fa-clipboard-check me-2" aria-hidden="true"></i>Evaluations
-        </h3>
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-sm-4 col-md-3">
-                <a href="<?php echo BASE_URL; ?>/employee/self-rating.php"
-                   class="btn btn-primary quick-action-btn-list w-100"
-                   aria-label="Start or continue self-rating evaluation">
-                    <i class="fas fa-user-edit" aria-hidden="true"></i>
-                    My Self-Rating
-                </a>
-            </div>
-            <div class="col-6 col-sm-4 col-md-3">
-                <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php"
-                   class="btn btn-outline-primary quick-action-btn-list w-100"
-                   aria-label="View all completed evaluations">
-                    <i class="fas fa-clipboard-list" aria-hidden="true"></i>
-                    View Evaluations
-                </a>
-            </div>
-            <?php if ($is_supervisor && $pending_sub_count > 0): ?>
-            <div class="col-6 col-sm-4 col-md-3">
-                <a href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php"
-                   class="btn btn-outline-primary quick-action-btn-list w-100 position-relative"
-                   aria-label="Review pending subordinate evaluations">
-                    <i class="fas fa-users-cog" aria-hidden="true"></i>
-                    Review Team
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                          style="font-size:.6rem;"><?php echo $pending_sub_count; ?></span>
-                </a>
-            </div>
-            <?php endif; ?>
-        </div>
-
-        <!-- Section: My Information -->
-        <h3 class="quick-actions-section-heading">
-            <i class="fas fa-id-card me-2" aria-hidden="true"></i>My Information
-        </h3>
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-sm-4 col-md-3">
-                <a href="<?php echo BASE_URL; ?>/employee/my-pds.php"
-                   class="btn btn-primary quick-action-btn-list w-100"
-                   aria-label="View or update my Personal Data Sheet">
-                    <i class="fas fa-id-badge" aria-hidden="true"></i>
-                    My PDS
-                </a>
-            </div>
-            <div class="col-6 col-sm-4 col-md-3">
-                <a href="<?php echo BASE_URL; ?>/employee/my-employment.php"
-                   class="btn btn-outline-primary quick-action-btn-list w-100"
-                   aria-label="View my employment details">
-                    <i class="fas fa-briefcase" aria-hidden="true"></i>
-                    Employment Details
-                </a>
-            </div>
-            <div class="col-6 col-sm-4 col-md-3">
-                <a href="<?php echo BASE_URL; ?>/employee/profile-settings.php"
-                   class="btn btn-outline-primary quick-action-btn-list w-100"
-                   aria-label="Manage my profile and account settings">
-                    <i class="fas fa-user-cog" aria-hidden="true"></i>
-                    Profile Settings
-                </a>
-            </div>
-        </div>
-
-        <!-- Section: Team & Career -->
-        <h3 class="quick-actions-section-heading">
-            <i class="fas fa-users me-2" aria-hidden="true"></i>Team &amp; Career
-        </h3>
-        <div class="row g-3">
-            <div class="col-6 col-sm-4 col-md-3">
-                <a href="<?php echo BASE_URL; ?>/employee/career-movement-request.php"
-                   class="btn btn-primary quick-action-btn-list w-100"
-                   aria-label="Submit a career movement request">
-                    <i class="fas fa-trending-up" aria-hidden="true"></i>
-                    Career Request
-                </a>
-            </div>
-            <div class="col-6 col-sm-4 col-md-3">
-                <a href="<?php echo BASE_URL; ?>/employee/team-list.php"
-                   class="btn btn-outline-primary quick-action-btn-list w-100"
-                   aria-label="View my team list">
-                    <i class="fas fa-sitemap" aria-hidden="true"></i>
-                    My Team
-                </a>
-            </div>
-            <div class="col-6 col-sm-4 col-md-3">
-                <a href="<?php echo BASE_URL; ?>/employee/notifications.php"
-                   class="btn btn-outline-primary quick-action-btn-list w-100"
-                   aria-label="View all notifications">
-                    <i class="fas fa-bell" aria-hidden="true"></i>
-                    Notifications
-                </a>
-            </div>
-        </div>
-
-    </div>
-</div>
 
 <style>
 /* ── Quick Actions Section Headings (Req 6.2, 17.2 — 1.5rem, 24px margin-top) */

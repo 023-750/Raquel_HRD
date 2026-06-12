@@ -200,19 +200,19 @@ $base_url = strtok($_SERVER['REQUEST_URI'], '?');
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-bell me-2" style="color:var(--primary-light);"></i>Notification Center</h4>
             <p class="text-white-50 small mb-0 mt-2 d-none d-sm-block">View updates, approval results, and HR feedback for your account</p>
         </div>
-        <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-outline-light btn-sm px-3" style="border-radius: 20px;">
-            <i class="fas fa-arrow-left me-2"></i>Dashboard
-        </a>
+        <div class="d-none d-md-block">
+            <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
     </div>
 </div>
 
-<!-- Breadcrumb navigation -->
-<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Notifications</li>
-    </ol>
-</nav>
+<div class="d-md-none mb-4 fadeup" style="animation-delay: 0.1s;">
+    <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+        <i class="fas fa-arrow-left me-2"></i>Back to My Dashboard
+    </a>
+</div>
 
 <div class="notif-stats-row fadeup-1">
     <div class="notif-stat-card">

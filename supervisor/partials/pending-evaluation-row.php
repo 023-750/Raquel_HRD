@@ -56,7 +56,15 @@ $is_nested = $rowLayout === 'nested';
         </td>
     <?php endif; ?>
     <td data-label="Submitted By">
-        <?php if ($row['eval_status'] === 'Pending HR Consolidation' && !empty($row['supervisor_confirmed_by_name'])): ?>
+        <?php if ($row['eval_status'] === 'Pending HR Consolidation' && !empty($row['dept_manager_endorsed_by_name'])): ?>
+            <div class="small fw-semibold text-success">
+                <i class="fas fa-check-circle me-1"></i><?php echo e($row['dept_manager_endorsed_by_name']); ?>
+            </div>
+            <div class="small text-muted">Branch Manager Confirmed</div>
+            <?php if (!empty($row['supervisor_altered_scores'])): ?>
+                <span class="badge bg-warning text-dark">Scores Altered</span>
+            <?php endif; ?>
+        <?php elseif ($row['eval_status'] === 'Pending HR Consolidation' && !empty($row['supervisor_confirmed_by_name'])): ?>
             <div class="small fw-semibold text-success">
                 <i class="fas fa-check-circle me-1"></i><?php echo e($row['supervisor_confirmed_by_name']); ?>
             </div>
@@ -76,9 +84,15 @@ $is_nested = $rowLayout === 'nested';
     <td data-label="Type & Progress">
         <span class="badge bg-info-subtle text-info border border-info-subtle"><?php echo e($row['evaluation_type'] ?? 'Annual'); ?></span>
         <?php if ($row['eval_status'] === 'Pending HR Consolidation'): ?>
-            <div class="pending-stage text-success">
-                <i class="fas fa-check me-1"></i>Supervisor confirmed &rarr; <strong>Ready for HR Consolidation</strong>
-            </div>
+            <?php if (!empty($row['dept_manager_endorsed_by_name']) || !empty($row['dept_manager_endorsed_by'])): ?>
+                <div class="pending-stage text-success">
+                    <i class="fas fa-check me-1"></i>Branch Manager confirmed &rarr; <strong>Ready for HR Consolidation</strong>
+                </div>
+            <?php else: ?>
+                <div class="pending-stage text-success">
+                    <i class="fas fa-check me-1"></i>Supervisor confirmed &rarr; <strong>Ready for HR Consolidation</strong>
+                </div>
+            <?php endif; ?>
         <?php else: ?>
             <div class="pending-stage">Staff submitted &rarr; Supervisor review</div>
         <?php endif; ?>

@@ -309,22 +309,7 @@ function updateNotificationDOM(unreadCount, recentNotifications) {
             badge.remove();
         }
     }
-    
-    const mobileAlertsBtn = document.querySelector('.employee-bottom-nav a[href*="notifications.php"] .position-relative');
-    if (mobileAlertsBtn) {
-        let mobileBadge = mobileAlertsBtn.querySelector('.mobile-notif-badge');
-        if (unreadCount > 0) {
-            if (!mobileBadge) {
-                mobileBadge = document.createElement('span');
-                mobileBadge.className = 'mobile-notif-badge';
-                mobileAlertsBtn.appendChild(mobileBadge);
-            }
-            mobileBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
-            mobileBadge.style.display = '';
-        } else if (mobileBadge) {
-            mobileBadge.remove();
-        }
-    }
+
     
     const dropdown = document.querySelector('.notification-dropdown');
     if (dropdown && recentNotifications) {

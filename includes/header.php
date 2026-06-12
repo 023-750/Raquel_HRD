@@ -484,21 +484,21 @@ switch ($effective_role) {
                     <button class="notification-btn" data-bs-toggle="dropdown" aria-expanded="false" id="mobileGearBtn" style="color: #074B02;">
                         <i class="fas fa-cog"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.08);">
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); min-width: 210px;">
                         <li>
-                            <span class="dropdown-item-text fw-bold" style="font-size:0.85rem;color:var(--text-muted);">
-                                <i class="fas fa-user-circle me-1"></i><?php echo e($_SESSION['full_name']); ?>
+                            <span class="dropdown-item-text fw-bold d-flex align-items-center" style="font-size:0.85rem;color:var(--text-muted); white-space: nowrap;">
+                                <i class="fas fa-user-circle me-2"></i><?php echo e($_SESSION['full_name']); ?>
                             </span>
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
-                            <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/dashboard.php">
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/dashboard.php" style="white-space: nowrap;">
                                 <i class="fas fa-tachometer-alt me-2" style="width: 20px; text-align: center;"></i>Dashboard
                             </a>
                         </li>
                         <?php if (isset($_SESSION['employee_id']) && $conn && isDeptManagerRole($conn, (int)$_SESSION['employee_id'])): ?>
                             <li>
-                                <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php">
+                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" style="white-space: nowrap;">
                                     <i class="fas fa-user-shield me-2" style="width: 20px; text-align: center;"></i>Dept Manager Review
                                 </a>
                             </li>
@@ -513,7 +513,7 @@ switch ($effective_role) {
                                 if ($_gear_dept_name !== 'Human Resources'):
                         ?>
                             <li>
-                                <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/team-list.php">
+                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/team-list.php" style="white-space: nowrap;">
                                     <i class="fas fa-users me-2" style="width: 20px; text-align: center;"></i>My Team
                                 </a>
                             </li>
@@ -523,13 +523,13 @@ switch ($effective_role) {
                         }
                         ?>
                         <li>
-                            <a class="dropdown-item" href="<?php echo BASE_URL; ?>/employee/profile-settings.php">
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/profile-settings.php" style="white-space: nowrap;">
                                 <i class="fas fa-user-cog me-2" style="width: 20px; text-align: center;"></i>Change Password
                             </a>
                         </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
-                            <a class="dropdown-item text-danger" href="<?php echo BASE_URL; ?>/logout.php">
+                            <a class="dropdown-item text-danger d-flex align-items-center" href="<?php echo BASE_URL; ?>/logout.php" style="white-space: nowrap;">
                                 <i class="fas fa-sign-out-alt me-2" style="width: 20px; text-align: center;"></i>Logout
                             </a>
                         </li>

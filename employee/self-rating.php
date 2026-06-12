@@ -603,6 +603,24 @@ $in_progress_evals = $in_progress_q ? $in_progress_q->fetch_all(MYSQLI_ASSOC) : 
 require_once '../includes/header.php';
 ?>
 
+<style>
+#selfRatingRightTabs .nav-link {
+    color: var(--color-text-muted) !important;
+    border-bottom: 2px solid transparent !important;
+    transition: all 0.2s ease-in-out;
+}
+#selfRatingRightTabs .nav-link:hover {
+    color: var(--color-primary) !important;
+    background-color: rgba(8, 46, 6, 0.05) !important;
+}
+#selfRatingRightTabs .nav-link.active {
+    color: var(--color-primary) !important;
+    border-bottom: 2px solid var(--color-primary-light) !important;
+    background: transparent !important;
+    font-weight: 700 !important;
+}
+</style>
+
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
         <div>
@@ -612,7 +630,7 @@ require_once '../includes/header.php';
                     style="color:var(--primary-light);"></i>360-Degree Self Rating</h4>
         </div>
         <div class="d-none d-md-block text-end">
-            <div class="badge bg-warning text-dark mb-2 px-3 py-2">
+            <div class="badge mb-2 px-3 py-2" style="background-color: #CBA135; color: #1C271B; font-weight: 700; border-radius: 8px;">
                 <i class="fas fa-bell me-1"></i><?php echo (int) $pending_template_count; ?> pending template<?php echo $pending_template_count === 1 ? '' : 's'; ?>
             </div><br>
             <a href="<?php echo BASE_URL; ?>/employee/dashboard.php"
@@ -624,14 +642,6 @@ require_once '../includes/header.php';
     <p class="text-white-50 small mb-0 d-none d-md-block"><i class="fas fa-info-circle me-1"></i>Complete your
         self-rating to provide insights for your performance review.</p>
 </div>
-
-<!-- Breadcrumb + Evaluation Progress Indicator -->
-<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">My Evaluations</li>
-    </ol>
-</nav>
 
 <?php if ($edit_eval || $view_mode): ?>
 <!-- Progress indicator for evaluation workflow -->
@@ -1189,11 +1199,11 @@ require_once '../includes/header.php';
                                         <?php while ($template = $templates->fetch_assoc()): ?>
                                             <?php
                                             $template_label = $template['template_name'] . ' (' . (float) $template['kra_weight'] . '% KRA / ' . (float) $template['behavior_weight'] . '% Behavior)';
+                                            $opt_display = str_replace(['All Departments', 'Template'], ['All Depts', 'Temp'], $template['template_name']);
+                                            $opt_display .= ' (' . (int)$template['kra_weight'] . '/' . (int)$template['behavior_weight'] . ')';
                                             ?>
                                             <option value="<?php echo (int) $template['template_id']; ?>" title="<?php echo e($template_label); ?>" data-title="<?php echo e($template_label); ?>" <?php echo $selected_template_id === (int) $template['template_id'] ? 'selected' : ''; ?>>
-                                                <?php echo e($template['template_name']); ?>
-                                                (<?php echo (float) $template['kra_weight']; ?>% KRA /
-                                                <?php echo (float) $template['behavior_weight']; ?>% Behavior)
+                                                <?php echo e($opt_display); ?>
                                             </option>
                                         <?php endwhile; ?>
                                     </select>
@@ -1382,71 +1392,120 @@ require_once '../includes/header.php';
 
     <div class="col-xl-4">
         <div class="content-card mb-4">
-            <div class="card-header">
-                <h5><i class="fas fa-route me-2"></i>How It Works</h5>
+            <div class="card-header p-0">
+                <ul class="nav nav-tabs card-header-tabs m-0 border-bottom-0" id="selfRatingRightTabs" role="tablist">
+                    <li class="nav-item" role="presentation" style="flex: 1;">
+                        <button class="nav-link active w-100 text-center py-3 fw-bold border-0" id="help-tab" data-bs-toggle="tab" data-bs-target="#help-tab-pane" type="button" role="tab" aria-controls="help-tab-pane" aria-selected="true" style="border-radius: var(--radius-lg) 0 0 0; background: transparent; color: inherit;">
+                            <i class="fas fa-question-circle me-1"></i>How It Works
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation" style="flex: 1;">
+                        <button class="nav-link w-100 text-center py-3 fw-bold border-0" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-tab-pane" type="button" role="tab" aria-controls="history-tab-pane" aria-selected="false" style="border-radius: 0 var(--radius-lg) 0 0; background: transparent; color: inherit;">
+                            <i class="fas fa-history me-1"></i>Recent Evaluations
+                        </button>
+                    </li>
+                </ul>
             </div>
-            <div class="card-body">
-                <div class="small text-muted">
-                    <p class="mb-2"><strong>1.</strong> Choose the active evaluation template.</p>
-                    <p class="mb-2"><strong>2.</strong> Encode your self-rating and save a draft if needed.</p>
-                    <p class="mb-2"><strong>3.</strong> Submit your self-rating to your Immediate Head.</p>
-                    <p class="mb-2"><strong>4.</strong> Your supervisor confirms and may adjust ratings.</p>
-                    <p class="mb-0"><strong>5.</strong> HRD consolidates the final rating.</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div class="card-header">
-                <h5><i class="fas fa-history me-2"></i>Recent Evaluations</h5>
-            </div>
-            <div class="card-body">
-                <?php if ($history->num_rows === 0): ?>
-                    <div class="empty-state py-4">
-                        <i class="fas fa-inbox d-block"></i>
-                        <p class="mb-0">No self-ratings yet.</p>
-                    </div>
-                <?php else: ?>
-                    <div class="d-grid gap-3">
-                        <?php while ($item = $history->fetch_assoc()): ?>
-                            <div class="border rounded p-3">
-                                <div class="d-flex justify-content-between align-items-start gap-2">
-                                    <div>
-                                        <div class="fw-semibold"><?php echo e($item['template_name'] ?? 'Template'); ?></div>
-                                        <div class="small text-muted"><?php echo e($item['evaluation_type'] ?? 'Evaluation'); ?>
-                                        </div>
-                                    </div>
-                                    <span
-                                        class="badge <?php echo getStatusBadgeClass($item['status']); ?>"><?php echo e($item['status']); ?></span>
-                                </div>
-                                <div class="small text-muted mt-2">
-                                    Updated: <?php echo formatDateTime($item['updated_at'] ?? ''); ?>
-                                </div>
-                                <div class="small mt-1">
-                                    Score: <strong><?php echo e($item['total_score'] ?? '0.00'); ?></strong>
-                                    <?php if (!empty($item['performance_level'])): ?>
-                                        <span class="text-muted">• <?php echo e($item['performance_level']); ?></span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="mt-3">
-                                    <a href="<?php echo BASE_URL; ?>/employee/self-rating.php?view=<?php echo (int) $item['evaluation_id']; ?>"
-                                        class="btn btn-sm btn-outline-info me-2">
-                                        <i class="fas fa-eye me-1"></i>View
-                                    </a>
-                                    <?php
-                                    $can_edit_item = in_array($item['status'], ['Draft', 'Returned', 'Pending Self-Rating'], true);
-                                    ?>
-                                    <?php if ($can_edit_item): ?>
-                                        <a href="<?php echo BASE_URL; ?>/employee/self-rating.php?edit=<?php echo (int) $item['evaluation_id']; ?>"
-                                            class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-edit me-1"></i>Edit
-                                        </a>
-                                    <?php endif; ?>
-                                </div>
+            <div class="card-body tab-content" id="selfRatingRightTabsContent">
+                <div class="tab-pane fade show active" id="help-tab-pane" role="tabpanel" aria-labelledby="help-tab" tabindex="0">
+                    <h5 class="mb-4 fw-bold text-primary"><i class="fas fa-route me-2"></i>How It Works</h5>
+                    <div class="help-stepper">
+                        <div class="help-step d-flex gap-3 mb-4">
+                            <div class="help-step-icon bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; flex-shrink:0;">
+                                <i class="fas fa-list-ol"></i>
                             </div>
-                        <?php endwhile; ?>
+                            <div>
+                                <h6 class="mb-1 fw-bold">1. Select Template</h6>
+                                <p class="text-muted small mb-0">Choose an active template from the dropdown list to load evaluation criteria.</p>
+                            </div>
+                        </div>
+                        <div class="help-step d-flex gap-3 mb-4">
+                            <div class="help-step-icon bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; flex-shrink:0;">
+                                <i class="fas fa-edit"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1 fw-bold">2. Encode Ratings</h6>
+                                <p class="text-muted small mb-0">Rate yourself from 1-4 on Key Result Areas (KRAs) and Behavior traits. Save drafts as needed.</p>
+                            </div>
+                        </div>
+                        <div class="help-step d-flex gap-3 mb-4">
+                            <div class="help-step-icon bg-warning bg-opacity-10 text-warning rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; flex-shrink:0;">
+                                <i class="fas fa-paper-plane"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1 fw-bold">3. Submit to Head</h6>
+                                <p class="text-muted small mb-0">Submit to your Immediate Head. Once submitted, your self-ratings are locked and read-only.</p>
+                            </div>
+                        </div>
+                        <div class="help-step d-flex gap-3 mb-4">
+                            <div class="help-step-icon bg-info bg-opacity-10 text-info rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; flex-shrink:0;">
+                                <i class="fas fa-user-check"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1 fw-bold">4. Supervisor Review</h6>
+                                <p class="text-muted small mb-0">Your supervisor reviews, provides feedback, confirms ratings, and sends it to HRD.</p>
+                            </div>
+                        </div>
+                        <div class="help-step d-flex gap-3">
+                            <div class="help-step-icon bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; flex-shrink:0;">
+                                <i class="fas fa-check-double"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1 fw-bold">5. HRD Consolidation</h6>
+                                <p class="text-muted small mb-0">HRD conducts final review and consolidates the metrics to finalize your performance record.</p>
+                            </div>
+                        </div>
                     </div>
-                <?php endif; ?>
+                </div>
+                <div class="tab-pane fade" id="history-tab-pane" role="tabpanel" aria-labelledby="history-tab" tabindex="0">
+                    <h5 class="mb-4 fw-bold text-primary"><i class="fas fa-history me-2"></i>Recent Evaluations</h5>
+                    <?php if ($history->num_rows === 0): ?>
+                        <div class="empty-state py-4">
+                            <i class="fas fa-inbox d-block"></i>
+                            <p class="mb-0">No self-ratings yet.</p>
+                        </div>
+                    <?php else: ?>
+                        <div class="d-grid gap-3">
+                            <?php while ($item = $history->fetch_assoc()): ?>
+                                <div class="border rounded p-3">
+                                    <div class="d-flex justify-content-between align-items-start gap-2">
+                                        <div>
+                                            <div class="fw-semibold"><?php echo e($item['template_name'] ?? 'Template'); ?></div>
+                                            <div class="small text-muted"><?php echo e($item['evaluation_type'] ?? 'Evaluation'); ?>
+                                            </div>
+                                        </div>
+                                        <span
+                                            class="badge <?php echo getStatusBadgeClass($item['status']); ?>"><?php echo e($item['status']); ?></span>
+                                    </div>
+                                    <div class="small text-muted mt-2">
+                                        Updated: <?php echo formatDateTime($item['updated_at'] ?? ''); ?>
+                                    </div>
+                                    <div class="small mt-1">
+                                        Score: <strong><?php echo e($item['total_score'] ?? '0.00'); ?></strong>
+                                        <?php if (!empty($item['performance_level'])): ?>
+                                            <span class="text-muted">• <?php echo e($item['performance_level']); ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="<?php echo BASE_URL; ?>/employee/self-rating.php?view=<?php echo (int) $item['evaluation_id']; ?>"
+                                            class="btn btn-sm btn-outline-info me-2">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </a>
+                                        <?php
+                                        $can_edit_item = in_array($item['status'], ['Draft', 'Returned', 'Pending Self-Rating'], true);
+                                        ?>
+                                        <?php if ($can_edit_item): ?>
+                                            <a href="<?php echo BASE_URL; ?>/employee/self-rating.php?edit=<?php echo (int) $item['evaluation_id']; ?>"
+                                                class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-edit me-1"></i>Edit
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            <?php endwhile; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>

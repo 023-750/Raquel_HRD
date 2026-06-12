@@ -372,7 +372,8 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                                 <tr data-jobtitle="<?php echo e($emp['job_title']); ?>"
                                     data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                                     data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
-                                    data-status="<?php echo e($emp['employment_status']); ?>">
+                                    data-status="<?php echo e($emp['employment_status']); ?>"
+                                    style="display: none;">
                                     <td data-label="#"><strong><?php echo $count++; ?></strong></td>
                                     <td data-label="Name">
                                         <div class="d-flex align-items-center">
@@ -427,7 +428,8 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                          data-jobtitle="<?php echo e($emp['job_title']); ?>"
                          data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                          data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
-                         data-status="<?php echo e($emp['employment_status']); ?>">
+                         data-status="<?php echo e($emp['employment_status']); ?>"
+                         style="display: none;">
                         <div class="student-avatar">
                             <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="avatar-img">
                         </div>
@@ -610,7 +612,8 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
             }
         });
 
-        // Filter mobile cards (mirrors desktop)
+        // Filter mobile cards (mirrors desktop) and gather visible ones
+        let visibleCards = [];
         allCards.forEach(card => {
             const cardText = card.textContent.toLowerCase();
             const textMatch = filterInput === "" || cardText.includes(filterInput);
@@ -620,7 +623,11 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                 (fBranch === '' || card.dataset.branch === fBranch) &&
                 (fStatus === '' || card.dataset.status === fStatus);
 
-            card.style.display = (textMatch && dropdownMatch) ? "" : "none";
+            if (textMatch && dropdownMatch) {
+                visibleCards.push(card);
+            } else {
+                card.style.display = "none";
+            }
         });
 
         // Paginate desktop rows
@@ -644,6 +651,15 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                 visibleCount++;
             } else {
                 row.style.display = "none";
+            }
+        });
+
+        // Paginate mobile cards
+        visibleCards.forEach((card, index) => {
+            if (index >= startIdx && index < endIdx) {
+                card.style.display = "";
+            } else {
+                card.style.display = "none";
             }
         });
 
@@ -678,7 +694,10 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         }
 
         if (startPage > 1) {
-            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            html += `<li class="page-item"><button class="page-link" onclick="goToPage(1)">1</button></li>`;
+            if (startPage > 2) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
         }
         for (let i = startPage; i <= endPage; i++) {
             html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
@@ -686,7 +705,10 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                  </li>`;
         }
         if (endPage < totalPages) {
-            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            if (endPage < totalPages - 1) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            html += `<li class="page-item"><button class="page-link" onclick="goToPage(${totalPages})">${totalPages}</button></li>`;
         }
 
         html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">

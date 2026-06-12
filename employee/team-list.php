@@ -450,13 +450,7 @@ require_once '../includes/header.php';
     </div>
 </div>
 
-<!-- Breadcrumb navigation -->
-<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">My Team</li>
-    </ol>
-</nav>
+
 
 <!-- ── TOOLBAR ───────────────────────────────────────────────────────────── -->
 <div class="content-card fadeup mb-4" style="padding: 1rem 1.25rem;">
@@ -625,23 +619,7 @@ foreach ($team as $member):
                         <span>Email</span>
                     </span>
                 <?php endif; ?>
-                <?php if (!empty($member_phone)): ?>
-                    <a href="tel:<?php echo e(preg_replace('/\s+/', '', $member_phone)); ?>"
-                       class="contact-btn contact-btn-call"
-                       title="Call <?php echo e($full_name); ?>"
-                       aria-label="Call <?php echo e($full_name); ?>">
-                        <i class="fas fa-phone" aria-hidden="true"></i>
-                        <span>Call</span>
-                    </a>
-                <?php else: ?>
-                    <span class="contact-btn contact-btn-call"
-                          title="No phone on record"
-                          style="opacity:.45;cursor:default;"
-                          aria-label="No phone available for <?php echo e($full_name); ?>">
-                        <i class="fas fa-phone" aria-hidden="true"></i>
-                        <span>Call</span>
-                    </span>
-                <?php endif; ?>
+
             </div>
         </div>
 

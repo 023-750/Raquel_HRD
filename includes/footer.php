@@ -134,15 +134,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
             </a>
         <?php endif; ?>
 
-        <a href="<?php echo BASE_URL; ?>/employee/notifications.php" class="nav-item <?php echo ($curr_p === 'notifications.php') ? 'active' : ''; ?>" aria-label="Notifications<?php echo $m_notif_count > 0 ? ', ' . $m_notif_count . ' unread' : ''; ?>">
-            <div class="position-relative">
-                <i class="fas fa-bell nav-icon"></i>
-                <?php if ($m_notif_count > 0): ?>
-                    <span class="badge-dot" style="font-size:0.85rem;" aria-hidden="true"><?php echo $m_notif_count > 9 ? '9+' : $m_notif_count; ?></span>
-                <?php endif; ?>
-            </div>
-            <span class="nav-label">Alerts</span>
-        </a>
+
     </nav>
 
 

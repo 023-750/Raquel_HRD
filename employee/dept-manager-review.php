@@ -305,12 +305,6 @@ require_once '../includes/header.php';
     </div>
 </div>
 
-<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Dept Manager Review</li>
-    </ol>
-</nav>
 
 <?php if (!$is_dept_manager): ?>
     <div class="content-card fadeup-1">

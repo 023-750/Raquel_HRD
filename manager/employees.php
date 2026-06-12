@@ -457,7 +457,8 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                         <tr data-jobtitle="<?php echo e($emp['job_title']); ?>"
                             data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                             data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
-                            data-status="<?php echo e($emp['employment_status']); ?>">
+                            data-status="<?php echo e($emp['employment_status']); ?>"
+                            style="display: none;">
                             <td data-label="#"><strong><?php echo $count++; ?></strong></td>
                             <td data-label="Name">
                                 <div class="d-flex align-items-center">
@@ -527,7 +528,8 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                      data-jobtitle="<?php echo e($emp['job_title']); ?>"
                      data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                      data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
-                     data-status="<?php echo e($emp['employment_status']); ?>">
+                     data-status="<?php echo e($emp['employment_status']); ?>"
+                     style="display: none;">
                         <div class="student-avatar">
                             <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="avatar-img">
                         </div>
@@ -972,7 +974,10 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         }
 
         if (startPage > 1) {
-            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            html += `<li class="page-item"><button class="page-link" onclick="goToPage(1)">1</button></li>`;
+            if (startPage > 2) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
         }
         for (let i = startPage; i <= endPage; i++) {
             html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
@@ -980,7 +985,10 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                  </li>`;
         }
         if (endPage < totalPages) {
-            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            if (endPage < totalPages - 1) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            html += `<li class="page-item"><button class="page-link" onclick="goToPage(${totalPages})">${totalPages}</button></li>`;
         }
 
         // Next Button
