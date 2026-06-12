@@ -1,0 +1,8 @@
+Sync Local Repository with GitHub Repository
+
+git checkout anthropic
+git reset --hard origin/anthropic
+
+Switch branch
+git checkout kiro-version
+git reset --hard origin/kiro-version
