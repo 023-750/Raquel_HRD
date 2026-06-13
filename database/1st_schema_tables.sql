@@ -708,3 +708,13 @@ CREATE TABLE login_attempts (
 
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ============================================
+-- Performance Indexes (run after initial schema)
+-- ============================================
+-- users.employee_id is used in every JOIN across listing pages but has no index
+ALTER TABLE users ADD INDEX idx_user_employee_id (employee_id);
+-- employees.job_title used for position filtering
+ALTER TABLE employees ADD INDEX idx_employee_job_title (job_title);
+-- departments.department_name used in HR filter lookups
+ALTER TABLE departments ADD INDEX idx_department_name (department_name);

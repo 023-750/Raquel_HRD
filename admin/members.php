@@ -20,11 +20,7 @@ $department_options = $conn->query("
 ");
 
 $member_where = "
-    WHERE e.employee_id NOT IN (
-        SELECT employee_id
-        FROM users
-        WHERE role = 'Admin' AND employee_id IS NOT NULL
-    )
+    WHERE ua.user_id IS NULL
 ";
 
 if ($selected_department > 0) {
@@ -35,6 +31,7 @@ if ($selected_department > 0) {
 $total_members_result = $conn->query("
     SELECT COUNT(*) AS total
     FROM employees e
+    LEFT JOIN users ua ON ua.employee_id = e.employee_id AND ua.role = 'Admin'
     $member_where
 ");
 $total_members = (int)($total_members_result->fetch_assoc()['total'] ?? 0);
@@ -49,9 +46,10 @@ if ($current_page > $total_pages) {
 $employees = $conn->query("
     SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.middle_name, e.job_title,
            b.branch_name, d.department_name, e.profile_picture, e.is_active
-    FROM employees e 
-    LEFT JOIN branches b ON e.branch_id = b.branch_id 
+    FROM employees e
+    LEFT JOIN branches b ON e.branch_id = b.branch_id
     LEFT JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN users ua ON ua.employee_id = e.employee_id AND ua.role = 'Admin'
     $member_where
     ORDER BY e.last_name, e.first_name
     LIMIT $per_page OFFSET $offset
@@ -146,7 +144,7 @@ $employees = $conn->query("
                                 <td data-label="#"><strong><?php echo $row_number++; ?></strong></td>
                                 <td data-label="Employee ID"><strong class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></strong></td>
                                 <td data-label="Photo">
-                                    <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>?v=<?php echo time(); ?>"
+                                    <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>"
                                          alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
                                 </td>
                                 <td data-label="Full Name"><strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name'] . ' ' . $emp['middle_name']); ?></strong></td>
@@ -180,7 +178,7 @@ $employees = $conn->query("
                     ?>
                         <div class="student-item">
                             <div class="student-avatar">
-                                <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>?v=<?php echo time(); ?>" alt="Profile" class="avatar-img">
+                                <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="avatar-img">
                             </div>
                             <div class="student-info">
                                 <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name'] . ' ' . $emp['middle_name']); ?></div>

@@ -373,6 +373,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                                     data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                                     data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                                     data-status="<?php echo e($emp['employment_status']); ?>"
+                                    data-active="<?php echo $emp['is_active'] ? '1' : '0'; ?>"
                                     style="display: none;">
                                     <td data-label="#"><strong><?php echo $count++; ?></strong></td>
                                     <td data-label="Name">
@@ -648,6 +649,9 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                 } else {
                     row.classList.add('even-row');
                 }
+                // Renumber the # column based on current page position
+                const numCell = row.querySelector('td:first-child strong');
+                if (numCell) numCell.textContent = startIdx + visibleCount + 1;
                 visibleCount++;
             } else {
                 row.style.display = "none";
@@ -665,6 +669,23 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
 
         updatePaginationUI(visibleRows.length, totalPages);
         handleNoResults(visibleRows.length, filterInput, tbody);
+        updateStatCards(visibleRows);
+    }
+
+    function updateStatCards(visibleRows) {
+        const total = visibleRows.length;
+        let active = 0;
+        visibleRows.forEach(row => {
+            if (row.dataset.active === '1') active++;
+        });
+        const inactive = total - active;
+
+        const statValues = document.querySelectorAll('.stat-card .stat-value');
+        if (statValues.length >= 3) {
+            statValues[0].textContent = total;
+            statValues[1].textContent = active;
+            statValues[2].textContent = inactive;
+        }
     }
 
     function updatePaginationUI(totalItems, totalPages) {

@@ -38,11 +38,10 @@ $total_users_result = $conn->query("
     SELECT COUNT(*) AS total
     FROM users u
     LEFT JOIN employees e ON u.employee_id = e.employee_id
-    LEFT JOIN departments d ON e.department_id = d.department_id
     WHERE (u.role = 'Admin')
        OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff')
            AND e.employee_id IS NOT NULL
-           AND d.department_name = 'Human Resources')
+           AND e.department_id = (SELECT department_id FROM departments WHERE department_name = 'Human Resources' LIMIT 1))
 ");
 $total_users = (int) ($total_users_result->fetch_assoc()['total'] ?? 0);
 $total_pages = max(1, (int) ceil($total_users / $per_page));
@@ -58,12 +57,11 @@ $users = $conn->query("
     FROM users u
     LEFT JOIN branches b ON u.branch_id = b.branch_id
     LEFT JOIN employees e ON u.employee_id = e.employee_id
-    LEFT JOIN departments d ON e.department_id = d.department_id
     LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
     WHERE (u.role = 'Admin')
        OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff')
            AND e.employee_id IS NOT NULL
-           AND d.department_name = 'Human Resources')
+           AND e.department_id = (SELECT department_id FROM departments WHERE department_name = 'Human Resources' LIMIT 1))
     ORDER BY u.created_at DESC
     LIMIT $per_page OFFSET $offset
 ");
@@ -211,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                         <tr>
                             <td><strong><?php echo $row_number++; ?></strong></td>
                             <td>
-                                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>?v=<?php echo time(); ?>"
+                                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>"
                                     alt="Profile" class="rounded-circle"
                                     style="width: 32px; height: 32px; object-fit: cover;">
                             </td>
@@ -287,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                     ?>
                         <div class="student-item">
                             <div class="student-avatar">
-                                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>?v=<?php echo time(); ?>" alt="Profile" class="avatar-img">
+                                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>" alt="Profile" class="avatar-img">
                             </div>
                             <div class="student-info">
                                 <div class="student-name">

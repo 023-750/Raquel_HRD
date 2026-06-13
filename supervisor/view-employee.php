@@ -111,6 +111,51 @@ $personal_props = $conn->query("SELECT * FROM employee_personal_properties WHERE
 $liabilities = $conn->query("SELECT * FROM employee_liabilities WHERE employee_id=$eid")->fetch_all(MYSQLI_ASSOC);
 $refs = $conn->query("SELECT * FROM employee_references WHERE employee_id=$eid ORDER BY reference_id")->fetch_all(MYSQLI_ASSOC);
 
+// Build formatted address strings for the template
+function buildAddress(array $emp, string $prefix): string {
+    $parts = array_filter([
+        $emp[$prefix . 'house_no'] ?? '',
+        $emp[$prefix . 'street'] ?? '',
+        $emp[$prefix . 'subdivision'] ?? '',
+        $emp[$prefix . 'barangay'] ?? '',
+        $emp[$prefix . 'city'] ?? '',
+        $emp[$prefix . 'province'] ?? '',
+        $emp[$prefix . 'zip_code'] ?? '',
+    ]);
+    return implode(', ', $parts);
+}
+$resAddr  = buildAddress($emp, 'res_');
+$permAddr = buildAddress($emp, 'perm_');
+
+// Build full name strings for family members
+function buildFullName(array $emp, string $prefix, string $surnameKey = ''): string {
+    $surname    = $emp[($surnameKey ?: $prefix . 'surname')] ?? '';
+    $firstName  = $emp[$prefix . 'first_name'] ?? '';
+    $middleName = $emp[$prefix . 'middle_name'] ?? '';
+    $ext        = $emp[$prefix . 'name_ext'] ?? '';
+    return trim(implode(' ', array_filter([$firstName, $middleName, $surname, $ext])));
+}
+$spouseName = buildFullName($emp, 'spouse_');
+$fatherName = buildFullName($emp, 'father_');
+$motherName = trim(implode(' ', array_filter([
+    $emp['mother_first_name'] ?? '',
+    $emp['mother_middle_name'] ?? '',
+    $emp['mother_maiden_surname'] ?? '',
+])));
+
+// Disclosure list: [flag_field, details_field, label]
+$discList = [
+    ['is_related_to_company',    'related_details',             'Related to anyone in the company?'],
+    ['has_admin_offense',        'admin_offense_details',       'Found guilty of administrative offense?'],
+    ['has_criminal_charge',      'criminal_charge_details',     'Charged with a criminal case?'],
+    ['has_criminal_conviction',  'criminal_conviction_details', 'Convicted of a criminal offense?'],
+    ['has_been_separated',       'separation_details',          'Previously separated from service?'],
+    ['is_pwd',                   'pwd_details',                 'Person with Disability (PWD)?'],
+    ['is_solo_parent',           'solo_parent_details',         'Solo Parent?'],
+    ['has_recent_hospital',      'hospital_details',            'Hospitalized in the last 5 years?'],
+    ['has_current_treatment',    'treatment_details',           'Currently under treatment/medication?'],
+];
+
 require_once '../includes/header.php';
 
 // Helper

@@ -7,7 +7,7 @@ require_once '../includes/functions.php';
 require_once '../includes/header.php';
 
 // Pagination settings
-$per_page = 5;
+$per_page = 20;
 $current_page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($current_page - 1) * $per_page;
 $selected_department = isset($_GET['department']) && $_GET['department'] !== '' ? max(0, (int)$_GET['department']) : 0;
@@ -21,21 +21,23 @@ $department_options = $conn->query("
 ");
 
 $position_options = $conn->query("
-    SELECT DISTINCT job_title
-    FROM employees
-    WHERE job_title IS NOT NULL AND job_title <> ''
-      AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
-    ORDER BY job_title
+    SELECT DISTINCT e.job_title
+    FROM employees e
+    LEFT JOIN users ua ON ua.employee_id = e.employee_id AND ua.role = 'Admin'
+    WHERE e.job_title IS NOT NULL AND e.job_title <> ''
+      AND ua.user_id IS NULL
+    ORDER BY e.job_title
 ");
 
 // Build a dept_id → [job_titles] map for JS-driven filtering
 $positions_by_dept_result = $conn->query("
-    SELECT DISTINCT department_id, job_title
-    FROM employees
-    WHERE job_title IS NOT NULL AND job_title <> ''
-      AND department_id IS NOT NULL
-      AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
-    ORDER BY department_id, job_title
+    SELECT DISTINCT e.department_id, e.job_title
+    FROM employees e
+    LEFT JOIN users ua ON ua.employee_id = e.employee_id AND ua.role = 'Admin'
+    WHERE e.job_title IS NOT NULL AND e.job_title <> ''
+      AND e.department_id IS NOT NULL
+      AND ua.user_id IS NULL
+    ORDER BY e.department_id, e.job_title
 ");
 $positions_by_dept = [];
 while ($row = $positions_by_dept_result->fetch_assoc()) {
@@ -43,49 +45,25 @@ while ($row = $positions_by_dept_result->fetch_assoc()) {
 }
 $positions_by_dept_json = json_encode($positions_by_dept, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT);
 
-$hr_exists_condition = "EXISTS (
-    SELECT 1
-    FROM users u_hr
-    WHERE u_hr.employee_id = e.employee_id
-      AND u_hr.role IN ('HR Staff', 'HR Supervisor', 'HR Manager')
-)";
-
-$base_from = "
-    FROM employees e
-    LEFT JOIN users u ON u.user_id = (
-        SELECT u2.user_id
-        FROM users u2
-        WHERE u2.employee_id = e.employee_id
-          AND u2.role = 'Employee'
-        ORDER BY u2.user_id ASC
-        LIMIT 1
-    )
-    LEFT JOIN branches b ON e.branch_id = b.branch_id
-    LEFT JOIN departments d ON e.department_id = d.department_id
-    LEFT JOIN employee_contacts ec ON ec.contact_id = (
-        SELECT ec2.contact_id
-        FROM employee_contacts ec2
-        WHERE ec2.employee_id = e.employee_id
-        ORDER BY ec2.contact_id ASC
-        LIMIT 1
-    )
-";
-
-$base_where = "
-    WHERE e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
-";
+// Build WHERE conditions
+$base_where_conditions = "ua.user_id IS NULL";
 
 if ($selected_department > 0) {
-    $base_where .= " AND e.department_id = $selected_department";
+    $base_where_conditions .= " AND e.department_id = $selected_department";
 }
 
 if ($selected_position !== '') {
     $safe_position = $conn->real_escape_string($selected_position);
-    $base_where .= " AND e.job_title = '$safe_position'";
+    $base_where_conditions .= " AND e.job_title = '$safe_position'";
 }
 
-// Count all employees shown in this page
-$total_accounts_result = $conn->query("SELECT COUNT(*) AS total " . $base_from . $base_where);
+// Fast COUNT — LEFT JOIN anti-join to exclude Admin-linked employees
+$total_accounts_result = $conn->query("
+    SELECT COUNT(*) AS total
+    FROM employees e
+    LEFT JOIN users ua ON ua.employee_id = e.employee_id AND ua.role = 'Admin'
+    WHERE $base_where_conditions
+");
 $total_accounts = (int)($total_accounts_result->fetch_assoc()['total'] ?? 0);
 $total_pages = max(1, (int)ceil($total_accounts / $per_page));
 
@@ -94,45 +72,70 @@ if ($current_page > $total_pages) {
     $offset = ($current_page - 1) * $per_page;
 }
 
-// Fetch all employees and show the dedicated Employee Portal account when it exists.
-$employees = $conn->query("
-    SELECT 
-        e.employee_id, 
-        e.employee_code,
-        e.first_name, 
-        e.last_name, 
-        e.middle_name, 
-        e.job_title, 
-        d.department_name,
-        b.branch_name, 
-        e.profile_picture, 
-        e.is_active as emp_active,
-        u.user_id,
-        u.username,
-        u.role,
-        u.is_active as user_active,
-        (
-            SELECT u_hr.role
-            FROM users u_hr
-            WHERE u_hr.employee_id = e.employee_id
-              AND u_hr.role IN ('HR Staff', 'HR Supervisor', 'HR Manager')
-            ORDER BY u_hr.user_id ASC
-            LIMIT 1
-        ) AS hr_role,
-        (
-            SELECT u_hr.username
-            FROM users u_hr
-            WHERE u_hr.employee_id = e.employee_id
-              AND u_hr.role IN ('HR Staff', 'HR Supervisor', 'HR Manager')
-            ORDER BY u_hr.user_id ASC
-            LIMIT 1
-        ) AS hr_username,
-        ec.personal_email
-    " . $base_from . "
-    " . $base_where . "
+// Fetch paginated employee IDs first (fast, index-only)
+$id_result = $conn->query("
+    SELECT e.employee_id
+    FROM employees e
+    LEFT JOIN users ua ON ua.employee_id = e.employee_id AND ua.role = 'Admin'
+    WHERE $base_where_conditions
     ORDER BY e.last_name, e.first_name
     LIMIT $per_page OFFSET $offset
 ");
+$emp_ids = [];
+while ($r = $id_result->fetch_assoc()) {
+    $emp_ids[] = (int)$r['employee_id'];
+}
+
+// Fetch full data only for the current page's IDs
+$employees = null;
+if (!empty($emp_ids)) {
+    $ids_in = implode(',', $emp_ids);
+
+    $employees = $conn->query("
+        SELECT
+            e.employee_id,
+            e.employee_code,
+            e.first_name,
+            e.last_name,
+            e.middle_name,
+            e.job_title,
+            d.department_name,
+            b.branch_name,
+            e.profile_picture,
+            e.is_active AS emp_active,
+            -- Employee portal account (non-correlated: JOIN instead of subquery)
+            uemp.user_id,
+            uemp.username,
+            uemp.role,
+            uemp.is_active AS user_active,
+            -- HR account (non-correlated)
+            uhr.role     AS hr_role,
+            uhr.username AS hr_username,
+            ec.personal_email
+        FROM employees e
+        LEFT JOIN branches b    ON e.branch_id    = b.branch_id
+        LEFT JOIN departments d ON e.department_id = d.department_id
+        -- Employee-role portal account (one row per employee via MIN trick)
+        LEFT JOIN users uemp ON uemp.employee_id = e.employee_id
+                             AND uemp.role = 'Employee'
+                             AND uemp.user_id = (
+                                 SELECT MIN(u2.user_id) FROM users u2
+                                 WHERE u2.employee_id = e.employee_id AND u2.role = 'Employee'
+                             )
+        -- HR account
+        LEFT JOIN users uhr ON uhr.employee_id = e.employee_id
+                            AND uhr.role IN ('HR Staff', 'HR Supervisor', 'HR Manager')
+                            AND uhr.user_id = (
+                                SELECT MIN(u3.user_id) FROM users u3
+                                WHERE u3.employee_id = e.employee_id
+                                  AND u3.role IN ('HR Staff', 'HR Supervisor', 'HR Manager')
+                            )
+        -- Contact (employee_contacts has UNIQUE KEY on employee_id — direct JOIN)
+        LEFT JOIN employee_contacts ec ON ec.employee_id = e.employee_id
+        WHERE e.employee_id IN ($ids_in)
+        ORDER BY e.last_name, e.first_name
+    ");
+}
 
 // Grab and clear any pending credential slip
 $new_creds = $_SESSION['new_employee_credentials'] ?? null;
@@ -272,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                 </thead>
                 <tbody>
                     <?php $row_number = $offset + 1; ?>
-                    <?php if ($employees->num_rows === 0): ?>
+                    <?php if (!$employees || $employees->num_rows === 0): ?>
                         <tr>
                             <td colspan="8" class="text-center py-4 text-muted">No employees found for the selected department.</td>
                         </tr>
@@ -281,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                             <tr>
                                 <td data-label="#"><strong><?php echo $row_number++; ?></strong></td>
                                 <td data-label="Photo">
-                                    <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>?v=<?php echo time(); ?>"
+                                    <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>"
                                          alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
                                 </td>
                                 <td data-label="Employee Name">
@@ -346,7 +349,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
         <div class="mobile-list-view d-block d-md-none">
             <div class="student-list">
                 <?php $row_number_mob = $offset + 1; ?>
-                <?php if ($employees->num_rows === 0): ?>
+                <?php if (!$employees || $employees->num_rows === 0): ?>
                     <div class="text-center py-4 text-muted">No employees found for the selected department.</div>
                 <?php else: ?>
                     <?php 
@@ -357,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                     ?>
                         <div class="student-item">
                             <div class="student-avatar">
-                                <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>?v=<?php echo time(); ?>" alt="Profile" class="avatar-img">
+                                <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="avatar-img">
                             </div>
                             <div class="student-info">
                                 <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></div>

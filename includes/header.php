@@ -140,9 +140,11 @@ switch ($effective_role) {
         $m_eval_status_count = 0;
         $m_dept_review_count = 0;
         $m_confirm_rating_count = 0;
+        $m_hr_review_count = 0;
         $is_dept_manager_menu = false;
         $is_supervisor_menu  = false;
         $hdr_sup_dept_name   = '';
+        $_hdr_viewer_hr_role = null;
         if (isset($_SESSION['employee_id']) && $conn) {
             $_hdr_emp_id = (int) $_SESSION['employee_id'];
             $_hdr_dept_stmt = $conn->prepare("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = ? LIMIT 1");
@@ -251,6 +253,41 @@ switch ($effective_role) {
                     }
                 }
             }
+
+            // HR review queue badge (for HR Supervisor and HR Manager Employee Portal accounts)
+            $m_hr_review_count = 0;
+            $_hdr_viewer_hr_role = getEmployeeHRRole($conn, $_hdr_emp_id);
+            if ($_hdr_viewer_hr_role === 'HR Supervisor') {
+                $_hdr_hr_pending_stmt = $conn->prepare("
+                    SELECT COUNT(*) AS total
+                    FROM evaluations ev
+                    JOIN users u ON u.employee_id = ev.employee_id
+                        AND u.role IN ('HR Staff','HR Supervisor','HR Manager')
+                        AND u.is_active = 1
+                    WHERE ev.status = 'Pending Supervisor'
+                      AND ev.deleted_at IS NULL
+                      AND ev.employee_id <> ?
+                ");
+                $_hdr_hr_pending_stmt->bind_param("i", $_hdr_emp_id);
+                $_hdr_hr_pending_stmt->execute();
+                $m_hr_review_count = (int) ($_hdr_hr_pending_stmt->get_result()->fetch_assoc()['total'] ?? 0);
+                $_hdr_hr_pending_stmt->close();
+            } elseif ($_hdr_viewer_hr_role === 'HR Manager') {
+                $_hdr_hr_pending_stmt = $conn->prepare("
+                    SELECT COUNT(*) AS total
+                    FROM evaluations ev
+                    JOIN users u ON u.employee_id = ev.employee_id
+                        AND u.role IN ('HR Staff','HR Supervisor','HR Manager')
+                        AND u.is_active = 1
+                    WHERE ev.status = 'Pending Manager'
+                      AND ev.deleted_at IS NULL
+                      AND ev.employee_id <> ?
+                ");
+                $_hdr_hr_pending_stmt->bind_param("i", $_hdr_emp_id);
+                $_hdr_hr_pending_stmt->execute();
+                $m_hr_review_count = (int) ($_hdr_hr_pending_stmt->get_result()->fetch_assoc()['total'] ?? 0);
+                $_hdr_hr_pending_stmt->close();
+            }
         }
 
         $self_service_menu = [
@@ -258,6 +295,17 @@ switch ($effective_role) {
             ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php', 'badge' => $m_pending_template_count],
             ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php', 'badge' => $m_eval_status_count],
         ];
+
+        // HR Supervisor and HR Manager get the HR Review Queue menu
+        if (isset($_hdr_viewer_hr_role) && in_array($_hdr_viewer_hr_role, ['HR Supervisor', 'HR Manager'], true)) {
+            $self_service_menu[] = [
+                'icon'  => 'fas fa-user-shield',
+                'label' => 'HR Rating Review',
+                'url'   => BASE_URL . '/employee/hr-rating-review.php',
+                'page'  => 'hr-rating-review.php',
+                'badge' => $m_hr_review_count,
+            ];
+        }
 
         // Add department manager links
         if ($is_dept_manager_menu) {
