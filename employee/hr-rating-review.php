@@ -2,13 +2,16 @@
 /**
  * Employee Portal - HR Internal Rating Review
  *
- * Handles the HR-specific self-rating review chain entirely within the Employee Portal:
- *   HR Staff     → reviewed by HR Supervisor  → reviewed by HR Manager → Approved
- *   HR Supervisor → reviewed by HR Manager   → Approved
- *   HR Manager   → reviewed by HR Supervisor → Approved
+ * Handles HR Staff and HR Manager self-ratings reviewed by the HR Supervisor
+ * entirely within the Employee Portal:
+ *   HR Staff     → reviewed by HR Supervisor (Employee Portal) → Pending Manager (admin portal)
+ *   HR Manager   → reviewed by HR Supervisor (Employee Portal) → Approved
  *
- * Logged-in user must have role = 'Employee' AND their linked employee record must
- * hold an HR role (HR Supervisor or HR Manager) to act as a reviewer here.
+ * HR Supervisor self-ratings go directly to Pending Manager and are handled
+ * via the admin portal (/manager/pending-approvals.php), not here.
+ *
+ * Logged-in user must have role = 'Employee' AND their linked employee record
+ * must hold the HR Supervisor role to act as a reviewer here.
  */
 $page_title = 'HR Rating Review';
 require_once '../includes/session-check.php';
@@ -23,16 +26,13 @@ $reviewer_emp_id    = (int) ($_SESSION['employee_id'] ?? 0);
 // Determine the logged-in employee's own HR role
 $reviewer_hr_role = getEmployeeHRRole($conn, $reviewer_emp_id); // 'HR Supervisor' | 'HR Manager' | null
 
-// Only HR Supervisor and HR Manager can review on this page
-if (!in_array($reviewer_hr_role, ['HR Supervisor', 'HR Manager'], true)) {
-    redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'Access Denied: This page is for HR Supervisors and HR Managers only.');
-}
+// HR Rating Review is no longer accessible via the Employee Portal.
+// All HR self-rating reviews are handled through the admin portal.
+redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'This page is no longer available on the Employee Portal.');
 
 // ── Which statuses can THIS reviewer act on? ────────────────────────────────
 // HR Supervisor reviews:  'Pending Supervisor'  (HR Staff or HR Manager submitted)
-// HR Manager reviews:     'Pending Manager'     (HR Staff after HR Supervisor confirmed,
-//                                                or HR Supervisor submitted directly)
-$reviewer_pending_status = ($reviewer_hr_role === 'HR Supervisor') ? 'Pending Supervisor' : 'Pending Manager';
+$reviewer_pending_status = 'Pending Supervisor';
 
 // ── Fetch a specific evaluation if ?evaluation_id=X ─────────────────────────
 $evaluation_id = (int) ($_GET['evaluation_id'] ?? 0);
