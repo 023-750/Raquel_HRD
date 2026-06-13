@@ -118,6 +118,7 @@ $cm_stmt->close();
 
 // ── Has supervisor privileges? (subordinates in DB OR supervisor/manager role) ─
 $is_supervisor = hasSupervisorPrivileges($conn, $employee_id);
+$employee_hr_role = getEmployeeHRRole($conn, $employee_id);
 
 // ── Does THIS employee have a dept supervisor / dept manager above them? ─────
 ensureEmployeesReportsTo($conn);
@@ -138,6 +139,58 @@ if ($is_supervisor) {
           AND ev.deleted_at IS NULL
     ");
     if ($ps) $pending_sub_count = (int)$ps->fetch_assoc()['total'];
+}
+
+// ── HR Supervisor validation queue (mirrors supervisor Pending Endorsements) ───
+$validation_queue_count = 0;
+$validation_queue_rows = [];
+$show_validation_queue = ($employee_hr_role === 'HR Supervisor');
+
+if ($show_validation_queue) {
+    $validation_count_stmt = $conn->prepare("
+        SELECT COUNT(*) AS total
+        FROM evaluations ev
+        INNER JOIN employees e ON ev.employee_id = e.employee_id
+        WHERE ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+          AND e.is_active = 1
+          AND ev.deleted_at IS NULL
+          AND e.employee_id NOT IN (
+              SELECT employee_id
+              FROM users
+              WHERE role = 'Admin'
+                AND employee_id IS NOT NULL
+          )
+    ");
+    $validation_count_stmt->execute();
+    $validation_queue_count = (int) ($validation_count_stmt->get_result()->fetch_assoc()['total'] ?? 0);
+    $validation_count_stmt->close();
+
+    $validation_rows_stmt = $conn->prepare("
+        SELECT ev.evaluation_id, ev.status, ev.total_score, ev.performance_level,
+               ev.submitted_date, et.template_name,
+               CONCAT(e.first_name, ' ', e.last_name) AS employee_name,
+               e.employee_code, e.job_title,
+               d.department_name,
+               COALESCE(DATEDIFF(CURRENT_DATE(), DATE(ev.submitted_date)), 0) AS days_pending
+        FROM evaluations ev
+        INNER JOIN employees e ON ev.employee_id = e.employee_id
+        LEFT JOIN departments d ON e.department_id = d.department_id
+        LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
+        WHERE ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+          AND e.is_active = 1
+          AND ev.deleted_at IS NULL
+          AND e.employee_id NOT IN (
+              SELECT employee_id
+              FROM users
+              WHERE role = 'Admin'
+                AND employee_id IS NOT NULL
+          )
+        ORDER BY COALESCE(ev.submitted_date, ev.updated_at, ev.created_at) ASC, ev.evaluation_id ASC
+        LIMIT 3
+    ");
+    $validation_rows_stmt->execute();
+    $validation_queue_rows = $validation_rows_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $validation_rows_stmt->close();
 }
 
 require_once '../includes/header.php';
@@ -217,15 +270,6 @@ function movementIcon(string $type): string {
         </div>
     </div>
 </div>
-
-<!-- ══════════════════════════════════════════════════════════════════════════
-     BREADCRUMB
-══════════════════════════════════════════════════════════════════════════ -->
-<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item active" aria-current="page">My Dashboard</li>
-    </ol>
-</nav>
 
 <!-- ══════════════════════════════════════════════════════════════════════════
      STATS ROW (UX-revamp stat-cards)
@@ -377,7 +421,7 @@ function movementIcon(string $type): string {
                 <?php
                 // Workflow Progress Bar (dynamic: HRD vs full-chain)
                 $current_status = $active_eval['status'] ?? '';
-                $hr_role = getEmployeeHRRole($conn, $employee_id);
+                $hr_role = $employee_hr_role;
 
                 if ($hr_role === 'HR Manager') {
                     $workflow_steps  = ['Pending Self-Rating', 'Pending Supervisor', 'Approved'];
@@ -601,6 +645,75 @@ function movementIcon(string $type): string {
     <!-- RIGHT COL ────────────────────────────────────────────────────────── -->
     <div class="col-12 col-md-6">
 
+        <?php if ($show_validation_queue): ?>
+        <!-- HR Supervisor Validation Queue -->
+        <div class="content-card mb-4" id="validationQueueCard" data-validation-queue-card>
+            <div class="content-card-header">
+                <h2 class="content-card-title">
+                    <i class="fas fa-user-check" aria-hidden="true"></i>
+                    Validation Queue
+                </h2>
+                <span class="badge bg-primary">
+                    <i class="fas fa-sync-alt me-1"></i>Live
+                </span>
+            </div>
+            <div class="content-card-body">
+                <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase" style="letter-spacing:0;">HR Supervisor · Evaluation Review</div>
+                        <div class="fw-bold mt-1">Pending Endorsements</div>
+                    </div>
+                    <div class="text-end">
+                        <div style="font-size:2.25rem;font-weight:850;line-height:1;color:var(--primary-blue);">
+                            <?php echo (int) $validation_queue_count; ?>
+                        </div>
+                        <div class="text-muted small">awaiting review</div>
+                    </div>
+                </div>
+
+                <?php if (!empty($validation_queue_rows)): ?>
+                    <div class="d-grid gap-2 mb-3">
+                        <?php foreach ($validation_queue_rows as $queue_item): ?>
+                            <div class="validation-queue-item">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="min-width-0">
+                                        <div class="fw-semibold text-truncate"><?php echo e($queue_item['employee_name'] ?? 'Employee'); ?></div>
+                                        <div class="text-muted small text-truncate">
+                                            <?php echo e($queue_item['template_name'] ?? 'Evaluation'); ?>
+                                            <?php if (!empty($queue_item['department_name'])): ?>
+                                                · <?php echo e($queue_item['department_name']); ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <span class="badge <?php echo getStatusBadgeClass($queue_item['status'] ?? ''); ?>">
+                                        <?php echo e($queue_item['status'] ?? 'Pending'); ?>
+                                    </span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center gap-2 mt-2 small">
+                                    <span class="text-muted">
+                                        <i class="fas fa-clock me-1"></i><?php echo (int) ($queue_item['days_pending'] ?? 0); ?> day<?php echo (int) ($queue_item['days_pending'] ?? 0) === 1 ? '' : 's'; ?> pending
+                                    </span>
+                                    <?php if ($queue_item['total_score'] !== null && $queue_item['total_score'] !== ''): ?>
+                                        <span class="fw-semibold"><?php echo number_format((float) $queue_item['total_score'], 2); ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle text-success" style="font-size:2.5rem;opacity:.35;"></i>
+                        <p class="text-muted mt-3 mb-0">No pending endorsements right now.</p>
+                    </div>
+                <?php endif; ?>
+
+                <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-primary w-100 rounded-pill">
+                    <i class="fas fa-clipboard-check me-2"></i>Open Pending Endorsements
+                </a>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Career Timeline -->
         <div class="content-card mb-4">
             <div class="content-card-header">
@@ -730,6 +843,20 @@ function movementIcon(string $type): string {
 }
 .quick-action-btn:hover i { transform: scale(1.15); }
 
+/* ── HR Supervisor live validation queue ─────────────────────────────────── */
+.validation-queue-item {
+    background: var(--bg-gray);
+    border: 1px solid var(--color-border-light, #D1D5CE);
+    border-radius: 10px;
+    padding: .75rem .85rem;
+}
+.validation-queue-item .badge {
+    flex-shrink: 0;
+    white-space: normal;
+    text-align: right;
+}
+.min-width-0 { min-width: 0; }
+
 /* ── Timeline ─────────────────────────────────────────────────────────────── */
 .timeline { position: relative; padding-left: 2rem; }
 .timeline::before {
@@ -786,6 +913,43 @@ function updateClock() {
     if (el) el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')} ${ampm}`;
 }
 setInterval(updateClock, 1000);
+
+// Keep the HR Supervisor validation queue live without refreshing the dashboard.
+(function startValidationQueueRefresh() {
+    const queueCard = document.querySelector('[data-validation-queue-card]');
+    if (!queueCard || queueCard.dataset.refreshStarted === '1') {
+        return;
+    }
+    queueCard.dataset.refreshStarted = '1';
+
+    let busy = false;
+    const refresh = () => {
+        if (busy || document.hidden) {
+            return;
+        }
+
+        busy = true;
+        fetch(window.location.href, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            cache: 'no-store'
+        })
+        .then(response => response.text())
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const current = document.querySelector('[data-validation-queue-card]');
+            const next = doc.querySelector('[data-validation-queue-card]');
+            if (current && next) {
+                current.replaceWith(next);
+            }
+        })
+        .catch(() => {})
+        .finally(() => {
+            busy = false;
+        });
+    };
+
+    setInterval(refresh, 10000);
+})();
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

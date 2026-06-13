@@ -181,7 +181,7 @@ $total_pending_all = $pending_count;
         </div>
     </div>
 
-    <div class="row g-3">
+    <div class="row g-3" id="managerApprovalSummary">
         <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
@@ -332,7 +332,7 @@ $total_pending_all = $pending_count;
     }
 </style>
 
-<div class="row mb-5">
+<div class="row mb-5" id="managerApprovalList" data-queue-auto-refresh="manager">
     <div class="col-12">
         <div class="approval-center-tabs d-flex justify-content-between align-items-center">
             <ul class="nav nav-tabs border-0" id="approvalTabs" role="tablist">
@@ -422,6 +422,7 @@ $total_pending_all = $pending_count;
     </div>
 </div>
 
+<div id="managerApprovalModals">
 <?php 
 // Render Modals at the end of the file
 foreach ($all_pending as $row): 
@@ -822,17 +823,19 @@ foreach ($all_pending as $row):
         </div>
     </div>
 <?php endforeach; ?>
+</div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize tooltips
+function initializeManagerApprovalUI(root = document) {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+        return bootstrap.Tooltip.getOrCreateInstance(tooltipTriggerEl);
     });
 
-    // Search functionality for unified center
-    document.getElementById('unifiedSearch')?.addEventListener('input', function() {
+    const search = document.getElementById('unifiedSearch');
+    if (search && search.dataset.queueBound !== '1') {
+        search.dataset.queueBound = '1';
+        search.addEventListener('input', function() {
         const filter = this.value.toLowerCase();
         const activePane = document.querySelector('.tab-pane.active');
         if (!activePane) return;
@@ -847,7 +850,51 @@ document.addEventListener('DOMContentLoaded', function() {
         if (activeTable && activeTable.id) {
             applyZebraStriping('#' + activeTable.id);
         }
-    });
+        });
+    }
+}
+
+function startManagerApprovalRefresh() {
+    const root = document.querySelector('[data-queue-auto-refresh="manager"]');
+    if (!root || root.dataset.refreshStarted === '1') {
+        return;
+    }
+    root.dataset.refreshStarted = '1';
+
+    let busy = false;
+    const refresh = () => {
+        if (busy || document.hidden || document.querySelector('.modal.show')) {
+            return;
+        }
+        busy = true;
+        fetch(window.location.href, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            cache: 'no-store'
+        })
+        .then(response => response.text())
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            ['managerApprovalSummary', 'managerApprovalList', 'managerApprovalModals'].forEach(id => {
+                const current = document.getElementById(id);
+                const next = doc.getElementById(id);
+                if (current && next) {
+                    current.replaceWith(next);
+                }
+            });
+            initializeManagerApprovalUI(document);
+        })
+        .catch(() => {})
+        .finally(() => {
+            busy = false;
+        });
+    };
+
+    setInterval(refresh, 10000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeManagerApprovalUI(document);
+    startManagerApprovalRefresh();
 
     // Handle deep linking for review
     const urlParams = new URLSearchParams(window.location.search);

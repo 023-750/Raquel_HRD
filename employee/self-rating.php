@@ -603,7 +603,7 @@ $assigned_evaluations = $conn->query("
     ORDER BY COALESCE(ev.assigned_at, ev.updated_at, ev.created_at) DESC, ev.evaluation_id DESC
 ");
 $assigned_pending_count = $assigned_evaluations ? (int) $assigned_evaluations->num_rows : 0;
-$pending_template_count = max($available_template_count, $assigned_pending_count);
+$pending_template_count = $available_template_count + $assigned_pending_count;
 
 $criteria_kra = [];
 $criteria_behavior = [];
@@ -640,6 +640,7 @@ $in_progress_q = $conn->query("
     ORDER BY COALESCE(ev.updated_at, ev.created_at) DESC, ev.evaluation_id DESC
 ");
 $in_progress_evals = $in_progress_q ? $in_progress_q->fetch_all(MYSQLI_ASSOC) : [];
+$in_progress_count = count($in_progress_evals);
 
 require_once '../includes/header.php';
 ?>
@@ -660,6 +661,23 @@ require_once '../includes/header.php';
     background: transparent !important;
     font-weight: 700 !important;
 }
+
+@media (max-width: 767.98px) {
+    .self-rating-actions {
+        align-items: stretch !important;
+        flex-direction: column;
+    }
+
+    .self-rating-actions .btn,
+    .self-rating-actions a.btn {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+
+    .self-rating-actions .btn-outline-danger {
+        order: 3;
+    }
+}
 </style>
 
 <div class="page-hero fadeup">
@@ -672,7 +690,7 @@ require_once '../includes/header.php';
         </div>
         <div class="d-none d-md-block text-end">
             <div class="badge mb-2 px-3 py-2" style="background-color: #CBA135; color: #1C271B; font-weight: 700; border-radius: 8px;">
-                <i class="fas fa-bell me-1"></i><?php echo (int) $pending_template_count; ?> pending template<?php echo $pending_template_count === 1 ? '' : 's'; ?>
+                <i class="fas fa-bell me-1"></i><?php echo (int) $pending_template_count; ?> pending · <?php echo (int) $in_progress_count; ?> ongoing
             </div><br>
             <a href="<?php echo BASE_URL; ?>/employee/dashboard.php"
                 class="btn btn-outline-light btn-sm rounded-pill px-3 mb-1">
@@ -738,7 +756,7 @@ require_once '../includes/header.php';
     <div class="alert alert-light border-0 shadow-sm py-2 px-3 mb-0"
         style="border-radius: 10px; font-size: 0.85rem; background: #fff;">
         <i class="fas fa-info-circle me-2 text-primary"></i>
-        <span class="text-muted fw-500"><?php echo (int) $pending_template_count; ?> pending template<?php echo $pending_template_count === 1 ? '' : 's'; ?> to assess.</span>
+        <span class="text-muted fw-500"><?php echo (int) $pending_template_count; ?> pending · <?php echo (int) $in_progress_count; ?> ongoing</span>
     </div>
 </div>
 
@@ -1108,7 +1126,7 @@ require_once '../includes/header.php';
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="" data-autosave="self-rating-form" data-validate novalidate>
+                    <form method="POST" action="" data-autosave="self-rating-form" data-validate novalidate autocomplete="off">
                         <?php if ($edit_eval): ?>
                             <input type="hidden" name="edit_id" value="<?php echo (int) $edit_eval['evaluation_id']; ?>">
                         <?php endif; ?>
@@ -1233,10 +1251,10 @@ require_once '../includes/header.php';
                                     <input type="text" class="form-control" value="<?php echo e($selected_template['template_name']); ?>" readonly>
                                     <small class="text-muted mt-1 d-block"><i class="fas fa-lock me-1"></i>Template is locked for this draft.</small>
                                 <?php else: ?>
-                                    <select class="form-select" name="template_id" id="templateSelect"
+                                    <select class="form-select" name="template_id" id="templateSelect" autocomplete="off"
                                         onchange="if(this.value){ window.location='?template=' + this.value; } else { window.location='self-rating.php'; }"
                                         required>
-                                        <option value="">Select Template</option>
+                                        <option value="" disabled <?php echo $selected_template_id <= 0 ? 'selected' : ''; ?>>Select Template</option>
                                         <?php while ($template = $templates->fetch_assoc()): ?>
                                             <?php
                                             $template_label = $template['template_name'] . ' (' . (float) $template['kra_weight'] . '% KRA / ' . (float) $template['behavior_weight'] . '% Behavior)';
@@ -1372,7 +1390,7 @@ require_once '../includes/header.php';
                                     placeholder="Share any notes about your self-rating..."><?php echo e($edit_eval['staff_comments'] ?? ''); ?></textarea>
                             </div>
 
-                            <div class="d-flex flex-wrap justify-content-end gap-2">
+                            <div class="d-flex flex-wrap justify-content-end gap-2 self-rating-actions">
                                 <?php if ($edit_eval): ?>
                                     <a href="?discard=<?php echo (int) $edit_eval['evaluation_id']; ?>" class="btn btn-outline-danger me-auto" onclick="return confirm('Are you sure you want to discard this draft? This action cannot be undone.');">
                                         <i class="fas fa-trash me-2"></i>Discard Draft
@@ -1388,7 +1406,7 @@ require_once '../includes/header.php';
                         <?php else: ?>
                             <?php if (!empty($in_progress_evals)): ?>
                                 <div class="in-progress-section">
-                                    <h5 class="fw-bold mb-3 text-primary"><i class="fas fa-clock me-2"></i>In-Progress Evaluations</h5>
+                                    <h5 class="fw-bold mb-3 text-primary"><i class="fas fa-clock me-2"></i>In-Progress Evaluations <span class="badge bg-primary ms-1"><?php echo (int) $in_progress_count; ?></span></h5>
                                     <div class="row g-3 mb-4">
                                         <?php foreach ($in_progress_evals as $ip_eval): ?>
                                             <div class="col-md-6">
@@ -1556,19 +1574,23 @@ require_once '../includes/header.php';
 
 <!-- Review Modal -->
 <div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
-            <div class="modal-header bg-primary text-white border-0 py-3" style="border-radius: 20px 20px 0 0;">
-                <h5 class="modal-title fw-bold"><i class="fas fa-search me-2"></i>Review Your Self-Rating</h5>
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-fullscreen-sm-down review-modal-dialog">
+        <div class="modal-content border-0 shadow-lg review-modal">
+            <div class="modal-header bg-primary text-white border-0 review-modal-header">
+                <div>
+                    <div class="review-modal-eyebrow">Final check</div>
+                    <h5 class="modal-title fw-bold"><i class="fas fa-search me-2"></i>Review Your Self-Rating</h5>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4" style="max-height: 70vh; overflow-y: auto;">
-                <div class="alert alert-warning border-0 mb-4 shadow-sm" style="background: #fff8e1; border-radius: 12px;">
-                    <div class="d-flex align-items-center gap-3">
-                        <i class="fas fa-exclamation-triangle text-warning fs-4"></i>
-                        <div class="small">
-                            <strong>Note:</strong> Once submitted, you can no longer edit your ratings. Please review carefully below.
-                        </div>
+            <div class="modal-body review-modal-body">
+                <div class="review-warning">
+                    <div class="review-warning-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div>
+                        <strong>Before you submit</strong>
+                        <p>Once submitted, you can no longer edit your ratings. Please review carefully below.</p>
                     </div>
                 </div>
 
@@ -1576,9 +1598,11 @@ require_once '../includes/header.php';
                     <!-- Dynamic content will be injected here -->
                 </div>
             </div>
-            <div class="modal-footer bg-light border-0 py-3" style="border-radius: 0 0 20px 20px;">
-                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Go Back & Edit</button>
-                <button type="button" class="btn btn-primary px-4 rounded-pill" onclick="confirmFinalSubmit()">
+            <div class="modal-footer bg-light border-0 review-modal-footer">
+                <button type="button" class="btn btn-outline-secondary rounded-pill review-modal-action" data-bs-dismiss="modal">
+                    <i class="fas fa-arrow-left me-2"></i>Go Back & Edit
+                </button>
+                <button type="button" class="btn btn-primary rounded-pill review-modal-action" onclick="confirmFinalSubmit()">
                     <i class="fas fa-check-circle me-2"></i>Confirm & Submit
                 </button>
             </div>
@@ -1606,6 +1630,61 @@ function getRadioLabel(name) {
     return label ? label.querySelector('.rating-text')?.innerText || checked.value : checked.value;
 }
 
+function escapeReviewHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    }[char]));
+}
+
+function buildReviewSection(title, inputPrefix, badgeClass) {
+    const names = new Set();
+    document.querySelectorAll(`input[name^="${inputPrefix}"]`).forEach(input => names.add(input.name));
+
+    let section = `
+        <section class="review-section">
+            <div class="review-section-heading">
+                <span>${escapeReviewHtml(title)}</span>
+                <span>${names.size} item${names.size === 1 ? '' : 's'}</span>
+            </div>
+            <div class="review-list">
+    `;
+
+    names.forEach(name => {
+        const checkedInput = document.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
+        const ratingItem = document.querySelector(`input[name="${CSS.escape(name)}"]`)?.closest('.rating-item');
+        const criterion = ratingItem?.querySelector('.rating-title')?.childNodes[0]?.textContent?.trim() || name;
+        const value = checkedInput ? checkedInput.value : null;
+        const labelText = checkedInput
+            ? (document.querySelector(`label[for="${CSS.escape(checkedInput.id)}"] .rating-text`)?.innerText || value)
+            : 'Not rated';
+        const stateClass = checkedInput ? badgeClass : 'review-rating-missing';
+
+        section += `
+            <article class="review-rating-card">
+                <div class="review-rating-criterion">${escapeReviewHtml(criterion)}</div>
+                <div class="review-rating-value ${stateClass}">
+                    <span>${value ? escapeReviewHtml(value) : '--'}</span>
+                    <small>${escapeReviewHtml(labelText)}</small>
+                </div>
+            </article>
+        `;
+    });
+
+    section += `
+            </div>
+        </section>
+    `;
+
+    return section;
+}
+
+const reviewPositionText = <?php echo json_encode($employee['job_title'] ?? ''); ?>;
+const reviewTemplateText = <?php echo json_encode($selected_template['template_name'] ?? ''); ?>;
+
 function showReviewModal() {
     const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
     const reviewContent = document.getElementById('reviewContent');
@@ -1613,62 +1692,31 @@ function showReviewModal() {
 
     // Summary Info
     html += `
-        <div class="mb-4">
-            <h6 class="fw-bold text-uppercase small text-muted mb-3">General Information</h6>
-            <div class="row g-2">
-                <div class="col-6"><div class="p-2 bg-light rounded x-small">Position: <strong><?php echo e($employee['job_title'] ?? ''); ?></strong></div></div>
-                <div class="col-6"><div class="p-2 bg-light rounded x-small">Template: <strong><?php echo e($selected_template['template_name'] ?? ''); ?></strong></div></div>
+        <section class="review-summary">
+            <div class="review-summary-item">
+                <span>Position</span>
+                <strong>${escapeReviewHtml(reviewPositionText)}</strong>
             </div>
-        </div>
+            <div class="review-summary-item">
+                <span>Template</span>
+                <strong>${escapeReviewHtml(reviewTemplateText)}</strong>
+            </div>
+        </section>
     `;
 
-    // KRA Ratings — read checked radios from .rating-section containing KRA items
-    html += '<h6 class="fw-bold text-uppercase small text-muted mb-3">KRA Ratings</h6>';
-    html += '<div class="table-responsive mb-4"><table class="table table-sm table-bordered align-middle" style="font-size: 0.85rem;">';
-    html += '<thead class="bg-light"><tr><th>Criterion</th><th class="text-center" style="width: 110px;">Rating</th></tr></thead><tbody>';
-
-    // Collect unique kra_scores group names
-    const kraNames = new Set();
-    document.querySelectorAll('input[name^="kra_scores"]').forEach(input => kraNames.add(input.name));
-    kraNames.forEach(name => {
-        const checkedInput = document.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
-        const ratingItem   = document.querySelector(`input[name="${CSS.escape(name)}"]`)?.closest('.rating-item');
-        const title        = ratingItem?.querySelector('.rating-title')?.childNodes[0]?.textContent?.trim() || name;
-        const val          = checkedInput ? checkedInput.value : '<span class="text-danger">Not rated</span>';
-        const labelText    = checkedInput
-            ? (document.querySelector(`label[for="${CSS.escape(checkedInput.id)}"] .rating-text`)?.innerText || val)
-            : '—';
-        html += `<tr><td>${title}</td><td class="text-center fw-bold text-primary">${val} <small class="text-muted fw-normal">– ${labelText}</small></td></tr>`;
-    });
-    html += '</tbody></table></div>';
-
-    // Behavior Ratings
-    html += '<h6 class="fw-bold text-uppercase small text-muted mb-3">Behavior Ratings</h6>';
-    html += '<div class="table-responsive mb-4"><table class="table table-sm table-bordered align-middle" style="font-size: 0.85rem;">';
-    html += '<thead class="bg-light"><tr><th>Criterion</th><th class="text-center" style="width: 110px;">Rating</th></tr></thead><tbody>';
-
-    const behNames = new Set();
-    document.querySelectorAll('input[name^="beh_scores"]').forEach(input => behNames.add(input.name));
-    behNames.forEach(name => {
-        const checkedInput = document.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
-        const ratingItem   = document.querySelector(`input[name="${CSS.escape(name)}"]`)?.closest('.rating-item');
-        const title        = ratingItem?.querySelector('.rating-title')?.childNodes[0]?.textContent?.trim() || name;
-        const val          = checkedInput ? checkedInput.value : '<span class="text-danger">Not rated</span>';
-        const labelText    = checkedInput
-            ? (document.querySelector(`label[for="${CSS.escape(checkedInput.id)}"] .rating-text`)?.innerText || val)
-            : '—';
-        html += `<tr><td>${title}</td><td class="text-center fw-bold text-info">${val} <small class="text-muted fw-normal">– ${labelText}</small></td></tr>`;
-    });
-    html += '</tbody></table></div>';
+    html += buildReviewSection('KRA Ratings', 'kra_scores', 'review-rating-kra');
+    html += buildReviewSection('Behavior Ratings', 'beh_scores', 'review-rating-behavior');
 
     // Comments
     const comments = document.querySelector('textarea[name="self_comments"]').value;
     if (comments) {
         html += `
-            <div class="mb-3">
-                <h6 class="fw-bold text-uppercase small text-muted mb-2">Self Comments</h6>
-                <div class="p-3 bg-light rounded small border-start border-primary border-4">${comments.replace(/\n/g, '<br>')}</div>
-            </div>
+            <section class="review-comments">
+                <div class="review-section-heading">
+                    <span>Self Comments</span>
+                </div>
+                <div>${escapeReviewHtml(comments).replace(/\n/g, '<br>')}</div>
+            </section>
         `;
     }
 
@@ -1700,4 +1748,28 @@ function confirmFinalSubmit() {
 
     form.submit();
 }
+</script>
+
+<script>
+(function() {
+    const shouldClearTemplateUrl = <?php echo (!$edit_eval && !$view_mode && isset($_GET['template']) && $selected_template_id > 0) ? 'true' : 'false'; ?>;
+    const shouldResetTemplateSelect = <?php echo (!$edit_eval && !$view_mode && !isset($_GET['template']) && $selected_template_id <= 0) ? 'true' : 'false'; ?>;
+
+    if (shouldClearTemplateUrl && window.history && window.history.replaceState) {
+        window.history.replaceState(null, document.title, 'self-rating.php');
+    }
+
+    if (shouldResetTemplateSelect) {
+        const resetTemplateSelect = () => {
+            const templateSelect = document.getElementById('templateSelect');
+            if (templateSelect) {
+                templateSelect.value = '';
+                templateSelect.selectedIndex = 0;
+            }
+        };
+
+        resetTemplateSelect();
+        window.addEventListener('pageshow', resetTemplateSelect);
+    }
+})();
 </script>

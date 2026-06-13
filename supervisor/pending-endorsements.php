@@ -857,7 +857,7 @@ require_once '../includes/header.php';
     }
 </style>
 
-<div class="pending-endorsements">
+<div class="pending-endorsements" data-queue-auto-refresh="supervisor">
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
         <div>
@@ -870,7 +870,7 @@ require_once '../includes/header.php';
     </div>
     <p class="text-white-50 small mb-0"><i class="fas fa-check-double me-1"></i>Review staff evaluations, add supervisor feedback, and forward endorsed records to HR Manager.</p>
 
-    <div class="row g-3 mb-4 mt-4">
+    <div class="row g-3 mb-4 mt-4" id="supervisorQueueSummary">
         <div class="col-6 col-md-3">
             <div class="stat-card">
                 <div class="d-flex justify-content-between align-items-start">
@@ -964,7 +964,7 @@ require_once '../includes/header.php';
     </form>
 </div>
 
-<div class="content-card border-0 shadow-sm fadeup fadeup-2">
+<div class="content-card border-0 shadow-sm fadeup fadeup-2" id="supervisorQueueList">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
         <h5 class="mb-0"><i class="fas fa-clipboard-check me-2 text-primary"></i>Evaluations Pending Endorsement</h5>
         <span class="badge bg-light text-muted border"><?php echo number_format($employee_group_count); ?> employee<?php echo $employee_group_count === 1 ? '' : 's'; ?> · <?php echo number_format($pending_count); ?> evaluation<?php echo $pending_count === 1 ? '' : 's'; ?></span>
@@ -1088,6 +1088,7 @@ require_once '../includes/header.php';
     </div>
 </div>
 
+<div id="supervisorQueueModals">
 <?php 
 // Render Modals at the end of the file
 foreach ($all_pending as $row): 
@@ -1477,17 +1478,16 @@ foreach ($all_pending as $row):
     </div>
 <?php endforeach; ?>
 </div>
+</div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Initialize tooltips
+function initializeSupervisorQueueUI(root = document) {
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+        return bootstrap.Tooltip.getOrCreateInstance(tooltipTriggerEl);
     });
 
-    // Enforce max rating of 4.00 on score input fields
-    document.querySelectorAll('.score-input').forEach(input => {
+    root.querySelectorAll('.score-input').forEach(input => {
         input.addEventListener('input', function() {
             let val = parseFloat(this.value);
             if (val > 4) {
@@ -1495,7 +1495,75 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
     });
+
+    root.querySelectorAll('.pending-group-collapse').forEach((collapseEl) => {
+        const collapseId = collapseEl.id;
+        if (!collapseId || collapseEl.dataset.queueBound === '1') {
+            return;
+        }
+
+        collapseEl.dataset.queueBound = '1';
+        const toggleRow = document.querySelector(`.pending-group-row[data-bs-target="#${collapseId}"]`);
+        const syncExpanded = (expanded) => {
+            if (toggleRow) {
+                toggleRow.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            }
+            collapseEl.querySelectorAll('[data-bs-target="#' + collapseId + '"]').forEach((btn) => {
+                btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                const label = btn.querySelector('.group-toggle-label');
+                if (label) {
+                    label.textContent = expanded ? 'Hide' : 'Show';
+                }
+            });
+        };
+
+        collapseEl.addEventListener('show.bs.collapse', () => syncExpanded(true));
+        collapseEl.addEventListener('hide.bs.collapse', () => syncExpanded(false));
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    initializeSupervisorQueueUI(document);
+    startSupervisorQueueRefresh();
 });
+
+function startSupervisorQueueRefresh() {
+    const root = document.querySelector('[data-queue-auto-refresh="supervisor"]');
+    if (!root || root.dataset.refreshStarted === '1') {
+        return;
+    }
+    root.dataset.refreshStarted = '1';
+
+    let busy = false;
+    const refresh = () => {
+        if (busy || document.hidden || document.querySelector('.modal.show')) {
+            return;
+        }
+        busy = true;
+        fetch(window.location.href, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            cache: 'no-store'
+        })
+        .then(response => response.text())
+        .then(html => {
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            ['supervisorQueueSummary', 'supervisorQueueList', 'supervisorQueueModals'].forEach(id => {
+                const current = document.getElementById(id);
+                const next = doc.getElementById(id);
+                if (current && next) {
+                    current.replaceWith(next);
+                }
+            });
+            initializeSupervisorQueueUI(document);
+        })
+        .catch(() => {})
+        .finally(() => {
+            busy = false;
+        });
+    };
+
+    setInterval(refresh, 10000);
+}
 
 function toggleEditRatings(evalId, cancel = false) {
     const modal = document.querySelector(`#reviewModal${evalId}`);
@@ -1604,30 +1672,6 @@ function saveRatings(evalId) {
         saveBtn.innerHTML = originalBtnText;
     });
 }
-
-document.querySelectorAll('.pending-group-collapse').forEach((collapseEl) => {
-    const collapseId = collapseEl.id;
-    if (!collapseId) {
-        return;
-    }
-
-    const toggleRow = document.querySelector(`.pending-group-row[data-bs-target="#${collapseId}"]`);
-    const syncExpanded = (expanded) => {
-        if (toggleRow) {
-            toggleRow.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-        }
-        collapseEl.querySelectorAll('[data-bs-target="#' + collapseId + '"]').forEach((btn) => {
-            btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-            const label = btn.querySelector('.group-toggle-label');
-            if (label) {
-                label.textContent = expanded ? 'Hide' : 'Show';
-            }
-        });
-    };
-
-    collapseEl.addEventListener('show.bs.collapse', () => syncExpanded(true));
-    collapseEl.addEventListener('hide.bs.collapse', () => syncExpanded(false));
-});
 
 function toggleCareerEdit(evalId) {
     const viewDiv = document.getElementById(`careerView${evalId}`);
