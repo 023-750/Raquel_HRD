@@ -5,7 +5,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 1. System Administrator (Standalone)
 -- ====================================
 REPLACE INTO users (user_id, employee_id, username, email, full_name, password_hash, role, branch_id, is_active, created_at) VALUES
-(1, NULL, 'admin', 'admin@example.com', 'System Admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 102, 1, NOW());
+(1, NULL, 'admin', 'admin@company.com', 'System Admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Admin', 102, 1, NOW());
 
 -- ====================================
 -- 2. EMPLOYEES (HRD Team)
