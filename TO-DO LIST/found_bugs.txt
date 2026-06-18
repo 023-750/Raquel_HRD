@@ -17,9 +17,13 @@ Rank-and-File Employee Self-Rating
 
 Employee → Branch Supervisor → Branch Manager → HR Supervisor → HR Manager (Final Approver)
 
-Branch Supervisor / Branch Manager Self-Rating
+Branch Supervisor Self-Rating
 
 Branch Supervisor → Branch Manager → HR Supervisor → HR Manager (Final Approver)
+
+Branch Manager Self-Rating
+
+Branch Manager → Branch Supervisor → HR Supervisor → HR Manager (Final Approver)
 
 Expected Behavior
 

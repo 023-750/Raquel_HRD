@@ -1748,7 +1748,7 @@ function isSupervisorOfEmployee($conn, $supervisor_user_id, $employee_id)
     $supervisor_employee_id = (int)$supervisor['employee_id'];
 
     // Get employee details
-    $stmt = $conn->prepare("SELECT reports_to, branch_id, department_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT reports_to, branch_id, department_id, rank_category_id FROM employees WHERE employee_id = ? LIMIT 1");
     $stmt->bind_param("i", $employee_id);
     $stmt->execute();
     $employee = $stmt->get_result()->fetch_assoc();
@@ -1756,6 +1756,11 @@ function isSupervisorOfEmployee($conn, $supervisor_user_id, $employee_id)
 
     if (!$employee) {
         return false;
+    }
+
+    // Special rule for Branch Manager self-rating: reviewed by a Branch Supervisor (rank 4) in the same branch
+    if ((int)$employee['rank_category_id'] === 3 && (int)$supervisor['rank_category_id'] === 4 && (int)$supervisor['branch_id'] === (int)$employee['branch_id']) {
+        return true;
     }
 
     $reports_to = $employee['reports_to'] ? (int)$employee['reports_to'] : 0;

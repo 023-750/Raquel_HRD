@@ -11,11 +11,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $comments = trim($_POST['manager_comments'] ?? '');
 
     if ($action === 'approve') {
-        // 1. Update status to Approved
-        $stmt = $conn->prepare("UPDATE evaluations SET status = 'Approved', approved_by = ?, manager_comments = ? WHERE evaluation_id = ?");
+        // 1. Update status to Approved — guard: must be in Pending Manager status
+        $stmt = $conn->prepare("UPDATE evaluations SET status = 'Approved', approved_by = ?, manager_comments = ? WHERE evaluation_id = ? AND status = 'Pending Manager'");
         $stmt->bind_param("isi", $_SESSION['user_id'], $comments, $eval_id);
         $stmt->execute();
+        $affected = $stmt->affected_rows;
         $stmt->close();
+
+        if ($affected === 0) {
+            redirectWith(BASE_URL . '/manager/pending-approvals.php', 'danger', 'Approval failed: this evaluation is not in Pending Manager status or was already processed.');
+        }
 
         // Recalculate evaluation scores to ensure manager overrides are reflected in total scores
         recalculateEvaluationScores($conn, $eval_id);
@@ -55,10 +60,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (empty($comments)) {
             redirectWith(BASE_URL . '/manager/pending-approvals.php', 'danger', 'Comments are required when rejecting an evaluation.');
         }
-        $stmt = $conn->prepare("UPDATE evaluations SET status = 'Rejected', approved_by = ?, manager_comments = ? WHERE evaluation_id = ?");
+        // Guard: must be in Pending Manager status
+        $stmt = $conn->prepare("UPDATE evaluations SET status = 'Rejected', approved_by = ?, manager_comments = ? WHERE evaluation_id = ? AND status = 'Pending Manager'");
         $stmt->bind_param("isi", $_SESSION['user_id'], $comments, $eval_id);
         $stmt->execute();
+        $affected = $stmt->affected_rows;
         $stmt->close();
+
+        if ($affected === 0) {
+            redirectWith(BASE_URL . '/manager/pending-approvals.php', 'danger', 'Rejection failed: this evaluation is not in Pending Manager status or was already processed.');
+        }
 
         // Recalculate evaluation scores
         recalculateEvaluationScores($conn, $eval_id);
@@ -95,10 +106,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (empty($comments)) {
             redirectWith(BASE_URL . '/manager/pending-approvals.php', 'danger', 'Comments are required when requesting revision.');
         }
-        $stmt = $conn->prepare("UPDATE evaluations SET status = 'Returned', manager_comments = ? WHERE evaluation_id = ?");
+        // Guard: must be in Pending Manager status
+        $stmt = $conn->prepare("UPDATE evaluations SET status = 'Returned', manager_comments = ? WHERE evaluation_id = ? AND status = 'Pending Manager'");
         $stmt->bind_param("si", $comments, $eval_id);
         $stmt->execute();
+        $affected = $stmt->affected_rows;
         $stmt->close();
+
+        if ($affected === 0) {
+            redirectWith(BASE_URL . '/manager/pending-approvals.php', 'danger', 'Revision request failed: this evaluation is not in Pending Manager status or was already processed.');
+        }
 
         // Recalculate evaluation scores
         recalculateEvaluationScores($conn, $eval_id);

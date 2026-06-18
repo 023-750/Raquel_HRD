@@ -312,8 +312,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
                 );
             }
         } elseif ($next_status === 'Pending HR Consolidation') {
-            // Notify HR Supervisor and HR Manager
-            $hr_users = $conn->query("SELECT user_id FROM users WHERE role IN ('HR Supervisor', 'HR Manager') AND is_active = 1");
+            // Notify HR Supervisor only — HR Manager will be notified when HR Supervisor endorses (Pending Manager)
+            $hr_users = $conn->query("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
             while ($hr = $hr_users->fetch_assoc()) {
                 createNotification(
                     $conn,
@@ -415,7 +415,7 @@ if ($is_supervisor) {
 
     $pending_stmt = $conn->prepare("
         SELECT e.*, emp.first_name, emp.last_name, emp.job_title, emp.employee_code,
-               emp.reports_to, emp.branch_id,
+               emp.reports_to, emp.branch_id, emp.rank_category_id,
                t.template_name
         FROM evaluations e
         JOIN employees emp ON e.employee_id = emp.employee_id
@@ -439,10 +439,26 @@ if ($is_supervisor) {
                 )
                 AND (LOWER(hb.branch_name) LIKE '%main%' OR LOWER(hb.branch_name) LIKE '%head office%')
           )
-          AND (emp.reports_to = ? OR (emp.reports_to IS NULL AND emp.branch_id = ?))
+          AND (
+            emp.reports_to = ?
+            OR (emp.reports_to IS NULL AND emp.branch_id = ?)
+            -- Branch Manager self-rating: reviewed by a Branch Supervisor (rank 4) in the same branch
+            OR (
+              emp.rank_category_id = 3
+              AND emp.branch_id = ?
+              AND EXISTS (
+                SELECT 1 FROM employees sup2
+                WHERE sup2.employee_id = ?
+                  AND sup2.branch_id = emp.branch_id
+                  AND (sup2.rank_category_id = 4 OR sup2.job_title LIKE '%Supervisor%')
+                  AND sup2.is_active = 1
+                  AND sup2.deleted_at IS NULL
+              )
+            )
+          )
         ORDER BY e.submitted_date DESC
     ");
-    $pending_stmt->bind_param("iii", $supervisor_employee_id, $supervisor_employee_id, $supervisor_branch_id);
+    $pending_stmt->bind_param("iiiii", $supervisor_employee_id, $supervisor_employee_id, $supervisor_branch_id, $supervisor_branch_id, $supervisor_employee_id);
     $pending_stmt->execute();
     $all_pending = $pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $pending_stmt->close();
@@ -500,31 +516,38 @@ if ($is_supervisor) {
         $p_reports_to = (isset($p['reports_to']) && $p['reports_to']) ? (int)$p['reports_to'] : 0;
         $is_match = false;
         
-        if ($p_reports_to > 0) {
-            if (!isset($active_reports_to_cache[$p_reports_to])) {
-                $check_stmt = $conn->prepare("SELECT employee_id FROM employees WHERE employee_id = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1");
-                if ($check_stmt) {
-                    $check_stmt->bind_param("i", $p_reports_to);
-                    $check_stmt->execute();
-                    $active_reports_to_cache[$p_reports_to] = (bool)$check_stmt->get_result()->fetch_assoc();
-                    $check_stmt->close();
-                } else {
-                    $active_reports_to_cache[$p_reports_to] = false;
+        // Special case: Branch Manager (rank 3) reviewed by Branch Supervisor (rank 4) in the same branch
+        if ((int)$p['rank_category_id'] === 3 && (int)$p['branch_id'] === $supervisor_branch_id) {
+            $is_match = true;
+        }
+        
+        if (!$is_match) {
+            if ($p_reports_to > 0) {
+                if (!isset($active_reports_to_cache[$p_reports_to])) {
+                    $check_stmt = $conn->prepare("SELECT employee_id FROM employees WHERE employee_id = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1");
+                    if ($check_stmt) {
+                        $check_stmt->bind_param("i", $p_reports_to);
+                        $check_stmt->execute();
+                        $active_reports_to_cache[$p_reports_to] = (bool)$check_stmt->get_result()->fetch_assoc();
+                        $check_stmt->close();
+                    } else {
+                        $active_reports_to_cache[$p_reports_to] = false;
+                    }
                 }
-            }
-            
-            if ($active_reports_to_cache[$p_reports_to]) {
-                if ($p_reports_to === $supervisor_employee_id) {
-                    $is_match = true;
+                
+                if ($active_reports_to_cache[$p_reports_to]) {
+                    if ($p_reports_to === $supervisor_employee_id) {
+                        $is_match = true;
+                    }
+                } else {
+                    if ($fallback_supervisor_id === $supervisor_employee_id) {
+                        $is_match = true;
+                    }
                 }
             } else {
                 if ($fallback_supervisor_id === $supervisor_employee_id) {
                     $is_match = true;
                 }
-            }
-        } else {
-            if ($fallback_supervisor_id === $supervisor_employee_id) {
-                $is_match = true;
             }
         }
         

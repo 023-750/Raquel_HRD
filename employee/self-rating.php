@@ -299,6 +299,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status = 'Pending Supervisor';
         } elseif ($is_supervisor_level_employee && $has_dept_manager) {
             $status = 'Pending Dept Manager';
+        } elseif (!$uses_hr_specific_flow && (int)($employee['rank_category_id'] ?? 0) === 3) {
+            // Branch Manager self-rating: must first go to Branch Supervisor (rank 4) for review
+            $status = 'Pending Dept Supervisor';
         } else {
             $status = $has_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation';
         }
@@ -441,6 +444,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $eval_id
                 );
                 $supervisor_notified = true;
+            } elseif (!$uses_hr_specific_flow && (int)($employee['rank_category_id'] ?? 0) === 3) {
+                // Branch Manager self-rating: specifically notify Branch Supervisors (rank 4) in same branch
+                $branch_id_mgr = (int)($employee['branch_id'] ?? 0);
+                $supervisor_notified = false;
+                if ($branch_id_mgr > 0) {
+                    $sup_notif_stmt = $conn->prepare("
+                        SELECT DISTINCT u.user_id
+                        FROM users u
+                        JOIN employees s ON u.employee_id = s.employee_id
+                        WHERE s.is_active = 1
+                          AND s.deleted_at IS NULL
+                          AND s.employee_id != ?
+                          AND s.branch_id = ?
+                          AND (s.rank_category_id = 4 OR (s.job_title LIKE '%Supervisor%' AND s.job_title NOT LIKE '%Manager%'))
+                          AND u.role = 'Employee'
+                          AND u.is_active = 1
+                    ");
+                    $sup_notif_stmt->bind_param("ii", $employee_id, $branch_id_mgr);
+                    $sup_notif_stmt->execute();
+                    $sup_notif_result = $sup_notif_stmt->get_result();
+                    while ($sup_row = $sup_notif_result->fetch_assoc()) {
+                        createNotification(
+                            $conn,
+                            (int)$sup_row['user_id'],
+                            'Self-Rating Pending Confirmation',
+                            $employee_name . ' (Branch Manager) submitted a self-rating awaiting your confirmation.',
+                            BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $eval_id
+                        );
+                        $supervisor_notified = true;
+                    }
+                    $sup_notif_stmt->close();
+                }
+                if (!$supervisor_notified) {
+                    // Fallback: use general supervisor notification
+                    $supervisor_notified = notifySupervisorOfSelfRating($conn, $employee_id, $eval_id);
+                }
             } else {
                 $supervisor_notified = notifySupervisorOfSelfRating($conn, $employee_id, $eval_id);
             }
