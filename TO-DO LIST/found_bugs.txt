@@ -1,89 +1,30 @@
-ANOMALIES SPOTTED
-HR Manager · Employees
-All Employees
-HR Supervisor · Employees
-Employee Information
-AND
-System Admin · Employee Access
-Portal Accounts
+**Self-Rating Evaluation Approval Flow Issue**
 
-Employee List Pagination Performance Issue
+Findings
 
-A total of 2,000 employee records were inserted across all branches for testing.
-When the Employee List page is opened for the first time, pagination is not being applied correctly. Instead of displaying only 10 employees per page, the system renders all 2,000 employee records at once.
-This causes significant performance issues, including:
-•	Slow page loading
-•	UI lag and unresponsiveness
-•	Excessive browser rendering
+When an AP Staff submits a self-rating evaluation, the request is immediately visible to both the Branch Supervisor and all Branch Managers. This is incorrect because the approval process should follow a sequential workflow.
 
-Interestingly, after the page finishes loading, pagination starts working normally and only shows the expected 10 employees per page but when it was refreshed the page loading starts once again.
-Pagination Navigation Issue
-The pagination navigation also becomes difficult to use when there are many pages. Currently, all page numbers are displayed at once (e.g., 1, 2, 3, 4, 5, 6, 7, 8, ... up to the last page), making the pagination bar excessively long and cluttered.
+Current issues identified:
 
-Expected Behavior
-•	The Employee List should load only the required records for the current page (e.g., 10 employees per page) when the page is first opened.
-•	Pagination should be applied before rendering the employee list.
-•	The pagination navigation should display a limited number of page buttons, such as:
+1. After AP Staff submits a self-rating evaluation, all Branch Managers can already view the request before the Branch Supervisor reviews it.
+2. Branch Managers are able to approve the request even though the Branch Supervisor has not yet approved it.
+3. When a Branch Manager rejects the request, it is routed directly to HRD instead of being returned to the employee for revision.
+4. The approval workflow is being bypassed because higher-level approvers can act on requests that should still be pending at lower approval levels.
 
-Previous | 1 | ... | 48 | 49 | 50 | 51 | 52 | ... | 200 | Next
-•	The current page should remain visible along with nearby page numbers, while distant pages should be collapsed using ellipses (...).
+Expected Approval Flow
 
-Actual Behavior
-•	All employee records are initially loaded and rendered before pagination is applied.
-•	The page experiences noticeable lag when large datasets are present.
-•	The pagination navigation displays too many page numbers, creating a cluttered user interface and reducing usability.
+Rank-and-File Employee Self-Rating
 
-Impact
-With large datasets (2,000+ employees), the Employee List page becomes slow, consumes unnecessary resources, and provides a poor user experience. The pagination navigation also becomes difficult to navigate due to the excessive number of page links displayed.
+Employee → Branch Supervisor → Branch Manager → HR Supervisor → HR Manager (Final Approver)
 
-Raquel Pawnshop
-HRIS • HR Supervisor
-“Submitted By Supervisor? it should be submitted by branch manager because the last touch is branch manager before it goes to hr Supervisor” 
-This statement refers to branch manager submitting self-rating to HRD but the “Type & Progress” under Evaluations Pending Endorsement table says “Submitted By Supervisor” it should be “Submitted By Branch Manager”.
+Branch Supervisor / Branch Manager Self-Rating
 
-Self-Rating Approval Flow Issue
-Test Scenario
-Employee performed a self-rating:
-Rank: Sales Associate I
-Department: Acquired Properties
-Branch: Raquel Pawnshop Main Office
-
-After submitting the self-rating, the evaluation status was correctly set to:
-Pending Dept Supervisor
-
-Current Behavior
-AP Supervisor I · Acquired Properties · Raquel Pawnshop Main Office
-•	Receives the employee's evaluation request, which is correct.
-•	However, the evaluation is not accessible through the Confirm Self-Rating.
-•	A notification indicator appears, but clicking the approval/request area shows no pending evaluations.
-•	The evaluation can only be accessed through the notification panel.
-•	Once accessed from notifications, the approval process works correctly and the entire evaluation flow proceeds successfully until completion.
-AP Supervisor II · Acquired Properties · Raquel Pawnshop Main Office
-•	Receives no evaluation request.
-•	Unable to view or act on the employee's submitted self-rating.
-AP Supervisor III · Acquired Properties · Raquel Pawnshop Main Office
-•	Receives no evaluation request.
-•	Unable to view or act on the employee's submitted self-rating.
+Branch Supervisor → Branch Manager → HR Supervisor → HR Manager (Final Approver)
 
 Expected Behavior
-All supervisor-level positions within the employee's department should receive and be able to access evaluation requests according to the configured approval hierarchy.
 
-Expected flow:
-Branch Employee Self-Rating
-→ Branch Supervisor
-→ Branch Manager
-→ HR Supervisor
-→ HR Manager
-
-This approval flow should be consistently applied to all branch employees and job titles.
-Additional Issue
-For AP Supervisor I, the request exists but is only visible through notifications. The same evaluation should also appear in the supervisor's pending evaluation/request list so it can be accessed without relying on notifications.
-
-Exception
-Employees under the Human Resource Department (HRD) should be excluded from this flow because they follow a separate evaluation workflow.
-Impact
-•	Some supervisors are unable to receive or access evaluation requests.
-•	Approval routing is inconsistent across supervisor ranks.
-•	Users may incorrectly assume that no pending evaluations exist.
-•	The evaluation process becomes dependent on notifications rather than the designated approval screens.
-•	This may cause delays or missed evaluations in production.
+* When an employee submits a self-rating evaluation, only the immediate next approver should receive and view the request.
+* Branch Managers should not receive, view, approve, or reject the request until the Branch Supervisor has approved it.
+* Each approval stage should only become available after the previous approver has completed their action.
+* If any approver rejects the request, it should be returned to the employee for correction and resubmission, not forwarded to HRD.
+* The system should enforce the approval hierarchy and prevent higher-level approvers from acting on requests that have not yet reached their approval stage.

@@ -190,6 +190,3 @@ Each department must have all employee positions:
 > Purchasing Staff I (R&F)
 > Purchasing Supervisor I (Supervisor)
 > Purchasing Supervisor on Training (Supervisor)
-
-
-each branch should have fictional employee based on positions!
