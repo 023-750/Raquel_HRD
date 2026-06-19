@@ -460,4 +460,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (notifBtn) {
         startNotificationPolling();
     }
+
+    // ── Auto mark-all-read when notification bell dropdown is opened ──────────
+    const bellBtn = document.getElementById('notificationBtn');
+    if (bellBtn) {
+        bellBtn.addEventListener('show.bs.dropdown', function () {
+            const badge = bellBtn.querySelector('.notification-badge');
+            // Only fire if there are unread notifications (badge is visible)
+            if (badge && badge.style.display !== 'none' && badge.textContent.trim() !== '') {
+                markAllRead();
+            }
+        });
+    }
+
+    // ── Auto mark-all-read for mobile bottom-nav notification icon ─────────────
+    const mobileNotifLink = document.querySelector('.employee-bottom-nav a[href*="notifications.php"]');
+    if (mobileNotifLink) {
+        mobileNotifLink.addEventListener('click', function () {
+            markAllRead();
+        });
+    }
 });

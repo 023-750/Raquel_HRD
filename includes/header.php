@@ -147,11 +147,19 @@ switch ($effective_role) {
         $_hdr_viewer_hr_role = null;
         if (isset($_SESSION['employee_id']) && $conn) {
             $_hdr_emp_id = (int) $_SESSION['employee_id'];
-            $_hdr_dept_stmt = $conn->prepare("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = ? LIMIT 1");
+            $_hdr_dept_stmt = $conn->prepare("
+                SELECT d.department_name, e.branch_id, e.rank_category_id 
+                FROM employees e 
+                LEFT JOIN departments d ON e.department_id = d.department_id 
+                WHERE e.employee_id = ? 
+                LIMIT 1
+            ");
             $_hdr_dept_stmt->bind_param("i", $_hdr_emp_id);
             $_hdr_dept_stmt->execute();
             $_hdr_dept_row = $_hdr_dept_stmt->get_result()->fetch_assoc();
             $_hdr_emp_dept = $_hdr_dept_row['department_name'] ?? '';
+            $_hdr_emp_branch_id = $_hdr_dept_row ? (int)$_hdr_dept_row['branch_id'] : 0;
+            $_hdr_emp_rank = $_hdr_dept_row ? (int)$_hdr_dept_row['rank_category_id'] : 0;
             $_hdr_dept_stmt->close();
 
             $_hdr_pt_stmt = $conn->prepare("
@@ -216,8 +224,7 @@ switch ($effective_role) {
                 $_hdr_dept_pending_rows = $_hdr_dept_pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 $_hdr_dept_pending_stmt->close();
                 foreach ($_hdr_dept_pending_rows as $_hdr_pending) {
-                    $_hdr_dm = getDeptManagerOfEmployee($conn, (int) $_hdr_pending['employee_id']);
-                    if ($_hdr_dm && (int) $_hdr_dm['supervisor_employee_id'] === $_hdr_emp_id) {
+                    if (isDeptManagerOfEmployee($conn, $user_id, (int)$_hdr_pending['employee_id'])) {
                         $m_dept_review_count++;
                     }
                 }
@@ -227,7 +234,7 @@ switch ($effective_role) {
             if ($is_supervisor_menu) {
                 $hdr_sup_dept_name = $_hdr_emp_dept;
                 $_hdr_confirm_stmt = $conn->prepare("
-                    SELECT ev.evaluation_id, ev.employee_id
+                    SELECT ev.evaluation_id, ev.employee_id, emp.reports_to, emp.branch_id, emp.rank_category_id
                     FROM evaluations ev
                     JOIN employees emp ON ev.employee_id = emp.employee_id
                     WHERE emp.employee_id <> ?
@@ -240,6 +247,8 @@ switch ($effective_role) {
                 $_hdr_confirm_stmt->execute();
                 $_hdr_confirm_rows = $_hdr_confirm_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 $_hdr_confirm_stmt->close();
+
+                $_hdr_active_reports_to_cache = [];
                 foreach ($_hdr_confirm_rows as $_hdr_confirm_row) {
                     if (getEmployeeHRRole($conn, (int) $_hdr_confirm_row['employee_id']) !== null
                         || isMainOfficeHumanResourcesEmployee($conn, (int) $_hdr_confirm_row['employee_id'])
@@ -247,8 +256,46 @@ switch ($effective_role) {
                         continue;
                     }
 
-                    $_hdr_supervisor = getEmployeeSupervisor($conn, (int) $_hdr_confirm_row['employee_id']);
-                    if ($_hdr_supervisor && (int) $_hdr_supervisor['supervisor_employee_id'] === $_hdr_emp_id) {
+                    $_hdr_p_reports_to = (isset($_hdr_confirm_row['reports_to']) && $_hdr_confirm_row['reports_to']) ? (int)$_hdr_confirm_row['reports_to'] : 0;
+                    $_hdr_is_match = false;
+
+                    // Branch Manager (rank 3) is reviewed first by any Branch Supervisor (rank 4)
+                    // in the same branch before it goes to Dept Manager review.
+                    if ((int)$_hdr_confirm_row['rank_category_id'] === 3 && (int)$_hdr_confirm_row['branch_id'] === $_hdr_emp_branch_id) {
+                        $_hdr_is_match = true;
+                    }
+
+                    if (!$_hdr_is_match) {
+                        if ($_hdr_p_reports_to > 0) {
+                            if (!isset($_hdr_active_reports_to_cache[$_hdr_p_reports_to])) {
+                                $_hdr_check_stmt = $conn->prepare("SELECT employee_id FROM employees WHERE employee_id = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1");
+                                if ($_hdr_check_stmt) {
+                                    $_hdr_check_stmt->bind_param("i", $_hdr_p_reports_to);
+                                    $_hdr_check_stmt->execute();
+                                    $_hdr_active_reports_to_cache[$_hdr_p_reports_to] = (bool)$_hdr_check_stmt->get_result()->fetch_assoc();
+                                    $_hdr_check_stmt->close();
+                                } else {
+                                    $_hdr_active_reports_to_cache[$_hdr_p_reports_to] = false;
+                                }
+                            }
+
+                            if ($_hdr_active_reports_to_cache[$_hdr_p_reports_to]) {
+                                if ($_hdr_p_reports_to === $_hdr_emp_id) {
+                                    $_hdr_is_match = true;
+                                }
+                            } else {
+                                if ($_hdr_emp_rank === 4 && (int)$_hdr_confirm_row['branch_id'] === $_hdr_emp_branch_id) {
+                                    $_hdr_is_match = true;
+                                }
+                            }
+                        } else {
+                            if ($_hdr_emp_rank === 4 && (int)$_hdr_confirm_row['branch_id'] === $_hdr_emp_branch_id) {
+                                $_hdr_is_match = true;
+                            }
+                        }
+                    }
+
+                    if ($_hdr_is_match) {
                         $m_confirm_rating_count++;
                     }
                 }

@@ -89,6 +89,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager && 
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager && !$is_readonly) {
+
+    // ── Race-condition guard: re-check current DB status before processing ────
+    $recheck_stmt = $conn->prepare("SELECT status FROM evaluations WHERE evaluation_id = ? LIMIT 1");
+    $recheck_stmt->bind_param("i", $evaluation_id);
+    $recheck_stmt->execute();
+    $recheck_row = $recheck_stmt->get_result()->fetch_assoc();
+    $recheck_stmt->close();
+    if (!$recheck_row || $recheck_row['status'] !== 'Pending Dept Manager') {
+        redirectWith(BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $evaluation_id, 'warning',
+            'Another department manager has already acted on this evaluation. It is now view-only.');
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     $action = $_POST['confirm_action'] ?? '';
     $dept_manager_comments = trim($_POST['dept_manager_comments'] ?? '');
 
@@ -270,8 +283,7 @@ if ($is_dept_manager) {
     $pending_stmt->close();
 
     foreach ($all_pending_reviews as $pending) {
-        $dept_manager = getDeptManagerOfEmployee($conn, (int)$pending['employee_id']);
-        if ($dept_manager && (int)$dept_manager['supervisor_employee_id'] === $manager_employee_id) {
+        if (isDeptManagerOfEmployee($conn, $user_id, (int)$pending['employee_id'])) {
             $pending_reviews[] = $pending;
         }
     }
@@ -1024,6 +1036,55 @@ require_once '../includes/header.php';
 
     recalculate();
 })();
+
+// ── Real-time status polling: lock UI if another dept manager acts first ──────
+document.addEventListener('DOMContentLoaded', function () {
+    const evaluationId = <?php echo $evaluation_id; ?>;
+    const isReadonly   = <?php echo $is_readonly ? 'true' : 'false'; ?>;
+
+    if (evaluationId > 0 && !isReadonly) {
+        let statusChecksFailed = 0;
+        const statusPollInterval = setInterval(function () {
+            fetch('../includes/ajax/check-evaluation-status.php?evaluation_id=' + evaluationId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        statusChecksFailed = 0;
+                        // Active status for dept manager stage
+                        if (data.status !== 'Pending Dept Manager') {
+                            clearInterval(statusPollInterval);
+                            showDeptManagerLockedNotification();
+                        }
+                    }
+                })
+                .catch(() => {
+                    statusChecksFailed++;
+                    if (statusChecksFailed > 5) clearInterval(statusPollInterval);
+                });
+        }, 5000); // Poll every 5 seconds
+
+        function showDeptManagerLockedNotification() {
+            // Disable all interactive elements
+            document.querySelectorAll('input, select, textarea, button').forEach(el => {
+                el.disabled = true;
+                el.classList.add('disabled');
+            });
+
+            if (typeof showLiveToast === 'function') {
+                showLiveToast(
+                    'Evaluation Locked',
+                    'Another department manager has already acted on this evaluation. It is now read-only. Reloading...',
+                    ''
+                );
+            } else {
+                alert('Another department manager has already acted on this evaluation. It is now read-only.');
+            }
+
+            setTimeout(() => window.location.reload(), 4000);
+        }
+    }
+});
+// ─────────────────────────────────────────────────────────────────────────────
 </script>
 
 <?php endif; ?>

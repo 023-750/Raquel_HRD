@@ -101,3 +101,10 @@ Run the SQL scripts in `database/` in order:
 2. Create a MySQL database and run the scripts in `database/` in the order listed above.
 3. Update the database credentials in `config/database.php`.
 4. Open the app in your browser and log in with the seeded admin account.
+
+
+
+
+---
+
+natest ko na yong ap staff bukas ay branch supervisor tapos branch manager 

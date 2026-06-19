@@ -1657,7 +1657,7 @@ function notifySupervisorOfSelfRating($conn, $employee_id, $evaluation_id)
     $evaluation_id = (int)$evaluation_id;
 
     // Get employee details
-    $emp_stmt = $conn->prepare("SELECT reports_to, branch_id, department_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $emp_stmt = $conn->prepare("SELECT reports_to, branch_id, department_id, rank_category_id FROM employees WHERE employee_id = ? LIMIT 1");
     $emp_stmt->bind_param("i", $employee_id);
     $emp_stmt->execute();
     $emp_info = $emp_stmt->get_result()->fetch_assoc();
@@ -1670,26 +1670,47 @@ function notifySupervisorOfSelfRating($conn, $employee_id, $evaluation_id)
     $reports_to = $emp_info['reports_to'] ? (int) $emp_info['reports_to'] : 0;
     $branch_id = $emp_info['branch_id'] ? (int) $emp_info['branch_id'] : 0;
     $department_id = $emp_info['department_id'] ? (int) $emp_info['department_id'] : 0;
+    $rank_category_id = $emp_info['rank_category_id'] ? (int) $emp_info['rank_category_id'] : 0;
 
     // We want to find ALL supervisor user accounts who are:
     // 1. The direct supervisor (reports_to) OR
     // 2. Active supervisors/managers in the same branch & department as the employee.
-    $query = "
-        SELECT DISTINCT u.user_id
-        FROM users u
-        JOIN employees s ON u.employee_id = s.employee_id
-        WHERE s.is_active = 1 
-          AND s.deleted_at IS NULL
-          AND (
-            (s.employee_id = ? AND ? > 0)
-            OR (
-              s.branch_id = ? 
-              AND s.department_id = ? 
-              AND s.employee_id != ?
-              AND (s.rank_category_id IN (3, 4) OR s.job_title LIKE '%Supervisor%' OR s.job_title LIKE '%Manager%')
-            )
-          )
-    ";
+    // For R&F employees (rank 5), the sequential flow requires Branch Supervisor (rank 4) review first.
+    if ($rank_category_id === 5) {
+        $query = "
+            SELECT DISTINCT u.user_id
+            FROM users u
+            JOIN employees s ON u.employee_id = s.employee_id
+            WHERE s.is_active = 1 
+              AND s.deleted_at IS NULL
+              AND (
+                (s.employee_id = ? AND ? > 0 AND s.rank_category_id = 4)
+                OR (
+                  s.branch_id = ? 
+                  AND s.department_id = ? 
+                  AND s.employee_id != ?
+                  AND (s.rank_category_id = 4 OR (s.job_title LIKE '%Supervisor%' AND s.job_title NOT LIKE '%Manager%'))
+                )
+              )
+        ";
+    } else {
+        $query = "
+            SELECT DISTINCT u.user_id
+            FROM users u
+            JOIN employees s ON u.employee_id = s.employee_id
+            WHERE s.is_active = 1 
+              AND s.deleted_at IS NULL
+              AND (
+                (s.employee_id = ? AND ? > 0)
+                OR (
+                  s.branch_id = ? 
+                  AND s.department_id = ? 
+                  AND s.employee_id != ?
+                  AND (s.rank_category_id IN (3, 4) OR s.job_title LIKE '%Supervisor%' OR s.job_title LIKE '%Manager%')
+                )
+              )
+        ";
+    }
 
     $stmt = $conn->prepare($query);
     $stmt->bind_param("iiiii", $reports_to, $reports_to, $branch_id, $department_id, $employee_id);

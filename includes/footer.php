@@ -50,8 +50,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
                     $_hdr_pending_rows = $_hdr_dept_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     $_hdr_dept_stmt->close();
                     foreach ($_hdr_pending_rows as $_hdr_pending) {
-                        $_hdr_dm = getDeptManagerOfEmployee($conn, (int)$_hdr_pending['employee_id']);
-                        if ($_hdr_dm && (int)$_hdr_dm['supervisor_employee_id'] === $_hdr_mgr_id) {
+                        if (isDeptManagerOfEmployee($conn, (int)$_SESSION['user_id'], (int)$_hdr_pending['employee_id'])) {
                             $m_dept_pending_count++;
                         }
                     }

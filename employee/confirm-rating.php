@@ -76,6 +76,21 @@ if ($evaluation_id > 0) {
         if (!$is_authorized) {
             redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'You are not authorized to confirm this rating.');
         }
+
+        // ── Hierarchy sequential-step guard ─────────────────────────────────
+        // A Branch Manager (rank 3) must NOT act on evaluations still at
+        // 'Pending Dept Supervisor' — that step belongs exclusively to the
+        // Branch Supervisor (rank 4). Prevent direct-URL bypass.
+        $actor_rank_stmt = $conn->prepare("SELECT rank_category_id FROM employees WHERE employee_id = ? LIMIT 1");
+        $actor_rank_stmt->bind_param("i", $supervisor_employee_id);
+        $actor_rank_stmt->execute();
+        $actor_rank_row = $actor_rank_stmt->get_result()->fetch_assoc();
+        $actor_rank_stmt->close();
+        $actor_rank = $actor_rank_row ? (int)$actor_rank_row['rank_category_id'] : 0;
+
+        if ($actor_rank === 3 && in_array($evaluation['status'], ['Pending Dept Supervisor', 'Pending Supervisor'], true)) {
+            redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'This evaluation is pending Branch Supervisor review. You may only access it after the Branch Supervisor has confirmed it.');
+        }
         
         $dept_manager = getDeptManagerOfEmployee($conn, (int)$evaluation['employee_id']);
         
@@ -102,9 +117,10 @@ if ($evaluation_id > 0) {
 
         // Fetch audit history for this evaluation
         $audit_stmt = $conn->prepare("
-            SELECT al.*, u.full_name, u.role
+            SELECT al.*, u.full_name, u.role, e.job_title
             FROM audit_logs al
             LEFT JOIN users u ON al.user_id = u.user_id
+            LEFT JOIN employees e ON u.employee_id = e.employee_id
             WHERE al.entity_type = 'Evaluation' AND al.entity_id = ?
             ORDER BY al.timestamp DESC, al.log_id DESC
         ");
@@ -121,6 +137,14 @@ $disabled_attr = !empty($is_readonly) ? 'disabled' : '';
 // Handle form submission (confirmation or sending to HR)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && $is_readonly) {
     redirectWith(BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id, 'warning', 'This confirmation has already been sent and is view-only.');
+}
+
+// POST-level sequential-step guard: re-check actor rank on submission
+// to block any forged POST requests from Branch Managers on Supervisor-stage evaluations.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation) {
+    if (isset($actor_rank) && $actor_rank === 3 && in_array($evaluation['status'], ['Pending Dept Supervisor', 'Pending Supervisor'], true)) {
+        redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'Unauthorized: This evaluation must be reviewed by the Branch Supervisor first.');
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$is_readonly) {
@@ -215,9 +239,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
             $next_status = 'Pending Manager';
         } else {
             // Non-HR employee: check if there is a separate department manager
-            $dept_manager = getDeptManagerOfEmployee($conn, (int)$evaluation['employee_id']);
+            $dept_managers = getDeptManagersOfEmployee($conn, (int)$evaluation['employee_id']);
             $is_emp_manager = isDeptManagerRole($conn, (int)$evaluation['employee_id']);
-            if (!$is_emp_manager && $dept_manager !== null && (int)$dept_manager['supervisor_employee_id'] !== $supervisor_employee_id) {
+            $has_separate_manager = false;
+            foreach ($dept_managers as $dm) {
+                if ((int)$dm['supervisor_employee_id'] !== $supervisor_employee_id) {
+                    $has_separate_manager = true;
+                    break;
+                }
+            }
+            if (!$is_emp_manager && !empty($dept_managers) && $has_separate_manager) {
                 // Route to department manager
                 $next_status = 'Pending Dept Manager';
             } else {
@@ -291,14 +322,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         $supervisor_name = $_SESSION['full_name'] ?? 'Supervisor';
 
         if ($next_status === 'Pending Dept Manager') {
-            // Notify Dept Manager
-            createNotification(
-                $conn,
-                (int)$dept_manager['user_id'],
-                'Evaluation Pending Endorsement',
-                $supervisor_name . ' confirmed self-rating for ' . $emp_name . ' and requires your endorsement.',
-                BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $evaluation_id
-            );
+            // Notify Dept Managers
+            $dept_managers = getDeptManagersOfEmployee($conn, (int)$evaluation['employee_id']);
+            foreach ($dept_managers as $dm) {
+                if (!empty($dm['user_id'])) {
+                    createNotification(
+                        $conn,
+                        (int)$dm['user_id'],
+                        'Evaluation Pending Endorsement',
+                        $supervisor_name . ' confirmed self-rating for ' . $emp_name . ' and requires your endorsement.',
+                        BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $evaluation_id
+                    );
+                }
+            }
         } elseif ($next_status === 'Pending Manager') {
             // Notify HR Manager
             $hr_users = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
@@ -406,12 +442,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
 $pending_confirmations = [];
 $confirmation_history = [];
 if ($is_supervisor) {
-    $sup_branch_stmt = $conn->prepare("SELECT branch_id FROM employees WHERE employee_id = ? LIMIT 1");
-    $sup_branch_stmt->bind_param("i", $supervisor_employee_id);
-    $sup_branch_stmt->execute();
-    $sup_branch_row = $sup_branch_stmt->get_result()->fetch_assoc();
-    $supervisor_branch_id = $sup_branch_row ? (int)$sup_branch_row['branch_id'] : 0;
-    $sup_branch_stmt->close();
+    // Fetch supervisor's branch AND rank so we can correctly scope the pending list
+    $sup_info_stmt = $conn->prepare("SELECT branch_id, rank_category_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $sup_info_stmt->bind_param("i", $supervisor_employee_id);
+    $sup_info_stmt->execute();
+    $sup_info_row = $sup_info_stmt->get_result()->fetch_assoc();
+    $supervisor_branch_id = $sup_info_row ? (int)$sup_info_row['branch_id'] : 0;
+    $supervisor_rank      = $sup_info_row ? (int)$sup_info_row['rank_category_id'] : 0;
+    $sup_info_stmt->close();
 
     $pending_stmt = $conn->prepare("
         SELECT e.*, emp.first_name, emp.last_name, emp.job_title, emp.employee_code,
@@ -464,65 +502,25 @@ if ($is_supervisor) {
     $pending_stmt->close();
 
     $pending_confirmations = [];
-    
-    // Find the branch fallback supervisor once to avoid running queries in loop
-    $fallback_supervisor_id = 0;
-    if ($supervisor_branch_id > 0) {
-        $sup_stmt = $conn->prepare("
-            SELECT employee_id 
-            FROM employees 
-            WHERE branch_id = ? 
-              AND is_active = 1 
-              AND deleted_at IS NULL
-              AND (rank_category_id = 4 OR job_title LIKE '%Supervisor%')
-            ORDER BY employee_id ASC
-            LIMIT 1
-        ");
-        if ($sup_stmt) {
-            $sup_stmt->bind_param("i", $supervisor_branch_id);
-            $sup_stmt->execute();
-            $res = $sup_stmt->get_result()->fetch_assoc();
-            $sup_stmt->close();
-            if ($res) {
-                $fallback_supervisor_id = (int)$res['employee_id'];
-            }
-        }
-        
-        if ($fallback_supervisor_id <= 0) {
-            $mgr_stmt = $conn->prepare("
-                SELECT employee_id 
-                FROM employees 
-                WHERE branch_id = ? 
-                  AND is_active = 1 
-                  AND deleted_at IS NULL
-                  AND (rank_category_id = 3 OR job_title LIKE '%Manager%')
-                ORDER BY employee_id ASC
-                LIMIT 1
-            ");
-            if ($mgr_stmt) {
-                $mgr_stmt->bind_param("i", $supervisor_branch_id);
-                $mgr_stmt->execute();
-                $res = $mgr_stmt->get_result()->fetch_assoc();
-                $mgr_stmt->close();
-                if ($res) {
-                    $fallback_supervisor_id = (int)$res['employee_id'];
-                }
-            }
-        }
-    }
 
+    // Loop: match each pending evaluation to this supervisor using hierarchy-aware rules.
+    // $supervisor_rank is used instead of a single fallback_supervisor_id so that
+    // ALL Branch Supervisors (rank 4) in the branch see unassigned evaluations,
+    // not just the one with the lowest employee_id.
     $active_reports_to_cache = [];
     foreach ($all_pending as $p) {
         $p_reports_to = (isset($p['reports_to']) && $p['reports_to']) ? (int)$p['reports_to'] : 0;
         $is_match = false;
-        
-        // Special case: Branch Manager (rank 3) reviewed by Branch Supervisor (rank 4) in the same branch
+
+        // Branch Manager (rank 3) is reviewed first by any Branch Supervisor (rank 4)
+        // in the same branch before it goes to Dept Manager review.
         if ((int)$p['rank_category_id'] === 3 && (int)$p['branch_id'] === $supervisor_branch_id) {
             $is_match = true;
         }
-        
+
         if (!$is_match) {
             if ($p_reports_to > 0) {
+                // Employee has a specific supervisor designated via reports_to
                 if (!isset($active_reports_to_cache[$p_reports_to])) {
                     $check_stmt = $conn->prepare("SELECT employee_id FROM employees WHERE employee_id = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1");
                     if ($check_stmt) {
@@ -534,23 +532,26 @@ if ($is_supervisor) {
                         $active_reports_to_cache[$p_reports_to] = false;
                     }
                 }
-                
+
                 if ($active_reports_to_cache[$p_reports_to]) {
+                    // Designated supervisor is still active — only they handle it
                     if ($p_reports_to === $supervisor_employee_id) {
                         $is_match = true;
                     }
                 } else {
-                    if ($fallback_supervisor_id === $supervisor_employee_id) {
+                    // Designated supervisor is gone — any rank-4 supervisor in the branch handles it
+                    if ($supervisor_rank === 4 && (int)$p['branch_id'] === $supervisor_branch_id) {
                         $is_match = true;
                     }
                 }
             } else {
-                if ($fallback_supervisor_id === $supervisor_employee_id) {
+                // No specific supervisor assigned — any rank-4 supervisor in the same branch handles it
+                if ($supervisor_rank === 4 && (int)$p['branch_id'] === $supervisor_branch_id) {
                     $is_match = true;
                 }
             }
         }
-        
+
         if ($is_match) {
             $pending_confirmations[] = $p;
         }
@@ -1322,8 +1323,15 @@ require_once '../includes/header.php';
                                         <div class="timeline-marker" style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; position: absolute; left: -27px; top: 5px;"></div>
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <span class="fw-bold text-dark small">
-                                                <?php echo e($log['full_name'] ?? 'System'); ?> 
-                                                <span class="text-muted font-normal">(<?php echo e($log['role'] ?? 'System'); ?>)</span>
+                                                <?php echo e($log['full_name'] ?? 'System'); ?>
+                                                <span class="text-muted fw-normal">
+                                                    <?php
+                                                        $audit_label = !empty($log['job_title'])
+                                                            ? $log['job_title']
+                                                            : ($log['role'] ?? 'System');
+                                                        echo '(' . e($audit_label) . ')';
+                                                    ?>
+                                                </span>
                                             </span>
                                             <span class="text-muted x-small"><?php echo formatDateTime($log['timestamp']); ?></span>
                                         </div>
@@ -1480,6 +1488,59 @@ require_once '../includes/header.php';
     // Initial run
     recalculate();
 })();
+
+// Real-time status polling to check if another supervisor has confirmed or returned the evaluation
+document.addEventListener('DOMContentLoaded', function () {
+    const evaluationId = <?php echo $evaluation_id; ?>;
+    const isReadonly = <?php echo $is_readonly ? 'true' : 'false'; ?>;
+    
+    if (evaluationId > 0 && !isReadonly) {
+        let statusChecksFailed = 0;
+        const statusPollInterval = setInterval(function() {
+            fetch('../includes/ajax/check-evaluation-status.php?evaluation_id=' + evaluationId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        statusChecksFailed = 0;
+                        const activeStatuses = ['Pending Dept Supervisor', 'Pending Supervisor'];
+                        if (!activeStatuses.includes(data.status)) {
+                            clearInterval(statusPollInterval);
+                            showEvaluationLockedNotification();
+                        }
+                    }
+                })
+                .catch(err => {
+                    statusChecksFailed++;
+                    if (statusChecksFailed > 5) {
+                        clearInterval(statusPollInterval);
+                    }
+                });
+        }, 5000); // Check every 5 seconds
+        
+        function showEvaluationLockedNotification() {
+            // Disable all forms and inputs
+            document.querySelectorAll('input, select, textarea, button').forEach(el => {
+                el.disabled = true;
+                el.classList.add('disabled');
+            });
+            
+            // Show a live toast using the system's showLiveToast helper
+            if (typeof showLiveToast === 'function') {
+                showLiveToast(
+                    'Evaluation Locked', 
+                    'This evaluation has just been confirmed or returned by another supervisor and is now read-only. Reloading...', 
+                    ''
+                );
+            } else {
+                alert('This evaluation has just been confirmed or returned by another supervisor and is now read-only.');
+            }
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 4000);
+        }
+    }
+});
 </script>
 
 <?php endif; ?>
