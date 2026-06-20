@@ -32,20 +32,21 @@
   }
 
   /* ================================================================
-     TOAST NOTIFICATION SYSTEM (Req 15.3, 15.4)
+     EP TOAST NOTIFICATION SYSTEM (Req 15.3, 15.4)
      showToast(message, type, duration)
        type: 'success' | 'error' | 'warning' | 'info'
        duration: ms (0 = persistent, must be dismissed)
+     Uses .ep-toast-* namespace to avoid Bootstrap 5 .toast conflict
   ================================================================ */
   var toastContainer = null;
 
   function getToastContainer() {
     if (!toastContainer) {
-      toastContainer = document.querySelector('.toast-container');
+      toastContainer = document.querySelector('.ep-toast-container');
     }
     if (!toastContainer) {
       toastContainer = document.createElement('div');
-      toastContainer.className = 'toast-container';
+      toastContainer.className = 'ep-toast-container';
       toastContainer.setAttribute('aria-live', 'polite');
       toastContainer.setAttribute('aria-atomic', 'false');
       toastContainer.setAttribute('role', 'region');
@@ -69,20 +70,30 @@
     info    : 'Information'
   };
 
+  var labelMapShort = {
+    success : 'Success',
+    error   : 'Error',
+    warning : 'Warning',
+    info    : 'Info'
+  };
+
   function showToast(message, type, duration) {
     type     = type     || 'success';
-    duration = (duration === undefined) ? (type === 'error' ? 0 : 3000) : duration;
+    duration = (duration === undefined) ? (type === 'error' ? 0 : 3500) : duration;
 
     var toast = document.createElement('div');
-    toast.className = 'toast toast-' + type;
+    toast.className = 'ep-toast ep-toast-' + type;
     toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
     toast.setAttribute('aria-label', labelMap[type] + ': ' + message);
     toast.innerHTML =
-      '<span class="toast-icon" aria-hidden="true">' + (iconMap[type] || '•') + '</span>' +
-      '<div class="toast-content"><p class="toast-message">' + message + '</p></div>' +
-      '<button class="toast-close" aria-label="Dismiss notification">×</button>';
+      '<span class="ep-toast-icon" aria-hidden="true">' + (iconMap[type] || '•') + '</span>' +
+      '<div class="ep-toast-content">' +
+        '<span class="ep-toast-label">' + (labelMapShort[type] || type) + '</span>' +
+        '<span class="ep-toast-message">' + message + '</span>' +
+      '</div>' +
+      '<button class="ep-toast-close" aria-label="Dismiss notification">×</button>';
 
-    toast.querySelector('.toast-close').addEventListener('click', function () {
+    toast.querySelector('.ep-toast-close').addEventListener('click', function () {
       removeToast(toast);
     });
 
@@ -100,9 +111,22 @@
 
   function removeToast(toast) {
     if (!toast || !toast.parentNode) return;
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(100%)';
-    toast.style.transition = 'opacity 0.3s, transform 0.3s';
+
+    var isMobile = window.matchMedia('(max-width: 767px)').matches;
+
+    if (isMobile) {
+      // Dynamic Island collapse-up
+      toast.style.transition = 'transform 0.3s cubic-bezier(.55,0,1,.45), opacity 0.25s ease';
+      toast.style.transformOrigin = 'top center';
+      toast.style.transform  = 'scaleX(0.25) scaleY(0.35) translateY(-14px)';
+      toast.style.opacity    = '0';
+    } else {
+      // Desktop slide-off to the right
+      toast.style.transition = 'transform 0.28s ease-in, opacity 0.22s ease';
+      toast.style.transform  = 'translateX(calc(100% + 28px))';
+      toast.style.opacity    = '0';
+    }
+
     setTimeout(function () {
       if (toast.parentNode) toast.parentNode.removeChild(toast);
     }, 320);

@@ -688,6 +688,36 @@ require_once '../includes/header.php';
         order: 3;
     }
 }
+
+/* ── Unanswered rating item highlight ── */
+@keyframes rating-shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-6px); }
+    40%       { transform: translateX(6px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+}
+
+.rating-item.rating-missing-error {
+    border: 2px solid #dc3545 !important;
+    border-radius: 12px;
+    animation: rating-shake 0.45s ease-in-out;
+    position: relative;
+}
+
+.rating-item.rating-missing-error::after {
+    content: '⚠ Rating Required';
+    position: absolute;
+    top: -1px;
+    right: 10px;
+    background: #dc3545;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 0 0 6px 6px;
+    letter-spacing: 0.03em;
+}
 </style>
 
 <div class="page-hero fadeup">
@@ -1612,7 +1642,7 @@ require_once '../includes/header.php';
                 <button type="button" class="btn btn-outline-secondary rounded-pill review-modal-action" data-bs-dismiss="modal">
                     <i class="fas fa-arrow-left me-2"></i>Go Back & Edit
                 </button>
-                <button type="button" class="btn btn-primary rounded-pill review-modal-action" onclick="confirmFinalSubmit()">
+                <button type="button" class="btn btn-primary rounded-pill review-modal-action" id="btnConfirmSubmit" onclick="confirmFinalSubmit()">
                     <i class="fas fa-check-circle me-2"></i>Confirm & Submit
                 </button>
             </div>
@@ -1695,7 +1725,67 @@ function buildReviewSection(title, inputPrefix, badgeClass) {
 const reviewPositionText = <?php echo json_encode($employee['job_title'] ?? ''); ?>;
 const reviewTemplateText = <?php echo json_encode($selected_template['template_name'] ?? ''); ?>;
 
+function validateAllRatings() {
+    // Collect every unique radio group name for kra_scores and beh_scores
+    const groupNames = new Set();
+    document.querySelectorAll('input[name^="kra_scores["], input[name^="beh_scores["]').forEach(inp => {
+        groupNames.add(inp.name);
+    });
+
+    const missing = [];
+    groupNames.forEach(name => {
+        const checked = document.querySelector(`input[name="${CSS.escape(name)}"]:checked`);
+        if (!checked) missing.push(name);
+    });
+
+    // Clear previous error highlights
+    document.querySelectorAll('.rating-item.rating-missing-error').forEach(el => {
+        el.classList.remove('rating-missing-error');
+    });
+
+    if (missing.length === 0) return true;   // all good
+
+    // Highlight every unanswered item
+    let firstMissingEl = null;
+    missing.forEach(name => {
+        const anyInput = document.querySelector(`input[name="${CSS.escape(name)}"]`);
+        if (anyInput) {
+            const item = anyInput.closest('.rating-item');
+            if (item) {
+                item.classList.add('rating-missing-error');
+                if (!firstMissingEl) firstMissingEl = item;
+            }
+        }
+    });
+
+    // Scroll to the first unanswered item
+    if (firstMissingEl) {
+        firstMissingEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Show toast
+    const msg = `Please rate all criteria before submitting. ${missing.length} item${missing.length > 1 ? 's' : ''} still need${missing.length === 1 ? 's' : ''} a rating.`;
+    if (typeof showToast === 'function') {
+        showToast(msg, 'error');
+    } else {
+        alert(msg);
+    }
+
+    return false;
+}
+
+// Auto-clear error highlight when user picks a rating on a previously missing item
+document.addEventListener('change', function (e) {
+    if (e.target && (e.target.name?.startsWith('kra_scores[') || e.target.name?.startsWith('beh_scores['))) {
+        const item = e.target.closest('.rating-item');
+        if (item) item.classList.remove('rating-missing-error');
+    }
+});
+
 function showReviewModal() {
+    // Guard: do not open if any rating is missing
+    if (!validateAllRatings()) return;
+
     const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
     const reviewContent = document.getElementById('reviewContent');
     let html = '';
@@ -1740,6 +1830,19 @@ function confirmFinalSubmit() {
     const form = document.querySelector('form[data-autosave]');
     if (!form) return;
 
+    // Show loading state on the submit button
+    const submitBtn = document.getElementById('btnConfirmSubmit');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
+    }
+
+    // Disable "Go Back & Edit" button
+    const backBtn = document.querySelector('.review-modal-footer button[data-bs-dismiss="modal"]');
+    if (backBtn) {
+        backBtn.disabled = true;
+    }
+
     // Remove any stale override input from a previous attempt
     const existing = form.querySelector('input[name="submit_action"][data-final]');
     if (existing) existing.remove();
@@ -1756,7 +1859,10 @@ function confirmFinalSubmit() {
     const draftBtn = form.querySelector('button[name="submit_action"][value="draft"]');
     if (draftBtn) draftBtn.disabled = true;
 
-    form.submit();
+    // Brief delay to allow the user to see the loading state/spinner
+    setTimeout(() => {
+        form.submit();
+    }, 600);
 }
 </script>
 
