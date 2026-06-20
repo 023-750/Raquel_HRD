@@ -144,7 +144,7 @@ if ($is_supervisor) {
 // ── HR Supervisor validation queue (mirrors supervisor Pending Endorsements) ───
 $validation_queue_count = 0;
 $validation_queue_rows = [];
-$show_validation_queue = ($employee_hr_role === 'HR Supervisor');
+$show_validation_queue = false; // Disabled on employee portal dashboard as HRD evaluations are handled on HRIS admin portal
 
 if ($show_validation_queue) {
     $validation_count_stmt = $conn->prepare("
@@ -319,7 +319,7 @@ function movementIcon(string $type): string {
                 <i class="fas fa-chart-line"></i>
             </div>
             <div class="stat-content">
-                <h3 class="stat-value" style="color:<?php echo $ls_color; ?>;"><?php echo number_format((float)$latest_score['total_score'], 1); ?></h3>
+                <h3 class="stat-value" style="color:<?php echo $ls_color; ?>;"><?php echo number_format((float)$latest_score['total_score'], 2); ?></h3>
                 <?php if ($ls_level): ?>
                 <span class="badge <?php echo $ls_badge; ?>" style="font-size:.65rem;">
                     <i class="fas fa-award me-1"></i><?php echo e($ls_level); ?>
@@ -401,7 +401,7 @@ function movementIcon(string $type): string {
                             $ae_badge = $ae_level ? getPerformanceLevelBadgeClass($ae_level) : 'bg-secondary';
                         ?>
                         <div class="text-end">
-                            <div style="font-size:2rem;font-weight:800;color:<?php echo $ae_color; ?>;line-height:1;"><?php echo number_format((float)$active_eval['total_score'], 1); ?></div>
+                            <div style="font-size:2rem;font-weight:800;color:<?php echo $ae_color; ?>;line-height:1;"><?php echo number_format((float)$active_eval['total_score'], 2); ?></div>
                             <?php if ($ae_level): ?>
                             <span class="badge <?php echo $ae_badge; ?>" style="font-size:.65rem;margin-top:2px;"><i class="fas fa-award me-1"></i><?php echo e($ae_level); ?></span>
                             <?php endif; ?>

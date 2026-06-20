@@ -627,7 +627,7 @@ foreach ($team as $member):
         <div class="member-eval-block">
             <?php if ($score !== null): ?>
                 <div class="score-circle">
-                    <?php echo number_format((float)$score, 1); ?>
+                    <?php echo number_format((float)$score, 2); ?>
                 </div>
                 <div style="font-size:.62rem;color:var(--text-muted);white-space:nowrap;">
                     <?php echo e($perf_level ?? ''); ?>

@@ -367,82 +367,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $uses_hr_specific_flow = $hr_role !== null || isMainOfficeHumanResourcesEmployee($conn, $employee_id);
         if ($uses_hr_specific_flow) {
             $display_hr_role = $hr_role ?? 'Human Resources';
-            if ($hr_role === 'HR Staff' || $hr_role === 'HR Manager' || $hr_role === null) {
-                // Route to HR Supervisor — notify admin accounts always;
-                // only notify HR Supervisor Employee Portal for HR Staff (not HR Manager)
-                $branch_id = (int) ($employee['branch_id'] ?? 0);
-                $notified = false;
 
-                // Notify HR Supervisor Employee Portal accounts only for HR Staff submissions
-                // (HR Manager self-ratings are handled via the admin portal, not the employee portal review page)
-                if ($hr_role === 'HR Staff' || $hr_role === null) {
-                    $hr_sup_emp_stmt = $conn->prepare("
-                        SELECT u_emp.user_id
-                        FROM users u_emp
-                        JOIN employees sup_emp ON u_emp.employee_id = sup_emp.employee_id
-                        WHERE u_emp.role = 'Employee'
-                          AND u_emp.is_active = 1
-                          AND sup_emp.employee_id IN (
-                              SELECT employee_id FROM users
-                              WHERE role = 'HR Supervisor' AND is_active = 1
-                          )
-                    ");
-                    $hr_sup_emp_stmt->execute();
-                    $hr_sup_emp_rows = $hr_sup_emp_stmt->get_result();
-                    while ($hr_sup_emp = $hr_sup_emp_rows->fetch_assoc()) {
-                        createNotification(
-                            $conn,
-                            (int) $hr_sup_emp['user_id'],
-                            'HR Self-Rating Pending Your Review',
-                            $employee_name . ' (' . $display_hr_role . ') submitted a self-rating for your review.',
-                            BASE_URL . '/employee/hr-rating-review.php?evaluation_id=' . $eval_id
-                        );
-                        $notified = true;
-                    }
-                    $hr_sup_emp_stmt->close();
-                }
+            // HRD self-rating notifications go ONLY to the admin portal (HRIS).
+            // No employee-portal notifications are sent to HR Supervisors or HR Managers.
 
-                // Notify HR Supervisor admin accounts (for the admin portal)
+            if ($hr_role === 'HR Staff' || $hr_role === null) {
+                // HR Staff → notify HR Supervisor HRIS (admin portal) only
                 $hr_supervisors_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
                 $hr_supervisors_stmt->execute();
                 $hr_supervisors = $hr_supervisors_stmt->get_result();
                 while ($hr_sup = $hr_supervisors->fetch_assoc()) {
                     createNotification(
                         $conn,
-                        (int) $hr_sup['user_id'],
-                        'Employee Self-Rating Submitted',
-                        $employee_name . ' (' . $display_hr_role . ') submitted a self-rating for review.',
+                        (int)$hr_sup['user_id'],
+                        'HR Self-Rating Pending Your Review',
+                        $employee_name . ' (' . $display_hr_role . ') submitted a self-rating for your review.',
                         BASE_URL . '/supervisor/pending-endorsements.php'
                     );
-                    $notified = true;
                 }
                 $hr_supervisors_stmt->close();
 
             } elseif ($hr_role === 'HR Supervisor') {
-                // Route to HR Manager — notify admin accounts only (no employee portal notification)
-
-                // Notify HR Manager admin accounts
-                $hr_managers = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
-                while ($hr_mgr = $hr_managers->fetch_assoc()) {
+                // HR Supervisor → notify HR Manager HRIS (admin portal) only
+                $hr_managers_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
+                $hr_managers_stmt->execute();
+                $hr_managers_res = $hr_managers_stmt->get_result();
+                while ($hr_mgr = $hr_managers_res->fetch_assoc()) {
                     createNotification(
                         $conn,
-                        (int) $hr_mgr['user_id'],
-                        'Employee Self-Rating Submitted',
-                        $employee_name . ' (HR Supervisor) submitted a self-rating for review.',
+                        (int)$hr_mgr['user_id'],
+                        'HR Self-Rating Pending Your Review',
+                        $employee_name . ' (HR Supervisor) submitted a self-rating for your review.',
                         BASE_URL . '/manager/pending-approvals.php'
                     );
                 }
+                $hr_managers_stmt->close();
+
+            } elseif ($hr_role === 'HR Manager') {
+                // HR Manager → notify HR Supervisor HRIS (admin portal) only
+                $hr_supervisors_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
+                $hr_supervisors_stmt->execute();
+                $hr_supervisors = $hr_supervisors_stmt->get_result();
+                while ($hr_sup = $hr_supervisors->fetch_assoc()) {
+                    createNotification(
+                        $conn,
+                        (int)$hr_sup['user_id'],
+                        'HR Self-Rating Pending Your Review',
+                        $employee_name . ' (HR Manager) submitted a self-rating for your review.',
+                        BASE_URL . '/supervisor/pending-endorsements.php'
+                    );
+                }
+                $hr_supervisors_stmt->close();
             }
         } else {
             // Normal employee flow
             if ($is_supervisor_level_employee && $has_dept_manager) {
-                createNotification(
-                    $conn,
-                    (int) $dept_manager['user_id'],
-                    'Evaluation Pending Endorsement',
-                    $employee_name . ' submitted a self-rating requiring your Department Manager review.',
-                    BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $eval_id
-                );
+                // Broadcast to all active branch/department managers
+                $dept_managers = getDeptManagersOfEmployee($conn, $employee_id);
+                foreach ($dept_managers as $dm) {
+                    if (!empty($dm['user_id'])) {
+                        createNotification(
+                            $conn,
+                            (int)$dm['user_id'],
+                            'Evaluation Pending Endorsement',
+                            $employee_name . ' submitted a self-rating requiring your Department Manager review.',
+                            BASE_URL . '/employee/dept-manager-review.php?evaluation_id=' . $eval_id
+                        );
+                    }
+                }
                 $supervisor_notified = true;
             } elseif (!$uses_hr_specific_flow && (int)($employee['rank_category_id'] ?? 0) === 3) {
                 // Branch Manager self-rating: specifically notify Branch Supervisors (rank 4) in same branch

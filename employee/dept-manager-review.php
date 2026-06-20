@@ -199,8 +199,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager && 
         $update->execute();
         $update->close();
 
-        // Notify HR
-        $hr_users = $conn->query("SELECT user_id FROM users WHERE role IN ('HR Supervisor', 'HR Manager') AND is_active = 1");
+        // Notify HR Supervisor only — HR Manager will be notified when HR Supervisor endorses (Pending Manager)
+        $hr_users = $conn->query("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
         $emp_name    = $evaluation['first_name'] . ' ' . $evaluation['last_name'];
         $manager_name = $_SESSION['full_name'] ?? 'Department Manager';
         while ($hr = $hr_users->fetch_assoc()) {
