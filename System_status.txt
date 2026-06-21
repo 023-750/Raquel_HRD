@@ -15,4 +15,8 @@ Department
 > Operations
 > Purchasing
 
-Create a new database for Audit seed accounts all department and positions must be included
+
+FIX IT
+1. "No career movements" yet.
+2. "employee portal dashboard" web-view ain't optimized yet. UI refactor.
+3. "employee portal my employment" needs improvement.
