@@ -1,12 +1,4 @@
-Now that we have plenty of fictional employees from:
-Human resources
-Information Technology (agdangan branch)
-Marketing
-
-Create a new massive seed sql dedicated for adding employee 
-Branch "Raquel Pawnshop Main Office" name the sql seed as "main_branch_department_employee_seed.sql"
-
-department
+Department
 > Acquired Properties
 > Audit
 > Business Development
