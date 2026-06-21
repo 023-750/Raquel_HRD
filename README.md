@@ -106,5 +106,3 @@ Run the SQL scripts in `database/` in order:
 
 
 ---
-
-natest ko na yong ap staff bukas ay branch supervisor tapos branch manager 
