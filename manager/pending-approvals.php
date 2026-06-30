@@ -10,10 +10,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     $comments = trim($_POST['manager_comments'] ?? '');
 
+    $manager_id = (int) ($_SESSION['user_id'] ?? 0);
+    $manager_id_nullable = null;
+    if ($manager_id > 0) {
+        $uid_check = $conn->prepare("SELECT user_id FROM users WHERE user_id = ? LIMIT 1");
+        $uid_check->bind_param("i", $manager_id);
+        $uid_check->execute();
+        $uid_exists = (bool) $uid_check->get_result()->fetch_assoc();
+        $uid_check->close();
+        if ($uid_exists) {
+            $manager_id_nullable = $manager_id;
+        }
+    }
+
     if ($action === 'approve') {
         // 1. Update status to Approved — guard: must be in Pending Manager status
         $stmt = $conn->prepare("UPDATE evaluations SET status = 'Approved', approved_by = ?, manager_comments = ? WHERE evaluation_id = ? AND status = 'Pending Manager'");
-        $stmt->bind_param("isi", $_SESSION['user_id'], $comments, $eval_id);
+        $stmt->bind_param("isi", $manager_id_nullable, $comments, $eval_id);
         $stmt->execute();
         $affected = $stmt->affected_rows;
         $stmt->close();
@@ -62,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         // Guard: must be in Pending Manager status
         $stmt = $conn->prepare("UPDATE evaluations SET status = 'Rejected', approved_by = ?, manager_comments = ? WHERE evaluation_id = ? AND status = 'Pending Manager'");
-        $stmt->bind_param("isi", $_SESSION['user_id'], $comments, $eval_id);
+        $stmt->bind_param("isi", $manager_id_nullable, $comments, $eval_id);
         $stmt->execute();
         $affected = $stmt->affected_rows;
         $stmt->close();

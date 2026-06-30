@@ -44,9 +44,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirectWith(BASE_URL . '/manager/create-template.php', 'danger', 'KRA weight + Behavior weight must equal 100%.');
     }
 
+    // Validate created_by exists in users (FK created_by -> users.user_id is ON DELETE SET NULL)
+    $creator_id = (int)($_SESSION['user_id'] ?? 0);
+    $creator_id_nullable = null;
+    if ($creator_id > 0) {
+        $uid_check = $conn->prepare("SELECT user_id FROM users WHERE user_id = ? LIMIT 1");
+        $uid_check->bind_param("i", $creator_id);
+        $uid_check->execute();
+        $uid_exists = (bool) $uid_check->get_result()->fetch_assoc();
+        $uid_check->close();
+        if ($uid_exists) {
+            $creator_id_nullable = $creator_id;
+        }
+    }
+
     // Insert template
     $stmt = $conn->prepare("INSERT INTO evaluation_templates (template_name, description, target_department, evaluation_type, kra_weight, behavior_weight, form_code, revision_date, effective_date_form, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)");
-    $stmt->bind_param("ssssddsssi", $template_name, $description, $target_department, $evaluation_type, $kra_weight, $behavior_weight, $form_code, $revision_date, $effective_date_form, $_SESSION['user_id']);
+    $stmt->bind_param("ssssddsssi", $template_name, $description, $target_department, $evaluation_type, $kra_weight, $behavior_weight, $form_code, $revision_date, $effective_date_form, $creator_id_nullable);
     $stmt->execute();
     $template_id = $stmt->insert_id;
     $stmt->close();

@@ -252,6 +252,19 @@
     }
   };
 
+  /**
+   * Cancel all pending auto-save timers and mark as unloading.
+   * Call this immediately before a final form submission so no
+   * in-flight AJAX fires and shows a spurious "Failed" toast.
+   */
+  window.cancelAutoSave = function() {
+    isUnloading = true;
+    Object.keys(saveTimers).forEach(id => {
+      clearTimeout(saveTimers[id]);
+      delete saveTimers[id];
+    });
+  };
+
   window.addEventListener('beforeunload', () => {
     isUnloading = true;
   });

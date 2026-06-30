@@ -9,6 +9,19 @@ ensureEvaluationWorkflowSchema($conn);
 $supervisor_id = (int) ($_SESSION['user_id'] ?? 0);
 $branch_id = (int) ($_SESSION['branch_id'] ?? 0);
 
+// Validate supervisor_id exists in users (FK endorsed_by → users.user_id is ON DELETE SET NULL)
+if ($supervisor_id > 0) {
+    $uid_check = $conn->prepare("SELECT user_id FROM users WHERE user_id = ? LIMIT 1");
+    $uid_check->bind_param("i", $supervisor_id);
+    $uid_check->execute();
+    $uid_exists = (bool) $uid_check->get_result()->fetch_assoc();
+    $uid_check->close();
+    if (!$uid_exists) {
+        $supervisor_id = 0; // will be treated as NULL below
+    }
+}
+$supervisor_id_nullable = $supervisor_id > 0 ? $supervisor_id : null;
+
 function supervisorPendingDate(string $value): string
 {
     return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : '';
@@ -229,7 +242,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
                   AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
                   AND e.is_active = 1
             ");
-            $stmt->bind_param("iisi", $supervisor_id, $supervisor_id, $comments, $eval_id);
+            $stmt->bind_param("iisi", $supervisor_id_nullable, $supervisor_id_nullable, $comments, $eval_id);
             $stmt->execute();
             $stmt->close();
 
@@ -258,7 +271,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
                   AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
                   AND e.is_active = 1
             ");
-            $stmt->bind_param("isi", $supervisor_id, $comments, $eval_id);
+            $stmt->bind_param("isi", $supervisor_id_nullable, $comments, $eval_id);
             $stmt->execute();
             $stmt->close();
 
@@ -288,7 +301,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
                   AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
                   AND e.is_active = 1
             ");
-            $stmt->bind_param("isi", $supervisor_id, $comments, $eval_id);
+            $stmt->bind_param("isi", $supervisor_id_nullable, $comments, $eval_id);
             $stmt->execute();
             $stmt->close();
 
@@ -317,7 +330,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
                   AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
                   AND e.is_active = 1
             ");
-            $stmt->bind_param("isi", $supervisor_id, $comments, $eval_id);
+            $stmt->bind_param("isi", $supervisor_id_nullable, $comments, $eval_id);
             $stmt->execute();
             $stmt->close();
 
@@ -1534,9 +1547,35 @@ function startSupervisorQueueRefresh() {
     }
     root.dataset.refreshStarted = '1';
 
-    let busy = false;
+    let busy        = false;
+    let userActive  = false;   // true while supervisor is reading / interacting
+    let activityTimer = null;
+
+    // Mark user as active for 30 s after any meaningful interaction
+    const markActive = () => {
+        userActive = true;
+        clearTimeout(activityTimer);
+        activityTimer = setTimeout(() => { userActive = false; }, 30000);
+    };
+
+    // Pause refresh while user hovers over any evaluation row/card
+    document.addEventListener('mouseover', e => {
+        if (e.target.closest('[data-eval-id], .pending-eval-card, .table tbody tr')) {
+            markActive();
+        }
+    }, { passive: true });
+
+    // Pause refresh while user is scrolling
+    let scrollTimer = null;
+    document.addEventListener('scroll', () => {
+        markActive();
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => { userActive = false; }, 5000);
+    }, { passive: true });
+
     const refresh = () => {
-        if (busy || document.hidden || document.querySelector('.modal.show')) {
+        // Skip if: page hidden, modal open, busy, or user is actively reading
+        if (busy || document.hidden || userActive || document.querySelector('.modal.show')) {
             return;
         }
         busy = true;
@@ -1546,6 +1585,8 @@ function startSupervisorQueueRefresh() {
         })
         .then(response => response.text())
         .then(html => {
+            // Only replace if there is no modal open (guard against race)
+            if (document.querySelector('.modal.show')) return;
             const doc = new DOMParser().parseFromString(html, 'text/html');
             ['supervisorQueueSummary', 'supervisorQueueList', 'supervisorQueueModals'].forEach(id => {
                 const current = document.getElementById(id);
@@ -1562,7 +1603,8 @@ function startSupervisorQueueRefresh() {
         });
     };
 
-    setInterval(refresh, 10000);
+    // Refresh every 60 seconds (instead of 10) — only when supervisor is idle
+    setInterval(refresh, 60000);
 }
 
 function toggleEditRatings(evalId, cancel = false) {

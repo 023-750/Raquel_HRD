@@ -32,6 +32,18 @@ $evaluations = $conn->query("
 ");
 $evaluation_rows = $evaluations ? $evaluations->fetch_all(MYSQLI_ASSOC) : [];
 
+// ── Per-status counts for filter badges ─────────────────────────────────
+$esf_counts = ['all'=>0,'approved'=>0,'pending'=>0,'rejected'=>0,'returned'=>0,'draft'=>0];
+foreach ($evaluation_rows as $r) {
+    $esf_counts['all']++;
+    $s = $r['status'] ?? '';
+    if ($s === 'Approved')             $esf_counts['approved']++;
+    elseif ($s === 'Rejected')         $esf_counts['rejected']++;
+    elseif ($s === 'Returned')         $esf_counts['returned']++;
+    elseif ($s === 'Draft')            $esf_counts['draft']++;
+    elseif (str_starts_with($s,'Pending') || $s === 'Supervisor Confirmed') $esf_counts['pending']++;
+}
+
 // Determine this employee's workflow path for the card progress strip.
 ensureEmployeesReportsTo($conn);
 $my_supervisor = getEmployeeSupervisor($conn, $employee_id);
@@ -428,12 +440,50 @@ require_once '../includes/header.php';
 <div class="row g-4 eval-status-page">
     <div class="col-12">
         <div class="content-card">
-            <div class="card-header">
-                <div>
-                    <h5 class="mb-2"><i class="fas fa-list me-2"></i>Current Evaluation Status</h5>
+            <div class="card-header d-block">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Current Evaluation Status</h5>
+                    <?php if (!empty($evaluation_rows)): ?>
+                        <span class="badge bg-light text-muted border"><?php echo count($evaluation_rows); ?> total</span>
+                    <?php endif; ?>
                 </div>
+
                 <?php if (!empty($evaluation_rows)): ?>
-                    <span class="badge bg-light text-muted border"><?php echo count($evaluation_rows); ?> total</span>
+                <!-- ── Status Filter Tabs (matches sample_design.html) ── -->
+                <div class="status-filter-bar">
+                    <div class="status-filter-label">
+                        <i class="fas fa-filter" style="margin-right:5px;"></i>
+                        Current Evaluation Status
+                    </div>
+                    <div class="status-filter-tabs">
+                        <button class="sf-tab active" data-filter="all" onclick="filterStatus('all',this)">
+                            <i class="fas fa-border-all"></i> All
+                            <span class="sf-count"><?php echo $esf_counts['all']; ?></span>
+                        </button>
+                        <button class="sf-tab" data-filter="complete" onclick="filterStatus('complete',this)">
+                            <i class="fas fa-circle-check"></i> Complete
+                            <span class="sf-count"><?php echo $esf_counts['approved']; ?></span>
+                        </button>
+                        <?php if ($esf_counts['pending'] > 0): ?>
+                        <button class="sf-tab" data-filter="pending" onclick="filterStatus('pending',this)">
+                            <i class="fas fa-hourglass-half"></i> Pending
+                            <span class="sf-count"><?php echo $esf_counts['pending']; ?></span>
+                        </button>
+                        <?php endif; ?>
+                        <button class="sf-tab" data-filter="reject" onclick="filterStatus('reject',this)">
+                            <i class="fas fa-circle-xmark"></i> Reject
+                            <span class="sf-count"><?php echo $esf_counts['rejected']; ?></span>
+                        </button>
+                        <button class="sf-tab" data-filter="return" onclick="filterStatus('return',this)">
+                            <i class="fas fa-rotate-left"></i> Return
+                            <span class="sf-count"><?php echo $esf_counts['returned']; ?></span>
+                        </button>
+                        <button class="sf-tab" data-filter="draft" onclick="filterStatus('draft',this)">
+                            <i class="fas fa-file-pen"></i> Draft
+                            <span class="sf-count"><?php echo $esf_counts['draft']; ?></span>
+                        </button>
+                    </div>
+                </div>
                 <?php endif; ?>
             </div>
             <?php if (empty($evaluation_rows)): ?>
@@ -444,67 +494,203 @@ require_once '../includes/header.php';
                     </div>
                 </div>
             <?php else: ?>
-                <div class="eval-status-cards">
+                <!-- Evaluation list (matches sample_design.html .evaluation-card layout) -->
+                <div id="evaluation-list" class="p-3">
                     <?php foreach ($evaluation_rows as $eval): ?>
                         <?php
                         $can_edit = in_array($eval['status'], ['Draft', 'Returned', 'Pending Self-Rating'], true);
                         $view_url = BASE_URL . '/employee/self-rating.php' . ($can_edit ? '?edit=' : '?view=') . (int) $eval['evaluation_id'];
                         $period_start = formatDate($eval['evaluation_period_start'] ?? '');
-                        $period_end = formatDate($eval['evaluation_period_end'] ?? '');
-                        $period_label = ($period_start && $period_end) ? $period_start . ' – ' . $period_end : ($period_start ?: $period_end ?: '—');
-                        $status = $eval['status'] ?? '';
-                        $step_idx = $wf_map[$status] ?? 0;
-                        $last_step_idx = max(count($wf_labels) - 1, 1);
-                        $progress_percent = min(100, max(0, ($step_idx / $last_step_idx) * 100));
+                        $period_end   = formatDate($eval['evaluation_period_end'] ?? '');
+                        $period_label = ($period_start && $period_end) ? $period_start . ' – ' . $period_end : ($period_start ?: $period_end ?: '');
+                        $submitted    = !empty($eval['submitted_date']) ? 'Submitted on ' . formatDate($eval['submitted_date']) : ($period_label ?: 'Saved');
+                        $status       = $eval['status'] ?? '';
+
+                        // Map to filter key (data-status on card)
+                        if ($status === 'Approved')                                              $ds = 'complete';
+                        elseif ($status === 'Rejected')                                          $ds = 'reject';
+                        elseif ($status === 'Returned')                                          $ds = 'return';
+                        elseif ($status === 'Draft')                                             $ds = 'draft';
+                        elseif (str_starts_with($status, 'Pending') || $status === 'Supervisor Confirmed') $ds = 'pending';
+                        else                                                                     $ds = 'other';
+
+                        // Status pill class
+                        $pill = match(true) {
+                            $status === 'Approved'  => 'status completed',
+                            $status === 'Rejected'  => 'status rejected',
+                            $status === 'Returned'  => 'status returned',
+                            $status === 'Draft'     => 'status draft',
+                            default                 => 'status pending-pill',
+                        };
+
+                        $cr_level = $eval['performance_level'] ?? '';
+                        $cr_badge = $cr_level ? getPerformanceLevelBadgeClass($cr_level) : '';
                         ?>
-                        <article class="eval-status-card">
-                            <div class="eval-status-card-header">
-                                <div class="min-w-0">
-                                    <h6 class="eval-status-card-title"><?php echo e($eval['template_name'] ?? 'Evaluation'); ?></h6>
-                                    <div class="eval-status-card-type"><?php echo e($eval['evaluation_type'] ?? 'Evaluation'); ?></div>
-                                </div>
-                                <span class="badge <?php echo getStatusBadgeClass($eval['status']); ?> flex-shrink-0"><?php echo e($eval['status']); ?></span>
-                            </div>
-                            <div class="eval-status-card-body">
-                                <div class="eval-status-field">
-                                    <span class="eval-status-field-label">Period</span>
-                                    <span class="eval-status-field-value"><?php echo e($period_label); ?></span>
-                                </div>
-                                <?php
-                                $cr_level = $eval['performance_level'] ?? '';
-                                $cr_badge = $cr_level ? getPerformanceLevelBadgeClass($cr_level) : 'bg-secondary';
-                                ?>
-                                <div class="eval-score-summary">
-                                    <div class="eval-score-value"><?php echo e($eval['total_score'] ?? '—'); ?></div>
-                                    <?php if ($cr_level): ?>
-                                        <span class="badge <?php echo $cr_badge; ?>"><?php echo e($cr_level); ?></span>
+                        <div class="evaluation-card" data-status="<?php echo $ds; ?>">
+                            <div>
+                                <h3><?php echo e($eval['template_name'] ?? 'Evaluation'); ?></h3>
+                                <p>
+                                    <?php if (!empty($eval['evaluation_type'])): ?>
+                                    <i class="fas fa-tag me-1"></i><?php echo e($eval['evaluation_type']); ?> &nbsp;&middot;&nbsp;
                                     <?php endif; ?>
-                                </div>
-                                <div class="eval-status-field" style="grid-column: 1 / -1;">
-                                    <span class="eval-status-field-label">Last Updated</span>
-                                    <span class="eval-status-field-value"><?php echo formatDateTime($eval['updated_at'] ?? $eval['submitted_date'] ?? ''); ?></span>
-                                </div>
-                                <div class="eval-status-field" style="grid-column: 1 / -1;">
-                                    <span class="eval-status-field-label">Progression of Form</span>
-                                    <div class="eval-progress-wrap">
-                                        <?php echo renderWorkflowStrip($status, $wf_labels, $wf_map); ?>
-                                        <div class="eval-progress-bar" aria-hidden="true">
-                                            <span class="eval-progress-bar-fill" style="width: <?php echo number_format($progress_percent, 2); ?>%;"></span>
-                                        </div>
-                                    </div>
-                                </div>
+                                    <?php echo $submitted; ?>
+                                    <?php if (!empty($eval['total_score'])): ?>
+                                    &nbsp;&middot;&nbsp; <strong><?php echo number_format((float)$eval['total_score'], 2); ?></strong>
+                                    <?php if ($cr_level): ?><span class="badge <?php echo $cr_badge; ?> ms-1" style="font-size:.65rem;"><?php echo e($cr_level); ?></span><?php endif; ?>
+                                    <?php endif; ?>
+                                </p>
                             </div>
-                            <div class="eval-status-card-footer">
-                                <a href="<?php echo $view_url; ?>" class="btn btn-<?php echo $can_edit ? 'primary' : 'outline-primary'; ?>">
-                                    <i class="fas fa-<?php echo $can_edit ? 'edit' : 'eye'; ?> me-1"></i><?php echo $can_edit ? 'Continue Evaluation' : 'View Evaluation'; ?>
+                            <div class="d-flex flex-column align-items-end gap-2">
+                                <span class="<?php echo $pill; ?>"><?php echo e($status); ?></span>
+                                <a href="<?php echo $view_url; ?>" class="btn btn-<?php echo $can_edit ? 'primary' : 'outline-secondary'; ?> btn-sm rounded-pill" style="font-size:.72rem;padding:3px 12px;">
+                                    <i class="fas fa-<?php echo $can_edit ? 'edit' : 'eye'; ?> me-1"></i><?php echo $can_edit ? 'Continue' : 'View'; ?>
                                 </a>
                             </div>
-                        </article>
+                        </div>
                     <?php endforeach; ?>
+                </div>
+
+                <div class="no-results" id="no-results">
+                    <i class="fas fa-inbox"></i>
+                    No evaluations found for this status.
                 </div>
             <?php endif; ?>
         </div>
     </div>
 </div>
+
+<style>
+/* ── Evaluation card — matches sample_design.html ──────────────────── */
+#evaluation-list {
+    display: grid;
+    gap: 12px;
+}
+.evaluation-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border: 1px solid #e5e5e5;
+    border-radius: 10px;
+    background: #fff;
+    transition: box-shadow .2s;
+    animation: evalFadeIn .25s ease;
+    gap: 12px;
+}
+.evaluation-card:hover {
+    box-shadow: 0 3px 10px rgba(0,0,0,.08);
+}
+@keyframes evalFadeIn {
+    from { opacity:0; transform:translateY(4px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+.evaluation-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: var(--text-dark, #111);
+}
+.evaluation-card p {
+    color: #777;
+    font-size: 13px;
+    margin: 0;
+}
+
+/* Status pills — matches sample_design.html */
+.status {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.status.completed   { background: #e8f8ee; color: #218c4c; }
+.status.draft       { background: #fff4dd; color: #c58300; }
+.status.rejected    { background: #fdeaea; color: #d63939; }
+.status.returned    { background: #f1ecff; color: #7c3aed; }
+.status.pending-pill { background: #e8f0ff; color: #1f6dff; }
+
+/* No-results block */
+.no-results {
+    text-align: center;
+    padding: 40px 20px;
+    color: #aaa;
+    font-size: 14px;
+    display: none;
+}
+.no-results i {
+    font-size: 36px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* ── Filter bar — matches sample_design.html ────────────────────── */
+.status-filter-bar {
+    margin-bottom: 0;
+    padding-bottom: 4px;
+}
+.status-filter-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+.status-filter-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.sf-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border-radius: 20px;
+    border: 1.5px solid #e0e0e0;
+    background: #fafafa;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    cursor: pointer;
+    transition: all .2s;
+    user-select: none;
+    line-height: 1.3;
+}
+.sf-tab:hover { border-color: #aaa; background: #f0f0f0; }
+.sf-tab.active[data-filter="all"]      { background: #1f6dff; border-color: #1f6dff; color: #fff; }
+.sf-tab.active[data-filter="complete"] { background: #218c4c; border-color: #218c4c; color: #fff; }
+.sf-tab.active[data-filter="pending"]  { background: #d97706; border-color: #d97706; color: #fff; }
+.sf-tab.active[data-filter="reject"]   { background: #d63939; border-color: #d63939; color: #fff; }
+.sf-tab.active[data-filter="return"]   { background: #7c3aed; border-color: #7c3aed; color: #fff; }
+.sf-tab.active[data-filter="draft"]    { background: #c58300; border-color: #c58300; color: #fff; }
+.sf-count {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(0,0,0,.08);
+}
+.sf-tab.active .sf-count { background: rgba(255,255,255,.25); }
+</style>
+
+<script>
+function filterStatus(status, button) {
+    document.querySelectorAll('.sf-tab').forEach(t => t.classList.remove('active'));
+    button.classList.add('active');
+
+    const cards = document.querySelectorAll('#evaluation-list .evaluation-card');
+    let visible = 0;
+    cards.forEach(card => {
+        const match = status === 'all' || card.dataset.status === status;
+        card.style.display = match ? 'flex' : 'none';
+        if (match) visible++;
+    });
+
+    document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+}
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

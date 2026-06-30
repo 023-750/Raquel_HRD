@@ -9,6 +9,22 @@ ensureEvaluationWorkflowSchema($conn);
 $employee_id = (int) ($_SESSION['employee_id'] ?? 0);
 $user_id = (int) ($_SESSION['user_id'] ?? 0);
 
+// Validate user_id exists in users table to prevent FK constraint failure
+$user_id_nullable = null;
+if ($user_id > 0) {
+    $uid_check = $conn->prepare("SELECT user_id FROM users WHERE user_id = ? LIMIT 1");
+    $uid_check->bind_param("i", $user_id);
+    $uid_check->execute();
+    $uid_exists = (bool) $uid_check->get_result()->fetch_assoc();
+    $uid_check->close();
+    if ($uid_exists) {
+        $user_id_nullable = $user_id;
+    }
+}
+// Keep the original variable as well to avoid breaking local checks that don't insert/update, but update inserts/updates to use the nullable version where necessary.
+$user_id_safe = $user_id_nullable;
+
+
 if (isset($_GET['discard']) && is_numeric($_GET['discard'])) {
     $discard_id = (int)$_GET['discard'];
     $stmt = $conn->prepare("
@@ -330,7 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $target_date = null;
         $career_growth_suited = 0;
         $career_growth_details = '';
-        $stmt->bind_param("issssdddsssssissisiii", $template_id, $evaluation_type, $period_start, $period_end, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $user_id, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details, $editing_id, $employee_id, $user_id);
+        $stmt->bind_param("issssdddsssssissisiii", $template_id, $evaluation_type, $period_start, $period_end, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $user_id_safe, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details, $editing_id, $employee_id, $user_id);
         $stmt->execute();
         $stmt->close();
 
@@ -351,7 +367,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $target_date = null;
         $career_growth_suited = 0;
         $career_growth_details = '';
-        $stmt->bind_param("iisssisdddssssissis", $employee_id, $template_id, $evaluation_type, $period_start, $period_end, $user_id, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details);
+        $stmt->bind_param("iisssisdddssssissis", $employee_id, $template_id, $evaluation_type, $period_start, $period_end, $user_id_safe, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details);
         $stmt->execute();
         $eval_id = (int) $stmt->insert_id;
         $stmt->close();
@@ -488,6 +504,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $hr_supervisors_stmt->bind_param("i", $branch_id);
                 $hr_supervisors_stmt->execute();
                 $hr_supervisors = $hr_supervisors_stmt->get_result();
+                $hr_notified = false;
                 while ($hr_sup = $hr_supervisors->fetch_assoc()) {
                     createNotification(
                         $conn,
@@ -496,8 +513,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $employee_name . ' submitted a self-rating for review. (No supervisor assigned)',
                         BASE_URL . '/supervisor/pending-endorsements.php'
                     );
+                    $hr_notified = true;
                 }
                 $hr_supervisors_stmt->close();
+
+                // If no branch-specific HR Supervisor was notified, notify ALL active HR Supervisors
+                if (!$hr_notified) {
+                    $hr_all_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
+                    $hr_all_stmt->execute();
+                    $hr_all_res = $hr_all_stmt->get_result();
+                    while ($hr_sup = $hr_all_res->fetch_assoc()) {
+                        createNotification(
+                            $conn,
+                            (int) $hr_sup['user_id'],
+                            'Employee Self-Rating Submitted',
+                            $employee_name . ' submitted a self-rating for review. (No supervisor assigned)',
+                            BASE_URL . '/supervisor/pending-endorsements.php'
+                        );
+                    }
+                    $hr_all_stmt->close();
+                }
             }
         }
 
@@ -1839,6 +1874,16 @@ function confirmFinalSubmit() {
     // then submit — this avoids browser quirks with clicking hidden submit buttons.
     const form = document.querySelector('form[data-autosave]');
     if (!form) return;
+
+    // ── Cancel any pending autosave timers FIRST ──────────────────────────────
+    // Without this, a 2-second debounce timer started by the user's last rating
+    // click could fire during the 600 ms spinner delay, hit the server with an
+    // AJAX draft-save request, get back success:false (evaluation already gone),
+    // and show a spurious "Failed to save changes" toast even though the final
+    // submission succeeded.
+    if (typeof window.cancelAutoSave === 'function') {
+        window.cancelAutoSave();
+    }
 
     // Show loading state on the submit button
     const submitBtn = document.getElementById('btnConfirmSubmit');

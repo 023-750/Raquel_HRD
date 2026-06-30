@@ -1722,12 +1722,34 @@ function notifySupervisorOfSelfRating($conn, $employee_id, $evaluation_id)
 
     while ($row = $result->fetch_assoc()) {
         $supervisor_user_id = (int)$row['user_id'];
+        
+        $role_stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ? LIMIT 1");
+        $role_stmt->bind_param("i", $supervisor_user_id);
+        $role_stmt->execute();
+        $user_role_row = $role_stmt->get_result()->fetch_assoc();
+        $role_stmt->close();
+        $user_role = $user_role_row['role'] ?? 'Employee';
+
+        if ($user_role === 'HR Supervisor') {
+            $title = 'Employee Self-Rating Submitted';
+            $msg = $employee_name . ' submitted a self-rating for review.';
+            $link = BASE_URL . '/supervisor/pending-endorsements.php';
+        } elseif ($user_role === 'HR Manager') {
+            $title = 'Employee Self-Rating Submitted';
+            $msg = $employee_name . ' submitted a self-rating for review.';
+            $link = BASE_URL . '/manager/pending-approvals.php';
+        } else {
+            $title = 'Self-Rating Pending Confirmation';
+            $msg = $employee_name . ' submitted a self-rating awaiting your confirmation.';
+            $link = BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id;
+        }
+
         createNotification(
             $conn,
             $supervisor_user_id,
-            'Self-Rating Pending Confirmation',
-            $employee_name . ' submitted a self-rating awaiting your confirmation.',
-            BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id
+            $title,
+            $msg,
+            $link
         );
         $notified = true;
     }
@@ -2243,12 +2265,34 @@ function notifySupervisorOfReturnedEvaluation($conn, $employee_id, $evaluation_i
 
     while ($row = $result->fetch_assoc()) {
         $supervisor_user_id = (int)$row['user_id'];
+        
+        $role_stmt = $conn->prepare("SELECT role FROM users WHERE user_id = ? LIMIT 1");
+        $role_stmt->bind_param("i", $supervisor_user_id);
+        $role_stmt->execute();
+        $user_role_row = $role_stmt->get_result()->fetch_assoc();
+        $role_stmt->close();
+        $user_role = $user_role_row['role'] ?? 'Employee';
+
+        if ($user_role === 'HR Supervisor') {
+            $title = 'Evaluation Returned by Department Manager';
+            $msg = $manager_name . ' returned the evaluation for ' . $employee_name . ' to your level for re-evaluation.';
+            $link = BASE_URL . '/supervisor/pending-endorsements.php';
+        } elseif ($user_role === 'HR Manager') {
+            $title = 'Evaluation Returned by Department Manager';
+            $msg = $manager_name . ' returned the evaluation for ' . $employee_name . ' to your level for re-evaluation.';
+            $link = BASE_URL . '/manager/pending-approvals.php';
+        } else {
+            $title = 'Evaluation Returned by Department Manager';
+            $msg = $manager_name . ' returned the evaluation for ' . $employee_name . ' to your level for re-evaluation.';
+            $link = BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id;
+        }
+
         createNotification(
             $conn,
             $supervisor_user_id,
-            'Evaluation Returned by Department Manager',
-            $manager_name . ' returned the evaluation for ' . $employee_name . ' to your level for re-evaluation.',
-            BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $evaluation_id
+            $title,
+            $msg,
+            $link
         );
         $notified = true;
     }
@@ -2260,6 +2304,7 @@ function notifySupervisorOfReturnedEvaluation($conn, $employee_id, $evaluation_i
         $hr_supervisors_stmt->bind_param("i", $branch_id);
         $hr_supervisors_stmt->execute();
         $hr_supervisors = $hr_supervisors_stmt->get_result();
+        $hr_notified = false;
         while ($hr_sup = $hr_supervisors->fetch_assoc()) {
             createNotification(
                 $conn,
@@ -2268,9 +2313,27 @@ function notifySupervisorOfReturnedEvaluation($conn, $employee_id, $evaluation_i
                 $manager_name . ' returned the evaluation for ' . $employee_name . ' for re-evaluation. (No supervisor assigned)',
                 BASE_URL . '/supervisor/pending-endorsements.php'
             );
+            $hr_notified = true;
             $notified = true;
         }
         $hr_supervisors_stmt->close();
+
+        if (!$hr_notified) {
+            $hr_all_stmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
+            $hr_all_stmt->execute();
+            $hr_all_res = $hr_all_stmt->get_result();
+            while ($hr_sup = $hr_all_res->fetch_assoc()) {
+                createNotification(
+                    $conn,
+                    (int)$hr_sup['user_id'],
+                    'Evaluation Returned by Department Manager',
+                    $manager_name . ' returned the evaluation for ' . $employee_name . ' for re-evaluation. (No supervisor assigned)',
+                    BASE_URL . '/supervisor/pending-endorsements.php'
+                );
+                $notified = true;
+            }
+            $hr_all_stmt->close();
+        }
     }
 
     return $notified;
