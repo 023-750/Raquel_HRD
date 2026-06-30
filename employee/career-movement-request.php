@@ -314,7 +314,7 @@ require_once '../includes/header.php';
                         </div>
                     </div>
 
-                    <form method="POST" action="" id="career-request-form" data-autosave="career-request-form" data-validate novalidate>
+                    <form method="POST" action="" id="career-request-form" data-validate novalidate>
                         <div class="row g-3">
                             <!-- Employee Selection -->
                             <div class="col-md-6">

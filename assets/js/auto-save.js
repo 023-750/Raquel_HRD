@@ -16,6 +16,7 @@
   // State
   let saveTimers = {};
   let toastContainer = null;
+  let isUnloading = false;
 
   /**
    * Initialize auto-save on forms with data-autosave attribute
@@ -170,6 +171,7 @@
       }
     })
     .catch(error => {
+      if (isUnloading) return;
       console.error('Auto-save failed:', error);
       showToast('Failed to save changes. Your work is saved locally.', 'error', 0);
     });
@@ -249,6 +251,10 @@
       saveToServer(form, formId);
     }
   };
+
+  window.addEventListener('beforeunload', () => {
+    isUnloading = true;
+  });
 
   // Initialize on DOM ready
   if (document.readyState === 'loading') {

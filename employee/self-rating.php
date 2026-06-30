@@ -238,6 +238,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if (!empty($errors)) {
+        if (isset($_POST['auto_save']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest')) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => implode(' ', $errors)]);
+            exit;
+        }
         redirectWith(BASE_URL . '/employee/self-rating.php' . ($editing_id ? '?edit=' . $editing_id : '?template=' . $template_id), 'danger', implode(' ', $errors));
     }
 
@@ -501,6 +506,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     logAudit($conn, $user_id, 'CREATE', 'Evaluation', $eval_id, 'Saved employee self-rating draft');
+    if (isset($_POST['auto_save']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest')) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'message' => 'Your self-rating draft was saved.', 'evaluation_id' => $eval_id]);
+        exit;
+    }
     redirectWith(BASE_URL . '/employee/self-rating.php?edit=' . $eval_id, 'success', 'Your self-rating draft was saved.');
 }
 
