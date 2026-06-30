@@ -25,6 +25,7 @@ $pending_evals = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE statu
 $avg_score_result = $conn->query("SELECT AVG(total_score) as avg FROM evaluations WHERE status = 'Approved'");
 $avg_score = round($avg_score_result->fetch_assoc()['avg'] ?? 0, 1);
 $new_evals_month = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE MONTH(submitted_date) = MONTH(CURRENT_DATE()) AND YEAR(submitted_date) = YEAR(CURRENT_DATE())")->fetch_assoc()['c'];
+$approved_evals = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE status = 'Approved'")->fetch_assoc()['c'];
 $total_branches_res = $conn->query("SELECT COUNT(*) as c FROM branches");
 $total_branches = $total_branches_res->fetch_assoc()['c'];
 
@@ -562,6 +563,17 @@ while ($row = $age_dist_q->fetch_assoc()) {
                     <div class="stat-label">Average Score</div>
                 </div>
                 <i class="fas fa-star stat-icon" style="color:#28a745;"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="stat-value"><?php echo $approved_evals; ?></div>
+                    <div class="stat-label">Approved Evals</div>
+                </div>
+                <i class="fas fa-check-circle stat-icon" style="color:#20c997;"></i>
             </div>
         </div>
     </div>
