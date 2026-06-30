@@ -205,11 +205,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
     $comments = trim($_POST['supervisor_comments'] ?? '');
 
     $eval_stmt = $conn->prepare("
-        SELECT ev.evaluation_id, ev.employee_id, ev.submitted_by, CONCAT(e.first_name, ' ', e.last_name) AS emp_name, u.role AS submitter_role, et.template_name
+        SELECT ev.evaluation_id, ev.employee_id, ev.submitted_by, CONCAT(e.first_name, ' ', e.last_name) AS emp_name, u.role AS submitter_role, et.template_name, u_emp.user_id AS emp_user_id
         FROM evaluations ev
         INNER JOIN employees e ON ev.employee_id = e.employee_id
         LEFT JOIN users u ON ev.submitted_by = u.user_id
         LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
+        LEFT JOIN users u_emp ON ev.employee_id = u_emp.employee_id AND u_emp.role = 'Employee'
         WHERE ev.evaluation_id = ?
           AND ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
           AND e.is_active = 1
@@ -247,10 +248,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
             $stmt->close();
 
             // Notify HR Manager employee directly
-            if ($eval_info['submitted_by']) {
+            $target_user_id = !empty($eval_info['submitted_by']) ? (int)$eval_info['submitted_by'] : (!empty($eval_info['emp_user_id']) ? (int)$eval_info['emp_user_id'] : null);
+            if ($target_user_id) {
                 createNotification(
                     $conn,
-                    (int) $eval_info['submitted_by'],
+                    $target_user_id,
                     'Evaluation Approved',
                     "Your evaluation has been approved by the HR Supervisor.",
                     BASE_URL . '/employee/self-rating.php?view=' . $eval_id
@@ -306,10 +308,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
             $stmt->close();
 
             // Notify HR Manager employee directly
-            if ($eval_info['submitted_by']) {
+            $target_user_id = !empty($eval_info['submitted_by']) ? (int)$eval_info['submitted_by'] : (!empty($eval_info['emp_user_id']) ? (int)$eval_info['emp_user_id'] : null);
+            if ($target_user_id) {
                 createNotification(
                     $conn,
-                    (int) $eval_info['submitted_by'],
+                    $target_user_id,
                     'Evaluation Returned for Revision',
                     "Your evaluation has been returned by the HR Supervisor for revision. Remarks: " . $comments,
                     BASE_URL . '/employee/self-rating.php?edit=' . $eval_id
@@ -336,10 +339,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
 
             // Return the evaluation to the employee who submitted the self-rating.
             $emp_name = $eval_info['emp_name'];
-            if ($eval_info['submitted_by']) {
+            $target_user_id = !empty($eval_info['submitted_by']) ? (int)$eval_info['submitted_by'] : (!empty($eval_info['emp_user_id']) ? (int)$eval_info['emp_user_id'] : null);
+            if ($target_user_id) {
                 createNotification(
                     $conn,
-                    (int) $eval_info['submitted_by'],
+                    $target_user_id,
                     'Evaluation Returned for Revision',
                     "Your evaluation has been returned by the HR Supervisor for revision. Remarks: " . $comments,
                     BASE_URL . '/employee/self-rating.php?edit=' . $eval_id

@@ -37,7 +37,7 @@ if (isSupervisorOfEmployee($conn, $viewer_user_id, $employee_id) || isDeptManage
     $is_authorized = true;
 } else {
     // Check if the viewer is the employee themselves
-    $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . $employee_id . " LIMIT 1")->fetch_assoc();
+    $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . $employee_id . " AND role = 'Employee' LIMIT 1")->fetch_assoc();
     if ($emp_user && (int)$emp_user['user_id'] === $viewer_user_id) {
         $is_authorized = true;
     }

@@ -50,7 +50,7 @@ if (isset($_GET['discard']) && is_numeric($_GET['discard'])) {
 
 $employee_stmt = $conn->prepare("
     SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.department_id, e.branch_id,
-           e.rank_category_id,
+           e.rank_category_id, e.hire_date,
            d.department_name, b.branch_name
     FROM employees e
     LEFT JOIN departments d ON e.department_id = d.department_id
@@ -85,10 +85,9 @@ if (isset($_GET['view']) && is_numeric($_GET['view'])) {
         LEFT JOIN users au ON ev.assigned_by = au.user_id
         WHERE ev.evaluation_id = ?
           AND ev.employee_id = ?
-          AND (ev.submitted_by = ? OR ev.assigned_by IS NOT NULL)
         LIMIT 1
     ");
-    $stmt->bind_param("iii", $view_id, $employee_id, $user_id);
+    $stmt->bind_param("ii", $view_id, $employee_id);
     $stmt->execute();
     $view_eval = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -112,13 +111,12 @@ if (isset($_GET['edit']) && is_numeric($_GET['edit'])) {
         LEFT JOIN users au ON ev.assigned_by = au.user_id
         WHERE ev.evaluation_id = ?
           AND ev.employee_id = ?
-          AND (ev.submitted_by = ? OR ev.assigned_by IS NOT NULL)
           AND (
             ev.status IN ('Draft', 'Returned', 'Pending Self-Rating')
           )
         LIMIT 1
     ");
-    $stmt->bind_param("iii", $edit_id, $employee_id, $user_id);
+    $stmt->bind_param("ii", $edit_id, $employee_id);
     $stmt->execute();
     $edit_eval = $stmt->get_result()->fetch_assoc();
     $stmt->close();
@@ -172,10 +170,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             FROM evaluations
             WHERE evaluation_id = ?
               AND employee_id = ?
-              AND (submitted_by = ? OR assigned_by IS NOT NULL)
             LIMIT 1
         ");
-        $stmt->bind_param("iii", $editing_id, $employee_id, $user_id);
+        $stmt->bind_param("ii", $editing_id, $employee_id);
         $stmt->execute();
         $editable_eval = $stmt->get_result()->fetch_assoc();
         $stmt->close();
@@ -232,11 +229,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $evaluation_type = trim($template['evaluation_type'] ?? 'Annual');
 
+    // Automatically calculate period_start and period_end if they are empty
+    if (empty($period_start) || empty($period_end)) {
+        if ($editing_id > 0) {
+            $db_eval_stmt = $conn->prepare("SELECT evaluation_period_start, evaluation_period_end FROM evaluations WHERE evaluation_id = ? LIMIT 1");
+            $db_eval_stmt->bind_param("i", $editing_id);
+            $db_eval_stmt->execute();
+            $db_eval = $db_eval_stmt->get_result()->fetch_assoc();
+            $db_eval_stmt->close();
+            
+            if ($db_eval && !empty($db_eval['evaluation_period_start']) && !empty($db_eval['evaluation_period_end'])) {
+                $period_start = $db_eval['evaluation_period_start'];
+                $period_end = $db_eval['evaluation_period_end'];
+            }
+        }
+        
+        if (empty($period_start) || empty($period_end)) {
+            $hire_date = $employee['hire_date'] ?? date('Y-m-d');
+            
+            if ($evaluation_type === 'Annual') {
+                $period_start = date('Y') . '-01-01';
+                $period_end = date('Y') . '-12-31';
+            } elseif ($evaluation_type === 'Quarterly') {
+                $current_month = (int)date('n');
+                $current_year = date('Y');
+                if ($current_month <= 3) {
+                    $period_start = $current_year . '-01-01';
+                    $period_end = $current_year . '-03-31';
+                } elseif ($current_month <= 6) {
+                    $period_start = $current_year . '-04-01';
+                    $period_end = $current_year . '-06-30';
+                } elseif ($current_month <= 9) {
+                    $period_start = $current_year . '-07-01';
+                    $period_end = $current_year . '-09-30';
+                } else {
+                    $period_start = $current_year . '-10-01';
+                    $period_end = $current_year . '-12-31';
+                }
+            } elseif ($evaluation_type === 'Initial') {
+                $period_start = $hire_date;
+                $period_end = date('Y-m-d', strtotime('+3 months', strtotime($hire_date)));
+            } elseif ($evaluation_type === 'Final') {
+                $period_start = $hire_date;
+                $period_end = date('Y-m-d', strtotime('+6 months', strtotime($hire_date)));
+            } else {
+                $period_start = date('Y') . '-01-01';
+                $period_end = date('Y') . '-12-31';
+            }
+        }
+    }
+
     if ($action === 'submit') {
         $criteria_count_rs = $conn->query("SELECT COUNT(*) AS total FROM evaluation_criteria WHERE template_id = $template_id");
         $criteria_total = (int) ($criteria_count_rs->fetch_assoc()['total'] ?? 0);
         if ($criteria_total <= 0) {
             $errors[] = 'This template has no criteria yet.';
+        }
+
+        // Validate evaluation period dates
+        if (empty($period_start)) {
+            $errors[] = 'Evaluation Period Start date is required before submitting.';
+        }
+        if (empty($period_end)) {
+            $errors[] = 'Evaluation Period End date is required before submitting.';
+        }
+        if (!empty($period_start) && !empty($period_end) && $period_start > $period_end) {
+            $errors[] = 'Evaluation Period Start must be before the End date.';
         }
 
         // Validate that no KRA score is zero (all questions must be answered)
@@ -252,6 +310,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'All evaluation criteria must have a rating greater than 0 before submitting. Please fill in all fields.';
         }
     }
+
 
     if (!empty($errors)) {
         if (isset($_POST['auto_save']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest')) {
@@ -338,7 +397,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 status=?, total_score=?, kra_subtotal=?, behavior_average=?, performance_level=?,
                 submitted_by=?, submitted_date=?, staff_comments=?, current_position=?, months_in_position=?,
                 desired_position=?, target_date=?, career_growth_suited=?, career_growth_details=?
-            WHERE evaluation_id=? AND employee_id=? AND (submitted_by=? OR assigned_by IS NOT NULL)
+            WHERE evaluation_id=? AND employee_id=?
         ");
         $current_position = (string) ($employee['job_title'] ?? '');
         $months_in_position = 0;
@@ -346,7 +405,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $target_date = null;
         $career_growth_suited = 0;
         $career_growth_details = '';
-        $stmt->bind_param("issssdddsssssissisiii", $template_id, $evaluation_type, $period_start, $period_end, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $user_id_safe, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details, $editing_id, $employee_id, $user_id);
+        $stmt->bind_param("issssdddsssssissisii", $template_id, $evaluation_type, $period_start, $period_end, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $user_id_safe, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details, $editing_id, $employee_id);
         $stmt->execute();
         $stmt->close();
 
@@ -678,7 +737,7 @@ $history = $conn->query("
            et.template_name
     FROM evaluations ev
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
-    WHERE ev.employee_id = $employee_id AND ev.submitted_by = $user_id
+    WHERE ev.employee_id = $employee_id
       AND ev.deleted_at IS NULL
     ORDER BY COALESCE(ev.submitted_date, ev.updated_at) DESC, ev.evaluation_id DESC
     LIMIT 10
@@ -1356,6 +1415,50 @@ require_once '../includes/header.php';
                         </div>
 
                         <?php if ($selected_template_id > 0 && (!empty($criteria_kra) || !empty($criteria_behavior))): ?>
+                        <!-- Evaluation Period (start & end) - AUTOMATIC DISPLAY ONLY -->
+                        <?php 
+                        // Compute on the fly for display and hidden inputs
+                        $display_start = $edit_eval['evaluation_period_start'] ?? '';
+                        $display_end = $edit_eval['evaluation_period_end'] ?? '';
+                        
+                        if (empty($display_start) || empty($display_end)) {
+                            $hire_date = $employee['hire_date'] ?? date('Y-m-d');
+                            $eval_type = $edit_eval['evaluation_type'] ?? ($selected_template['evaluation_type'] ?? 'Annual');
+                            
+                            if ($eval_type === 'Annual') {
+                                $display_start = date('Y') . '-01-01';
+                                $display_end = date('Y') . '-12-31';
+                            } elseif ($eval_type === 'Quarterly') {
+                                $current_month = (int)date('n');
+                                $current_year = date('Y');
+                                if ($current_month <= 3) {
+                                    $display_start = $current_year . '-01-01';
+                                    $display_end = $current_year . '-03-31';
+                                } elseif ($current_month <= 6) {
+                                    $display_start = $current_year . '-04-01';
+                                    $display_end = $current_year . '-06-30';
+                                } elseif ($current_month <= 9) {
+                                    $display_start = $current_year . '-07-01';
+                                    $display_end = $current_year . '-09-30';
+                                } else {
+                                    $display_start = $current_year . '-10-01';
+                                    $display_end = $current_year . '-12-31';
+                                }
+                            } elseif ($eval_type === 'Initial') {
+                                $display_start = $hire_date;
+                                $display_end = date('Y-m-d', strtotime('+3 months', strtotime($hire_date)));
+                            } elseif ($eval_type === 'Final') {
+                                $display_start = $hire_date;
+                                $display_end = date('Y-m-d', strtotime('+6 months', strtotime($hire_date)));
+                            } else {
+                                $display_start = date('Y') . '-01-01';
+                                $display_end = date('Y') . '-12-31';
+                            }
+                        }
+                        ?>
+                        <input type="hidden" name="period_start" value="<?php echo e($display_start); ?>">
+                        <input type="hidden" name="period_end" value="<?php echo e($display_end); ?>">
+
                             <?php
                             // Rating scale definitions (1–4 matching the system's 0.00–4.00 range)
                             $rating_scale = [

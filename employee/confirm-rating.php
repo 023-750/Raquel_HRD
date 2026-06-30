@@ -362,7 +362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         }
         
         // Notify employee
-        $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . (int)$evaluation['employee_id'] . " LIMIT 1")->fetch_assoc();
+        $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . (int)$evaluation['employee_id'] . " AND role = 'Employee' AND is_active = 1 LIMIT 1")->fetch_assoc();
         if ($emp_user) {
             if ($next_status === 'Approved') {
                 $msg = 'Your evaluation has been approved.';
@@ -421,7 +421,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         $update->close();
 
         // Notify the employee their self-rating was returned for revision
-        $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . (int)$evaluation['employee_id'] . " LIMIT 1")->fetch_assoc();
+        $emp_user = $conn->query("SELECT user_id FROM users WHERE employee_id = " . (int)$evaluation['employee_id'] . " AND role = 'Employee' AND is_active = 1 LIMIT 1")->fetch_assoc();
         $emp_name = $evaluation['first_name'] . ' ' . $evaluation['last_name'];
         if ($emp_user) {
             createNotification(

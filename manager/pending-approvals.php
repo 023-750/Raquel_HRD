@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $eval_info_q = $conn->prepare("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as emp_name, e.branch_id as emp_branch_id, u_emp.user_id as emp_user_id, et.template_name
                                      FROM evaluations ev 
                                      LEFT JOIN employees e ON ev.employee_id = e.employee_id 
-                                     LEFT JOIN users u_emp ON u_emp.employee_id = e.employee_id
+                                     LEFT JOIN users u_emp ON u_emp.employee_id = e.employee_id AND u_emp.role = 'Employee'
                                      LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
                                      WHERE ev.evaluation_id = ?");
         $eval_info_q->bind_param("i", $eval_id);
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $eval_info_q = $conn->prepare("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as emp_name, u_emp.user_id as emp_user_id, et.template_name
                                      FROM evaluations ev 
                                      LEFT JOIN employees e ON ev.employee_id = e.employee_id 
-                                     LEFT JOIN users u_emp ON u_emp.employee_id = e.employee_id
+                                     LEFT JOIN users u_emp ON u_emp.employee_id = e.employee_id AND u_emp.role = 'Employee'
                                      LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
                                      WHERE ev.evaluation_id = ?");
         $eval_info_q->bind_param("i", $eval_id);
@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $eval_info_q = $conn->prepare("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as emp_name, u_emp.user_id as emp_user_id, et.template_name, u.role as submitter_role
                                      FROM evaluations ev 
                                      LEFT JOIN employees e ON ev.employee_id = e.employee_id 
-                                     LEFT JOIN users u_emp ON u_emp.employee_id = e.employee_id
+                                     LEFT JOIN users u_emp ON u_emp.employee_id = e.employee_id AND u_emp.role = 'Employee'
                                      LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
                                      LEFT JOIN users u ON ev.submitted_by = u.user_id 
                                      WHERE ev.evaluation_id = ?");
