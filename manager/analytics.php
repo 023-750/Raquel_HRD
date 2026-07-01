@@ -1350,7 +1350,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             }
-        });
+        }
+    });
     <?php endif; ?>
 
     /* ── [NEW] 8. Year-Over-Year Progression Interactive Tracker ── */
