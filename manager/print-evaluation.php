@@ -12,7 +12,8 @@ if (!$id)
 $query = "SELECT ev.*, 
     CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, d.department_name,
     u.full_name as submitted_by_name, u2.full_name as endorsed_by_name, u3.full_name as approved_by_name,
-    et.template_name,
+    et.template_name, et.form_code, et.revision_date, et.effective_date_form,
+    et.kra_weight AS tpl_kra_weight, et.behavior_weight AS tpl_behavior_weight,
     ds.full_name AS dept_supervisor_confirmed_by_name,
     dm.full_name AS dept_manager_endorsed_by_name
     FROM evaluations ev
@@ -35,13 +36,27 @@ $row = $result->fetch_assoc();
 if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_id']) {
   die("Access denied.");
 }
+
+// Resolve template metadata with fallbacks
+$tpl_form_code      = !empty($row['form_code'])           ? $row['form_code']           : 'HRD Form-013.01';
+$tpl_revision_date  = !empty($row['revision_date'])       ? date('j F Y', strtotime($row['revision_date'])) : '3 January 2022';
+$tpl_effective_date = !empty($row['effective_date_form']) ? date('j F Y', strtotime($row['effective_date_form'])) : '14 January 2022';
+$tpl_kra_weight     = !empty($row['tpl_kra_weight'])      ? (int)$row['tpl_kra_weight']      : 80;
+$tpl_beh_weight     = !empty($row['tpl_behavior_weight']) ? (int)$row['tpl_behavior_weight'] : 20;
+$tpl_name           = !empty($row['template_name'])       ? $row['template_name']       : 'Performance Evaluation Form';
+
+// Resolve performance level (handle stale '0')
+$pl = $row['performance_level'] ?? '';
+if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
+    $pl = getPerformanceLevel((float)$row['total_score']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
   <meta charset="UTF-8">
-  <title>HRD Form-013.01 - <?php echo e($row['employee_name']); ?></title>
+  <title><?php echo e($tpl_form_code); ?> - <?php echo e($row['employee_name']); ?></title>
   <style>
     * {
       margin: 0;
@@ -249,17 +264,16 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
             <td
               style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold; width:110px;">
               Revision Date</td>
-            <td style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px;">3
-              January 2022</td>
+            <td style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px;"><?php echo e($tpl_revision_date); ?></td>
             <td
               style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold;">
               Code</td>
-            <td style="border-bottom:1px solid #000; padding:2px 6px; font-size:10px;">HRD Form-013.01</td>
+            <td style="border-bottom:1px solid #000; padding:2px 6px; font-size:10px;"><?php echo e($tpl_form_code); ?></td>
           </tr>
           <tr>
             <td style="border-right:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold;">Effective Date
             </td>
-            <td style="border-right:1px solid #000; padding:2px 6px; font-size:10px;">14 January 2022</td>
+            <td style="border-right:1px solid #000; padding:2px 6px; font-size:10px;"><?php echo e($tpl_effective_date); ?></td>
             <td style="border-right:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold;">Control No.</td>
             <td style="padding:2px 6px; font-size:10px;"></td>
           </tr>
@@ -270,17 +284,14 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
     <!-- Employee Info -->
     <table style="width:100%; border-collapse:collapse; border:1px solid #000; border-top:none;">
       <tr>
-        <td
-          style="border-right:1px solid #000; border-bottom:1px solid #000; padding:4px 6px; font-size:10px; width:50%;">
-          Name of Employee: <span
-            style="font-weight:bold; text-decoration:underline;"><?php echo e($row['employee_name']); ?></span>
+        <td style="border-right:1px solid #000; border-bottom:1px solid #000; padding:4px 6px; font-size:10px; width:50%;">
+          Name of Employee: <span style="font-weight:bold; text-decoration:underline; color:#2d6a04;"><?php echo e($row['employee_name']); ?></span>
         </td>
-        <td
-          style="border-right:1px solid #000; border-bottom:1px solid #000; padding:4px 6px; font-size:10px; width:30%;">
-          Position: <span style="font-weight:bold;"><?php echo e($row['job_title']); ?></span>
+        <td style="border-right:1px solid #000; border-bottom:1px solid #000; padding:4px 6px; font-size:10px; width:30%;">
+          Position: <span style="font-weight:bold; color:#2d6a04;"><?php echo e($row['job_title']); ?></span>
         </td>
         <td style="border-bottom:1px solid #000; padding:4px 6px; font-size:10px;">
-          Date: <span style="font-style:italic;"><?php echo date('m/d/Y'); ?></span>
+          Date: <span style="font-style:italic; color:#2d6a04;"><?php echo date('m/d/Y'); ?></span>
         </td>
       </tr>
       <tr>
@@ -288,12 +299,8 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
           Evaluation Period:<br>
           <table style="width:100%; border-collapse:collapse; margin-top:2px;">
             <tr>
-              <td style="padding:0; border:none; width:auto; font-size:11px;">From: <span
-                  style="font-weight:bold; text-decoration:underline;"><?php echo date('m/d/Y', strtotime($row['evaluation_period_start'])); ?></span>
-              </td>
-              <td style="padding:0 0 0 10px; border:none; width:auto; font-size:11px;">To: <span
-                  style="font-weight:bold; text-decoration:underline;"><?php echo date('m/d/Y', strtotime($row['evaluation_period_end'])); ?></span>
-              </td>
+              <td style="padding:0; border:none; width:auto; font-size:11px;">From: <span style="font-weight:bold; text-decoration:underline; color:#2d6a04;"><?php echo date('m/d/Y', strtotime($row['evaluation_period_start'])); ?></span></td>
+              <td style="padding:0 0 0 10px; border:none; width:auto; font-size:11px;">To: <span style="font-weight:bold; text-decoration:underline; color:#2d6a04;"><?php echo date('m/d/Y', strtotime($row['evaluation_period_end'])); ?></span></td>
             </tr>
             <tr>
               <td style="padding:0 0 0 35px; border:none; font-size:8px; color:#555;">(mm/dd/yyyy)</td>
@@ -305,15 +312,15 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
           Please check one (1):<br>
           <div style="padding-left: 45px; margin-top: 4px; line-height: 1.4;">
             <?php $et = $row['evaluation_type'] ?? 'Annual'; ?>
-            <?php echo ($et === 'Initial') ? '&#9745;' : '&#9744;'; ?> Initial &nbsp;&nbsp;
-            <?php echo ($et === 'Final') ? '&#9745;' : '&#9744;'; ?> Final<br>
-            <?php echo ($et === 'Quarterly') ? '&#9745;' : '&#9744;'; ?> Quarterly &nbsp;&nbsp;
-            <?php echo ($et === 'Annual') ? '&#9745;' : '&#9744;'; ?> Annual
+            <span style="<?php echo ($et === 'Initial') ? 'color:#2d6a04;font-weight:bold;' : ''; ?>"><?php echo ($et === 'Initial') ? '&#9745;' : '&#9744;'; ?></span> Initial &nbsp;&nbsp;
+            <span style="<?php echo ($et === 'Final') ? 'color:#2d6a04;font-weight:bold;' : ''; ?>"><?php echo ($et === 'Final') ? '&#9745;' : '&#9744;'; ?></span> Final<br>
+            <span style="<?php echo ($et === 'Quarterly') ? 'color:#2d6a04;font-weight:bold;' : ''; ?>"><?php echo ($et === 'Quarterly') ? '&#9745;' : '&#9744;'; ?></span> Quarterly &nbsp;&nbsp;
+            <span style="<?php echo ($et === 'Annual') ? 'color:#2d6a04;font-weight:bold;' : ''; ?>"><?php echo ($et === 'Annual') ? '&#9745;' : '&#9744;'; ?></span> Annual
           </div>
         </td>
         <td style="padding:4px 6px; font-size:10px; vertical-align:top;">
           Department/Branch:<br>
-          <span style="font-weight:bold;"><?php echo e($row['department_name'] ?? 'N/A'); ?></span>
+          <span style="font-weight:bold; color:#2d6a04;"><?php echo e($row['department_name'] ?? 'N/A'); ?></span>
         </td>
       </tr>
     </table>
@@ -331,7 +338,7 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
         </tr>
       </thead>
       <tbody>
-        <?php $pl = $row['performance_level'] ?? ''; ?>
+        <?php /* $pl already resolved above with fallback */ ?>
         <tr <?php echo ($pl === 'Outstanding') ? 'style="background-color:#d4edda !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;"' : ''; ?>>
           <td>3.60 – 4.00</td>
           <td>Outstanding</td>
@@ -379,7 +386,7 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px;">I. Key Result Areas based on Strategic
               Programs and<br>&nbsp;&nbsp;&nbsp;Regular Job Requirements</td>
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px; text-align:center;">
-              <?php echo $row['kra_weight'] ?? 80; ?>%
+              <?php echo $tpl_kra_weight; ?>%
             </td>
             <td style="border:1px solid #000; padding:3px 6px; text-align:center; font-weight:bold;">
               <?php echo $row['kra_subtotal']; ?>
@@ -396,7 +403,7 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px;">II. Key Result Areas based on Behavior
               and Values</td>
             <td style="border:1px solid #000; padding:3px 6px; font-size:10px; text-align:center;">
-              <?php echo $row['behavior_weight'] ?? 20; ?>%
+              <?php echo $tpl_beh_weight; ?>%
             </td>
             <td style="border:1px solid #000; padding:3px 6px; text-align:center; font-weight:bold;">
               <?php echo $row['behavior_average']; ?>
@@ -420,8 +427,7 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
     <table class="kra-table">
       <thead>
         <tr>
-          <th class="left" colspan="2" style="text-align:left; width:70%;">I. Key Result Areas based on Strategic
-            Programs and Job Requirements (80%)</th>
+          <th class="left" colspan="2" style="text-align:left; width:70%;">I. Key Result Areas based on Strategic Programs and Job Requirements (<?php echo $tpl_kra_weight; ?>%)</th>
           <th style="width:10%;">Weight</th>
           <th style="width:10%;">Rating</th>
           <th style="width:10%;">Total</th>
@@ -481,20 +487,14 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
         </div>
         <table style="width:100%; border-collapse:collapse; border-top:1px solid #000;">
           <tr>
-            <td
-              style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold; width:110px;">
-              Revision Date</td>
-            <td style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px;">3
-              January 2022</td>
-            <td
-              style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold;">
-              Code</td>
-            <td style="border-bottom:1px solid #000; padding:2px 6px; font-size:10px;">HRD Form-013.01</td>
+            <td style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold; width:110px;">Revision Date</td>
+            <td style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px;"><?php echo e($tpl_revision_date); ?></td>
+            <td style="border-right:1px solid #000; border-bottom:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold;">Code</td>
+            <td style="border-bottom:1px solid #000; padding:2px 6px; font-size:10px;"><?php echo e($tpl_form_code); ?></td>
           </tr>
           <tr>
-            <td style="border-right:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold;">Effective Date
-            </td>
-            <td style="border-right:1px solid #000; padding:2px 6px; font-size:10px;">14 January 2022</td>
+            <td style="border-right:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold;">Effective Date</td>
+            <td style="border-right:1px solid #000; padding:2px 6px; font-size:10px;"><?php echo e($tpl_effective_date); ?></td>
             <td style="border-right:1px solid #000; padding:2px 6px; font-size:10px; font-weight:bold;">Control No.</td>
             <td style="padding:2px 6px; font-size:10px;"></td>
           </tr>
@@ -503,8 +503,7 @@ if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_
     </div>
 
     <!-- KRA II -->
-    <div style="font-weight:bold; font-size:11px; border:1px solid #000; border-bottom:none; padding:3px 6px;">II. Key
-      Result Areas based on Behavior and Values (20%)</div>
+    <div style="font-weight:bold; font-size:11px; border:1px solid #000; border-bottom:none; padding:3px 6px;">II. Key Result Areas based on Behavior and Values (<?php echo $tpl_beh_weight; ?>%)</div>
     <table class="kra2-table">
       <thead>
         <tr>

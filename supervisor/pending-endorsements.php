@@ -82,6 +82,9 @@ function supervisorPendingAttentionFlags(array $row): array
     $has_score = supervisorPendingHasScore($row);
     $score = $has_score ? (float) $row['total_score'] : null;
     $performance_level = $row['performance_level'] ?? '';
+    if ($has_score && (empty($performance_level) || $performance_level === '0')) {
+        $performance_level = getPerformanceLevel($score);
+    }
     $days_pending = (int) ($row['days_pending'] ?? 0);
 
     if (!$has_score) {
@@ -539,7 +542,11 @@ $oldest_days = 0;
 foreach ($all_pending as $row) {
     $has_score = supervisorPendingHasScore($row);
     $score = $has_score ? (float) $row['total_score'] : null;
-    $is_low = ($has_score && $score < 2) || ($row['performance_level'] ?? '') === 'Needs Improvement';
+    $_perf = $row['performance_level'] ?? '';
+    if ($has_score && (empty($_perf) || $_perf === '0')) {
+        $_perf = getPerformanceLevel($score);
+    }
+    $is_low = ($has_score && $score < 2) || $_perf === 'Needs Improvement';
     $is_overdue = (int) ($row['days_pending'] ?? 0) >= 7;
     $is_missing_score = !$has_score;
     if ($is_low) {
@@ -557,31 +564,7 @@ foreach ($all_pending as $row) {
     $oldest_days = max($oldest_days, (int) ($row['days_pending'] ?? 0));
 }
 
-if (($_GET['export'] ?? '') === 'csv') {
-    header('Content-Type: text/csv; charset=utf-8');
-    header('Content-Disposition: attachment; filename="supervisor-pending-endorsements-' . date('Ymd-His') . '.csv"');
-    $out = fopen('php://output', 'w');
-    fputcsv($out, ['Company ID', 'Employee', 'Position', 'Department', 'Template', 'Evaluation Type', 'Submitted By', 'Submitted Date', 'Days Pending', 'Score', 'Performance Level', 'Attention Flags']);
-    foreach ($all_pending as $row) {
-        $flags = supervisorPendingAttentionFlags($row);
-        fputcsv($out, [
-            getEmployeeDisplayId($row),
-            $row['employee_name'],
-            $row['job_title'],
-            $row['department_name'],
-            $row['template_name'],
-            $row['evaluation_type'],
-            $row['submitted_by_name'],
-            $row['submitted_date'],
-            $row['days_pending'],
-            supervisorPendingHasScore($row) ? $row['total_score'] : 'No score',
-            $row['performance_level'] ?: 'Unrated',
-            $flags ? implode(', ', $flags) : 'None',
-        ]);
-    }
-    fclose($out);
-    exit;
-}
+
 
 $active_filter_count = 0;
 foreach ($filter_params as $value) {
@@ -911,15 +894,15 @@ require_once '../includes/header.php';
             </div>
         </div>
         <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
+            <a href="pending-endorsements.php?attention=low_score" class="stat-card text-decoration-none">
+                <div class="d-flex justify-content-between align-items-start w-100">
                     <div>
                         <div class="stat-value"><?php echo number_format($attention_count); ?></div>
                         <div class="stat-label">Needs Attention</div>
                     </div>
                     <i class="fas fa-triangle-exclamation stat-icon" style="color:#dc3545;"></i>
                 </div>
-            </div>
+            </a>
         </div>
         <div class="col-6 col-md-3">
             <a href="evaluation-history.php" class="stat-card text-decoration-none">
@@ -936,47 +919,151 @@ require_once '../includes/header.php';
 </div>
 
 <div class="pending-filter-card fadeup fadeup-1">
-    <form method="GET" action="" class="row g-3 align-items-end">
-        <div class="col-lg-3 col-md-6">
-            <label class="form-label">Search</label>
-            <input type="search" class="form-control form-control-sm" name="q" value="<?php echo e($filter_search); ?>" placeholder="Employee, Company ID, position">
+    <form method="GET" action="" class="w-100">
+        <!-- Top Row: Search, Quick Filter Toggle, and Advanced button -->
+        <div class="row g-2 align-items-center mb-3">
+            <div class="col-md-6 col-lg-7">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                    <input type="search" class="form-control border-start-0 ps-0" name="q" value="<?php echo e($filter_search); ?>" placeholder="Search employee name, code, position, template...">
+                </div>
+            </div>
+            <div class="col-md-3 col-lg-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-bell"></i></span>
+                    <select class="form-select border-start-0 ps-0" name="attention">
+                        <option value="">Status/Alerts: All</option>
+                        <option value="low_score" <?php echo $filter_attention === 'low_score' ? 'selected' : ''; ?>>Low Score (&lt; 2.0)</option>
+                        <option value="overdue" <?php echo $filter_attention === 'overdue' ? 'selected' : ''; ?>>Overdue (7+ Days)</option>
+                        <option value="missing_score" <?php echo $filter_attention === 'missing_score' ? 'selected' : ''; ?>>No Score</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3 col-lg-2 d-grid">
+                <?php 
+                $adv_filter_count = 0;
+                if ($filter_branch > 0) $adv_filter_count++;
+                if ($filter_department > 0) $adv_filter_count++;
+                if ($filter_staff > 0) $adv_filter_count++;
+                if ($filter_template > 0) $adv_filter_count++;
+                if ($filter_type !== '') $adv_filter_count++;
+                if ($date_from !== '') $adv_filter_count++;
+                if ($date_to !== '') $adv_filter_count++;
+                if ($score_min !== null) $adv_filter_count++;
+                if ($score_max !== null) $adv_filter_count++;
+                ?>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFiltersCollapse" aria-expanded="<?php echo ($adv_filter_count > 0) ? 'true' : 'false'; ?>" aria-controls="advancedFiltersCollapse">
+                    <i class="fas fa-sliders me-1"></i> Advanced
+                    <?php if ($adv_filter_count > 0): ?>
+                        <span class="badge bg-primary text-white ms-1"><?php echo $adv_filter_count; ?></span>
+                    <?php endif; ?>
+                </button>
+            </div>
         </div>
-        <div class="col-lg-2 col-md-6">
-            <label class="form-label">Branch</label>
-            <select class="form-select form-select-sm" name="branch">
-                <option value="">All Branches</option>
-                <?php foreach ($branch_options as $branch): ?>
-                    <option value="<?php echo (int) $branch['branch_id']; ?>" <?php echo $filter_branch === (int) $branch['branch_id'] ? 'selected' : ''; ?>>
-                        <?php echo e($branch['branch_name']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
+
+        <!-- Collapsible Advanced Filters Drawer -->
+        <div class="collapse <?php echo ($adv_filter_count > 0) ? 'show' : ''; ?>" id="advancedFiltersCollapse">
+            <div class="card card-body bg-light border-0 p-3 mb-3 rounded-3">
+                <div class="row g-3">
+                    <!-- Branch -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Branch</label>
+                        <select class="form-select form-select-sm" name="branch">
+                            <option value="">All Branches</option>
+                            <?php foreach ($branch_options as $branch): ?>
+                                <option value="<?php echo (int) $branch['branch_id']; ?>" <?php echo $filter_branch === (int) $branch['branch_id'] ? 'selected' : ''; ?>>
+                                    <?php echo e($branch['branch_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Department -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Department</label>
+                        <select class="form-select form-select-sm" name="department">
+                            <option value="">All Departments</option>
+                            <?php foreach ($department_options as $dept): ?>
+                                <option value="<?php echo (int) $dept['department_id']; ?>" <?php echo $filter_department === (int) $dept['department_id'] ? 'selected' : ''; ?>>
+                                    <?php echo e($dept['department_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Evaluation Type -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Evaluation Type</label>
+                        <select class="form-select form-select-sm" name="evaluation_type">
+                            <option value="">All Types</option>
+                            <?php foreach ($allowed_eval_types as $type): ?>
+                                <option value="<?php echo e($type); ?>" <?php echo $filter_type === $type ? 'selected' : ''; ?>>
+                                    <?php echo e($type); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Template -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Template</label>
+                        <select class="form-select form-select-sm" name="template">
+                            <option value="">All Templates</option>
+                            <?php foreach ($template_options as $tpl): ?>
+                                <option value="<?php echo (int) $tpl['template_id']; ?>" <?php echo $filter_template === (int) $tpl['template_id'] ? 'selected' : ''; ?>>
+                                    <?php echo e($tpl['template_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Submitted By -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Submitted By</label>
+                        <select class="form-select form-select-sm" name="submitted_by">
+                            <option value="">All Staff</option>
+                            <?php foreach ($staff_options as $staff): ?>
+                                <option value="<?php echo (int) $staff['user_id']; ?>" <?php echo $filter_staff === (int) $staff['user_id'] ? 'selected' : ''; ?>>
+                                    <?php echo e($staff['full_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Score Range -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Score Range</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.01" min="0" max="4" class="form-control" name="score_min" value="<?php echo $score_min !== null ? e($score_min) : ''; ?>" placeholder="Min">
+                            <span class="input-group-text bg-white">-</span>
+                            <input type="number" step="0.01" min="0" max="4" class="form-control" name="score_max" value="<?php echo $score_max !== null ? e($score_max) : ''; ?>" placeholder="Max">
+                        </div>
+                    </div>
+                    <!-- Submitted Date Range -->
+                    <div class="col-md-8 col-lg-6">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Date Submitted Range</label>
+                        <div class="input-group input-group-sm">
+                            <input type="date" class="form-control" name="date_from" value="<?php echo e($date_from); ?>">
+                            <span class="input-group-text bg-white">to</span>
+                            <input type="date" class="form-control" name="date_to" value="<?php echo e($date_to); ?>">
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="col-lg-3 col-md-6">
-            <label class="form-label">Department</label>
-            <select class="form-select form-select-sm" name="department">
-                <option value="">All Departments</option>
-                <?php foreach ($department_options as $dept): ?>
-                    <option value="<?php echo (int) $dept['department_id']; ?>" <?php echo $filter_department === (int) $dept['department_id'] ? 'selected' : ''; ?>>
-                        <?php echo e($dept['department_name']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-lg-2 col-md-6">
-            <label class="form-label">Submitted By</label>
-            <select class="form-select form-select-sm" name="submitted_by">
-                <option value="">All Staff</option>
-                <?php foreach ($staff_options as $staff): ?>
-                    <option value="<?php echo (int) $staff['user_id']; ?>" <?php echo $filter_staff === (int) $staff['user_id'] ? 'selected' : ''; ?>>
-                        <?php echo e($staff['full_name']); ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-lg-2 col-md-6 d-flex flex-wrap gap-2 justify-content-lg-end">
-            <button type="submit" class="btn btn-primary btn-sm px-3"><i class="fas fa-filter me-1"></i>Apply</button>
-            <a href="pending-endorsements.php" class="btn btn-outline-secondary btn-sm px-3"><i class="fas fa-rotate-left me-1"></i>Reset</a>
+
+        <!-- Action Row -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="filter-meta">
+                <?php if ($active_filter_count > 0): ?>
+                    <span class="text-primary fw-bold" style="font-size: 0.78rem;"><i class="fas fa-circle-info me-1"></i><?php echo $active_filter_count; ?> active filter<?php echo $active_filter_count === 1 ? '' : 's'; ?></span>
+                <?php else: ?>
+                    <span class="text-muted small"><i class="fas fa-circle-check me-1"></i>Showing all records</span>
+                <?php endif; ?>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="pending-endorsements.php" class="btn btn-sm btn-outline-secondary px-3">
+                    <i class="fas fa-rotate-left me-1"></i>Reset
+                </a>
+                <button type="submit" class="btn btn-sm btn-primary px-4">
+                    <i class="fas fa-filter me-1"></i>Apply Filters
+                </button>
+            </div>
         </div>
     </form>
 </div>
@@ -1159,10 +1246,14 @@ foreach ($all_pending as $row):
                                 <div class="text-muted"><?php echo e($row['job_title'] ?? 'Staff'); ?> &bull; <?php echo e($row['template_name']); ?></div>
                             </div>
                         </div>
-                        <div class="score-circle">
-                            <div class="val"><?php echo $modal_has_score ? number_format((float) $row['total_score'], 2) . '/4' : 'No score'; ?></div>
-                            <div class="lbl">Score</div>
-                        </div>
+                        <?php if ($modal_has_score): ?>
+                            <?php echo getEvaluationScoreCirclesHtml($conn, $modal_eval_id, $row['total_score']); ?>
+                        <?php else: ?>
+                            <div class="score-circle">
+                                <div class="val">No score</div>
+                                <div class="lbl">Score</div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     <!-- KRA Section -->
                     <div class="section-premium-label mb-3 mt-4">
@@ -1192,14 +1283,22 @@ foreach ($all_pending as $row):
                                         <td class="text-center">
                                             <?php
                                             $effective_score = $k['score_value'];
+                                            $dept_mgr_override_score = $k['dept_manager_override_score'] ?? null;
                                             $supervisor_override_score = $k['supervisor_override_score'] ?? null;
                                             $badge_html = '';
+                                            if ($dept_mgr_override_score !== null) {
+                                                $effective_score = $dept_mgr_override_score;
+                                                $dm_name_q = $conn->query("SELECT full_name FROM users WHERE user_id = " . (int)($k['dept_manager_override_by'] ?? 0))->fetch_assoc();
+                                                $dm_name = $dm_name_q['full_name'] ?? 'Dept Manager';
+                                                $dm_formatted_date = formatDate($k['dept_manager_override_at'] ?? '', 'M d, Y h:i A');
+                                                $badge_html .= '<span class="badge-audit ms-2" style="background:rgba(23,162,184,.15);color:#0c7a96;border-color:rgba(23,162,184,.4);" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Dept Manager Adjustment</strong><br>Adjusted by: ' . e($dm_name) . '<br>On: ' . $dm_formatted_date . '<br>Original Self-Rating: ' . $k['score_value'] . '"><i class="fas fa-user-tie me-1"></i>Mgr Adjusted</span>';
+                                            }
                                             if ($supervisor_override_score !== null) {
                                                 $effective_score = $supervisor_override_score;
                                                 $sup_name_q = $conn->query("SELECT full_name FROM users WHERE user_id = " . (int)($k['supervisor_override_by'] ?? 0))->fetch_assoc();
                                                 $sup_name = $sup_name_q['full_name'] ?? 'Supervisor';
                                                 $formatted_date = formatDate($k['supervisor_override_at'] ?? '', 'M d, Y h:i A');
-                                                $badge_html = '<span class="badge-audit ms-2" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Supervisor Override</strong><br>Edited by: ' . e($sup_name) . '<br>On: ' . $formatted_date . '<br>Original: ' . $k['score_value'] . '"><i class="fas fa-user-edit me-1"></i>Sup Override</span>';
+                                                $badge_html .= '<span class="badge-audit ms-2" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Supervisor Override</strong><br>Edited by: ' . e($sup_name) . '<br>On: ' . $formatted_date . '<br>Original: ' . $k['score_value'] . '"><i class="fas fa-user-edit me-1"></i>Sup Override</span>';
                                             }
                                             ?>
                                             <?php if ($can_edit_scores): ?>
@@ -1247,14 +1346,22 @@ foreach ($all_pending as $row):
                                         <td class="text-center">
                                             <?php
                                             $effective_score = $b['score_value'];
+                                            $dept_mgr_override_score = $b['dept_manager_override_score'] ?? null;
                                             $supervisor_override_score = $b['supervisor_override_score'] ?? null;
                                             $badge_html = '';
+                                            if ($dept_mgr_override_score !== null) {
+                                                $effective_score = $dept_mgr_override_score;
+                                                $dm_name_q = $conn->query("SELECT full_name FROM users WHERE user_id = " . (int)($b['dept_manager_override_by'] ?? 0))->fetch_assoc();
+                                                $dm_name = $dm_name_q['full_name'] ?? 'Dept Manager';
+                                                $dm_formatted_date = formatDate($b['dept_manager_override_at'] ?? '', 'M d, Y h:i A');
+                                                $badge_html .= '<span class="badge-audit ms-2" style="background:rgba(23,162,184,.15);color:#0c7a96;border-color:rgba(23,162,184,.4);" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Dept Manager Adjustment</strong><br>Adjusted by: ' . e($dm_name) . '<br>On: ' . $dm_formatted_date . '<br>Original Self-Rating: ' . $b['score_value'] . '"><i class="fas fa-user-tie me-1"></i>Mgr Adjusted</span>';
+                                            }
                                             if ($supervisor_override_score !== null) {
                                                 $effective_score = $supervisor_override_score;
                                                 $sup_name_q = $conn->query("SELECT full_name FROM users WHERE user_id = " . (int)($b['supervisor_override_by'] ?? 0))->fetch_assoc();
                                                 $sup_name = $sup_name_q['full_name'] ?? 'Supervisor';
                                                 $formatted_date = formatDate($b['supervisor_override_at'] ?? '', 'M d, Y h:i A');
-                                                $badge_html = '<span class="badge-audit ms-2" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Supervisor Override</strong><br>Edited by: ' . e($sup_name) . '<br>On: ' . $formatted_date . '<br>Original: ' . $b['score_value'] . '"><i class="fas fa-user-edit me-1"></i>Sup Override</span>';
+                                                $badge_html .= '<span class="badge-audit ms-2" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Supervisor Override</strong><br>Edited by: ' . e($sup_name) . '<br>On: ' . $formatted_date . '<br>Original: ' . $b['score_value'] . '"><i class="fas fa-user-edit me-1"></i>Sup Override</span>';
                                             }
                                             ?>
                                             <?php if ($can_edit_scores): ?>

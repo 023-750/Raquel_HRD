@@ -16,6 +16,31 @@ $validated_month = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE end
 
 $total_employees = $conn->query("SELECT COUNT(*) as c FROM employees WHERE is_active = 1 AND employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['c'];
 
+$overdue_count = $conn->query("SELECT COUNT(*) as c
+    FROM evaluations ev
+    INNER JOIN employees e ON ev.employee_id = e.employee_id
+    WHERE ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+      AND e.is_active = 1
+      AND DATEDIFF(CURRENT_DATE(), DATE(ev.submitted_date)) >= 7
+      AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['c'];
+
+$low_score_count = $conn->query("SELECT COUNT(*) as c
+    FROM evaluations ev
+    INNER JOIN employees e ON ev.employee_id = e.employee_id
+    WHERE ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+      AND e.is_active = 1
+      AND ((ev.total_score IS NOT NULL AND ev.total_score < 2) OR ev.performance_level = 'Needs Improvement')
+      AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['c'];
+
+$oldest_days = (int)($conn->query("SELECT COALESCE(MAX(DATEDIFF(CURRENT_DATE(), DATE(ev.submitted_date))), 0) as d
+    FROM evaluations ev
+    INNER JOIN employees e ON ev.employee_id = e.employee_id
+    WHERE ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+      AND e.is_active = 1
+      AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)")->fetch_assoc()['d'] ?? 0);
+
+$validated_total = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE endorsed_by = {$_SESSION['user_id']}")->fetch_assoc()['c'];
+
 $pending_rows = [];
 $pending_result = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name,
     e.job_title, e.profile_picture, et.template_name,
@@ -266,20 +291,39 @@ $queue_employee_count = count($pending_groups);
 
 <div class="supervisor-dashboard">
 <div class="page-hero fadeup">
-    <div class="d-flex flex-wrap align-items-center justify-content-between mb-4 gap-3">
+    <!-- Top Row: Greeting + Date + Quick Actions -->
+    <div class="d-flex flex-wrap align-items-start justify-content-between mb-4 gap-3">
         <div>
             <div class="mb-1" style="color:#FFD97D;font-size:.88rem;font-weight:600;letter-spacing:.3px;"><?php echo getGreeting($_SESSION['full_name'] ?? ''); ?></div>
-            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Supervisor · Dashboard</div>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Supervisor &middot; Dashboard</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-check-double me-2" style="color:#BD9414;"></i>Supervisor Overview</h4>
         </div>
-        <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
-            <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+        <div class="d-flex flex-column align-items-end gap-2">
+            <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+                <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+            </div>
+            <!-- Quick Actions -->
+            <div class="d-flex gap-2 flex-wrap justify-content-end">
+                <a href="pending-endorsements.php" class="btn btn-sm px-3 fw-semibold" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:20px;font-size:.78rem;backdrop-filter:blur(4px);">
+                    <i class="fas fa-inbox me-1"></i>Open Queue
+                </a>
+                <a href="evaluation-history.php" class="btn btn-sm px-3 fw-semibold" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.15);border-radius:20px;font-size:.78rem;">
+                    <i class="fas fa-history me-1"></i>View History
+                </a>
+                <?php if ($overdue_count > 0): ?>
+                <a href="pending-endorsements.php?attention=overdue" class="btn btn-sm px-3 fw-semibold" style="background:rgba(220,53,69,.35);color:#fff;border:1px solid rgba(220,53,69,.4);border-radius:20px;font-size:.78rem;">
+                    <i class="fas fa-triangle-exclamation me-1"></i><?php echo $overdue_count; ?> Overdue
+                </a>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
-    <div class="row g-3">
+    <!-- Stat Cards Row -->
+    <div class="row g-3 mb-3">
+        <!-- Pending Validations -->
         <div class="col-6 col-md-3">
-            <div class="stat-card">
+            <a href="pending-endorsements.php" class="stat-card text-decoration-none d-block">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-value"><?php echo $pending_validations; ?></div>
@@ -287,10 +331,50 @@ $queue_employee_count = count($pending_groups);
                     </div>
                     <i class="fas fa-clipboard-check stat-icon" style="color:#ffc107;"></i>
                 </div>
-            </div>
+                <?php if ($queue_employee_count > 0): ?>
+                <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
+                    <i class="fas fa-users me-1"></i><?php echo $queue_employee_count; ?> employee<?php echo $queue_employee_count === 1 ? '' : 's'; ?> in queue
+                </div>
+                <?php endif; ?>
+            </a>
         </div>
+        <!-- Overdue (7+ days) -->
         <div class="col-6 col-md-3">
-            <div class="stat-card">
+            <a href="pending-endorsements.php?attention=overdue" class="stat-card text-decoration-none d-block">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value" style="<?php echo $overdue_count > 0 ? 'color:#ff6b6b;' : ''; ?>"><?php echo $overdue_count; ?></div>
+                        <div class="stat-label">Overdue (7+ Days)</div>
+                    </div>
+                    <i class="fas fa-hourglass-end stat-icon" style="color:#dc3545;"></i>
+                </div>
+                <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
+                    <?php if ($oldest_days > 0): ?>
+                        <i class="fas fa-clock me-1"></i>Oldest: <?php echo $oldest_days; ?> day<?php echo $oldest_days === 1 ? '' : 's'; ?> ago
+                    <?php else: ?>
+                        <i class="fas fa-check me-1"></i>No overdue items
+                    <?php endif; ?>
+                </div>
+            </a>
+        </div>
+        <!-- Low Score -->
+        <div class="col-6 col-md-3">
+            <a href="pending-endorsements.php?attention=low_score" class="stat-card text-decoration-none d-block">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value" style="<?php echo $low_score_count > 0 ? 'color:#ff6b6b;' : ''; ?>"><?php echo $low_score_count; ?></div>
+                        <div class="stat-label">Low Score (&lt; 2.0)</div>
+                    </div>
+                    <i class="fas fa-arrow-trend-down stat-icon" style="color:#fd7e14;"></i>
+                </div>
+                <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
+                    <i class="fas fa-exclamation-circle me-1"></i><?php echo $low_score_count > 0 ? 'Needs immediate review' : 'All scores acceptable'; ?>
+                </div>
+            </a>
+        </div>
+        <!-- Validated This Month -->
+        <div class="col-6 col-md-3">
+            <a href="evaluation-history.php" class="stat-card text-decoration-none d-block">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-value"><?php echo $validated_month; ?></div>
@@ -298,18 +382,31 @@ $queue_employee_count = count($pending_groups);
                     </div>
                     <i class="fas fa-check-circle stat-icon" style="color:#28a745;"></i>
                 </div>
+                <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
+                    <i class="fas fa-history me-1"></i><?php echo $validated_total; ?> total all-time
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Urgency / Progress Bar -->
+    <?php
+    $total_action_items = $pending_validations + $validated_month;
+    $progress_pct = $total_action_items > 0 ? min(100, round(($validated_month / $total_action_items) * 100)) : 100;
+    $progress_color = $progress_pct >= 80 ? '#28a745' : ($progress_pct >= 40 ? '#ffc107' : '#dc3545');
+    ?>
+    <div style="background:rgba(255,255,255,.08);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:14px;">
+        <div style="flex:1;min-width:0;">
+            <div style="font-size:.72rem;color:rgba(255,255,255,.55);font-weight:700;letter-spacing:.4px;text-transform:uppercase;margin-bottom:5px;">
+                Monthly Completion Rate &mdash; <?php echo date('F Y'); ?>
+            </div>
+            <div style="height:6px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden;">
+                <div style="height:100%;width:<?php echo $progress_pct; ?>%;background:<?php echo $progress_color; ?>;border-radius:99px;transition:width .6s ease;"></div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="stat-card">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="stat-value"><?php echo $total_employees; ?></div>
-                        <div class="stat-label">Total Employees</div>
-                    </div>
-                    <i class="fas fa-users stat-icon text-white-50"></i>
-                </div>
-            </div>
+        <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:1.1rem;font-weight:800;color:#fff;"><?php echo $progress_pct; ?>%</div>
+            <div style="font-size:.68rem;color:rgba(255,255,255,.5);"><?php echo $validated_month; ?> of <?php echo $total_action_items; ?> processed</div>
         </div>
     </div>
 </div>

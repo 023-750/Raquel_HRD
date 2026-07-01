@@ -224,7 +224,7 @@ switch ($effective_role) {
                 $_hdr_dept_pending_rows = $_hdr_dept_pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                 $_hdr_dept_pending_stmt->close();
                 foreach ($_hdr_dept_pending_rows as $_hdr_pending) {
-                    if (isDeptManagerOfEmployee($conn, $user_id, (int)$_hdr_pending['employee_id'])) {
+                    if (isDeptManagerOfEmployee($conn, (int)$_SESSION['user_id'], (int)$_hdr_pending['employee_id'])) {
                         $m_dept_review_count++;
                     }
                 }

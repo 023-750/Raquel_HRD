@@ -113,62 +113,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager && 
         // Combine scores manually to preserve criterion_id numeric keys (array_merge reindexes numeric keys)
         $all_scores = [];
         foreach ($kra_scores as $cid => $rating) {
-            $all_scores[(int)$cid] = (float)$rating;
+            $val = (float)$rating;
+            if ($val > 4.0) {
+                $val = 4.0;
+            }
+            $all_scores[(int)$cid] = $val;
         }
         foreach ($beh_scores as $cid => $rating) {
-            $all_scores[(int)$cid] = (float)$rating;
+            $val = (float)$rating;
+            if ($val > 4.0) {
+                $val = 4.0;
+            }
+            $all_scores[(int)$cid] = $val;
         }
 
-        // Apply any score changes
+        // Apply any score changes via dept_manager_override_* columns (preserves original self-rating)
+        $altered_details = [];
+        $user_id_for_override = $user_id; // the logged-in dept manager's user_id
         foreach ($all_scores as $criterion_id => $new_rating) {
             $original_rating = (float)($scores[$criterion_id]['score_value'] ?? 0);
 
             if (abs($new_rating - $original_rating) > 0.01) {
                 $manager_altered = true;
-                $update_score = $conn->prepare("
+                $criterion_name = $scores[$criterion_id]['criterion_name'] ?? 'Criterion #' . $criterion_id;
+                $altered_details[] = "$criterion_name (Self-Rating: " . number_format($original_rating, 2) . " -> Adjusted: " . number_format($new_rating, 2) . ")";
+
+                $update_override = $conn->prepare("
                     UPDATE evaluation_scores
-                    SET score_value = ?, weighted_score = ?
+                    SET dept_manager_override_score = ?,
+                        dept_manager_override_by    = ?,
+                        dept_manager_override_at    = NOW()
                     WHERE evaluation_id = ? AND criterion_id = ?
                 ");
-                $weight = (float)($scores[$criterion_id]['weight'] ?? 0);
-                $is_behavior = ($scores[$criterion_id]['section'] ?? '') === 'Behavior';
-                $weighted = $is_behavior ? $new_rating : round(($weight / 100) * $new_rating, 2);
-                $update_score->bind_param("ddii", $new_rating, $weighted, $evaluation_id, $criterion_id);
-                $update_score->execute();
-                $update_score->close();
+                $update_override->bind_param("diii", $new_rating, $user_id_for_override, $evaluation_id, $criterion_id);
+                $update_override->execute();
+                $update_override->close();
             }
         }
 
-        // Recalculate totals if manager altered scores
-        $new_total_score      = (float)$evaluation['total_score'];
-        $new_kra_subtotal     = (float)$evaluation['kra_subtotal'];
-        $new_behavior_average = (float)$evaluation['behavior_average'];
-        $new_performance_level = $evaluation['performance_level'];
+        // Recalculate totals using the centralized function (honours the full override hierarchy)
+        recalculateEvaluationScores($conn, $evaluation_id);
 
-        if ($manager_altered) {
-            $kra_subtotal = 0;
-            foreach ($criteria_kra as $criterion) {
-                $cid    = (int)$criterion['criterion_id'];
-                $rating = (float)($kra_scores[$cid] ?? $criterion['score_value'] ?? 0);
-                $weight = (float)$criterion['weight'];
-                $kra_subtotal += round(($weight / 100) * $rating, 4);
-            }
-            $new_kra_subtotal = round($kra_subtotal, 2);
+        // Fetch updated totals to store on the evaluations row
+        $updated_eval_q = $conn->prepare("SELECT total_score, kra_subtotal, behavior_average, performance_level FROM evaluations WHERE evaluation_id = ? LIMIT 1");
+        $updated_eval_q->bind_param("i", $evaluation_id);
+        $updated_eval_q->execute();
+        $updated_eval_row = $updated_eval_q->get_result()->fetch_assoc();
+        $updated_eval_q->close();
 
-            $beh_total = 0; $beh_count = 0;
-            foreach ($criteria_behavior as $criterion) {
-                $cid    = (int)$criterion['criterion_id'];
-                $rating = (float)($beh_scores[$cid] ?? $criterion['score_value'] ?? 0);
-                $beh_total += $rating;
-                $beh_count++;
-            }
-            $new_behavior_average = $beh_count > 0 ? round($beh_total / $beh_count, 2) : 0;
+        $new_total_score      = (float)($updated_eval_row['total_score']      ?? $evaluation['total_score']);
+        $new_kra_subtotal     = (float)($updated_eval_row['kra_subtotal']     ?? $evaluation['kra_subtotal']);
+        $new_behavior_average = (float)($updated_eval_row['behavior_average'] ?? $evaluation['behavior_average']);
+        $new_performance_level = $updated_eval_row['performance_level']      ?? $evaluation['performance_level'];
 
-            $kra_weight_pct = (float)($evaluation['kra_weight'] ?? 80);
-            $beh_weight_pct = (float)($evaluation['behavior_weight'] ?? 20);
-            $new_total_score = calculateEvalTotal($new_kra_subtotal, $new_behavior_average, $kra_weight_pct, $beh_weight_pct);
-            $new_performance_level = getPerformanceLevel($new_total_score);
-        }
 
         // Update evaluation
         $update = $conn->prepare("
@@ -186,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager && 
             WHERE evaluation_id = ?
         ");
         $update->bind_param(
-            "isiiddsi",
+            "isidddsi",
             $user_id,
             $dept_manager_comments,
             $user_id,
@@ -220,12 +217,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_dept_manager && 
                 $conn,
                 (int)$emp_user['user_id'],
                 'Self-Rating Endorsed',
-                'Your self-rating has been endorsed by your Department Manager and sent to HRD.',
+                'Your self-rating has been endorsed by your Department Manager ' . $manager_name . ' and sent to HRD.',
                 BASE_URL . '/employee/self-rating.php'
             );
         }
 
-        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, 'Department Manager endorsed evaluation' . ($manager_altered ? ' with score adjustments' : '') . '. Status: Pending HR Consolidation.');
+        $audit_details = 'Department Manager endorsed evaluation' . ($manager_altered ? ' with score adjustments' : '') . '. Status: Pending HR Consolidation.';
+        if ($manager_altered && !empty($altered_details)) {
+            $audit_details .= ". Score adjustments:\n" . implode("\n", $altered_details);
+        }
+        logAudit($conn, $user_id, 'UPDATE', 'Evaluation', $evaluation_id, $audit_details);
         redirectWith(BASE_URL . '/employee/dept-manager-review.php', 'success', 'Evaluation endorsed and sent to HRD successfully.');
 
     } elseif ($action === 'return') {
@@ -276,6 +277,8 @@ if ($is_dept_manager) {
         JOIN employees emp ON e.employee_id = emp.employee_id
         LEFT JOIN evaluation_templates t ON e.template_id = t.template_id
         WHERE e.status = 'Pending Dept Manager'
+          AND e.deleted_at IS NULL
+          AND emp.is_active = 1
         ORDER BY e.submitted_date DESC
     ");
     $pending_stmt->execute();
@@ -287,18 +290,39 @@ if ($is_dept_manager) {
             $pending_reviews[] = $pending;
         }
     }
+
+    // Fetch endorsement history for this department manager.
+    // Filtered directly by SQL (dept_manager_endorsed_by = ?) — each manager only sees their own.
+    $endorsement_stmt = $conn->prepare("
+        SELECT e.*, emp.first_name, emp.last_name, emp.job_title, emp.employee_code,
+               t.template_name
+        FROM evaluations e
+        JOIN employees emp ON e.employee_id = emp.employee_id
+        LEFT JOIN evaluation_templates t ON e.template_id = t.template_id
+        WHERE e.dept_manager_endorsed_by = ?
+        ORDER BY e.dept_manager_endorsed_date DESC
+    ");
+    $endorsement_stmt->bind_param("i", $user_id);
+    $endorsement_stmt->execute();
+    $endorsement_history = $endorsement_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $endorsement_stmt->close();
 }
 
 // Pre-compute PHP-side KRA total and behavior average
 $orig_kra_total = 0;
 foreach ($criteria_kra as $c) {
-    $orig_kra_total += round(($c['weight'] / 100) * (float)$c['score_value'], 4);
+    $val = $c['dept_manager_override_score'] !== null ? (float)$c['dept_manager_override_score'] : (float)$c['score_value'];
+    $orig_kra_total += round(($c['weight'] / 100) * $val, 4);
 }
 $orig_kra_total = round($orig_kra_total, 2);
 
 $orig_beh_avg = 0;
 if (!empty($criteria_behavior)) {
-    $orig_beh_avg = round(array_sum(array_column($criteria_behavior, 'score_value')) / count($criteria_behavior), 2);
+    $beh_vals = [];
+    foreach ($criteria_behavior as $b) {
+        $beh_vals[] = $b['dept_manager_override_score'] !== null ? (float)$b['dept_manager_override_score'] : (float)$b['score_value'];
+    }
+    $orig_beh_avg = round(array_sum($beh_vals) / count($criteria_behavior), 2);
 }
 
 $kra_weight_display = (float)($evaluation['kra_weight'] ?? 80);
@@ -332,59 +356,362 @@ require_once '../includes/header.php';
         </div>
     </div>
 <?php elseif (!$evaluation): ?>
+    <style>
+    @media (max-width: 767px) {
+        /* Hide table headers */
+        .mobile-responsive-table thead {
+            display: none !important;
+        }
+        /* Make table and body block */
+        .mobile-responsive-table, 
+        .mobile-responsive-table tbody, 
+        .mobile-responsive-table tr {
+            display: block !important;
+            width: 100% !important;
+        }
+        /* Style each row as a card */
+        .mobile-responsive-table tr {
+            display: block !important;
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            padding: 16px !important;
+            margin-bottom: 16px !important;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03) !important;
+        }
+        /* Table cells stack vertically */
+        .mobile-responsive-table td {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 8px 0 !important;
+            border: none !important;
+            width: 100% !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            text-align: right !important;
+        }
+        /* Employee details at the top, full width */
+        .mobile-responsive-table td:first-child {
+            display: block !important;
+            text-align: left !important;
+            border-bottom: 1.5px solid #e2e8f0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 10px !important;
+            margin-bottom: 8px !important;
+        }
+        /* Action cell at the bottom */
+        .mobile-responsive-table td:last-child {
+            border-bottom: none !important;
+            padding-bottom: 0 !important;
+            margin-top: 8px !important;
+            justify-content: flex-end !important;
+        }
+        /* Add labels on mobile via data-label */
+        .mobile-responsive-table td[data-label]::before {
+            content: attr(data-label) !important;
+            font-weight: 700 !important;
+            color: #64748b !important;
+            font-size: 0.72rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            float: left;
+            text-align: left;
+        }
+    }
+    <style>
+    /* ── Grouped Employee Capsules ─────────────────────────── */
+    .emp-capsule {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        background: #ffffff;
+    }
+    .emp-capsule-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        cursor: pointer;
+        background: #f8fafc;
+        transition: background .15s ease;
+        user-select: none;
+        border-bottom: 1px solid transparent;
+    }
+    .emp-capsule-header:hover {
+        background: #eef2ff;
+    }
+    .emp-capsule-header.open {
+        background: #eef2ff;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .emp-capsule-header .emp-info { flex: 1; min-width: 0; }
+    .emp-capsule-header .emp-name {
+        font-weight: 700;
+        font-size: .95rem;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .emp-capsule-header .emp-title {
+        font-size: .77rem;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .emp-capsule-chevron {
+        color: #94a3b8;
+        font-size: .85rem;
+        transition: transform .25s ease;
+        margin-left: 10px;
+        flex-shrink: 0;
+    }
+    .emp-capsule-header.open .emp-capsule-chevron {
+        transform: rotate(180deg);
+    }
+    .emp-capsule-body {
+        display: none;
+    }
+    .emp-capsule-body.show {
+        display: block;
+    }
+    .emp-capsule-body .sub-entry {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: .85rem;
+    }
+    .emp-capsule-body .sub-entry:last-child { border-bottom: none; }
+    .sub-entry-template { flex: 1; min-width: 120px; color: #334155; font-weight: 500; }
+    .sub-entry-period   { color: #64748b; font-size: .78rem; min-width: 110px; }
+    .sub-entry-score    { min-width: 80px; text-align: center; }
+    .sub-entry-action   { margin-left: auto; }
+
+    @media (max-width: 767px) {
+        .emp-capsule-body .sub-entry {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+        .sub-entry-action { margin-left: 0; width: 100%; }
+        .sub-entry-action a { width: 100%; text-align: center; }
+    }
+    </style>
+
     <!-- List of pending endorsements -->
     <div class="content-card fadeup-1">
-        <div class="card-header">
-            <h5><i class="fas fa-clipboard-check me-2"></i>Pending Endorsements</h5>
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Pending Endorsements</h5>
+            <div class="d-flex align-items-center gap-2">
+                <?php if (!empty($pending_reviews)): ?>
+                    <span class="badge bg-warning text-dark"><?php echo count($pending_reviews); ?> pending</span>
+                <?php endif; ?>
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#endorsementHistoryPanel"
+                        aria-expanded="false" aria-controls="endorsementHistoryPanel"
+                        title="View Endorsement History" id="historyGearBtn">
+                    <i class="fas fa-cog me-1"></i>
+                    <span class="d-none d-sm-inline">History</span>
+                    <?php if (!empty($endorsement_history)): ?>
+                        <span class="badge bg-secondary ms-1"><?php echo count($endorsement_history); ?></span>
+                    <?php endif; ?>
+                </button>
+            </div>
         </div>
         <div class="card-body p-0">
             <?php if (empty($pending_reviews)): ?>
                 <div class="text-center py-5 text-muted">
                     <i class="fas fa-check-circle fa-3x mb-3"></i>
-                    <p>No pending evaluations to endorse.</p>
+                    <p class="mb-0">No pending evaluations to endorse.</p>
+                    <div class="small mt-1">All caught up! Click the <i class="fas fa-cog"></i> gear icon to view past endorsements.</div>
                 </div>
-            <?php else: ?>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Employee</th>
-                                <th>Template</th>
-                                <th>Period</th>
-                                <th>Score</th>
-                                <th>Submitted</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($pending_reviews as $pending): ?>
-                                <tr>
-                                    <td>
-                                        <div class="fw-semibold"><?php echo e($pending['last_name'] . ', ' . $pending['first_name']); ?></div>
-                                        <div class="small text-muted"><?php echo e($pending['job_title']); ?></div>
-                                    </td>
-                                    <td><?php echo e($pending['template_name']); ?></td>
-                                    <td>
-                                        <?php echo formatDate($pending['evaluation_period_start']) . ' – ' . formatDate($pending['evaluation_period_end']); ?>
-                                    </td>
-                                    <td>
-                                        <div class="fw-bold text-primary"><?php echo number_format((float)$pending['total_score'], 2); ?></div>
-                                        <span class="badge bg-light text-dark"><?php echo e($pending['performance_level']); ?></span>
-                                    </td>
-                                    <td><?php echo formatDateTime($pending['submitted_date']); ?></td>
-                                    <td>
-                                        <a href="?evaluation_id=<?php echo (int)$pending['evaluation_id']; ?>" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-eye me-1"></i>Review
-                                        </a>
-                                    </td>
-                                </tr>
+            <?php else:
+                // Group pending reviews by employee_id
+                $grouped_pending = [];
+                foreach ($pending_reviews as $p) {
+                    $grouped_pending[$p['employee_id']][] = $p;
+                }
+                $capsule_idx = 0;
+            ?>
+                <div class="px-3 pt-3 pb-1">
+                <?php foreach ($grouped_pending as $emp_id => $entries):
+                    $first = $entries[0];
+                    $count = count($entries);
+                    $capsule_id = 'capsule_' . (int)$emp_id;
+                    $is_open = $count === 1; // auto-expand single entries
+                    $capsule_idx++;
+                ?>
+                    <div class="emp-capsule">
+                        <!-- Capsule Header (clickable toggle) -->
+                        <div class="emp-capsule-header <?php echo $is_open ? 'open' : ''; ?>"
+                             onclick="toggleCapsule(this, '<?php echo $capsule_id; ?>')"
+                             role="button" aria-expanded="<?php echo $is_open ? 'true' : 'false'; ?>">
+                            <div class="emp-info">
+                                <div class="emp-name"><?php echo e($first['last_name'] . ', ' . $first['first_name']); ?></div>
+                                <div class="emp-title"><?php echo e($first['job_title']); ?></div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <?php if ($count > 1): ?>
+                                    <span class="badge bg-warning text-dark" title="<?php echo $count; ?> evaluations pending"><?php echo $count; ?> entries</span>
+                                <?php else: ?>
+                                    <span class="badge bg-light text-secondary border">1 entry</span>
+                                <?php endif; ?>
+                                <i class="fas fa-chevron-down emp-capsule-chevron"></i>
+                            </div>
+                        </div>
+                        <!-- Capsule Body -->
+                        <div class="emp-capsule-body <?php echo $is_open ? 'show' : ''; ?>" id="<?php echo $capsule_id; ?>">
+                            <?php foreach ($entries as $pending): ?>
+                            <div class="sub-entry">
+                                <div class="sub-entry-template">
+                                    <i class="fas fa-file-alt me-1 text-muted"></i>
+                                    <?php echo e($pending['template_name'] ?? 'N/A'); ?>
+                                </div>
+                                <div class="sub-entry-period">
+                                    <i class="fas fa-calendar-alt me-1 text-muted"></i>
+                                    <?php echo formatDate($pending['evaluation_period_start']) . ' – ' . formatDate($pending['evaluation_period_end']); ?>
+                                </div>
+                                <div class="sub-entry-score">
+                                    <div class="fw-bold text-primary"><?php echo number_format((float)$pending['total_score'], 2); ?></div>
+                                    <span class="badge <?php echo getPerformanceLevelBadgeClass($pending['performance_level'] ?? ''); ?>" style="font-size:.7rem;"><?php echo e($pending['performance_level'] ?? '—'); ?></span>
+                                </div>
+                                <div class="sub-entry-action">
+                                    <a href="?evaluation_id=<?php echo (int)$pending['evaluation_id']; ?>" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye me-1"></i>Review
+                                    </a>
+                                </div>
+                            </div>
                             <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
                 </div>
             <?php endif; ?>
         </div>
     </div>
+
+        <!-- Endorsement History panel — hidden by default, toggled by gear icon -->
+        <div class="collapse" id="endorsementHistoryPanel">
+            <div class="border-top">
+                <div class="px-3 py-2 bg-light d-flex align-items-center justify-content-between">
+                    <span class="fw-semibold text-secondary" style="font-size:.85rem;">
+                        <i class="fas fa-history me-1"></i>Endorsement History
+                    </span>
+                    <span class="badge bg-secondary">
+                        <?php echo count($endorsement_history); ?> record<?php echo count($endorsement_history) !== 1 ? 's' : ''; ?>
+                    </span>
+                </div>
+                <?php if (empty($endorsement_history)): ?>
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p class="mb-0 small">No endorsement history yet.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle mobile-responsive-table">
+                            <thead class="table-light" style="font-size:.82rem;">
+                                <tr>
+                                    <th class="ps-3">Employee</th>
+                                    <th>Template</th>
+                                    <th>Period</th>
+                                    <th class="text-center">Final Score</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Endorsed On</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($endorsement_history as $hist): 
+                                    $status_classes = [
+                                        'Pending Dept Manager'     => 'bg-warning text-dark',
+                                        'Pending HR Consolidation' => 'bg-info text-dark',
+                                        'Pending Manager'          => 'bg-info text-dark',
+                                        'Approved'                 => 'bg-success',
+                                        'Returned'                 => 'bg-danger',
+                                    ];
+                                    $status_labels = [
+                                        'Pending Dept Manager'     => 'Pending Dept Mgr',
+                                        'Pending HR Consolidation' => 'Sent to HR',
+                                        'Pending Manager'          => 'Pending HR Mgr',
+                                        'Approved'                 => 'Approved',
+                                        'Returned'                 => 'Returned',
+                                    ];
+                                    $sc = $status_classes[$hist['status']] ?? 'bg-secondary';
+                                    $sl = $status_labels[$hist['status']] ?? $hist['status'];
+                                ?>
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="fw-semibold text-dark fs-6"><?php echo e($hist['last_name'] . ', ' . $hist['first_name']); ?></div>
+                                            <div class="small text-muted"><?php echo e($hist['job_title']); ?></div>
+                                        </td>
+                                        <td data-label="Template" class="text-dark fw-medium"><?php echo e($hist['template_name'] ?? 'N/A'); ?></td>
+                                        <td data-label="Period" class="small text-muted">
+                                            <?php echo formatDate($hist['evaluation_period_start']); ?> –<br>
+                                            <?php echo formatDate($hist['evaluation_period_end']); ?>
+                                        </td>
+                                        <td data-label="Final Score">
+                                            <div class="fw-bold text-primary fs-6"><?php echo number_format((float)$hist['total_score'], 2); ?></div>
+                                            <span class="badge <?php echo getPerformanceLevelBadgeClass($hist['performance_level'] ?? ''); ?>" style="font-size:.7rem;"><?php echo e($hist['performance_level'] ?? '—'); ?></span>
+                                        </td>
+                                        <td data-label="Status">
+                                            <span class="badge <?php echo $sc; ?>"><?php echo $sl; ?></span>
+                                        </td>
+                                        <td data-label="Endorsed On" class="small text-muted">
+                                            <?php echo $hist['dept_manager_endorsed_date'] ? formatDateTime($hist['dept_manager_endorsed_date']) : '—'; ?>
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="?evaluation_id=<?php echo (int)$hist['evaluation_id']; ?>" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-eye me-1"></i>View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Rotate gear icon when history panel is open
+    (function () {
+        const btn   = document.getElementById('historyGearBtn');
+        const panel = document.getElementById('endorsementHistoryPanel');
+        if (!btn || !panel) return;
+        const icon = btn.querySelector('.fa-cog');
+        panel.addEventListener('show.bs.collapse', function () {
+            icon.style.transition = 'transform .3s ease';
+            icon.style.transform  = 'rotate(90deg)';
+        });
+        panel.addEventListener('hide.bs.collapse', function () {
+            icon.style.transform = 'rotate(0deg)';
+        });
+    })();
+
+    // Toggle employee grouped capsules
+    function toggleCapsule(header, bodyId) {
+        const body = document.getElementById(bodyId);
+        if (!body) return;
+        const isShowing = body.classList.contains('show');
+        if (isShowing) {
+            body.classList.remove('show');
+            header.classList.remove('open');
+            header.setAttribute('aria-expanded', 'false');
+        } else {
+            body.classList.add('show');
+            header.classList.add('open');
+            header.setAttribute('aria-expanded', 'true');
+        }
+    }
+    </script>
 <?php else: ?>
     <!-- Progress Indicator for evaluation review workflow -->
     <?php
@@ -691,9 +1018,10 @@ require_once '../includes/header.php';
                                 <?php foreach ($criteria_kra as $criterion):
                                     $orig   = (float)$criterion['score_value'];
                                     $weight = (float)$criterion['weight'];
-                                    $weighted_orig = round(($weight / 100) * $orig, 2);
+                                    $current_val = $criterion['dept_manager_override_score'] !== null ? (float)$criterion['dept_manager_override_score'] : $orig;
+                                    $weighted_orig = round(($weight / 100) * $current_val, 2);
                                 ?>
-                                    <div class="rating-item kra-row"
+                                    <div class="rating-item kra-row <?php echo $criterion['dept_manager_override_score'] !== null ? 'score-changed' : ''; ?>"
                                          data-orig="<?php echo $orig; ?>"
                                          data-weight="<?php echo $weight; ?>"
                                          data-criterion="<?php echo (int)$criterion['criterion_id']; ?>">
@@ -722,11 +1050,12 @@ require_once '../includes/header.php';
                                                        name="kra_scores[<?php echo (int)$criterion['criterion_id']; ?>]"
                                                        id="kra_<?php echo (int)$criterion['criterion_id']; ?>"
                                                        min="0" max="4" step="0.01"
-                                                       value="<?php echo number_format($orig, 2); ?>"
+                                                       value="<?php echo number_format($current_val, 2); ?>"
+                                                       oninput="if(parseFloat(this.value) > 4) this.value = 4;"
                                                        <?php echo $disabled_attr; ?>
                                                        placeholder="0.00 – 4.00"
                                                        style="max-width: 90px; text-align: center;">
-                                                <div class="change-badge d-none" id="chg_kra_<?php echo (int)$criterion['criterion_id']; ?>">
+                                                <div class="change-badge <?php echo $criterion['dept_manager_override_score'] !== null ? '' : 'd-none'; ?>" id="chg_kra_<?php echo (int)$criterion['criterion_id']; ?>">
                                                     <i class="fas fa-pen"></i> Adjusted
                                                 </div>
                                             </div>
@@ -755,8 +1084,9 @@ require_once '../includes/header.php';
 
                                 <?php foreach ($criteria_behavior as $criterion):
                                     $orig = (float)$criterion['score_value'];
+                                    $current_val = $criterion['dept_manager_override_score'] !== null ? (float)$criterion['dept_manager_override_score'] : $orig;
                                 ?>
-                                    <div class="rating-item beh-row"
+                                    <div class="rating-item beh-row <?php echo $criterion['dept_manager_override_score'] !== null ? 'score-changed' : ''; ?>"
                                          data-orig="<?php echo $orig; ?>"
                                          data-criterion="<?php echo (int)$criterion['criterion_id']; ?>">
                                         <div class="rating-header">
@@ -779,11 +1109,12 @@ require_once '../includes/header.php';
                                                        name="beh_scores[<?php echo (int)$criterion['criterion_id']; ?>]"
                                                        id="beh_<?php echo (int)$criterion['criterion_id']; ?>"
                                                        min="0" max="4" step="0.01"
-                                                       value="<?php echo number_format($orig, 2); ?>"
+                                                       value="<?php echo number_format($current_val, 2); ?>"
+                                                       oninput="if(parseFloat(this.value) > 4) this.value = 4;"
                                                        <?php echo $disabled_attr; ?>
                                                        placeholder="0.00 – 4.00"
                                                        style="max-width: 90px; text-align: center;">
-                                                <div class="change-badge d-none" id="chg_beh_<?php echo (int)$criterion['criterion_id']; ?>">
+                                                <div class="change-badge <?php echo $criterion['dept_manager_override_score'] !== null ? '' : 'd-none'; ?>" id="chg_beh_<?php echo (int)$criterion['criterion_id']; ?>">
                                                     <i class="fas fa-pen"></i> Adjusted
                                                 </div>
                                             </div>
@@ -965,6 +1296,12 @@ require_once '../includes/header.php';
             const wCell  = row.querySelector('.weighted-cell');
 
             if (!input) return;
+            if (input.value !== '') {
+                const numVal = parseFloat(input.value);
+                if (!isNaN(numVal) && numVal > 4) {
+                    input.value = 4;
+                }
+            }
             const val = parseFloat(input.value) || 0;
             const weighted = val * weight;
             kraTotal += weighted;
@@ -986,6 +1323,12 @@ require_once '../includes/header.php';
             const badge = document.getElementById('chg_beh_' + cid);
 
             if (!input) return;
+            if (input.value !== '') {
+                const numVal = parseFloat(input.value);
+                if (!isNaN(numVal) && numVal > 4) {
+                    input.value = 4;
+                }
+            }
             const val = parseFloat(input.value) || 0;
             behSum += val;
             behCount++;

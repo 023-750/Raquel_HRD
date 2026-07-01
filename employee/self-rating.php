@@ -95,7 +95,7 @@ if (isset($_GET['view']) && is_numeric($_GET['view'])) {
     if ($view_eval) {
         $view_mode = true;
         $selected_template_id = (int) $view_eval['template_id'];
-        $score_rs = $conn->query("SELECT criterion_id, score_value, weighted_score, supervisor_override_score, manager_override_score FROM evaluation_scores WHERE evaluation_id = " . (int) $view_eval['evaluation_id']);
+        $score_rs = $conn->query("SELECT criterion_id, score_value, weighted_score, dept_manager_override_score, supervisor_override_score, manager_override_score FROM evaluation_scores WHERE evaluation_id = " . (int) $view_eval['evaluation_id']);
         while ($score = $score_rs->fetch_assoc()) {
             $view_scores[(int) $score['criterion_id']] = $score;
         }
@@ -756,6 +756,31 @@ $in_progress_q = $conn->query("
 $in_progress_evals = $in_progress_q ? $in_progress_q->fetch_all(MYSQLI_ASSOC) : [];
 $in_progress_count = count($in_progress_evals);
 
+// Approval history: evaluations confirmed by the logged-in user acting as a supervisor/approver
+$approvals_given = [];
+$is_supervisor_user = hasSupervisorPrivileges($conn, $employee_id);
+if ($is_supervisor_user && $user_id > 0) {
+    $approvals_stmt = $conn->prepare("
+        SELECT ev.evaluation_id, ev.status, ev.total_score, ev.performance_level,
+               ev.supervisor_altered_scores,
+               ev.evaluation_period_start, ev.evaluation_period_end,
+               ev.dept_supervisor_confirmed_date, ev.supervisor_confirmed_date,
+               emp.first_name, emp.last_name, emp.job_title, emp.employee_code,
+               et.template_name
+        FROM evaluations ev
+        JOIN employees emp ON ev.employee_id = emp.employee_id
+        LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
+        WHERE (ev.dept_supervisor_confirmed_by = ? OR ev.supervisor_confirmed_by = ?)
+        ORDER BY COALESCE(ev.dept_supervisor_confirmed_date, ev.supervisor_confirmed_date) DESC
+        LIMIT 50
+    ");
+    $approvals_stmt->bind_param("ii", $user_id, $user_id);
+    $approvals_stmt->execute();
+    $approvals_given = $approvals_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $approvals_stmt->close();
+}
+$approvals_given_count = count($approvals_given);
+
 require_once '../includes/header.php';
 ?>
 
@@ -1039,11 +1064,16 @@ require_once '../includes/header.php';
                                         <?php
                                         $score_data = $view_scores[(int) $criterion['criterion_id']] ?? null;
                                         $original_score = $score_data ? (float)$score_data['score_value'] : 0.00;
+                                        $dept_mgr_override = $score_data && $score_data['dept_manager_override_score'] !== null ? (float)$score_data['dept_manager_override_score'] : null;
                                         $supervisor_override = $score_data && $score_data['supervisor_override_score'] !== null ? (float)$score_data['supervisor_override_score'] : null;
                                         $manager_override = $score_data && $score_data['manager_override_score'] !== null ? (float)$score_data['manager_override_score'] : null;
                                         
                                         $effective_score = $original_score;
                                         $badge_html = '';
+                                        if ($dept_mgr_override !== null) {
+                                            $effective_score = $dept_mgr_override;
+                                            $badge_html = ' <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-tie me-1"></i>Adjusted by Dept Manager</span>';
+                                        }
                                         if ($supervisor_override !== null) {
                                             $effective_score = $supervisor_override;
                                             $badge_html = ' <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-shield me-1"></i>Adjusted by Supervisor</span>';
@@ -1091,11 +1121,16 @@ require_once '../includes/header.php';
                                         <?php
                                         $score_data = $view_scores[(int) $criterion['criterion_id']] ?? null;
                                         $original_score = $score_data ? (float)$score_data['score_value'] : 0.00;
+                                        $dept_mgr_override = $score_data && $score_data['dept_manager_override_score'] !== null ? (float)$score_data['dept_manager_override_score'] : null;
                                         $supervisor_override = $score_data && $score_data['supervisor_override_score'] !== null ? (float)$score_data['supervisor_override_score'] : null;
                                         $manager_override = $score_data && $score_data['manager_override_score'] !== null ? (float)$score_data['manager_override_score'] : null;
                                         
                                         $effective_score = $original_score;
                                         $badge_html = '';
+                                        if ($dept_mgr_override !== null) {
+                                            $effective_score = $dept_mgr_override;
+                                            $badge_html = ' <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-tie me-1"></i>Adjusted by Dept Manager</span>';
+                                        }
                                         if ($supervisor_override !== null) {
                                             $effective_score = $supervisor_override;
                                             $badge_html = ' <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-shield me-1"></i>Adjusted by Supervisor</span>';
@@ -1647,10 +1682,20 @@ require_once '../includes/header.php';
                         </button>
                     </li>
                     <li class="nav-item" role="presentation" style="flex: 1;">
-                        <button class="nav-link w-100 text-center py-3 fw-bold border-0" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-tab-pane" type="button" role="tab" aria-controls="history-tab-pane" aria-selected="false" style="border-radius: 0 var(--radius-lg) 0 0; background: transparent; color: inherit;">
-                            <i class="fas fa-history me-1"></i>Recent Evaluations
+                        <button class="nav-link w-100 text-center py-3 fw-bold border-0" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-tab-pane" type="button" role="tab" aria-controls="history-tab-pane" aria-selected="false" style="border-radius: 0; background: transparent; color: inherit;">
+                            <i class="fas fa-history me-1"></i>My Evaluations
                         </button>
                     </li>
+                    <?php if ($is_supervisor_user): ?>
+                    <li class="nav-item" role="presentation" style="flex: 1;">
+                        <button class="nav-link w-100 text-center py-3 fw-bold border-0 position-relative" id="approvals-tab" data-bs-toggle="tab" data-bs-target="#approvals-tab-pane" type="button" role="tab" aria-controls="approvals-tab-pane" aria-selected="false" style="border-radius: 0 var(--radius-lg) 0 0; background: transparent; color: inherit;">
+                            <i class="fas fa-check-circle me-1"></i>Approvals
+                            <?php if ($approvals_given_count > 0): ?>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success" style="font-size:0.6rem; margin-top:8px; margin-left:-18px;"><?php echo $approvals_given_count; ?></span>
+                            <?php endif; ?>
+                        </button>
+                    </li>
+                    <?php endif; ?>
                 </ul>
             </div>
             <div class="card-body tab-content" id="selfRatingRightTabsContent">
@@ -1753,6 +1798,81 @@ require_once '../includes/header.php';
                         </div>
                     <?php endif; ?>
                 </div>
+
+                <?php if ($is_supervisor_user): ?>
+                <div class="tab-pane fade" id="approvals-tab-pane" role="tabpanel" aria-labelledby="approvals-tab" tabindex="0">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-check-circle me-2"></i>Approvals Given</h5>
+                        <?php if ($approvals_given_count > 0): ?>
+                        <span class="badge bg-success rounded-pill"><?php echo $approvals_given_count; ?></span>
+                        <?php endif; ?>
+                    </div>
+                    <p class="text-muted small mb-3">Self-rating evaluations you have reviewed and confirmed as an immediate head.</p>
+                    <?php if (empty($approvals_given)): ?>
+                        <div class="empty-state py-4">
+                            <i class="fas fa-clipboard-check d-block"></i>
+                            <p class="mb-0">No approvals recorded yet.</p>
+                            <div class="small text-muted mt-1">Evaluations you confirm will appear here.</div>
+                        </div>
+                    <?php else: ?>
+                        <div class="d-grid gap-3">
+                            <?php foreach ($approvals_given as $appr):
+                                $confirmed_on = $appr['dept_supervisor_confirmed_date'] ?? $appr['supervisor_confirmed_date'] ?? null;
+                                $appr_status_classes = [
+                                    'Pending Dept Manager'     => 'bg-warning text-dark',
+                                    'Pending HR Consolidation' => 'bg-info text-dark',
+                                    'Pending Manager'          => 'bg-info text-dark',
+                                    'Approved'                 => 'bg-success',
+                                    'Returned'                 => 'bg-danger',
+                                ];
+                                $appr_sc = $appr_status_classes[$appr['status']] ?? 'bg-secondary';
+                                $appr_labels = [
+                                    'Pending Dept Manager'     => 'Sent to Dept Mgr',
+                                    'Pending HR Consolidation' => 'Sent to HR',
+                                    'Pending Manager'          => 'Pending HR Mgr',
+                                    'Approved'                 => 'Approved',
+                                    'Returned'                 => 'Returned',
+                                ];
+                                $appr_sl = $appr_labels[$appr['status']] ?? e($appr['status']);
+                            ?>
+                            <div class="border rounded-3 p-3" style="border-left: 3px solid var(--color-primary-light) !important;">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                                    <div>
+                                        <div class="fw-semibold small"><?php echo e($appr['last_name'] . ', ' . $appr['first_name']); ?></div>
+                                        <div class="text-muted" style="font-size:0.72rem;"><?php echo e($appr['job_title'] ?? '—'); ?></div>
+                                    </div>
+                                    <span class="badge <?php echo $appr_sc; ?> rounded-pill" style="font-size:0.65rem; white-space:nowrap;"><?php echo $appr_sl; ?></span>
+                                </div>
+                                <div class="small text-muted mb-1"><?php echo e($appr['template_name'] ?? '—'); ?></div>
+                                <?php if (!empty($appr['evaluation_period_start'])): ?>
+                                <div style="font-size:0.72rem;" class="text-muted mb-1">
+                                    <?php echo formatDate($appr['evaluation_period_start']); ?> – <?php echo formatDate($appr['evaluation_period_end']); ?>
+                                </div>
+                                <?php endif; ?>
+                                <div class="d-flex align-items-center justify-content-between mt-2">
+                                    <div style="font-size:0.75rem;">
+                                        Score: <strong class="text-primary"><?php echo number_format((float)($appr['total_score'] ?? 0), 2); ?></strong>
+                                        <?php if (!empty($appr['supervisor_altered_scores'])): ?>
+                                            <span class="badge bg-warning text-dark ms-1" style="font-size:0.6rem;" title="You adjusted the original scores"><i class="fas fa-pen me-1"></i>Altered</span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if ($confirmed_on): ?>
+                                    <div style="font-size:0.65rem;" class="text-muted text-end">
+                                        <i class="fas fa-calendar-check me-1"></i><?php echo formatDate($confirmed_on); ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="mt-2">
+                                    <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php?evaluation_id=<?php echo (int)$appr['evaluation_id']; ?>" class="btn btn-sm btn-outline-secondary rounded-pill w-100" style="font-size:0.72rem;">
+                                        <i class="fas fa-eye me-1"></i>View Confirmed Evaluation
+                                    </a>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>

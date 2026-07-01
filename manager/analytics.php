@@ -288,6 +288,126 @@ $level_meta = [
     'Meets Expectations'   => ['icon' => 'fa-check-circle',   'color' => '#ffc107', 'bg' => 'rgba(255,193,7,.12)'],
     'Needs Improvement'    => ['icon' => 'fa-exclamation-circle','color'=>'#dc3545', 'bg' => 'rgba(220,53,69,.12)'],
 ];
+
+/* ── [NEW] YoY Progression Data ────────────────────────────────────────── */
+// Fetch raw branch YoY data
+$yoy_branch_raw = [];
+$yoy_branch_q = $conn->query("
+    SELECT YEAR(ev.approved_date) as yr, b.branch_name as name, ROUND(AVG(ev.total_score), 2) as avg_score
+    FROM evaluations ev
+    INNER JOIN employees e ON ev.employee_id = e.employee_id
+    INNER JOIN branches b ON e.branch_id = b.branch_id
+    WHERE ev.status = 'Approved' AND ev.approved_date IS NOT NULL
+    GROUP BY YEAR(ev.approved_date), b.branch_id, b.branch_name
+    ORDER BY yr ASC, b.branch_name ASC
+");
+if ($yoy_branch_q) {
+    while ($r = $yoy_branch_q->fetch_assoc()) $yoy_branch_raw[] = $r;
+}
+
+// Fetch raw department YoY data
+$yoy_dept_raw = [];
+$yoy_dept_q = $conn->query("
+    SELECT YEAR(ev.approved_date) as yr, d.department_name as name, ROUND(AVG(ev.total_score), 2) as avg_score
+    FROM evaluations ev
+    INNER JOIN employees e ON ev.employee_id = e.employee_id
+    INNER JOIN departments d ON e.department_id = d.department_id
+    WHERE ev.status = 'Approved' AND ev.approved_date IS NOT NULL
+    GROUP BY YEAR(ev.approved_date), d.department_id, d.department_name
+    ORDER BY yr ASC, d.department_name ASC
+");
+if ($yoy_dept_q) {
+    while ($r = $yoy_dept_q->fetch_assoc()) $yoy_dept_raw[] = $r;
+}
+
+// Fetch raw employee (manpower) YoY data
+$yoy_emp_raw = [];
+$yoy_emp_q = $conn->query("
+    SELECT YEAR(ev.approved_date) as yr, CONCAT(e.first_name, ' ', e.last_name) as name, ROUND(AVG(ev.total_score), 2) as avg_score
+    FROM evaluations ev
+    INNER JOIN employees e ON ev.employee_id = e.employee_id
+    WHERE ev.status = 'Approved' AND ev.approved_date IS NOT NULL
+    GROUP BY YEAR(ev.approved_date), e.employee_id, name
+    ORDER BY yr ASC, name ASC
+");
+if ($yoy_emp_q) {
+    while ($r = $yoy_emp_q->fetch_assoc()) $yoy_emp_raw[] = $r;
+}
+
+// Extract all unique years present in any YoY data
+$yoy_years_set = [];
+foreach (array_merge($yoy_branch_raw, $yoy_dept_raw, $yoy_emp_raw) as $r) {
+    $yoy_years_set[(int)$r['yr']] = true;
+}
+$yoy_years = array_keys($yoy_years_set);
+sort($yoy_years);
+if (empty($yoy_years)) {
+    $yoy_years = [(int)date('Y')];
+}
+
+// Format function
+if (!function_exists('formatYoYData')) {
+    function formatYoYData(array $raw_data, array $all_years) {
+        $grouped = [];
+        foreach ($raw_data as $r) {
+            $name = $r['name'];
+            $yr = (int)$r['yr'];
+            $score = (float)$r['avg_score'];
+            if (!isset($grouped[$name])) {
+                $grouped[$name] = array_fill_keys($all_years, 0.0);
+            }
+            $grouped[$name][$yr] = $score;
+        }
+        
+        $result = [];
+        foreach ($grouped as $name => $year_scores) {
+            $scores_array = [];
+            foreach ($all_years as $yr) {
+                $scores_array[] = $year_scores[$yr];
+            }
+            
+            $growth = 0.0;
+            $prev_val = 0.0;
+            $curr_val = 0.0;
+            
+            $valid_scores = [];
+            foreach ($all_years as $yr) {
+                if ($year_scores[$yr] > 0) {
+                    $valid_scores[] = ['year' => $yr, 'score' => $year_scores[$yr]];
+                }
+            }
+            
+            $n = count($valid_scores);
+            if ($n >= 2) {
+                $prev_val = $valid_scores[$n-2]['score'];
+                $curr_val = $valid_scores[$n-1]['score'];
+                $growth = round((($curr_val - $prev_val) / $prev_val) * 100, 1);
+            } elseif ($n === 1) {
+                $curr_val = $valid_scores[0]['score'];
+            }
+            
+            $result[] = [
+                'name' => $name,
+                'scores' => $scores_array,
+                'current' => $curr_val,
+                'previous' => $prev_val,
+                'growth' => $growth,
+                'has_growth' => $n >= 2
+            ];
+        }
+        
+        // Sort by name alphabetically
+        usort($result, function($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+        
+        return $result;
+    }
+}
+
+$yoy_branch = formatYoYData($yoy_branch_raw, $yoy_years);
+$yoy_dept   = formatYoYData($yoy_dept_raw, $yoy_years);
+$yoy_emp    = formatYoYData($yoy_emp_raw, $yoy_years);
 ?>
 
 
@@ -445,6 +565,11 @@ $level_meta = [
     <li class="nav-item">
         <button class="nav-link" id="mobility-tab" data-bs-toggle="tab" data-bs-target="#mobility" type="button" role="tab">
             <i class="fas fa-route me-2"></i>Talent Mobility & Progress
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" id="yoy-tab" data-bs-toggle="tab" data-bs-target="#yoy" type="button" role="tab">
+            <i class="fas fa-arrow-trend-up me-2"></i>Year-Over-Year Progression
         </button>
     </li>
     <li class="nav-item">
@@ -718,6 +843,89 @@ $level_meta = [
                         </div>
                         <?php endif; ?>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════ TAB: YEAR-OVER-YEAR PROGRESSION ═══════════════════════ -->
+    <div class="tab-pane fade" id="yoy" role="tabpanel">
+        <!-- Selector Buttons -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="btn-group btn-group-sm bg-white p-1 rounded border" style="box-shadow: 0 2px 8px rgba(0,0,0,0.05);" role="group">
+                <button type="button" class="btn btn-sm btn-outline-primary active border-0 px-3 py-1.5 fw-bold" id="yoyModeBranch" onclick="setYoYMode('branch')">
+                    <i class="fas fa-building me-1.5"></i>Branches
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary border-0 px-3 py-1.5 fw-bold" id="yoyModeDept" onclick="setYoYMode('dept')">
+                    <i class="fas fa-sitemap me-1.5"></i>Departments
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-primary border-0 px-3 py-1.5 fw-bold" id="yoyModeEmp" onclick="setYoYMode('emp')">
+                    <i class="fas fa-users me-1.5"></i>Manpower (Employees)
+                </button>
+            </div>
+            <div style="font-size: .78rem; color: #666;" class="d-flex align-items-center gap-1">
+                <i class="fas fa-info-circle text-primary"></i> Select multiple items below to compare their historical performance.
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <!-- Sidebar Selection -->
+            <div class="col-lg-4">
+                <div class="chart-card h-100" style="min-height: 400px; display: flex; flex-direction: column;">
+                    <div class="cc-header">
+                        <h6><i class="fas fa-list-check me-2" style="color:#294306;"></i>Entities to Compare</h6>
+                    </div>
+                    <div class="p-3 border-bottom bg-light">
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                            <input type="search" class="form-control border-start-0 ps-0" id="yoySearchInput" placeholder="Type to search..." oninput="filterYoYItems()">
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button class="btn btn-xs btn-link text-decoration-none p-0 fw-semibold text-primary" style="font-size: 0.72rem;" onclick="selectAllYoY(true)">Select All</button>
+                            <button class="btn btn-xs btn-link text-decoration-none p-0 fw-semibold text-muted" style="font-size: 0.72rem;" onclick="selectAllYoY(false)">Clear All</button>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1 overflow-auto p-3" id="yoyItemsList" style="max-height: 310px;">
+                        <!-- Items rendered dynamically by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trend Line Chart -->
+            <div class="col-lg-8">
+                <div class="chart-card h-100">
+                    <div class="cc-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6><i class="fas fa-chart-line me-2" style="color:#BD9414;"></i>Performance Progression Trend</h6>
+                            <span style="font-size:.7rem;color:#aaa;">Yearly Performance Evolution (Rating Scale 1.0 - 4.0)</span>
+                        </div>
+                    </div>
+                    <div class="cc-body">
+                        <div class="chart-wrap" style="height: 350px;">
+                            <canvas id="yoyProgressionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparative Grid/Table -->
+        <div class="chart-card">
+            <div class="cc-header">
+                <h6><i class="fas fa-table-list me-2" style="color:#294306;"></i>Year-Over-Year Progression Matrix</h6>
+            </div>
+            <div class="cc-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;" id="yoyTable">
+                        <thead class="bg-light">
+                            <tr id="yoyTableHeader">
+                                <!-- Headers rendered by JS -->
+                            </tr>
+                        </thead>
+                        <tbody id="yoyTableBody">
+                            <!-- Rows rendered by JS -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -1142,9 +1350,232 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 }
             }
-        }
-    });
+        });
     <?php endif; ?>
+
+    /* ── [NEW] 8. Year-Over-Year Progression Interactive Tracker ── */
+    const yoyYears = <?php echo json_encode($yoy_years); ?>;
+    const yoyBranches = <?php echo json_encode($yoy_branch); ?>;
+    const yoyDepts = <?php echo json_encode($yoy_dept); ?>;
+    const yoyEmps = <?php echo json_encode($yoy_emp); ?>;
+    const yoyColorPalette = ['#294306','#BD9414','#D71920','#2E86AB','#3BB273',
+                             '#7B2D8B','#F18F01','#44BBA4','#E94F37','#386FA4',
+                             '#59A608','#9B2226','#0077B6','#F77F00','#5C4033'];
+                             
+    let currentYoYMode = 'branch';
+    let selectedYoYItems = new Set();
+    let yoyChart = null;
+
+    // Helper to get active list based on mode
+    function getActiveYoYList() {
+        if (currentYoYMode === 'branch') return yoyBranches;
+        if (currentYoYMode === 'dept') return yoyDepts;
+        return yoyEmps;
+    }
+
+    // Initialize/Render YoY components
+    window.setYoYMode = function(mode) {
+        currentYoYMode = mode;
+        
+        // Toggle active button style
+        ['branch', 'dept', 'emp'].forEach(m => {
+            const btn = document.getElementById('yoyMode' + m.charAt(0).toUpperCase() + m.slice(1));
+            if (btn) {
+                if (m === mode) {
+                    btn.classList.add('active', 'btn-primary');
+                    btn.classList.remove('btn-outline-primary');
+                } else {
+                    btn.classList.remove('active', 'btn-primary');
+                    btn.classList.add('btn-outline-primary');
+                }
+            }
+        });
+
+        // Reset search input
+        const searchInput = document.getElementById('yoySearchInput');
+        if (searchInput) searchInput.value = '';
+
+        // Reset selected set
+        selectedYoYItems.clear();
+        
+        // Select first 5 items by default to make chart active
+        const list = getActiveYoYList();
+        list.slice(0, 5).forEach(item => selectedYoYItems.add(item.name));
+
+        renderYoYSidebar();
+        updateYoYChartAndTable();
+    };
+
+    // Render items list checklist sidebar
+    function renderYoYSidebar() {
+        const container = document.getElementById('yoyItemsList');
+        if (!container) return;
+
+        const list = getActiveYoYList();
+        if (list.length === 0) {
+            container.innerHTML = `<div class="text-center text-muted py-4 small">No entities found.</div>`;
+            return;
+        }
+
+        container.innerHTML = list.map((item, idx) => {
+            const isChecked = selectedYoYItems.has(item.name) ? 'checked' : '';
+            return `
+                <div class="form-check yoy-item-row mb-2" data-name="${item.name.toLowerCase()}">
+                    <input class="form-check-input yoy-chk" type="checkbox" value="${item.name}" id="yoyChk_${idx}" ${isChecked} onchange="toggleYoYSelection(this)">
+                    <label class="form-check-label small fw-semibold text-dark text-truncate d-block" for="yoyChk_${idx}" title="${item.name}">
+                        ${item.name}
+                    </label>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Filter sidebar list as user types
+    window.filterYoYItems = function() {
+        const q = (document.getElementById('yoySearchInput')?.value || '').toLowerCase().trim();
+        document.querySelectorAll('#yoyItemsList .yoy-item-row').forEach(row => {
+            const name = row.dataset.name || '';
+            row.style.display = (!q || name.includes(q)) ? '' : 'none';
+        });
+    };
+
+    // Checkbox toggling
+    window.toggleYoYSelection = function(chk) {
+        if (chk.checked) {
+            selectedYoYItems.add(chk.value);
+        } else {
+            selectedYoYItems.delete(chk.value);
+        }
+        updateYoYChartAndTable();
+    };
+
+    // Select/Deselect All visible checkboxes
+    window.selectAllYoY = function(checked) {
+        document.querySelectorAll('#yoyItemsList .yoy-item-row').forEach(row => {
+            if (row.style.display !== 'none') {
+                const chk = row.querySelector('.yoy-chk');
+                if (chk) {
+                    chk.checked = checked;
+                    if (checked) selectedYoYItems.add(chk.value);
+                    else selectedYoYItems.delete(chk.value);
+                }
+            }
+        });
+        updateYoYChartAndTable();
+    };
+
+    // Redraw table and chart
+    function updateYoYChartAndTable() {
+        const activeList = getActiveYoYList();
+        const selectedData = activeList.filter(item => selectedYoYItems.has(item.name));
+
+        // 1. Build Table Headers and Rows
+        const headerContainer = document.getElementById('yoyTableHeader');
+        const bodyContainer = document.getElementById('yoyTableBody');
+
+        if (headerContainer && bodyContainer) {
+            if (selectedData.length === 0) {
+                headerContainer.innerHTML = '<th>Entity Name</th>';
+                bodyContainer.innerHTML = `<tr><td class="text-center text-muted py-5"><i class="fas fa-chart-line fa-2x mb-2 d-block opacity-25"></i>No items selected. Select entities in the sidebar to compare.</td></tr>`;
+            } else {
+                // Table Headers
+                let headersHTML = `<th class="ps-3" style="min-width: 180px;">Entity Name</th>`;
+                yoyYears.forEach(yr => {
+                    headersHTML += `<th class="text-center">${yr}</th>`;
+                });
+                headersHTML += `<th class="text-end pe-3" style="width: 140px;">YoY Change</th>`;
+                headerContainer.innerHTML = headersHTML;
+
+                // Table Rows
+                bodyContainer.innerHTML = selectedData.map(item => {
+                    let colsHTML = `<td class="ps-3 fw-bold text-dark">${item.name}</td>`;
+                    item.scores.forEach(s => {
+                        colsHTML += `<td class="text-center fw-semibold text-muted">${s > 0 ? s.toFixed(2) : '—'}</td>`;
+                    });
+                    
+                    let badgeHTML = '';
+                    if (item.has_growth) {
+                        const sign = item.growth > 0 ? '+' : '';
+                        const color = item.growth > 0 ? 'success' : (item.growth < 0 ? 'danger' : 'secondary');
+                        const icon = item.growth > 0 ? 'fa-arrow-up' : (item.growth < 0 ? 'fa-arrow-down' : 'fa-minus');
+                        badgeHTML = `<span class="badge bg-light text-${color} border border-${color} rounded-pill px-2.5 py-1 fw-bold"><i class="fas ${icon} me-1 small"></i>${sign}${item.growth.toFixed(1)}%</span>`;
+                    } else {
+                        badgeHTML = `<span class="text-muted text-xs">—</span>`;
+                    }
+                    colsHTML += `<td class="text-end pe-3">${badgeHTML}</td>`;
+                    return `<tr>${colsHTML}</tr>`;
+                }).join('');
+            }
+        }
+
+        // 2. Build Chart datasets
+        const datasets = selectedData.map((item, idx) => {
+            const color = yoyColorPalette[idx % yoyColorPalette.length];
+            return {
+                label: item.name,
+                data: item.scores.map(s => s > 0 ? s : null),
+                borderColor: color,
+                backgroundColor: 'transparent',
+                borderWidth: 2.5,
+                tension: 0.3,
+                spanGaps: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            };
+        });
+
+        const ctx = document.getElementById('yoyProgressionChart');
+        if (!ctx) return;
+
+        if (yoyChart) {
+            yoyChart.data.labels = yoyYears;
+            yoyChart.data.datasets = datasets;
+            yoyChart.update();
+        } else {
+            yoyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: yoyYears,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { display: false } },
+                        y: { 
+                            min: 1.0, max: 4.0, 
+                            ticks: { stepSize: 1.0, callback: value => value.toFixed(1) },
+                            grid: { color: gridColor }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true } },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const v = ctx.parsed.y;
+                                    return ` ${ctx.dataset.label}: ${v ? v.toFixed(2) : 'No data'}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // Init tab view triggers to load chart
+    const yoyTabBtn = document.getElementById('yoy-tab');
+    if (yoyTabBtn) {
+        yoyTabBtn.addEventListener('shown.bs.tab', function () {
+            if (!yoyChart) {
+                setYoYMode('branch');
+            } else {
+                yoyChart.resize();
+            }
+        });
+    }
 });
 </script>
 

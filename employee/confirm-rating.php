@@ -160,10 +160,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         // Combine scores manually to preserve criterion_id numeric keys (array_merge reindexes numeric keys)
         $all_scores = [];
         foreach ($kra_scores as $cid => $rating) {
-            $all_scores[(int)$cid] = (float)$rating;
+            $val = (float)$rating;
+            if ($val > 4.0) {
+                $val = 4.0;
+            }
+            $all_scores[(int)$cid] = $val;
         }
         foreach ($beh_scores as $cid => $rating) {
-            $all_scores[(int)$cid] = (float)$rating;
+            $val = (float)$rating;
+            if ($val > 4.0) {
+                $val = 4.0;
+            }
+            $all_scores[(int)$cid] = $val;
         }
 
         // Check if scores were altered
@@ -283,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
         
         if ($next_status === 'Approved') {
             $update->bind_param(
-                "siiisiddddsii",
+                "siiisdiddddsii",
                 $next_status,
                 $user_id,
                 $user_id,
@@ -300,7 +308,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && !$
             );
         } else {
             $update->bind_param(
-                "siiisidddsii",
+                "siiisdiddddi",
                 $next_status,
                 $user_id,
                 $user_id,
@@ -628,154 +636,369 @@ require_once '../includes/header.php';
         </div>
     </div>
 <?php elseif (!$evaluation): ?>
+    <style>
+    @media (max-width: 767px) {
+        /* Hide table headers */
+        .mobile-responsive-table thead {
+            display: none !important;
+        }
+        /* Make table and body block */
+        .mobile-responsive-table, 
+        .mobile-responsive-table tbody, 
+        .mobile-responsive-table tr {
+            display: block !important;
+            width: 100% !important;
+        }
+        /* Style each row as a card */
+        .mobile-responsive-table tr {
+            display: block !important;
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            padding: 16px !important;
+            margin-bottom: 16px !important;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03) !important;
+        }
+        /* Table cells stack vertically */
+        .mobile-responsive-table td {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 8px 0 !important;
+            border: none !important;
+            width: 100% !important;
+            border-bottom: 1px solid #f1f5f9 !important;
+            text-align: right !important;
+        }
+        /* Employee details at the top, full width */
+        .mobile-responsive-table td:first-child {
+            display: block !important;
+            text-align: left !important;
+            border-bottom: 1.5px solid #e2e8f0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 10px !important;
+            margin-bottom: 8px !important;
+        }
+        /* Action cell at the bottom */
+        .mobile-responsive-table td:last-child {
+            border-bottom: none !important;
+            padding-bottom: 0 !important;
+            margin-top: 8px !important;
+            justify-content: flex-end !important;
+        }
+        /* Add labels on mobile via data-label */
+        .mobile-responsive-table td[data-label]::before {
+            content: attr(data-label) !important;
+            font-weight: 700 !important;
+            color: #64748b !important;
+            font-size: 0.72rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            float: left;
+            text-align: left;
+        }
+    }
+    
+    /* ── Grouped Employee Capsules ─────────────────────────── */
+    .emp-capsule {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        background: #ffffff;
+    }
+    .emp-capsule-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        cursor: pointer;
+        background: #f8fafc;
+        transition: background .15s ease;
+        user-select: none;
+        border-bottom: 1px solid transparent;
+    }
+    .emp-capsule-header:hover {
+        background: #eef2ff;
+    }
+    .emp-capsule-header.open {
+        background: #eef2ff;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .emp-capsule-header .emp-info { flex: 1; min-width: 0; }
+    .emp-capsule-header .emp-name {
+        font-weight: 700;
+        font-size: .95rem;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .emp-capsule-header .emp-title {
+        font-size: .77rem;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .emp-capsule-chevron {
+        color: #94a3b8;
+        font-size: .85rem;
+        transition: transform .25s ease;
+        margin-left: 10px;
+        flex-shrink: 0;
+    }
+    .emp-capsule-header.open .emp-capsule-chevron {
+        transform: rotate(180deg);
+    }
+    .emp-capsule-body {
+        display: none;
+    }
+    .emp-capsule-body.show {
+        display: block;
+    }
+    .emp-capsule-body .sub-entry {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: .85rem;
+    }
+    .emp-capsule-body .sub-entry:last-child { border-bottom: none; }
+    .sub-entry-template { flex: 1; min-width: 120px; color: #334155; font-weight: 500; }
+    .sub-entry-period   { color: #64748b; font-size: .78rem; min-width: 110px; }
+    .sub-entry-score    { min-width: 80px; text-align: center; }
+    .sub-entry-action   { margin-left: auto; }
+
+    @media (max-width: 767px) {
+        .emp-capsule-body .sub-entry {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+        .sub-entry-action { margin-left: 0; width: 100%; }
+        .sub-entry-action a { width: 100%; text-align: center; }
+    }
+    </style>
+
     <!-- List of pending confirmations -->
     <div class="content-card fadeup-1">
         <div class="card-header d-flex align-items-center justify-content-between">
             <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Pending Confirmations</h5>
-            <?php if (!empty($pending_confirmations)): ?>
-                <span class="badge bg-warning text-dark"><?php echo count($pending_confirmations); ?> pending</span>
-            <?php endif; ?>
+            <div class="d-flex align-items-center gap-2">
+                <?php if (!empty($pending_confirmations)): ?>
+                    <span class="badge bg-warning text-dark"><?php echo count($pending_confirmations); ?> pending</span>
+                <?php endif; ?>
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#confirmationHistoryPanel"
+                        aria-expanded="false" aria-controls="confirmationHistoryPanel"
+                        title="View Confirmation History" id="historyGearBtn">
+                    <i class="fas fa-cog me-1"></i>
+                    <span class="d-none d-sm-inline">History</span>
+                    <?php if (!empty($confirmation_history)): ?>
+                        <span class="badge bg-secondary ms-1"><?php echo count($confirmation_history); ?></span>
+                    <?php endif; ?>
+                </button>
+            </div>
         </div>
         <div class="card-body p-0">
             <?php if (empty($pending_confirmations)): ?>
                 <div class="text-center py-5 text-muted">
                     <i class="fas fa-check-circle fa-3x mb-3"></i>
                     <p class="mb-0">No pending self-ratings to confirm.</p>
-                    <div class="small mt-1">All caught up! Check the history below for past confirmations.</div>
+                    <div class="small mt-1">All caught up! Click the <i class="fas fa-cog"></i> gear icon to view past confirmations.</div>
                 </div>
-            <?php else: ?>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="ps-3">Employee</th>
-                                <th>Template</th>
-                                <th>Period</th>
-                                <th class="text-center">Score</th>
-                                <th class="text-center">Submitted</th>
-                                <th class="text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($pending_confirmations as $pending): ?>
-                                <tr>
-                                    <td class="ps-3">
-                                        <div class="fw-semibold"><?php echo e($pending['last_name'] . ', ' . $pending['first_name']); ?></div>
-                                        <div class="small text-muted"><?php echo e($pending['job_title']); ?></div>
-                                    </td>
-                                    <td><?php echo e($pending['template_name'] ?? 'N/A'); ?></td>
-                                    <td class="small text-muted">
-                                        <?php echo formatDate($pending['evaluation_period_start']); ?> –<br>
-                                        <?php echo formatDate($pending['evaluation_period_end']); ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="fw-bold text-primary"><?php echo number_format((float)$pending['total_score'], 2); ?></div>
-                                        <span class="badge bg-light text-dark"><?php echo e($pending['performance_level'] ?? '—'); ?></span>
-                                    </td>
-                                    <td class="text-center small"><?php echo formatDateTime($pending['submitted_date']); ?></td>
-                                    <td class="text-center">
-                                        <a href="?evaluation_id=<?php echo (int)$pending['evaluation_id']; ?>" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-eye me-1"></i>Review
-                                        </a>
-                                    </td>
-                                </tr>
+            <?php else:
+                // Group pending confirmations by employee_id
+                $grouped_confirmations = [];
+                foreach ($pending_confirmations as $p) {
+                    $grouped_confirmations[$p['employee_id']][] = $p;
+                }
+            ?>
+                <div class="px-3 pt-3 pb-1">
+                <?php foreach ($grouped_confirmations as $emp_id => $entries):
+                    $first = $entries[0];
+                    $count = count($entries);
+                    $capsule_id = 'capsule_' . (int)$emp_id;
+                    $is_open = $count === 1; // auto-expand single entries
+                ?>
+                    <div class="emp-capsule">
+                        <!-- Capsule Header -->
+                        <div class="emp-capsule-header <?php echo $is_open ? 'open' : ''; ?>"
+                             onclick="toggleCapsule(this, '<?php echo $capsule_id; ?>')"
+                             role="button" aria-expanded="<?php echo $is_open ? 'true' : 'false'; ?>">
+                            <div class="emp-info">
+                                <div class="emp-name"><?php echo e($first['last_name'] . ', ' . $first['first_name']); ?></div>
+                                <div class="emp-title"><?php echo e($first['job_title']); ?></div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <?php if ($count > 1): ?>
+                                    <span class="badge bg-warning text-dark" title="<?php echo $count; ?> evaluations pending"><?php echo $count; ?> entries</span>
+                                <?php else: ?>
+                                    <span class="badge bg-light text-secondary border">1 entry</span>
+                                <?php endif; ?>
+                                <i class="fas fa-chevron-down emp-capsule-chevron"></i>
+                            </div>
+                        </div>
+                        <!-- Capsule Body -->
+                        <div class="emp-capsule-body <?php echo $is_open ? 'show' : ''; ?>" id="<?php echo $capsule_id; ?>">
+                            <?php foreach ($entries as $pending): ?>
+                            <div class="sub-entry">
+                                <div class="sub-entry-template">
+                                    <i class="fas fa-file-alt me-1 text-muted"></i>
+                                    <?php echo e($pending['template_name'] ?? 'N/A'); ?>
+                                </div>
+                                <div class="sub-entry-period">
+                                    <i class="fas fa-calendar-alt me-1 text-muted"></i>
+                                    <?php echo formatDate($pending['evaluation_period_start']) . ' – ' . formatDate($pending['evaluation_period_end']); ?>
+                                </div>
+                                <div class="sub-entry-score">
+                                    <div class="fw-bold text-primary"><?php echo number_format((float)$pending['total_score'], 2); ?></div>
+                                    <span class="badge <?php echo getPerformanceLevelBadgeClass($pending['performance_level'] ?? ''); ?>" style="font-size:.7rem;"><?php echo e($pending['performance_level'] ?? '—'); ?></span>
+                                </div>
+                                <div class="sub-entry-action">
+                                    <a href="?evaluation_id=<?php echo (int)$pending['evaluation_id']; ?>" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye me-1"></i>Review
+                                    </a>
+                                </div>
+                            </div>
                             <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+        </div>
+        <!-- Confirmation History panel — hidden by default, toggled by gear icon -->
+        <div class="collapse" id="confirmationHistoryPanel">
+            <div class="border-top">
+                <div class="px-3 py-2 bg-light d-flex align-items-center justify-content-between">
+                    <span class="fw-semibold text-secondary" style="font-size:.85rem;">
+                        <i class="fas fa-history me-1"></i>Confirmation History
+                    </span>
+                    <span class="badge bg-secondary">
+                        <?php echo count($confirmation_history); ?> record<?php echo count($confirmation_history) !== 1 ? 's' : ''; ?>
+                    </span>
+                </div>
+                <?php if (empty($confirmation_history)): ?>
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p class="mb-0 small">No confirmation history yet.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle mobile-responsive-table">
+                            <thead class="table-light" style="font-size:.82rem;">
+                                <tr>
+                                    <th class="ps-3">Employee</th>
+                                    <th>Template</th>
+                                    <th>Period</th>
+                                    <th class="text-center">Final Score</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Confirmed On</th>
+                                    <th class="text-center">Scores Altered?</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($confirmation_history as $hist):
+                                    $confirmed_date = $hist['dept_supervisor_confirmed_date'] ?? $hist['supervisor_confirmed_date'] ?? null;
+                                    $status_classes = [
+                                        'Pending Dept Manager'     => 'bg-warning text-dark',
+                                        'Pending HR Consolidation' => 'bg-info text-dark',
+                                        'Pending Manager'          => 'bg-info text-dark',
+                                        'Approved'                 => 'bg-success',
+                                        'Returned'                 => 'bg-danger',
+                                    ];
+                                    $status_labels = [
+                                        'Pending Dept Manager'     => 'Pending Dept Mgr',
+                                        'Pending HR Consolidation' => 'Sent to HR',
+                                        'Pending Manager'          => 'Pending HR Mgr',
+                                        'Approved'                 => 'Approved',
+                                        'Returned'                 => 'Returned',
+                                    ];
+                                    $sc = $status_classes[$hist['status']] ?? 'bg-secondary';
+                                    $sl = $status_labels[$hist['status']] ?? $hist['status'];
+                                ?>
+                                    <tr>
+                                        <td class="ps-3">
+                                            <div class="fw-semibold text-dark fs-6"><?php echo e($hist['last_name'] . ', ' . $hist['first_name']); ?></div>
+                                            <div class="small text-muted"><?php echo e($hist['job_title']); ?></div>
+                                        </td>
+                                        <td data-label="Template" class="text-dark fw-medium"><?php echo e($hist['template_name'] ?? 'N/A'); ?></td>
+                                        <td data-label="Period" class="small text-muted">
+                                            <?php echo formatDate($hist['evaluation_period_start']); ?> –<br>
+                                            <?php echo formatDate($hist['evaluation_period_end']); ?>
+                                        </td>
+                                        <td data-label="Final Score">
+                                            <div class="fw-bold text-primary fs-6"><?php echo number_format((float)$hist['total_score'], 2); ?></div>
+                                            <span class="badge <?php echo getPerformanceLevelBadgeClass($hist['performance_level'] ?? ''); ?>" style="font-size:.7rem;"><?php echo e($hist['performance_level'] ?? '—'); ?></span>
+                                        </td>
+                                        <td data-label="Status">
+                                            <span class="badge <?php echo $sc; ?>"><?php echo $sl; ?></span>
+                                        </td>
+                                        <td data-label="Confirmed On" class="small text-muted">
+                                            <?php echo $confirmed_date ? formatDateTime($confirmed_date) : '—'; ?>
+                                        </td>
+                                        <td data-label="Scores Altered?">
+                                            <?php if (!empty($hist['supervisor_altered_scores'])): ?>
+                                                <span class="badge bg-warning text-dark" title="You adjusted the employee's original scores">
+                                                    <i class="fas fa-pen me-1"></i>Yes
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-light text-secondary">No</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="?evaluation_id=<?php echo (int)$hist['evaluation_id']; ?>" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-eye me-1"></i>View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 
-    <!-- Confirmation History -->
-    <div class="content-card fadeup-2 mt-4">
-        <div class="card-header d-flex align-items-center justify-content-between">
-            <h5 class="mb-0"><i class="fas fa-history me-2"></i>Confirmation History</h5>
-            <span class="badge bg-secondary"><?php echo count($confirmation_history); ?> record<?php echo count($confirmation_history) !== 1 ? 's' : ''; ?></span>
-        </div>
-        <div class="card-body p-0">
-            <?php if (empty($confirmation_history)): ?>
-                <div class="text-center py-5 text-muted">
-                    <i class="fas fa-inbox fa-3x mb-3"></i>
-                    <p class="mb-0">No confirmation history yet.</p>
-                </div>
-            <?php else: ?>
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0 align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="ps-3">Employee</th>
-                                <th>Template</th>
-                                <th>Period</th>
-                                <th class="text-center">Final Score</th>
-                                <th class="text-center">Status</th>
-                                <th class="text-center">Confirmed On</th>
-                                <th class="text-center">Scores Altered?</th>
-                                <th class="text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($confirmation_history as $hist): 
-                                $confirmed_date = $hist['dept_supervisor_confirmed_date'] ?? $hist['supervisor_confirmed_date'] ?? null;
-                                $status_classes = [
-                                    'Pending Dept Manager'     => 'bg-warning text-dark',
-                                    'Pending HR Consolidation' => 'bg-info text-dark',
-                                    'Pending Manager'          => 'bg-info text-dark',
-                                    'Approved'                 => 'bg-success',
-                                    'Returned'                 => 'bg-danger',
-                                ];
-                                $status_labels = [
-                                    'Pending Dept Manager'     => 'Pending Dept Mgr',
-                                    'Pending HR Consolidation' => 'Sent to HR',
-                                    'Pending Manager'          => 'Pending HR Mgr',
-                                    'Approved'                 => 'Approved',
-                                    'Returned'                 => 'Returned',
-                                ];
-                                $sc = $status_classes[$hist['status']] ?? 'bg-secondary';
-                                $sl = $status_labels[$hist['status']] ?? $hist['status'];
-                            ?>
-                                <tr>
-                                    <td class="ps-3">
-                                        <div class="fw-semibold"><?php echo e($hist['last_name'] . ', ' . $hist['first_name']); ?></div>
-                                        <div class="small text-muted"><?php echo e($hist['job_title']); ?></div>
-                                    </td>
-                                    <td><?php echo e($hist['template_name'] ?? 'N/A'); ?></td>
-                                    <td class="small text-muted">
-                                        <?php echo formatDate($hist['evaluation_period_start']); ?> –<br>
-                                        <?php echo formatDate($hist['evaluation_period_end']); ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="fw-bold text-primary fs-6"><?php echo number_format((float)$hist['total_score'], 2); ?></div>
-                                        <div class="small text-muted"><?php echo e($hist['performance_level'] ?? '—'); ?></div>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge <?php echo $sc; ?>"><?php echo $sl; ?></span>
-                                    </td>
-                                    <td class="text-center small">
-                                        <?php echo $confirmed_date ? formatDateTime($confirmed_date) : '—'; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php if (!empty($hist['supervisor_altered_scores'])): ?>
-                                            <span class="badge bg-warning text-dark" title="You adjusted the employee's original scores">
-                                                <i class="fas fa-pen me-1"></i>Yes
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="badge bg-light text-secondary">No</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <a href="?evaluation_id=<?php echo (int)$hist['evaluation_id']; ?>" class="btn btn-sm btn-outline-secondary">
-                                            <i class="fas fa-eye me-1"></i>View
-                                        </a>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
+    <script>
+    // Rotate gear icon when history panel is open
+    (function () {
+        const btn   = document.getElementById('historyGearBtn');
+        const panel = document.getElementById('confirmationHistoryPanel');
+        if (!btn || !panel) return;
+        const icon = btn.querySelector('.fa-cog');
+        panel.addEventListener('show.bs.collapse', function () {
+            icon.style.transition = 'transform .3s ease';
+            icon.style.transform  = 'rotate(90deg)';
+        });
+        panel.addEventListener('hide.bs.collapse', function () {
+            icon.style.transform = 'rotate(0deg)';
+        });
+    })();
+
+    // Toggle employee grouped capsules
+    function toggleCapsule(header, bodyId) {
+        const body = document.getElementById(bodyId);
+        if (!body) return;
+        const isShowing = body.classList.contains('show');
+        if (isShowing) {
+            body.classList.remove('show');
+            header.classList.remove('open');
+            header.setAttribute('aria-expanded', 'false');
+        } else {
+            body.classList.add('show');
+            header.classList.add('open');
+            header.setAttribute('aria-expanded', 'true');
+        }
+    }
+    </script>
 <?php else: ?>
     <!-- Review and Confirm Form -->
 
@@ -1096,7 +1319,16 @@ require_once '../includes/header.php';
                                 <input type="text" class="form-control" 
                                        value="<?php echo formatDate($evaluation['evaluation_period_start']) . ' - ' . formatDate($evaluation['evaluation_period_end']); ?>" readonly>
                             </div>
+                            <div class="col-12">
+                                <label class="form-label">
+                                    <i class="fas fa-file-alt me-1 text-muted"></i>Template
+                                </label>
+                                <input type="text" class="form-control fw-semibold"
+                                       value="<?php echo e($evaluation['template_name'] ?? 'N/A'); ?>" readonly
+                                       style="background: #f8f9fa; color: #495057; border-color: #dee2e6;">
+                            </div>
                         </div>
+
 
                         <!-- Self Comments -->
                         <?php if (!empty($evaluation['staff_comments'])): ?>
@@ -1150,6 +1382,7 @@ require_once '../includes/header.php';
                                                        min="0" max="4" step="0.01"
                                                        value="<?php echo number_format($orig, 2); ?>"
                                                        placeholder="0.00 – 4.00"
+                                                       oninput="if(parseFloat(this.value) > 4) this.value = 4;"
                                                        <?php echo $disabled_attr; ?>
                                                        style="max-width: 90px; text-align: center;">
                                                 <div class="change-badge d-none" id="chg_kra_<?php echo (int)$criterion['criterion_id']; ?>">
@@ -1207,6 +1440,7 @@ require_once '../includes/header.php';
                                                        min="0" max="4" step="0.01"
                                                        value="<?php echo number_format($orig, 2); ?>"
                                                        placeholder="0.00 – 4.00"
+                                                       oninput="if(parseFloat(this.value) > 4) this.value = 4;"
                                                        <?php echo $disabled_attr; ?>
                                                        style="max-width: 90px; text-align: center;">
                                                 <div class="change-badge d-none" id="chg_beh_<?php echo (int)$criterion['criterion_id']; ?>">
@@ -1419,6 +1653,12 @@ require_once '../includes/header.php';
             const wCell  = row.querySelector('.weighted-cell');
 
             if (!input) return;
+            if (input.value !== '') {
+                const numVal = parseFloat(input.value);
+                if (!isNaN(numVal) && numVal > 4) {
+                    input.value = 4;
+                }
+            }
             const val = parseFloat(input.value) || 0;
             const weighted = val * weight;
             kraTotal += weighted;
@@ -1440,6 +1680,12 @@ require_once '../includes/header.php';
             const badge = document.getElementById('chg_beh_' + cid);
 
             if (!input) return;
+            if (input.value !== '') {
+                const numVal = parseFloat(input.value);
+                if (!isNaN(numVal) && numVal > 4) {
+                    input.value = 4;
+                }
+            }
             const val = parseFloat(input.value) || 0;
             behSum += val;
             behCount++;

@@ -172,32 +172,199 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 require_once '../includes/header.php';
 
-// Fetch counts for summary
+// Fetch options for dropdown filters
+$branch_options = [];
+$res = $conn->query("SELECT DISTINCT b.branch_id, b.branch_name
+     FROM evaluations ev
+     INNER JOIN employees e ON ev.employee_id = e.employee_id
+     INNER JOIN branches b ON e.branch_id = b.branch_id
+     WHERE ev.status = 'Pending Manager' AND e.is_active = 1
+     ORDER BY b.branch_name");
+while ($r = $res->fetch_assoc()) { $branch_options[] = $r; }
+
+$department_options = [];
+$res = $conn->query("SELECT DISTINCT d.department_id, d.department_name
+     FROM evaluations ev
+     INNER JOIN employees e ON ev.employee_id = e.employee_id
+     INNER JOIN departments d ON e.department_id = d.department_id
+     WHERE ev.status = 'Pending Manager' AND e.is_active = 1 AND d.is_active = 1
+     ORDER BY d.department_name");
+while ($r = $res->fetch_assoc()) { $department_options[] = $r; }
+
+$template_options = [];
+$res = $conn->query("SELECT DISTINCT et.template_id, et.template_name
+     FROM evaluations ev
+     INNER JOIN employees e ON ev.employee_id = e.employee_id
+     INNER JOIN evaluation_templates et ON ev.template_id = et.template_id
+     WHERE ev.status = 'Pending Manager' AND e.is_active = 1
+     ORDER BY et.template_name");
+while ($r = $res->fetch_assoc()) { $template_options[] = $r; }
+
+$staff_options = [];
+$res = $conn->query("SELECT DISTINCT u.user_id, u.full_name
+     FROM evaluations ev
+     INNER JOIN employees e ON ev.employee_id = e.employee_id
+     INNER JOIN users u ON ev.submitted_by = u.user_id
+     WHERE ev.status = 'Pending Manager' AND e.is_active = 1
+     ORDER BY u.full_name");
+while ($r = $res->fetch_assoc()) { $staff_options[] = $r; }
+
+// Filter parameters mapping
+$allowed_eval_types = ['Initial', 'Final', 'Quarterly', 'Annual'];
+$attention_filters = [
+    'low_score' => 'Low Score',
+    'overdue' => 'Overdue 7+ Days',
+    'missing_score' => 'No Score',
+];
+
+$filter_search = trim($_GET['q'] ?? '');
+if (strlen($filter_search) > 80) {
+    $filter_search = substr($filter_search, 0, 80);
+}
+$filter_department = isset($_GET['department']) && $_GET['department'] !== '' ? max(0, (int) $_GET['department']) : 0;
+$filter_branch = isset($_GET['branch']) && $_GET['branch'] !== '' ? max(0, (int) $_GET['branch']) : 0;
+$filter_staff = isset($_GET['submitted_by']) && $_GET['submitted_by'] !== '' ? max(0, (int) $_GET['submitted_by']) : 0;
+$filter_template = isset($_GET['template']) && $_GET['template'] !== '' ? max(0, (int) $_GET['template']) : 0;
+$filter_type = in_array($_GET['evaluation_type'] ?? '', $allowed_eval_types, true) ? $_GET['evaluation_type'] : '';
+$filter_attention = array_key_exists($_GET['attention'] ?? '', $attention_filters) ? $_GET['attention'] : '';
+$date_from = trim($_GET['date_from'] ?? '');
+$date_to = trim($_GET['date_to'] ?? '');
+$score_min = (isset($_GET['score_min']) && $_GET['score_min'] !== '') ? max(0, min(4, (float)$_GET['score_min'])) : null;
+$score_max = (isset($_GET['score_max']) && $_GET['score_max'] !== '') ? max(0, min(4, (float)$_GET['score_max'])) : null;
+
+// Construct SQL filters
+$pendingWhere = "WHERE ev.status = 'Pending Manager' AND e.is_active = 1";
+$pendingTypes = "";
+$pendingParams = [];
+
+if ($filter_branch > 0) {
+    $pendingWhere .= " AND e.branch_id = ?";
+    $pendingTypes .= "i";
+    $pendingParams[] = $filter_branch;
+}
+if ($filter_department > 0) {
+    $pendingWhere .= " AND e.department_id = ?";
+    $pendingTypes .= "i";
+    $pendingParams[] = $filter_department;
+}
+if ($filter_staff > 0) {
+    $pendingWhere .= " AND ev.submitted_by = ?";
+    $pendingTypes .= "i";
+    $pendingParams[] = $filter_staff;
+}
+if ($filter_template > 0) {
+    $pendingWhere .= " AND ev.template_id = ?";
+    $pendingTypes .= "i";
+    $pendingParams[] = $filter_template;
+}
+if ($filter_type !== '') {
+    $pendingWhere .= " AND ev.evaluation_type = ?";
+    $pendingTypes .= "s";
+    $pendingParams[] = $filter_type;
+}
+if ($date_from !== '') {
+    $pendingWhere .= " AND ev.submitted_date >= ?";
+    $pendingTypes .= "s";
+    $pendingParams[] = $date_from;
+}
+if ($date_to !== '') {
+    $pendingWhere .= " AND ev.submitted_date <= ?";
+    $pendingTypes .= "s";
+    $pendingParams[] = $date_to . ' 23:59:59';
+}
+if ($score_min !== null) {
+    $pendingWhere .= " AND ev.total_score >= ?";
+    $pendingTypes .= "d";
+    $pendingParams[] = $score_min;
+}
+if ($score_max !== null) {
+    $pendingWhere .= " AND ev.total_score <= ?";
+    $pendingTypes .= "d";
+    $pendingParams[] = $score_max;
+}
+if ($filter_attention === 'low_score') {
+    $pendingWhere .= " AND ((ev.total_score IS NOT NULL AND ev.total_score < 2) OR ev.performance_level = 'Needs Improvement')";
+} elseif ($filter_attention === 'overdue') {
+    $pendingWhere .= " AND COALESCE(DATEDIFF(CURRENT_DATE(), DATE(ev.submitted_date)), 0) >= 7";
+} elseif ($filter_attention === 'missing_score') {
+    $pendingWhere .= " AND ev.total_score IS NULL";
+}
+
+if ($filter_search !== '') {
+    $like = '%' . $filter_search . '%';
+    $pendingWhere .= " AND (
+        CONCAT(e.first_name, ' ', e.last_name) LIKE ?
+        OR e.employee_code LIKE ?
+        OR e.job_title LIKE ?
+        OR et.template_name LIKE ?
+    )";
+    $pendingTypes .= "ssss";
+    array_push($pendingParams, $like, $like, $like, $like);
+}
+
+// Fetch counts for summary stats
+$branch_pending_count_res = $conn->query("SELECT COUNT(*) as c FROM evaluations ev INNER JOIN employees e ON ev.employee_id = e.employee_id WHERE ev.status = 'Pending Manager' AND e.is_active = 1");
+$branch_pending_count = $branch_pending_count_res ? (int)$branch_pending_count_res->fetch_assoc()['c'] : 0;
+
+$overdue_count_res = $conn->query("SELECT COUNT(*) as c FROM evaluations ev INNER JOIN employees e ON ev.employee_id = e.employee_id WHERE ev.status = 'Pending Manager' AND e.is_active = 1 AND COALESCE(DATEDIFF(CURRENT_DATE(), DATE(ev.submitted_date)), 0) >= 7");
+$overdue_count = $overdue_count_res ? (int)$overdue_count_res->fetch_assoc()['c'] : 0;
+
+$low_score_count_res = $conn->query("SELECT COUNT(*) as c FROM evaluations ev INNER JOIN employees e ON ev.employee_id = e.employee_id WHERE ev.status = 'Pending Manager' AND e.is_active = 1 AND ((ev.total_score IS NOT NULL AND ev.total_score < 2) OR ev.performance_level = 'Needs Improvement')");
+$low_score_count = $low_score_count_res ? (int)$low_score_count_res->fetch_assoc()['c'] : 0;
+
 $finalized_count_q = $conn->prepare("SELECT COUNT(*) as cnt FROM evaluations WHERE approved_by = ? AND status IN ('Approved', 'Rejected')");
 $finalized_count_q->bind_param("i", $_SESSION['user_id']);
 $finalized_count_q->execute();
 $finalized_count = $finalized_count_q->get_result()->fetch_assoc()['cnt'];
 $finalized_count_q->close();
 
-// Fetch pending evaluations
-$pending = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.profile_picture,
-    u.full_name as submitted_by_name, et.template_name, et.kra_weight, et.behavior_weight
+// Fetch evaluations main query
+$sql = "SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.profile_picture,
+    u.full_name as submitted_by_name, et.template_name, et.kra_weight, et.behavior_weight,
+    COALESCE(DATEDIFF(CURRENT_DATE(), DATE(ev.submitted_date)), 0) AS days_pending
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN users u ON ev.submitted_by = u.user_id
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
-    WHERE ev.status = 'Pending Manager'
-    ORDER BY ev.submitted_date DESC");
+    $pendingWhere
+    ORDER BY ev.submitted_date DESC";
+
+if ($pendingTypes !== '') {
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($pendingTypes, ...$pendingParams);
+    $stmt->execute();
+    $pending = $stmt->get_result();
+    $stmt->close();
+} else {
+    $pending = $conn->query($sql);
+}
 
 $pending_count = $pending->num_rows;
-
-// Prepare results in array
 $all_pending = [];
 while ($row = $pending->fetch_assoc()) {
     $all_pending[] = $row;
 }
 
-$total_pending_all = $pending_count;
+$active_filter_count = 0;
+$filter_params = [
+    'q' => $filter_search,
+    'branch' => $filter_branch ?: '',
+    'department' => $filter_department ?: '',
+    'submitted_by' => $filter_staff ?: '',
+    'template' => $filter_template ?: '',
+    'evaluation_type' => $filter_type,
+    'attention' => $filter_attention,
+    'date_from' => $date_from,
+    'date_to' => $date_to,
+    'score_min' => $score_min,
+    'score_max' => $score_max,
+];
+foreach ($filter_params as $value) {
+    if ($value !== '' && $value !== null) {
+        $active_filter_count++;
+    }
+}
+$filter_query = http_build_query(array_filter($filter_params));
 ?>
 
 <div class="page-hero fadeup">
@@ -206,36 +373,72 @@ $total_pending_all = $pending_count;
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Approvals</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-check-double me-2" style="color:#BD9414;"></i>Pending Approvals</h4>
         </div>
-        <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
-            <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+        <div class="d-flex flex-column align-items-end gap-2">
+            <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+                <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+            </div>
+            <!-- Quick Actions -->
+            <div class="d-flex gap-2 flex-wrap justify-content-end">
+                <a href="evaluation-history.php" class="btn btn-sm px-3 fw-semibold" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.15);border-radius:20px;font-size:.78rem;">
+                    <i class="fas fa-history me-1"></i>View History
+                </a>
+            </div>
         </div>
     </div>
 
     <div class="row g-3" id="managerApprovalSummary">
+        <!-- Pending Actions -->
         <div class="col-6 col-md-3">
-            <div class="stat-card">
+            <a href="pending-approvals.php" class="stat-card text-decoration-none d-block">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="stat-value"><?php echo $total_pending_all; ?></div>
+                        <div class="stat-value"><?php echo $branch_pending_count; ?></div>
                         <div class="stat-label">Pending Actions</div>
                     </div>
-                    <i class="fas fa-hourglass-half stat-icon text-white-50"></i>
+                    <i class="fas fa-hourglass-half stat-icon" style="color:#ffc107;"></i>
                 </div>
-            </div>
+                <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
+                    <i class="fas fa-filter me-1"></i><?php echo $pending_count; ?> filtered in view
+                </div>
+            </a>
         </div>
+        <!-- Overdue -->
         <div class="col-6 col-md-3">
-            <div class="stat-card">
+            <a href="pending-approvals.php?attention=overdue" class="stat-card text-decoration-none d-block">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="stat-value"><?php echo $pending_count; ?></div>
-                        <div class="stat-label">Evaluations</div>
+                        <div class="stat-value" style="<?php echo $overdue_count > 0 ? 'color:#ff6b6b;' : ''; ?>"><?php echo $overdue_count; ?></div>
+                        <div class="stat-label">Overdue (7+ Days)</div>
                     </div>
-                    <i class="fas fa-file-signature stat-icon" style="color:#BD9414;"></i>
+                    <i class="fas fa-hourglass-end stat-icon" style="color:#dc3545;"></i>
                 </div>
-            </div>
+                <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
+                    <?php if ($overdue_count > 0): ?>
+                        <i class="fas fa-exclamation-circle me-1"></i>Needs prompt attention
+                    <?php else: ?>
+                        <i class="fas fa-check me-1"></i>No overdue items
+                    <?php endif; ?>
+                </div>
+            </a>
         </div>
+        <!-- Low Score -->
         <div class="col-6 col-md-3">
-            <div class="stat-card">
+            <a href="pending-approvals.php?attention=low_score" class="stat-card text-decoration-none d-block">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-value" style="<?php echo $low_score_count > 0 ? 'color:#ff6b6b;' : ''; ?>"><?php echo $low_score_count; ?></div>
+                        <div class="stat-label">Low Score (&lt; 2.0)</div>
+                    </div>
+                    <i class="fas fa-arrow-trend-down stat-icon" style="color:#fd7e14;"></i>
+                </div>
+                <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
+                    <i class="fas fa-triangle-exclamation me-1"></i>Requires audit/override check
+                </div>
+            </a>
+        </div>
+        <!-- Finalized -->
+        <div class="col-6 col-md-3">
+            <a href="evaluation-history.php" class="stat-card text-decoration-none d-block">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-value"><?php echo $finalized_count; ?></div>
@@ -243,9 +446,163 @@ $total_pending_all = $pending_count;
                     </div>
                     <i class="fas fa-check-circle stat-icon" style="color:#28a745;"></i>
                 </div>
-            </div>
+                <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
+                    <i class="fas fa-eye me-1"></i>Click to view history
+                </div>
+            </a>
         </div>
     </div>
+</div>
+
+<!-- Modern Filter System -->
+<div class="pending-filter-card fadeup fadeup-1" style="background:#fff; border:1px solid #eef2e8; border-radius:14px; box-shadow:0 8px 22px rgba(12,32,8,0.06); margin-bottom:18px; padding:16px;">
+    <form method="GET" action="" class="w-100">
+        <!-- Top Row: Search, Quick Filter Toggle, and Advanced button -->
+        <div class="row g-2 align-items-center mb-3">
+            <div class="col-md-6 col-lg-7">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+                    <input type="search" class="form-control border-start-0 ps-0" name="q" value="<?php echo e($filter_search); ?>" placeholder="Search employee name, code, position, template...">
+                </div>
+            </div>
+            <div class="col-md-3 col-lg-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-bell"></i></span>
+                    <select class="form-select border-start-0 ps-0" name="attention">
+                        <option value="">Status/Alerts: All</option>
+                        <option value="low_score" <?php echo $filter_attention === 'low_score' ? 'selected' : ''; ?>>Low Score (&lt; 2.0)</option>
+                        <option value="overdue" <?php echo $filter_attention === 'overdue' ? 'selected' : ''; ?>>Overdue (7+ Days)</option>
+                        <option value="missing_score" <?php echo $filter_attention === 'missing_score' ? 'selected' : ''; ?>>No Score</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3 col-lg-2 d-grid">
+                <?php 
+                $adv_filter_count = 0;
+                if ($filter_branch > 0) $adv_filter_count++;
+                if ($filter_department > 0) $adv_filter_count++;
+                if ($filter_staff > 0) $adv_filter_count++;
+                if ($filter_template > 0) $adv_filter_count++;
+                if ($filter_type !== '') $adv_filter_count++;
+                if ($date_from !== '') $adv_filter_count++;
+                if ($date_to !== '') $adv_filter_count++;
+                if ($score_min !== null) $adv_filter_count++;
+                if ($score_max !== null) $adv_filter_count++;
+                ?>
+                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFiltersCollapse" aria-expanded="<?php echo ($adv_filter_count > 0) ? 'true' : 'false'; ?>" aria-controls="advancedFiltersCollapse">
+                    <i class="fas fa-sliders me-1"></i> Advanced
+                    <?php if ($adv_filter_count > 0): ?>
+                        <span class="badge bg-primary text-white ms-1"><?php echo $adv_filter_count; ?></span>
+                    <?php endif; ?>
+                </button>
+            </div>
+        </div>
+
+        <!-- Collapsible Advanced Filters Drawer -->
+        <div class="collapse <?php echo ($adv_filter_count > 0) ? 'show' : ''; ?>" id="advancedFiltersCollapse">
+            <div class="card card-body bg-light border-0 p-3 mb-3 rounded-3">
+                <div class="row g-3">
+                    <!-- Branch -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Branch</label>
+                        <select class="form-select form-select-sm" name="branch">
+                            <option value="">All Branches</option>
+                            <?php foreach ($branch_options as $branch): ?>
+                                <option value="<?php echo (int) $branch['branch_id']; ?>" <?php echo $filter_branch === (int) $branch['branch_id'] ? 'selected' : ''; ?>>
+                                    <?php echo e($branch['branch_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Department -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Department</label>
+                        <select class="form-select form-select-sm" name="department">
+                            <option value="">All Departments</option>
+                            <?php foreach ($department_options as $dept): ?>
+                                <option value="<?php echo (int) $dept['department_id']; ?>" <?php echo $filter_department === (int) $dept['department_id'] ? 'selected' : ''; ?>>
+                                    <?php echo e($dept['department_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Evaluation Type -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Evaluation Type</label>
+                        <select class="form-select form-select-sm" name="evaluation_type">
+                            <option value="">All Types</option>
+                            <?php foreach ($allowed_eval_types as $type): ?>
+                                <option value="<?php echo e($type); ?>" <?php echo $filter_type === $type ? 'selected' : ''; ?>>
+                                    <?php echo e($type); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Template -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Template</label>
+                        <select class="form-select form-select-sm" name="template">
+                            <option value="">All Templates</option>
+                            <?php foreach ($template_options as $tpl): ?>
+                                <option value="<?php echo (int) $tpl['template_id']; ?>" <?php echo $filter_template === (int) $tpl['template_id'] ? 'selected' : ''; ?>>
+                                    <?php echo e($tpl['template_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Submitted By -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Submitted By</label>
+                        <select class="form-select form-select-sm" name="submitted_by">
+                            <option value="">All Staff</option>
+                            <?php foreach ($staff_options as $staff): ?>
+                                <option value="<?php echo (int) $staff['user_id']; ?>" <?php echo $filter_staff === (int) $staff['user_id'] ? 'selected' : ''; ?>>
+                                    <?php echo e($staff['full_name']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <!-- Score Range -->
+                    <div class="col-md-4 col-lg-3">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Score Range</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.01" min="0" max="4" class="form-control" name="score_min" value="<?php echo $score_min !== null ? e($score_min) : ''; ?>" placeholder="Min">
+                            <span class="input-group-text bg-white">-</span>
+                            <input type="number" step="0.01" min="0" max="4" class="form-control" name="score_max" value="<?php echo $score_max !== null ? e($score_max) : ''; ?>" placeholder="Max">
+                        </div>
+                    </div>
+                    <!-- Submitted Date Range -->
+                    <div class="col-md-8 col-lg-6">
+                        <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Date Submitted Range</label>
+                        <div class="input-group input-group-sm">
+                            <input type="date" class="form-control" name="date_from" value="<?php echo e($date_from); ?>">
+                            <span class="input-group-text bg-white">to</span>
+                            <input type="date" class="form-control" name="date_to" value="<?php echo e($date_to); ?>">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Row -->
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div class="filter-meta">
+                <?php if ($active_filter_count > 0): ?>
+                    <span class="text-primary fw-bold" style="font-size: 0.78rem;"><i class="fas fa-circle-info me-1"></i><?php echo $active_filter_count; ?> active filter<?php echo $active_filter_count === 1 ? '' : 's'; ?></span>
+                <?php else: ?>
+                    <span class="text-muted small"><i class="fas fa-circle-check me-1"></i>Showing all records</span>
+                <?php endif; ?>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="pending-approvals.php" class="btn btn-sm btn-outline-secondary px-3">
+                    <i class="fas fa-rotate-left me-1"></i>Reset
+                </a>
+                <button type="submit" class="btn btn-sm btn-primary px-4">
+                    <i class="fas fa-filter me-1"></i>Apply Filters
+                </button>
+            </div>
+        </div>
+    </form>
 </div>
 
 
@@ -424,7 +781,11 @@ $total_pending_all = $pending_count;
                                             <?php
                                             $score = (float)$row['total_score'];
                                             $score_width = max(0, min(100, ($score / 4) * 100));
-                                            $badge_class = getPerformanceBadgeClass($row['performance_level']);
+                                            $perf_level = $row['performance_level'] ?? '';
+                                            if ($score > 0 && (empty($perf_level) || $perf_level === '0')) {
+                                                $perf_level = getPerformanceLevel($score);
+                                            }
+                                            $badge_class = getPerformanceBadgeClass($perf_level);
                                             ?>
                                             <div class="d-flex align-items-center gap-3">
                                                 <div class="fw-bold" style="min-width: 55px; white-space: nowrap;"><?php echo number_format($score, 2); ?> / 4</div>
@@ -432,7 +793,7 @@ $total_pending_all = $pending_count;
                                                     <div class="progress-bar <?php echo $badge_class; ?>" 
                                                          style="width: <?php echo $score_width; ?>%"></div>
                                                 </div>
-                                                <span class="badge <?php echo $badge_class; ?> rounded-pill"><?php echo e($row['performance_level']); ?></span>
+                                                <span class="badge <?php echo $badge_class; ?> rounded-pill"><?php echo e($perf_level ?: 'Unscored'); ?></span>
                                             </div>
                                         </td>
                                         <td class="text-end">
@@ -502,10 +863,7 @@ foreach ($all_pending as $row):
                                 <div class="text-muted"><?php echo e($row['job_title']); ?> &bull; <?php echo e($row['template_name']); ?></div>
                             </div>
                         </div>
-                        <div class="score-circle">
-                            <div class="val total-score-val"><?php echo number_format((float)$row['total_score'], 2); ?>/4</div>
-                            <div class="lbl">Score</div>
-                        </div>
+                        <?php echo getEvaluationScoreCirclesHtml($conn, $row['evaluation_id'], $row['total_score']); ?>
                     </div>
 
                     <!-- KRA Section -->
@@ -1482,6 +1840,24 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+
+    // Instant client-side search in table rows
+    const unifiedSearch = document.getElementById('unifiedSearch');
+    if (unifiedSearch) {
+        unifiedSearch.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            const rows = document.querySelectorAll('#evalTable tbody tr');
+            rows.forEach(row => {
+                if (row.querySelector('td[colspan]')) return; // ignore empty state
+                const text = row.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
 });
 </script>
 

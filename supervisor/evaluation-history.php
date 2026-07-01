@@ -135,8 +135,22 @@ while ($row = $history->fetch_assoc()) {
                                 <td><div class="small fw-bold text-dark"><?php echo e($row['department_name'] ?? 'N/A'); ?></div><div class="x-small text-muted"><?php echo e($row['template_name']); ?></div></td>
                                 <td><small><?php echo formatDate($row['updated_at']); ?></small></td>
                                 <td>
-                                    <strong><?php echo $row['total_score'] ?? '0.00'; ?>%</strong>
-                                    <div class="text-muted" style="font-size:0.65rem;"><?php echo e($row['performance_level']); ?></div>
+                                    <?php
+                                    $h_score = (float)($row['total_score'] ?? 0);
+                                    $h_perf = $row['performance_level'] ?? '';
+                                    if ($h_score > 0 && (empty($h_perf) || $h_perf === '0')) {
+                                        $h_perf = getPerformanceLevel($h_score);
+                                    }
+                                    $h_badge = getPerformanceBadgeClass($h_perf);
+                                    ?>
+                                    <strong><?php echo $h_score > 0 ? number_format($h_score, 2) . ' / 4' : '—'; ?></strong>
+                                    <div style="font-size:0.65rem;">
+                                        <?php if ($h_perf): ?>
+                                            <span class="badge <?php echo $h_badge; ?> rounded-pill px-2" style="font-size:0.65rem;"><?php echo e($h_perf); ?></span>
+                                        <?php else: ?>
+                                            <span class="text-muted">Unscored</span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                                 <td>
                                     <?php
@@ -223,10 +237,7 @@ foreach ($all_history as $row):
                                 <div class="text-muted"><?php echo e($row['job_title'] ?? 'Staff'); ?> &bull; <?php echo e($row['template_name']); ?></div>
                             </div>
                         </div>
-                        <div class="score-circle">
-                            <div class="val"><?php echo $row['total_score']; ?>%</div>
-                            <div class="lbl">Score</div>
-                        </div>
+                        <?php echo getEvaluationScoreCirclesHtml($conn, $row['evaluation_id'], $row['total_score']); ?>
                     </div>
 
                     <!-- Action Buttons -->

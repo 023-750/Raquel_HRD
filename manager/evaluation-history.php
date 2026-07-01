@@ -6,7 +6,7 @@ require_once '../includes/functions.php';
 require_once '../includes/header.php';
 
 // Fetch evaluation history
-$history = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.rank_category_id, d.department_name,
+$history = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.rank_category_id, e.profile_picture, d.department_name,
     u.full_name as submitted_by_name, u2.full_name as endorsed_by_name, u3.full_name as approved_by_name, et.template_name
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
@@ -93,79 +93,284 @@ while ($row = $history->fetch_assoc()) {
     </div>
 </div>
 
-<div class="content-card fadeup-1">
-    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3">
-        <div class="d-flex align-items-center flex-wrap gap-2">
-            <h5 class="mb-0 me-3"><i class="fas fa-history me-2 text-primary"></i>Evaluation History</h5>
-            <div class="btn-group btn-group-sm" role="group">
-                <button type="button" class="btn btn-outline-primary active" onclick="filterByStatus('All', this)">All</button>
-                <button type="button" class="btn btn-outline-success" onclick="filterByStatus('Approved', this)">Approved</button>
-                <button type="button" class="btn btn-outline-danger" onclick="filterByStatus('Rejected', this)">Rejected</button>
-                <button type="button" class="btn btn-outline-warning" onclick="filterByStatus('Returned', this)">Returned</button>
-            </div>
-        </div>
-        <div class="search-box">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" class="form-control form-control-sm" id="customSearchEval" placeholder="Search employee or dept...">
-        </div>
+<style>
+/* ── History Filter Bar ───────────────────────────── */
+.hist-filter-bar {
+    background: #fff;
+    border: 1px solid #eef2e8;
+    border-radius: 14px;
+    box-shadow: 0 4px 18px rgba(12,32,8,.05);
+    padding: 14px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+.hist-status-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.hist-status-pill {
+    padding: 5px 16px;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all .2s ease;
+    background: #f4f6f0;
+    color: #6c757d;
+}
+.hist-status-pill:hover { background: #e8ede0; }
+.hist-status-pill.active-all    { background: var(--primary-blue); color: #fff; border-color: var(--primary-blue); }
+.hist-status-pill.active-approved { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.hist-status-pill.active-rejected { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.hist-status-pill.active-returned { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+
+/* ── History Cards ───────────────────────────────── */
+.hist-card-list { display: flex; flex-direction: column; gap: 10px; }
+.hist-card {
+    background: #fff;
+    border: 1px solid #eef2e8;
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 40px minmax(0,2fr) minmax(0,1.5fr) 130px 110px auto;
+    align-items: center;
+    gap: 16px;
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+}
+.hist-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    border-radius: 14px 0 0 14px;
+    background: #e2e8f0;
+    transition: background .2s ease;
+}
+.hist-card[data-status="Approved"]::before  { background: #22c55e; }
+.hist-card[data-status="Rejected"]::before  { background: #ef4444; }
+.hist-card[data-status="Returned"]::before  { background: #f59e0b; }
+.hist-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(12,32,8,.09); border-color: #c8d8b0; }
+
+.hist-card-avatar {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: rgba(41,67,6,.08);
+    color: var(--primary-blue);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: .9rem;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.hist-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.hist-card-employee .name { font-weight: 700; font-size: .95rem; color: #1a2e05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-card-employee .sub  { font-size: .72rem; color: #94a3b8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.hist-card-dept .dept     { font-weight: 600; font-size: .82rem; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hist-card-dept .tpl      { font-size: .7rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.hist-score-col { display: flex; flex-direction: column; gap: 4px; }
+.hist-score-val { font-weight: 800; font-size: 1rem; }
+.hist-score-bar { height: 5px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+.hist-score-bar .fill { height: 100%; border-radius: 99px; transition: width .4s ease; }
+
+.hist-status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 999px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.hist-status-badge.approved { background: #d1fae5; color: #065f46; }
+.hist-status-badge.rejected { background: #fee2e2; color: #991b1b; }
+.hist-status-badge.returned { background: #fef3c7; color: #92400e; }
+
+/* Empty state */
+.hist-empty { text-align: center; padding: 60px 20px; color: #94a3b8; }
+.hist-empty i { font-size: 3rem; opacity: .15; display: block; margin-bottom: 16px; }
+
+/* Results meta */
+.hist-meta { font-size: .78rem; color: #94a3b8; padding: 6px 4px; }
+
+@media (max-width: 767px) {
+    .hist-card {
+        grid-template-columns: 36px 1fr;
+        grid-template-rows: auto auto auto;
+    }
+    .hist-card-dept, .hist-score-col, .hist-status-col { grid-column: 2; }
+    .hist-card-action { grid-column: 1 / -1; }
+}
+</style>
+
+<!-- Filter Bar -->
+<div class="hist-filter-bar fadeup fadeup-1">
+    <div class="hist-status-pills">
+        <button class="hist-status-pill active-all" onclick="histFilter('All', this)">
+            <i class="fas fa-list me-1"></i>All <span class="ms-1 opacity-75">(<?php echo $total_c; ?>)</span>
+        </button>
+        <button class="hist-status-pill" onclick="histFilter('Approved', this)">
+            <i class="fas fa-check-circle me-1"></i>Approved <span class="ms-1 opacity-75">(<?php echo $approved_c; ?>)</span>
+        </button>
+        <button class="hist-status-pill" onclick="histFilter('Rejected', this)">
+            <i class="fas fa-times-circle me-1"></i>Rejected <span class="ms-1 opacity-75">(<?php echo $rejected_c; ?>)</span>
+        </button>
+        <button class="hist-status-pill" onclick="histFilter('Returned', this)">
+            <i class="fas fa-rotate-left me-1"></i>Returned <span class="ms-1 opacity-75">(<?php echo $returned_c; ?>)</span>
+        </button>
     </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="evalTable">
-                <thead class="bg-light">
-                    <tr>
-                        <th class="ps-3" style="cursor: pointer;" onclick="sortTable(0)">Employee <i class="fas fa-sort text-muted ms-1 small"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(1)">Department <i class="fas fa-sort text-muted ms-1 small"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(2)">Date <i class="fas fa-sort text-muted ms-1 small"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(3)">Score <i class="fas fa-sort text-muted ms-1 small"></i></th>
-                        <th style="cursor: pointer;" onclick="sortTable(4)">Status <i class="fas fa-sort text-muted ms-1 small"></i></th>
-                        <th class="text-end pe-3">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($all_history)): ?>
-                        <tr class="no-results-row text-center"><td colspan="6" class="text-muted py-5"><i class="fas fa-history fa-3x mb-3 d-block opacity-25"></i>No evaluation history found.</td></tr>
-                    <?php else: ?>
-                        <?php foreach ($all_history as $row): ?>
-                            <tr data-status="<?php echo $row['status']; ?>">
-                                <td class="ps-3">
-                                    <div class="fw-bold"><?php echo e($row['employee_name']); ?></div>
-                                    <div class="text-muted x-small"><?php echo e($row['job_title']); ?></div>
-                                </td>
-                                <td><div class="small fw-bold text-dark"><?php echo e($row['department_name'] ?? 'N/A'); ?></div><div class="x-small text-muted"><?php echo e($row['template_name']); ?></div></td>
-                                <td><small><?php echo formatDate($row['updated_at']); ?></small></td>
-                                <td>
-                                    <strong><?php echo $row['total_score'] ?? '0.00'; ?>%</strong>
-                                    <div class="text-muted" style="font-size:0.65rem;"><?php echo e($row['performance_level']); ?></div>
-                                </td>
-                                <td>
-                                    <?php
-                                    $statusClass = 'bg-secondary';
-                                    if ($row['status'] === 'Approved') $statusClass = 'bg-success';
-                                    if ($row['status'] === 'Rejected') $statusClass = 'bg-danger';
-                                    if ($row['status'] === 'Returned') $statusClass = 'bg-warning';
-                                    ?>
-                                    <span class="badge <?php echo $statusClass; ?> rounded-pill px-2" style="font-size:0.7rem;"><?php echo e($row['status']); ?></span>
-                                </td>
-                                <td class="text-end pe-3">
-                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reviewModal<?php echo $row['evaluation_id']; ?>">
-                                        <i class="fas fa-eye me-1"></i>View
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-        <!-- Pagination Controls -->
-        <div class="d-flex justify-content-between align-items-center p-3 border-top" id="paginationWrapper">
-            <div id="paginationInfo" class="text-muted small"></div>
-            <ul class="pagination pagination-sm mb-0" id="paginationNumbers">
-            </ul>
+    <div class="ms-auto d-flex align-items-center gap-2">
+        <div class="input-group input-group-sm" style="min-width:220px;">
+            <span class="input-group-text bg-white border-end-0 text-muted"><i class="fas fa-search"></i></span>
+            <input type="search" class="form-control border-start-0 ps-0" id="histSearchInput" placeholder="Search employee, dept, template...">
         </div>
     </div>
 </div>
+
+<!-- Card List -->
+<div class="hist-card-list fadeup fadeup-2" id="histCardList">
+    <?php if (empty($all_history)): ?>
+        <div class="hist-empty">
+            <i class="fas fa-history"></i>
+            <p class="fw-semibold mb-1">No evaluation records yet</p>
+            <small>Approved, rejected, or returned evaluations will appear here.</small>
+        </div>
+    <?php else: ?>
+        <?php foreach ($all_history as $row):
+            $h_score = (float)($row['total_score'] ?? 0);
+            $h_perf  = $row['performance_level'] ?? '';
+            if ($h_score > 0 && (empty($h_perf) || $h_perf === '0')) {
+                $h_perf = getPerformanceLevel($h_score);
+            }
+            $h_badge_class = getPerformanceBadgeClass($h_perf);
+            $score_pct  = min(100, ($h_score / 4) * 100);
+            $bar_color  = match(true) {
+                str_contains($h_badge_class, 'success') => '#22c55e',
+                str_contains($h_badge_class, 'info')    => '#0ea5e9',
+                str_contains($h_badge_class, 'warning') => '#f59e0b',
+                str_contains($h_badge_class, 'danger')  => '#ef4444',
+                default                                  => '#94a3b8',
+            };
+            $status_lc  = strtolower($row['status']);
+            $status_icon = match($row['status']) {
+                'Approved' => 'fa-check-circle',
+                'Rejected' => 'fa-times-circle',
+                'Returned' => 'fa-rotate-left',
+                default    => 'fa-circle',
+            };
+            $initials_h = strtoupper(
+                substr($row['employee_name'], 0, 1) .
+                substr(explode(' ', $row['employee_name'])[1] ?? '', 0, 1)
+            );
+            $avatar_h = getEmployeeAvatar($row['profile_picture'] ?? '');
+        ?>
+        <div class="hist-card" data-status="<?php echo e($row['status']); ?>"
+             data-search="<?php echo strtolower(e($row['employee_name']) . ' ' . e($row['department_name'] ?? '') . ' ' . e($row['template_name']) . ' ' . e($row['job_title'])); ?>">
+            <!-- Avatar -->
+            <div class="hist-card-avatar">
+                <img src="<?php echo e($avatar_h); ?>?v=<?php echo time(); ?>" alt="<?php echo e($row['employee_name']); ?>">
+            </div>
+            <!-- Employee -->
+            <div class="hist-card-employee">
+                <div class="name"><?php echo e($row['employee_name']); ?></div>
+                <div class="sub"><?php echo e($row['job_title']); ?></div>
+            </div>
+            <!-- Dept + Template -->
+            <div class="hist-card-dept">
+                <div class="dept"><?php echo e($row['department_name'] ?? 'N/A'); ?></div>
+                <div class="tpl"><?php echo e($row['template_name']); ?></div>
+            </div>
+            <!-- Score -->
+            <div class="hist-score-col">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="hist-score-val"><?php echo $h_score > 0 ? number_format($h_score, 2) : '—'; ?></span>
+                    <?php if ($h_perf): ?>
+                        <span class="badge <?php echo $h_badge_class; ?> rounded-pill px-2" style="font-size:.65rem;"><?php echo e($h_perf); ?></span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($h_score > 0): ?>
+                <div class="hist-score-bar">
+                    <div class="fill" style="width:<?php echo $score_pct; ?>%;background:<?php echo $bar_color; ?>;"></div>
+                </div>
+                <?php endif; ?>
+                <div style="font-size:.68rem;color:#94a3b8;"><?php echo formatDate($row['updated_at']); ?></div>
+            </div>
+            <!-- Status -->
+            <div class="hist-status-col">
+                <span class="hist-status-badge <?php echo $status_lc; ?>">
+                    <i class="fas <?php echo $status_icon; ?>"></i><?php echo e($row['status']); ?>
+                </span>
+            </div>
+            <!-- Action -->
+            <div class="hist-card-action">
+                <button class="btn btn-sm btn-primary rounded-pill px-3 fw-semibold shadow-sm"
+                        data-bs-toggle="modal" data-bs-target="#reviewModal<?php echo $row['evaluation_id']; ?>">
+                    <i class="fas fa-eye me-1"></i>View
+                </button>
+            </div>
+        </div>
+        <?php endforeach; ?>
+
+        <!-- No results (search) -->
+        <div class="hist-empty d-none" id="histNoResults">
+            <i class="fas fa-search"></i>
+            <p class="fw-semibold mb-1">No results found</p>
+            <small>Try a different search term or clear your filters.</small>
+        </div>
+    <?php endif; ?>
+</div>
+
+<!-- Meta row -->
+<div class="hist-meta mt-2 px-1" id="histMeta">
+    Showing <span id="histVisibleCount"><?php echo count($all_history); ?></span> of <?php echo count($all_history); ?> records
+</div>
+
+<script>
+let histActiveStatus = 'All';
+
+function histFilter(status, btn) {
+    histActiveStatus = status;
+
+    // Pills active state
+    document.querySelectorAll('.hist-status-pill').forEach(p => {
+        p.className = 'hist-status-pill';
+    });
+    const classMap = { All: 'active-all', Approved: 'active-approved', Rejected: 'active-rejected', Returned: 'active-returned' };
+    btn.classList.add(classMap[status] ?? 'active-all');
+
+    applyHistFilters();
+}
+
+function applyHistFilters() {
+    const q = (document.getElementById('histSearchInput')?.value || '').toLowerCase().trim();
+    const cards = document.querySelectorAll('#histCardList .hist-card');
+    let visible = 0;
+
+    cards.forEach(card => {
+        const statusMatch = histActiveStatus === 'All' || card.dataset.status === histActiveStatus;
+        const searchMatch = !q || (card.dataset.search || '').includes(q);
+        const show = statusMatch && searchMatch;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+    });
+
+    const noRes = document.getElementById('histNoResults');
+    if (noRes) noRes.classList.toggle('d-none', visible > 0);
+
+    const meta = document.getElementById('histVisibleCount');
+    if (meta) meta.textContent = visible;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('histSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', applyHistFilters);
+    }
+});
+</script>
+
 
 <?php 
 // Render Modals at the end of the file
@@ -223,10 +428,7 @@ foreach ($all_history as $row):
                                 <div class="text-muted"><?php echo e($row['job_title'] ?? 'Staff'); ?> &bull; <?php echo e($row['template_name']); ?></div>
                             </div>
                         </div>
-                        <div class="score-circle">
-                            <div class="val"><?php echo $row['total_score']; ?>%</div>
-                            <div class="lbl">Score</div>
-                        </div>
+                        <?php echo getEvaluationScoreCirclesHtml($conn, $row['evaluation_id'], $row['total_score']); ?>
                     </div>
 
                     <!-- Action Buttons -->

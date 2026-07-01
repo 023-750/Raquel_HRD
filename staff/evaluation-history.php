@@ -261,10 +261,7 @@ foreach ($all_history as $row):
                                 <div class="text-muted small"><?php echo e($row['job_title']); ?> &bull; <?php echo e($row['template_name']); ?></div>
                             </div>
                         </div>
-                        <div class="score-circle text-center px-4 py-2 rounded-4" style="background:var(--primary-light);">
-                            <div class="val fw-bold text-primary fs-4"><?php echo number_format((float)$row['total_score'], 2); ?>/4</div>
-                            <div class="lbl small text-muted text-uppercase" style="font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px;">Score</div>
-                        </div>
+                        <?php echo getEvaluationScoreCirclesHtml($conn, $row['evaluation_id'], $row['total_score']); ?>
                     </div>
 
                     <!-- KRA Section -->

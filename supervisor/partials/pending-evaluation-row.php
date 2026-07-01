@@ -17,6 +17,11 @@ $age_class = $is_overdue ? 'bg-warning-subtle text-warning border border-warning
 $avatar_url = getEmployeeAvatar($row['profile_picture'] ?? '');
 $score_label = $has_score ? number_format($score, 2) . ' / 4' : 'No score';
 $is_nested = $rowLayout === 'nested';
+
+$perf_level = $row['performance_level'] ?? '';
+if ($has_score && (empty($perf_level) || $perf_level === '0')) {
+    $perf_level = getPerformanceLevel($score);
+}
 ?>
 <tr class="pending-eval-row <?php echo e($row_class); ?>">
     <?php if ($is_nested): ?>
@@ -101,7 +106,7 @@ $is_nested = $rowLayout === 'nested';
         <div class="score-meter">
             <div class="d-flex justify-content-between align-items-center gap-2">
                 <span class="fw-bold"><?php echo e($score_label); ?></span>
-                <span class="badge <?php echo getPerformanceBadgeClass($row['performance_level']); ?> rounded-pill px-2" style="font-size:0.68rem;"><?php echo e($row['performance_level'] ?: ($has_score ? 'Unrated' : 'Unscored')); ?></span>
+                <span class="badge <?php echo getPerformanceBadgeClass($perf_level); ?> rounded-pill px-2" style="font-size:0.68rem;"><?php echo e($perf_level ?: ($has_score ? 'Unrated' : 'Unscored')); ?></span>
             </div>
             <?php if ($has_score): ?>
                 <div class="progress mt-2" style="height: 5px;">

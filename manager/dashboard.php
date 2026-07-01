@@ -559,7 +559,7 @@ while ($row = $age_dist_q->fetch_assoc()) {
         <div class="stat-card">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
-                    <div class="stat-value"><?php echo $avg_score; ?>%</div>
+                    <div class="stat-value"><?php echo number_format($avg_score, 2); ?> / 4</div>
                     <div class="stat-label">Average Score</div>
                 </div>
                 <i class="fas fa-star stat-icon" style="color:#28a745;"></i>
@@ -956,7 +956,7 @@ while ($row = $age_dist_q->fetch_assoc()) {
                 <h5><i class="fas fa-chart-bar me-2 text-info"></i>Branch Comparison</h5>
             </div>
             <div class="cc-body">
-                <span class="chart-label-premium">Top 10 Performing Branches (Avg %)</span>
+                <span class="chart-label-premium">Top 10 Performing Branches (Avg Score)</span>
                 <div style="height: 270px;">
                     <canvas id="branchComparisonChart"></canvas>
                 </div>
@@ -1209,9 +1209,12 @@ while ($row = $age_dist_q->fetch_assoc()) {
                 scales: {
                     y: { 
                         beginAtZero: false, 
-                        min: 40, max: 100, 
+                        min: 1.0, max: 4.0, 
                         grid: { display: true, drawBorder: false, color: '#f0f0f0' },
-                        ticks: { callback: value => value + '%' }
+                        ticks: { 
+                            stepSize: 1.0,
+                            callback: value => value.toFixed(1)
+                        }
                     },
                     x: { grid: { display: false } }
                 },
@@ -1245,7 +1248,7 @@ while ($row = $age_dist_q->fetch_assoc()) {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: { max: 100, grid: { display: true, color: '#f8f9fa' } },
+                    x: { max: 4.0, grid: { display: true, color: '#f8f9fa' } },
                     y: { grid: { display: false } }
                 },
                 animation: {

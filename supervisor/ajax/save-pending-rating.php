@@ -60,11 +60,22 @@ try {
                                 manager_override_score = NULL, manager_override_by = NULL, manager_override_at = NULL
                             WHERE score_id = ? AND evaluation_id = ?");
     
+    $altered_details = [];
     foreach ($ratings as $score_id => $rating_val) {
         $score_id = (int)$score_id;
         $rating_val = floatval($rating_val);
         if ($rating_val < 1.00) $rating_val = 1.00;
         if ($rating_val > 4.00) $rating_val = 4.00;
+
+        // Fetch original score_value to include in audit details
+        $score_info_q = $conn->query("SELECT es.score_value, ec.criterion_name FROM evaluation_scores es JOIN evaluation_criteria ec ON es.criterion_id = ec.criterion_id WHERE es.score_id = $score_id");
+        if ($score_info_q && $score_info = $score_info_q->fetch_assoc()) {
+            $orig_val = (float)$score_info['score_value'];
+            if (abs($rating_val - $orig_val) > 0.01) {
+                $criterion_name = $score_info['criterion_name'];
+                $altered_details[] = "$criterion_name (Self-Rating: " . number_format($orig_val, 2) . " -> Adjusted: " . number_format($rating_val, 2) . ")";
+            }
+        }
 
         $user_id = (int)$_SESSION['user_id'];
         $stmt->bind_param("diii", $rating_val, $user_id, $score_id, $evaluation_id);
@@ -82,7 +93,11 @@ try {
     }
 
     // Log audit trail
-    logAudit($conn, (int)$_SESSION['user_id'], 'UPDATE', 'Evaluation', $evaluation_id, 'Supervisor override of pending rating scores for ' . $employee_name);
+    $audit_details = 'Supervisor override of pending rating scores for ' . $employee_name;
+    if (!empty($altered_details)) {
+        $audit_details .= ". Score adjustments:\n" . implode("\n", $altered_details);
+    }
+    logAudit($conn, (int)$_SESSION['user_id'], 'UPDATE', 'Evaluation', $evaluation_id, $audit_details);
 
     $conn->commit();
     echo json_encode(['success' => true, 'message' => 'Ratings successfully updated and recalculated.']);

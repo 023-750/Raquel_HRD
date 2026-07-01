@@ -1480,6 +1480,10 @@ function ensureEvaluationWorkflowSchema($conn)
             'manager_override_score' => "ALTER TABLE evaluation_scores ADD COLUMN manager_override_score DECIMAL(5,2) NULL DEFAULT NULL COMMENT 'Score overridden by HR Manager' AFTER supervisor_override_at",
             'manager_override_by' => "ALTER TABLE evaluation_scores ADD COLUMN manager_override_by INT NULL DEFAULT NULL COMMENT 'User ID of HR Manager who overrode' AFTER manager_override_score",
             'manager_override_at' => "ALTER TABLE evaluation_scores ADD COLUMN manager_override_at DATETIME NULL DEFAULT NULL COMMENT 'When manager override was made' AFTER manager_override_by",
+            // Dept Manager override columns (recorded before HR Supervisor/Manager steps)
+            'dept_manager_override_score' => "ALTER TABLE evaluation_scores ADD COLUMN dept_manager_override_score DECIMAL(5,2) NULL DEFAULT NULL COMMENT 'Score adjusted by Department Manager' AFTER manager_override_at",
+            'dept_manager_override_by' => "ALTER TABLE evaluation_scores ADD COLUMN dept_manager_override_by INT NULL DEFAULT NULL COMMENT 'User ID of Department Manager who adjusted' AFTER dept_manager_override_score",
+            'dept_manager_override_at' => "ALTER TABLE evaluation_scores ADD COLUMN dept_manager_override_at DATETIME NULL DEFAULT NULL COMMENT 'When Department Manager adjustment was made' AFTER dept_manager_override_by",
         ];
 
         foreach ($score_optional_columns as $column => $sql) {
@@ -1869,8 +1873,11 @@ function recalculateEvaluationScores($conn, $evaluation_id)
     while ($row = $scores_q->fetch_assoc()) {
         $score_id = (int)$row['score_id'];
         
-        // Hierarchy of scores: Manager Override > Supervisor Override > Original Score
+        // Hierarchy of scores: HR Manager Override > HR Supervisor Override > Dept Manager Override > Original Score
         $effective_score = $row['score_value'];
+        if ($row['dept_manager_override_score'] !== null) {
+            $effective_score = (float)$row['dept_manager_override_score'];
+        }
         if ($row['supervisor_override_score'] !== null) {
             $effective_score = (float)$row['supervisor_override_score'];
         }
@@ -2495,5 +2502,87 @@ function isMainOfficeHumanResourcesEmployee($conn, $employee_id): bool
     $is_main_office = strpos($branch, 'main') !== false || strpos($branch, 'head office') !== false;
 
     return $is_hr_department && $is_main_office;
+}
+
+/**
+ * Calculate the original self-rating total score from the employee's initial submissions
+ */
+function getOriginalSelfRatingScore($conn, $evaluation_id)
+{
+    $evaluation_id = (int)$evaluation_id;
+    if ($evaluation_id <= 0) {
+        return null;
+    }
+
+    // Fetch the evaluation details (template weight splits)
+    $eval_q = $conn->query("SELECT ev.*, et.kra_weight, et.behavior_weight 
+                            FROM evaluations ev 
+                            LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id 
+                            WHERE ev.evaluation_id = $evaluation_id");
+    
+    if (!$eval_q || $eval_q->num_rows === 0) {
+        return null;
+    }
+    
+    $eval = $eval_q->fetch_assoc();
+    $kra_weight_pct = (float)($eval['kra_weight'] ?? 80);
+    $beh_weight_pct = (float)($eval['behavior_weight'] ?? 20);
+
+    // Fetch original scores (score_value)
+    $scores_q = $conn->query("SELECT es.score_value, ec.section, ec.weight 
+                              FROM evaluation_scores es 
+                              JOIN evaluation_criteria ec ON es.criterion_id = ec.criterion_id 
+                              WHERE es.evaluation_id = $evaluation_id");
+    if (!$scores_q) {
+        return null;
+    }
+
+    $kra_subtotal = 0;
+    $beh_total = 0;
+    $beh_count = 0;
+
+    while ($row = $scores_q->fetch_assoc()) {
+        $score = (float)$row['score_value'];
+        if ($row['section'] === 'KRA') {
+            $weight = (float)$row['weight'];
+            $weighted = round(($weight / 100) * $score, 2);
+            $kra_subtotal += $weighted;
+        } else {
+            $beh_total += $score;
+            $beh_count++;
+        }
+    }
+
+    $kra_subtotal = round($kra_subtotal, 2);
+    $behavior_average = $beh_count > 0 ? round($beh_total / $beh_count, 2) : 0;
+    return calculateEvalTotal($kra_subtotal, $behavior_average, $kra_weight_pct, $beh_weight_pct);
+}
+
+/**
+ * Return HTML for either a single score circle or side-by-side original & adjusted circles
+ */
+function getEvaluationScoreCirclesHtml($conn, $evaluation_id, $current_score)
+{
+    $current_score = (float)$current_score;
+    $original_score = getOriginalSelfRatingScore($conn, $evaluation_id);
+    if ($original_score !== null && abs($current_score - $original_score) > 0.01) {
+        return '
+        <div class="d-flex align-items-center gap-3">
+            <div class="score-circle" style="border-color:#6c757d; min-width:80px;" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Original Self-Rating</strong><br>Score: ' . number_format($original_score, 2) . '">
+                <div class="val text-secondary" style="font-size:1.15rem; color:#6c757d !important;">' . number_format($original_score, 2) . '</div>
+                <div class="lbl text-secondary" style="font-size:0.55rem; font-weight:700;">Original</div>
+            </div>
+            <div class="score-circle" style="border-color:#198754; min-width:80px;" data-bs-toggle="tooltip" data-bs-html="true" title="<strong>Adjusted Score</strong><br>Score: ' . number_format($current_score, 2) . '">
+                <div class="val text-success total-score-val" style="font-size:1.15rem; color:#198754 !important;">' . number_format($current_score, 2) . '</div>
+                <div class="lbl text-success" style="font-size:0.55rem; font-weight:700;">Adjusted</div>
+            </div>
+        </div>';
+    } else {
+        return '
+        <div class="score-circle">
+            <div class="val total-score-val">' . number_format($current_score, 2) . '/4</div>
+            <div class="lbl">Score</div>
+        </div>';
+    }
 }
 ?>
