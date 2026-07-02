@@ -434,9 +434,6 @@ foreach ($all_history as $row):
                     <!-- Action Buttons -->
                     <div class="d-flex justify-content-between align-items-center mb-4 gap-2 d-print-none">
                         <div>
-                            <button type="button" class="btn btn-sm btn-outline-warning rounded-pill px-3 fw-bold btn-edit-ratings" onclick="toggleEditRatings(<?php echo $row['evaluation_id']; ?>)">
-                                <i class="fas fa-edit me-1"></i>Edit Ratings
-                            </button>
                             <button type="button" class="btn btn-sm btn-success rounded-pill px-3 fw-bold btn-save-ratings d-none" onclick="saveRatings(<?php echo $row['evaluation_id']; ?>)">
                                 <i class="fas fa-save me-1"></i>Save Changes
                             </button>
