@@ -1,4 +1,0 @@
-natest ko na yong ap staff bukas ay branch supervisor tapos branch manager 
-
-css_implementation_plan.md 
-- bago pa lang gagawin not implemented yet.
