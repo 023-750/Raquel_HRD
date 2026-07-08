@@ -480,7 +480,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                             <td data-label="Actions">
                                 <div class="d-flex gap-1 align-items-center flex-nowrap">
                                     <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
-                                        class="btn btn-sm btn-outline-info" title="View Details">
+                                        class="btn btn-sm btn-outline-info employee-view-link" data-base-href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>" title="View Details">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
@@ -550,7 +550,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                             <?php echo $emp['employment_status']; ?>
                         </span>
                         <div class="d-flex gap-1 flex-wrap justify-content-end">
-                            <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-info" title="View"><i class="fas fa-eye"></i></a>
+                            <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-info employee-view-link" data-base-href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>" title="View"><i class="fas fa-eye"></i></a>
                             <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-primary employee-edit-link" data-base-href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" title="Edit"><i class="fas fa-edit"></i></a>
                             <?php if ($emp['is_active']): ?>
                             <button class="btn btn-xs btn-outline-warning" title="Deactivate"
@@ -740,6 +740,9 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
     function updateEmployeeActionLinks() {
         const returnUrl = window.location.pathname + window.location.search;
         document.querySelectorAll('.employee-edit-link').forEach(link => {
+            link.href = link.dataset.baseHref + '&return=' + encodeURIComponent(returnUrl);
+        });
+        document.querySelectorAll('.employee-view-link').forEach(link => {
             link.href = link.dataset.baseHref + '&return=' + encodeURIComponent(returnUrl);
         });
     }

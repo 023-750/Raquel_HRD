@@ -360,8 +360,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $total_score = calculateEvalTotal($kra_subtotal, $behavior_average, $kra_weight_pct, $beh_weight_pct);
     $performance_level = getPerformanceLevel($total_score);
-    $supervisor = getEmployeeSupervisor($conn, $employee_id);
-    $has_supervisor = ($supervisor !== null && !empty($supervisor['user_id']));
+    $supervisor = getEmployeeSupervisor($conn, $employee_id); // used for notification routing
+    $genuine_supervisor = getDeptSupervisorOfEmployee($conn, $employee_id); // rank-4 only, no manager fallback
+    $has_supervisor = ($genuine_supervisor !== null && !empty($genuine_supervisor['user_id']));
     $dept_manager = getDeptManagerOfEmployee($conn, $employee_id);
     $has_dept_manager = ($dept_manager !== null && !empty($dept_manager['user_id']));
     $is_supervisor_level_employee = isSupervisorLevelEmployee($employee);
@@ -380,10 +381,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($is_supervisor_level_employee && $has_dept_manager) {
             $status = 'Pending Dept Manager';
         } elseif (!$uses_hr_specific_flow && (int)($employee['rank_category_id'] ?? 0) === 3) {
-            // Branch Manager self-rating: must first go to Branch Supervisor (rank 4) for review
-            $status = 'Pending Dept Supervisor';
+            // Branch Manager self-rating: goes to Branch Supervisor (rank 4) ONLY if one exists in the branch.
+            // Manager-only departments (no rank-4 supervisor) skip directly to HR Consolidation.
+            $branch_has_real_supervisor = getDeptSupervisorOfEmployee($conn, $employee_id) !== null;
+            $status = $branch_has_real_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation';
         } else {
-            $status = $has_supervisor ? 'Pending Dept Supervisor' : 'Pending HR Consolidation';
+            // R&F employees, or others falling here
+            if ($has_supervisor) {
+                $status = 'Pending Dept Supervisor';
+            } elseif ($has_dept_manager) {
+                $status = 'Pending Dept Manager';
+            } else {
+                $status = 'Pending HR Consolidation';
+            }
         }
     } else {
         $status = $is_assigned_submission ? 'Pending Self-Rating' : 'Draft';
@@ -501,7 +511,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } else {
             // Normal employee flow
-            if ($is_supervisor_level_employee && $has_dept_manager) {
+            if ($status === 'Pending Dept Manager') {
                 // Broadcast to all active branch/department managers
                 $dept_managers = getDeptManagersOfEmployee($conn, $employee_id);
                 foreach ($dept_managers as $dm) {

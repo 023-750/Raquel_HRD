@@ -5,6 +5,10 @@ checkRole(['HR Manager', 'System Administrator']);
 require_once '../includes/functions.php';
 
 $eid = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+$return_to = $_GET['return'] ?? (BASE_URL . '/manager/employees.php');
+if (strpos($return_to, BASE_URL . '/manager/employees.php') !== 0 && strpos($return_to, '/manager/employees.php') !== 0) {
+    $return_to = BASE_URL . '/manager/employees.php';
+}
 if ($eid <= 0)
     redirectWith(BASE_URL . '/manager/employees.php', 'danger', 'Invalid employee ID.');
 
@@ -480,7 +484,7 @@ $discList = [
         <p class="text-muted mb-1">Employee Personal Data Sheet</p>
         <h1 class="employee-page-title mb-0">Employee Information</h1>
     </div>
-    <a href="<?php echo BASE_URL; ?>/manager/employees.php" class="btn btn-secondary">
+    <a href="<?php echo htmlspecialchars($return_to, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-secondary">
         <i class="fas fa-arrow-left me-2"></i>Back
     </a>
 </div>
@@ -569,7 +573,7 @@ $discList = [
                     </div>
                 </div>
 
-                <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $eid; ?>"
+                <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $eid; ?>&return=<?php echo urlencode($return_to); ?>"
                     class="btn btn-primary w-100">
                     <i class="fas fa-edit me-2"></i>Edit
                 </a>

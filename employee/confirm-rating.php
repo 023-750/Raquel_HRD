@@ -89,7 +89,12 @@ if ($evaluation_id > 0) {
         $actor_rank = $actor_rank_row ? (int)$actor_rank_row['rank_category_id'] : 0;
 
         if ($actor_rank === 3 && in_array($evaluation['status'], ['Pending Dept Supervisor', 'Pending Supervisor'], true)) {
-            redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'This evaluation is pending Branch Supervisor review. You may only access it after the Branch Supervisor has confirmed it.');
+            // Only block rank-3 managers if a real rank-4 supervisor exists in this branch.
+            // Manager-only departments (no rank-4 supervisor) are allowed to act directly.
+            $branch_has_real_supervisor = getDeptSupervisorOfEmployee($conn, (int)$evaluation['employee_id']) !== null;
+            if ($branch_has_real_supervisor) {
+                redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'This evaluation is pending Branch Supervisor review. You may only access it after the Branch Supervisor has confirmed it.');
+            }
         }
         
         $dept_manager = getDeptManagerOfEmployee($conn, (int)$evaluation['employee_id']);
@@ -143,7 +148,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation && $is_supervisor && $i
 // to block any forged POST requests from Branch Managers on Supervisor-stage evaluations.
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $evaluation) {
     if (isset($actor_rank) && $actor_rank === 3 && in_array($evaluation['status'], ['Pending Dept Supervisor', 'Pending Supervisor'], true)) {
-        redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'Unauthorized: This evaluation must be reviewed by the Branch Supervisor first.');
+        $branch_has_real_supervisor_post = getDeptSupervisorOfEmployee($conn, (int)$evaluation['employee_id']) !== null;
+        if ($branch_has_real_supervisor_post) {
+            redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'Unauthorized: This evaluation must be reviewed by the Branch Supervisor first.');
+        }
     }
 }
 

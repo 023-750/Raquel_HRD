@@ -395,10 +395,10 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                                     <td data-label="Hire Date"><small><?php echo formatDate($emp['hire_date']); ?></small></td>
                                     <td data-label="Actions">
                                         <div class="d-flex gap-1 align-items-center flex-nowrap">
-                                            <a href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
-                                                class="btn btn-sm btn-outline-info" title="View Details">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
+                                             <a href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                                 class="btn btn-sm btn-outline-info employee-view-link" data-base-href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>" title="View Details">
+                                                 <i class="fas fa-eye"></i>
+                                             </a>
                                             <a href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
                                                 class="btn btn-sm btn-outline-primary employee-edit-link"
                                                 data-base-href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
@@ -450,7 +450,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                                 <?php echo e($emp['employment_status']); ?>
                             </span>
                             <div class="d-flex gap-1">
-                                <a href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-info" title="View"><i class="fas fa-eye"></i></a>
+                                <a href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-info employee-view-link" data-base-href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $emp['employee_id']; ?>" title="View"><i class="fas fa-eye"></i></a>
                                 <a href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-primary employee-edit-link" data-base-href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" title="Edit"><i class="fas fa-edit"></i></a>
                             </div>
                         </div>
@@ -515,6 +515,9 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
     function updateEmployeeActionLinks() {
         const returnUrl = window.location.pathname + window.location.search;
         document.querySelectorAll('.employee-edit-link').forEach(link => {
+            link.href = link.dataset.baseHref + '&return=' + encodeURIComponent(returnUrl);
+        });
+        document.querySelectorAll('.employee-view-link').forEach(link => {
             link.href = link.dataset.baseHref + '&return=' + encodeURIComponent(returnUrl);
         });
     }

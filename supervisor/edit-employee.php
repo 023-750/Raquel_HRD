@@ -6,7 +6,14 @@ require_once '../includes/functions.php';
 
 $eid = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 $return_to = $_POST['return_to'] ?? ($_GET['return'] ?? (BASE_URL . '/supervisor/employees.php'));
-if (strpos($return_to, BASE_URL . '/supervisor/employees.php') !== 0 && strpos($return_to, '/supervisor/employees.php') !== 0) {
+$allowed_return = false;
+foreach ([BASE_URL . '/supervisor/employees.php', '/supervisor/employees.php', BASE_URL . '/supervisor/view-employee.php', '/supervisor/view-employee.php'] as $prefix) {
+    if (strpos($return_to, $prefix) === 0) {
+        $allowed_return = true;
+        break;
+    }
+}
+if (!$allowed_return) {
     $return_to = BASE_URL . '/supervisor/employees.php';
 }
 $return_param = '&return=' . urlencode($return_to);

@@ -1650,6 +1650,98 @@ function getEmployeeSupervisor($conn, $employee_id)
 
 
 /**
+ * Returns a GENUINE branch supervisor (rank 4 / job_title LIKE '%Supervisor%') for the employee.
+ * Unlike getEmployeeSupervisor(), this function does NOT fall back to a Branch Manager (rank 3).
+ * Returns null when no rank-4 supervisor exists in the employee's branch + department.
+ *
+ * Use this for workflow STATUS decisions (Pending Dept Supervisor vs Pending HR Consolidation).
+ * Use getEmployeeSupervisor() for notification routing.
+ */
+function getDeptSupervisorOfEmployee($conn, $employee_id)
+{
+    $employee_id = (int)$employee_id;
+    if ($employee_id <= 0) {
+        return null;
+    }
+
+    $stmt = $conn->prepare("SELECT reports_to, branch_id, department_id FROM employees WHERE employee_id = ? LIMIT 1");
+    $stmt->bind_param("i", $employee_id);
+    $stmt->execute();
+    $emp_info = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$emp_info) {
+        return null;
+    }
+
+    $reports_to    = $emp_info['reports_to']    ? (int)$emp_info['reports_to']    : 0;
+    $branch_id     = $emp_info['branch_id']     ? (int)$emp_info['branch_id']     : 0;
+    $department_id = $emp_info['department_id'] ? (int)$emp_info['department_id'] : 0;
+    $supervisor_employee_id = 0;
+
+    // Step 1: reports_to exists AND the target is genuinely a supervisor (rank 4), not a manager
+    if ($reports_to > 0) {
+        $chk = $conn->prepare("
+            SELECT employee_id FROM employees
+            WHERE employee_id = ?
+              AND is_active = 1
+              AND deleted_at IS NULL
+              AND (rank_category_id = 4 OR (job_title LIKE '%Supervisor%' AND job_title NOT LIKE '%Manager%'))
+            LIMIT 1
+        ");
+        $chk->bind_param("i", $reports_to);
+        $chk->execute();
+        if ($res = $chk->get_result()->fetch_assoc()) {
+            $supervisor_employee_id = (int)$res['employee_id'];
+        }
+        $chk->close();
+    }
+
+    // Step 2: Fallback — any active rank-4 in same branch + department
+    if ($supervisor_employee_id <= 0 && $branch_id > 0) {
+        $sup_stmt = $conn->prepare("
+            SELECT employee_id FROM employees
+            WHERE branch_id = ?
+              AND is_active = 1
+              AND deleted_at IS NULL
+              AND employee_id != ?
+              AND (? = 0 OR department_id = ?)
+              AND (rank_category_id = 4 OR (job_title LIKE '%Supervisor%' AND job_title NOT LIKE '%Manager%'))
+            LIMIT 1
+        ");
+        $sup_stmt->bind_param("iiii", $branch_id, $employee_id, $department_id, $department_id);
+        $sup_stmt->execute();
+        if ($res = $sup_stmt->get_result()->fetch_assoc()) {
+            $supervisor_employee_id = (int)$res['employee_id'];
+        }
+        $sup_stmt->close();
+    }
+
+    // No genuine supervisor found — do NOT fall back to a manager
+    if ($supervisor_employee_id <= 0) {
+        return null;
+    }
+
+    $stmt = $conn->prepare("
+        SELECT s.employee_id as supervisor_employee_id,
+               s.first_name, s.last_name, s.job_title,
+               u.user_id, u.full_name, u.email
+        FROM employees s
+        LEFT JOIN users u ON s.employee_id = u.employee_id
+        WHERE s.employee_id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param("i", $supervisor_employee_id);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    return $result ?: null;
+}
+
+
+
+/**
 
  * Notify supervisor that subordinate submitted self-rating
 
@@ -2019,43 +2111,21 @@ function getDeptManagerOfEmployee($conn, $employee_id)
         if ($mgr_res) {
             $manager_employee_id = (int)$mgr_res['employee_id'];
 
-            // Check if there is also an active Supervisor in the same branch
-            $sup_stmt = $conn->prepare("
-                SELECT employee_id 
-                FROM employees 
-                WHERE branch_id = ? 
-                  AND is_active = 1 
-                  AND deleted_at IS NULL
-                  AND employee_id != ?
-                  AND (? = 0 OR department_id = ?)
-                  AND (rank_category_id = 4 OR job_title LIKE '%Supervisor%')
-                ORDER BY employee_id ASC
+            // Return the manager info as the department manager for the employee
+            $stmt = $conn->prepare("
+                SELECT s.reports_to, s.employee_id as supervisor_employee_id, 
+                       s.first_name, s.last_name, s.job_title,
+                       u.user_id, u.full_name, u.email
+                FROM employees s
+                LEFT JOIN users u ON s.employee_id = u.employee_id
+                WHERE s.employee_id = ? AND s.is_active = 1 AND s.deleted_at IS NULL
                 LIMIT 1
             ");
-            $sup_stmt->bind_param("iiii", $branch_id, $employee_id, $department_id, $department_id);
-            $sup_stmt->execute();
-            $sup_res = $sup_stmt->get_result()->fetch_assoc();
-            $sup_stmt->close();
-
-            // If we have a Supervisor in the branch:
-            // - A Staff member (not Supervisor, not Manager) reports to Supervisor, who reports to Manager. So Manager is Dept Manager.
-            // - A Supervisor reports to Manager. So Manager is Dept Manager.
-            if ($sup_res || $rank_category_id === 4 || stripos($job_title, 'Supervisor') !== false) {
-                $stmt = $conn->prepare("
-                    SELECT s.reports_to, s.employee_id as supervisor_employee_id, 
-                           s.first_name, s.last_name, s.job_title,
-                           u.user_id, u.full_name, u.email
-                    FROM employees s
-                    LEFT JOIN users u ON s.employee_id = u.employee_id
-                    WHERE s.employee_id = ? AND s.is_active = 1 AND s.deleted_at IS NULL
-                    LIMIT 1
-                ");
-                $stmt->bind_param("i", $manager_employee_id);
-                $stmt->execute();
-                $mgr_info = $stmt->get_result()->fetch_assoc();
-                $stmt->close();
-                return $mgr_info;
-            }
+            $stmt->bind_param("i", $manager_employee_id);
+            $stmt->execute();
+            $mgr_info = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            return $mgr_info;
         }
     }
 

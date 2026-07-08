@@ -66,7 +66,7 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
 
     body {
       font-family: Arial, sans-serif;
-      font-size: 11px;
+      font-size: 10px;
       background: #e0e0e0;
       padding: 20px;
       color: #000;
@@ -75,11 +75,12 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     .page {
       background: #fff;
       width: 210mm;
-      min-height: 297mm;
-      margin: 0 auto 30px auto;
-      padding: 12mm 15mm 12mm 15mm;
+      height: 297mm;
+      margin: 0 auto 20px auto;
+      padding: 8mm 12mm;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
       position: relative;
+      overflow: hidden;
     }
 
     .no-print {
@@ -117,16 +118,16 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     .rating-table th {
       background: #fff;
       border: 1px solid #000;
-      padding: 3px 6px;
-      font-size: 10px;
+      padding: 2px 4px;
+      font-size: 9px;
       font-weight: bold;
       text-align: left;
     }
 
     .rating-table td {
       border: 1px solid #000;
-      padding: 3px 6px;
-      font-size: 10px;
+      padding: 2px 4px;
+      font-size: 9px;
     }
 
     .kra-table {
@@ -137,8 +138,8 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
 
     .kra-table th {
       border: 1px solid #000;
-      padding: 4px 6px;
-      font-size: 10px;
+      padding: 3px 4px;
+      font-size: 9px;
       font-weight: bold;
       text-align: center;
       background: #fff;
@@ -151,22 +152,22 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
 
     .kra-table td {
       border: 1px solid #000;
-      padding: 3px 6px;
-      font-size: 10px;
-      height: 19px;
+      padding: 2px 4px;
+      font-size: 9px;
+      height: auto;
     }
 
     .kra2-table {
       width: 100%;
       border-collapse: collapse;
       border: 1px solid #000;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
     .kra2-table th {
       border: 1px solid #000;
-      padding: 4px 6px;
-      font-size: 10px;
+      padding: 3px 4px;
+      font-size: 9px;
       font-weight: bold;
       background: #fff;
       text-align: left;
@@ -174,22 +175,22 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
 
     .kra2-table td {
       border: 1px solid #000;
-      padding: 3px 6px;
-      font-size: 10px;
-      height: 20px;
+      padding: 2px 4px;
+      font-size: 9px;
+      height: auto;
     }
 
     .dev-table {
       width: 100%;
       border-collapse: collapse;
       border: 1px solid #000;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
     .dev-table th {
       border: 1px solid #000;
-      padding: 5px 6px;
-      font-size: 10px;
+      padding: 3px 4px;
+      font-size: 9px;
       font-weight: bold;
       text-align: center;
       background: #fff;
@@ -197,39 +198,52 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
 
     .dev-table td {
       border: 1px solid #000;
-      padding: 0 6px;
-      font-size: 10px;
-      height: 22px;
+      padding: 2px 4px;
+      font-size: 9px;
+      height: auto;
     }
 
     .comment-box {
       border: 1px solid #000;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
 
     .comment-box .label {
       font-weight: bold;
       font-style: italic;
-      padding: 4px 6px 2px;
-      font-size: 10px;
+      padding: 2px 4px 1px;
+      font-size: 9px;
     }
 
     .comment-box .content {
-      min-height: 45px;
-      padding: 2px 8px;
-      font-size: 10px;
+      min-height: 24px;
+      padding: 2px 6px;
+      font-size: 9px;
     }
 
     @media print {
       body {
         background: none;
         padding: 0;
+        margin: 0;
+      }
+
+      @page {
+        margin: 0;
+        size: A4;
       }
 
       .page {
         box-shadow: none;
         margin: 0;
+        height: 297mm;
         page-break-after: always;
+        overflow: hidden;
+      }
+
+      /* Prevent blank trailing page after the last .page div */
+      .page:last-of-type {
+        page-break-after: avoid;
       }
 
       .no-print {
@@ -566,8 +580,8 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     </table>
 
     <!-- Career Growth -->
-    <div style="font-weight:bold; font-size:12px; text-align:center; padding:6px 0 2px;">CAREER GROWTH</div>
-    <div style="border:1px solid #000; padding:6px 8px; font-size:10px; margin-bottom:8px;">
+    <div style="font-weight:bold; font-size:11px; text-align:center; padding:3px 0 2px;">CAREER GROWTH</div>
+    <div style="border:1px solid #000; padding:4px 6px; font-size:9px; margin-bottom:5px;">
       Is the employee better suited for another job within the company? &nbsp;
       <?php $suited = !empty($row['career_growth_suited']) ? 1 : (!empty($row['desired_position']) ? 1 : 0); ?>
       <?php echo ($suited == 1) ? '&#9745;' : '&#9744;'; ?> Yes &nbsp;&nbsp;
@@ -580,7 +594,7 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     <div class="comment-box">
       <div class="label">Employee's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['staff_comments'])); ?></div>
-      <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
+      <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
         <div
           style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
           <?php echo strtoupper(e($row['employee_name'] ?? '')); ?>
@@ -595,7 +609,7 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     <div class="comment-box">
       <div class="label">Immediate Supervisor's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['supervisor_comments'])); ?></div>
-      <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
+      <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
         <div
           style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
           <?php echo strtoupper(e($row['dept_supervisor_confirmed_by_name'] ?? 'IMMEDIATE HEAD')); ?>
@@ -611,7 +625,7 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     <div class="comment-box">
       <div class="label">Department Manager's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['dept_manager_comments'])); ?></div>
-      <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
+      <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
         <div
           style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
           <?php echo strtoupper(e($row['dept_manager_endorsed_by_name'] ?? 'DEPT MANAGER')); ?>
@@ -627,7 +641,7 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     <div class="comment-box">
       <div class="label">HR Supervisor's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['evaluator_comments'])); ?></div>
-      <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
+      <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
         <div
           style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
           <?php echo strtoupper(e($row['endorsed_by_name'] ?? '')); ?>
@@ -642,7 +656,7 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     <div class="comment-box">
       <div class="label">HR Manager's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['manager_comments'])); ?></div>
-      <div style="text-align:center; padding-bottom:4px; margin-top:20px;">
+      <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
         <div
           style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
           <?php echo strtoupper(e($row['approved_by_name'] ?? '')); ?>
@@ -653,8 +667,8 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     </div>
 
     <!-- Executives' Signature -->
-    <div style="border:1px solid #000; padding:6px 8px 14px; margin-bottom:6px;">
-      <div style="font-weight:bold; font-style:italic; font-size:10px; margin-bottom:30px;">Executives' Signature</div>
+    <div style="border:1px solid #000; padding:4px 8px 8px; margin-bottom:4px;">
+      <div style="font-weight:bold; font-style:italic; font-size:9px; margin-bottom:14px;">Executives' Signature</div>
       <div style="display:flex; justify-content:space-between; padding:0 30px;">
         <div style="text-align:center;">
           <div style="border-top:1px solid #000; width:140px; margin-bottom:2px;">&nbsp;</div>
@@ -668,10 +682,9 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
     </div>
 
     <!-- HR Use Only -->
-    <div style="border:1px solid #000; padding:6px 8px;">
-      <div style="font-style:italic; font-weight:bold; text-align:center; font-size:10px; margin-bottom:6px;">For Human
-        Resources Use Only</div>
-      <div style="font-size:10px;">
+    <div style="border:1px solid #000; padding:4px 6px;">
+      <div style="font-style:italic; font-weight:bold; text-align:center; font-size:9px; margin-bottom:4px;">For Human Resources Use Only</div>
+      <div style="font-size:9px;">
         PMS Form received on: <span
           style="display:inline-block; border-bottom:1px solid #000; width:120px; margin:0 4px;"></span>
         &nbsp;&nbsp;&nbsp; Received by: <span

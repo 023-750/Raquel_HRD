@@ -142,6 +142,22 @@ if ($hr_role === 'HR Manager') {
         'Approved' => 4,
         'Rejected' => 4,
     ];
+} elseif ($has_dept_manager) {
+    // Manager only workflow (no supervisor)
+    $wf_labels = ['Self-Rating', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
+    $wf_map = [
+        'Draft' => 0,
+        'Returned' => 0,
+        'Pending Self-Rating' => 0,
+        'Pending Dept Supervisor' => 1,
+        'Pending Supervisor' => 1,
+        'Pending Dept Manager' => 1,
+        'Supervisor Confirmed' => 2,
+        'Pending HR Consolidation' => 2,
+        'Pending Manager' => 3,
+        'Approved' => 4,
+        'Rejected' => 4,
+    ];
 } else {
     $wf_labels = ['Self-Rating', 'HR Consolidation', 'HR Manager', 'Approved'];
     $wf_map = [

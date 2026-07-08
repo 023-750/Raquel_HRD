@@ -225,7 +225,7 @@ REPLACE INTO job_titles (job_title_id, job_title, rank_category_id, department_i
 (210, 'Auditor IV', 5, 2, 1, 0, 203, NOW(), NOW()),
 (211, 'Auditor V', 5, 2, 1, 0, 203, NOW(), NOW()),
 -- Business Development (300-319)
-(300, 'Business Development Manager I', 3, 3, 1, 1, NULL, NOW(), NOW()),
+(300, 'Business Development Officer I', 3, 3, 1, 1, NULL, NOW(), NOW()),
 (301, 'Business Development Staff on Training', 5, 3, 1, 0, 300, NOW(), NOW()),
 (302, 'Business Development Staff I', 5, 3, 1, 0, 300, NOW(), NOW()),
 (303, 'Business Development Staff II', 5, 3, 1, 0, 300, NOW(), NOW()),

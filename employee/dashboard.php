@@ -495,6 +495,23 @@ function movementIcon(string $type): string {
                             'Approved'                 => 4,
                             'Rejected'                 => 4,
                         ];
+                    } elseif ($has_dept_manager) {
+                        // Manager only workflow (no supervisor)
+                        $workflow_steps  = ['Pending Self-Rating', 'Pending Dept Manager', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
+                        $workflow_labels = ['Self-Rating', 'Dept Manager', 'HR Consolidation', 'HR Manager', 'Approved'];
+                        $status_step_map = [
+                            'Draft'                    => 0,
+                            'Returned'                 => 0,
+                            'Pending Self-Rating'      => 0,
+                            'Pending Dept Supervisor'  => 1,
+                            'Pending Supervisor'       => 1,
+                            'Pending Dept Manager'     => 1,
+                            'Supervisor Confirmed'     => 2,
+                            'Pending HR Consolidation' => 2,
+                            'Pending Manager'          => 3,
+                            'Approved'                 => 4,
+                            'Rejected'                 => 4,
+                        ];
                     } else {
                         // Direct-to-HR (no supervisor at all)
                         $workflow_steps  = ['Pending Self-Rating', 'Pending HR Consolidation', 'Pending Manager', 'Approved'];
