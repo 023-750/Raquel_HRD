@@ -5,7 +5,7 @@ Department
 > Acquired Properties  ✔
 > Audit ✔
 > Business Development ✔
-> Compliance
+> Compliance ✔
 > Finance
 > General Services
 > Human resources ✔

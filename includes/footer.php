@@ -113,8 +113,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
                     $_m_confirm_rows = $_m_c_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                     $_m_c_stmt->close();
                     foreach ($_m_confirm_rows as $_m_confirm_row) {
-                        $_m_supervisor = getEmployeeSupervisor($conn, (int)$_m_confirm_row['employee_id']);
-                        if ($_m_supervisor && (int)$_m_supervisor['supervisor_employee_id'] === $_m_sup_id) {
+                        if (isSupervisorOfEmployee($conn, (int)$_SESSION['user_id'], (int)$_m_confirm_row['employee_id'])) {
                             $_m_confirm_count++;
                         }
                     }

@@ -256,46 +256,7 @@ switch ($effective_role) {
                         continue;
                     }
 
-                    $_hdr_p_reports_to = (isset($_hdr_confirm_row['reports_to']) && $_hdr_confirm_row['reports_to']) ? (int)$_hdr_confirm_row['reports_to'] : 0;
-                    $_hdr_is_match = false;
-
-                    // Branch Manager (rank 3) is reviewed first by any Branch Supervisor (rank 4)
-                    // in the same branch before it goes to Dept Manager review.
-                    if ((int)$_hdr_confirm_row['rank_category_id'] === 3 && (int)$_hdr_confirm_row['branch_id'] === $_hdr_emp_branch_id) {
-                        $_hdr_is_match = true;
-                    }
-
-                    if (!$_hdr_is_match) {
-                        if ($_hdr_p_reports_to > 0) {
-                            if (!isset($_hdr_active_reports_to_cache[$_hdr_p_reports_to])) {
-                                $_hdr_check_stmt = $conn->prepare("SELECT employee_id FROM employees WHERE employee_id = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1");
-                                if ($_hdr_check_stmt) {
-                                    $_hdr_check_stmt->bind_param("i", $_hdr_p_reports_to);
-                                    $_hdr_check_stmt->execute();
-                                    $_hdr_active_reports_to_cache[$_hdr_p_reports_to] = (bool)$_hdr_check_stmt->get_result()->fetch_assoc();
-                                    $_hdr_check_stmt->close();
-                                } else {
-                                    $_hdr_active_reports_to_cache[$_hdr_p_reports_to] = false;
-                                }
-                            }
-
-                            if ($_hdr_active_reports_to_cache[$_hdr_p_reports_to]) {
-                                if ($_hdr_p_reports_to === $_hdr_emp_id) {
-                                    $_hdr_is_match = true;
-                                }
-                            } else {
-                                if ($_hdr_emp_rank === 4 && (int)$_hdr_confirm_row['branch_id'] === $_hdr_emp_branch_id) {
-                                    $_hdr_is_match = true;
-                                }
-                            }
-                        } else {
-                            if ($_hdr_emp_rank === 4 && (int)$_hdr_confirm_row['branch_id'] === $_hdr_emp_branch_id) {
-                                $_hdr_is_match = true;
-                            }
-                        }
-                    }
-
-                    if ($_hdr_is_match) {
+                    if (isSupervisorOfEmployee($conn, (int)$_SESSION['user_id'], (int)$_hdr_confirm_row['employee_id'])) {
                         $m_confirm_rating_count++;
                     }
                 }

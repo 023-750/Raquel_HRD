@@ -209,6 +209,15 @@ $res = $conn->query("SELECT DISTINCT u.user_id, u.full_name
      ORDER BY u.full_name");
 while ($r = $res->fetch_assoc()) { $staff_options[] = $r; }
 
+$all_eval_staff_options = [];
+$res2 = $conn->query("SELECT DISTINCT u.user_id, u.full_name
+     FROM evaluations ev
+     INNER JOIN employees e ON ev.employee_id = e.employee_id
+     INNER JOIN users u ON ev.submitted_by = u.user_id
+     WHERE e.is_active = 1
+     ORDER BY u.full_name");
+while ($r = $res2->fetch_assoc()) { $all_eval_staff_options[] = $r; }
+
 // Filter parameters mapping
 $allowed_eval_types = ['Initial', 'Final', 'Quarterly', 'Annual'];
 $attention_filters = [
@@ -321,9 +330,11 @@ $finalized_count_q->close();
 // Fetch evaluations main query
 $sql = "SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.profile_picture,
     u.full_name as submitted_by_name, et.template_name, et.kra_weight, et.behavior_weight,
-    COALESCE(DATEDIFF(CURRENT_DATE(), DATE(ev.submitted_date)), 0) AS days_pending
+    COALESCE(DATEDIFF(CURRENT_DATE(), DATE(ev.submitted_date)), 0) AS days_pending,
+    b.branch_name
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
+    LEFT JOIN branches b ON e.branch_id = b.branch_id
     LEFT JOIN users u ON ev.submitted_by = u.user_id
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
     $pendingWhere
@@ -555,11 +566,29 @@ $filter_query = http_build_query(array_filter($filter_params));
                         <label class="form-label text-muted small fw-bold mb-1 d-block" style="font-size: 0.65rem;">Submitted By</label>
                         <select class="form-select form-select-sm" name="submitted_by">
                             <option value="">All Staff</option>
-                            <?php foreach ($staff_options as $staff): ?>
-                                <option value="<?php echo (int) $staff['user_id']; ?>" <?php echo $filter_staff === (int) $staff['user_id'] ? 'selected' : ''; ?>>
-                                    <?php echo e($staff['full_name']); ?>
-                                </option>
-                            <?php endforeach; ?>
+                            <?php if (!empty($staff_options)): ?>
+                                <optgroup label="Pending Approvals">
+                                    <?php foreach ($staff_options as $staff): ?>
+                                        <option value="<?php echo (int) $staff['user_id']; ?>" <?php echo $filter_staff === (int) $staff['user_id'] ? 'selected' : ''; ?>>
+                                            <?php echo e($staff['full_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endif; ?>
+                            <?php
+                            // Only show All Evaluations group if it has extra submitters not in pending
+                            $pending_ids = array_column($staff_options, 'user_id');
+                            $extra_staff = array_filter($all_eval_staff_options, fn($s) => !in_array($s['user_id'], $pending_ids));
+                            ?>
+                            <?php if (!empty($extra_staff)): ?>
+                                <optgroup label="All Evaluations">
+                                    <?php foreach ($extra_staff as $staff): ?>
+                                        <option value="<?php echo (int) $staff['user_id']; ?>" <?php echo $filter_staff === (int) $staff['user_id'] ? 'selected' : ''; ?>>
+                                            <?php echo e($staff['full_name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endif; ?>
                         </select>
                     </div>
                     <!-- Score Range -->
@@ -826,7 +855,7 @@ foreach ($all_pending as $row):
                 <div class="modal-header">
                     <div>
                         <h5 class="modal-title mb-1">Performance Review</h5>
-                        <p class="mb-0 opacity-75 small">Reviewing evaluation for <?php echo e($row['employee_name']); ?></p>
+                        <p class="mb-0 opacity-75 small">Reviewing evaluation for <?php echo e($row['employee_name']); ?> (<?php echo e($row['branch_name'] ?? 'No Branch'); ?>)</p>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>

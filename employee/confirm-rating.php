@@ -495,80 +495,19 @@ if ($is_supervisor) {
           )
           AND (
             emp.reports_to = ?
-            OR (emp.reports_to IS NULL AND emp.branch_id = ?)
-            -- Branch Manager self-rating: reviewed by a Branch Supervisor (rank 4) in the same branch
-            OR (
-              emp.rank_category_id = 3
-              AND emp.branch_id = ?
-              AND EXISTS (
-                SELECT 1 FROM employees sup2
-                WHERE sup2.employee_id = ?
-                  AND sup2.branch_id = emp.branch_id
-                  AND (sup2.rank_category_id = 4 OR sup2.job_title LIKE '%Supervisor%')
-                  AND sup2.is_active = 1
-                  AND sup2.deleted_at IS NULL
-              )
-            )
+            OR emp.branch_id = ?
           )
         ORDER BY e.submitted_date DESC
     ");
-    $pending_stmt->bind_param("iiiii", $supervisor_employee_id, $supervisor_employee_id, $supervisor_branch_id, $supervisor_branch_id, $supervisor_employee_id);
+    $pending_stmt->bind_param("iii", $supervisor_employee_id, $supervisor_employee_id, $supervisor_branch_id);
     $pending_stmt->execute();
     $all_pending = $pending_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
     $pending_stmt->close();
 
     $pending_confirmations = [];
 
-    // Loop: match each pending evaluation to this supervisor using hierarchy-aware rules.
-    // $supervisor_rank is used instead of a single fallback_supervisor_id so that
-    // ALL Branch Supervisors (rank 4) in the branch see unassigned evaluations,
-    // not just the one with the lowest employee_id.
-    $active_reports_to_cache = [];
     foreach ($all_pending as $p) {
-        $p_reports_to = (isset($p['reports_to']) && $p['reports_to']) ? (int)$p['reports_to'] : 0;
-        $is_match = false;
-
-        // Branch Manager (rank 3) is reviewed first by any Branch Supervisor (rank 4)
-        // in the same branch before it goes to Dept Manager review.
-        if ((int)$p['rank_category_id'] === 3 && (int)$p['branch_id'] === $supervisor_branch_id) {
-            $is_match = true;
-        }
-
-        if (!$is_match) {
-            if ($p_reports_to > 0) {
-                // Employee has a specific supervisor designated via reports_to
-                if (!isset($active_reports_to_cache[$p_reports_to])) {
-                    $check_stmt = $conn->prepare("SELECT employee_id FROM employees WHERE employee_id = ? AND is_active = 1 AND deleted_at IS NULL LIMIT 1");
-                    if ($check_stmt) {
-                        $check_stmt->bind_param("i", $p_reports_to);
-                        $check_stmt->execute();
-                        $active_reports_to_cache[$p_reports_to] = (bool)$check_stmt->get_result()->fetch_assoc();
-                        $check_stmt->close();
-                    } else {
-                        $active_reports_to_cache[$p_reports_to] = false;
-                    }
-                }
-
-                if ($active_reports_to_cache[$p_reports_to]) {
-                    // Designated supervisor is still active — only they handle it
-                    if ($p_reports_to === $supervisor_employee_id) {
-                        $is_match = true;
-                    }
-                } else {
-                    // Designated supervisor is gone — any rank-4 supervisor in the branch handles it
-                    if ($supervisor_rank === 4 && (int)$p['branch_id'] === $supervisor_branch_id) {
-                        $is_match = true;
-                    }
-                }
-            } else {
-                // No specific supervisor assigned — any rank-4 supervisor in the same branch handles it
-                if ($supervisor_rank === 4 && (int)$p['branch_id'] === $supervisor_branch_id) {
-                    $is_match = true;
-                }
-            }
-        }
-
-        if ($is_match) {
+        if (isSupervisorOfEmployee($conn, $user_id, (int)$p['employee_id'])) {
             $pending_confirmations[] = $p;
         }
     }

@@ -499,9 +499,11 @@ $all_pending = supervisorPendingRows(
             ev.supervisor_altered_scores,
             ev.sent_to_hr_date,
             ev.status AS eval_status,
-            dm.full_name AS dept_manager_endorsed_by_name
+            dm.full_name AS dept_manager_endorsed_by_name,
+            b.branch_name
      FROM evaluations ev
      INNER JOIN employees e ON ev.employee_id = e.employee_id
+     LEFT JOIN branches b ON e.branch_id = b.branch_id
      LEFT JOIN departments d ON e.department_id = d.department_id
      LEFT JOIN users u ON ev.submitted_by = u.user_id
      LEFT JOIN users sup ON ev.supervisor_confirmed_by = sup.user_id
@@ -1207,7 +1209,7 @@ foreach ($all_pending as $row):
                 <div class="modal-header">
                     <div>
                         <h5 class="modal-title mb-1">Review Evaluation</h5>
-                        <p class="mb-0 opacity-75 small">Reviewing evaluation for <?php echo e($row['employee_name']); ?></p>
+                        <p class="mb-0 opacity-75 small">Reviewing evaluation for <?php echo e($row['employee_name']); ?> (<?php echo e($row['branch_name'] ?? 'No Branch'); ?>)</p>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -1810,6 +1812,7 @@ function saveRatings(evalId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            sessionStorage.setItem('open_evaluation_modal', evalId);
             alert(data.message);
             location.reload();
         } else {
@@ -2114,6 +2117,20 @@ function saveDevPlan(evalId) {
         alert('An unexpected error occurred.');
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const openEvalId = sessionStorage.getItem('open_evaluation_modal');
+    if (openEvalId) {
+        sessionStorage.removeItem('open_evaluation_modal');
+        const modalEl = document.getElementById('reviewModal' + openEvalId);
+        if (modalEl) {
+            setTimeout(() => {
+                const modalInstance = new bootstrap.Modal(modalEl);
+                modalInstance.show();
+            }, 150);
+        }
+    }
+});
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

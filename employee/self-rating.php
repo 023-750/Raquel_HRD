@@ -380,6 +380,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $status = 'Pending Supervisor';
         } elseif ($is_supervisor_level_employee && $has_dept_manager) {
             $status = 'Pending Dept Manager';
+        } elseif ($is_supervisor_level_employee) {
+            $status = 'Pending HR Consolidation';
         } elseif (!$uses_hr_specific_flow && (int)($employee['rank_category_id'] ?? 0) === 3) {
             // Branch Manager self-rating: goes to Branch Supervisor (rank 4) ONLY if one exists in the branch.
             // Manager-only departments (no rank-4 supervisor) skip directly to HR Consolidation.
