@@ -1,4 +1,24 @@
 <?php
+/**
+ * Returns the CSS class for a job title badge based on rank_category_id.
+ *  1 = Executives     → gold
+ *  2 = Management Team → purple
+ *  3 = Manager         → blue
+ *  4 = Supervisor      → teal
+ *  5 = R&F / Staff     → slate
+ */
+function getJobTitleBadgeClass(int $rankId): string {
+    return match ($rankId) {
+        1 => 'job-badge-executive',
+        2 => 'job-badge-mgmt-team',
+        3 => 'job-badge-manager',
+        4 => 'job-badge-supervisor',
+        5 => 'job-badge-rf',
+        default => 'job-badge-default',
+    };
+}
+?>
+<?php
 $page_title = 'Member List';
 require_once '../includes/session-check.php';
 checkRole(['Admin']);
@@ -45,6 +65,7 @@ if ($current_page > $total_pages) {
 // Fetch paginated employees with branch info (excluding strictly Admin accounts)
 $employees = $conn->query("
     SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.middle_name, e.job_title,
+           e.rank_category_id,
            b.branch_name, d.department_name, e.profile_picture, e.is_active
     FROM employees e
     LEFT JOIN branches b ON e.branch_id = b.branch_id
@@ -58,6 +79,23 @@ $employees = $conn->query("
 ?>
 
 <style>
+    /* ── Job Title Rank Badges ───────────────────────── */
+    .job-badge {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 12px;
+        font-size: .72rem;
+        font-weight: 600;
+        letter-spacing: .3px;
+        white-space: nowrap;
+    }
+    .job-badge-executive   { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+    .job-badge-mgmt-team   { background: #ede7f6; color: #5e35b1; border: 1px solid #9c77e0; }
+    .job-badge-manager     { background: #dbeafe; color: #1d4ed8; border: 1px solid #60a5fa; }
+    .job-badge-supervisor  { background: #ccfbf1; color: #0f766e; border: 1px solid #2dd4bf; }
+    .job-badge-rf          { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+    .job-badge-default     { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
     .admin-member-toolbar {
         align-items: center;
         display: flex;
@@ -150,7 +188,14 @@ $employees = $conn->query("
                                 <td data-label="Full Name"><strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name'] . ' ' . $emp['middle_name']); ?></strong></td>
                                 <td data-label="Department"><?php echo e($emp['department_name'] ?? 'N/A'); ?></td>
                                 <td data-label="Branch"><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
-                                <td data-label="Position"><?php echo e($emp['job_title'] ?? 'N/A'); ?></td>
+                                <td data-label="Position">
+                                    <?php 
+                                        $rankId = (int)($emp['rank_category_id'] ?? 0);
+                                        $badgeClass = getJobTitleBadgeClass($rankId);
+                                        $title = e($emp['job_title'] ?? 'N/A');
+                                    ?>
+                                    <span class="job-badge <?php echo $badgeClass; ?>"><?php echo $title; ?></span>
+                                </td>
                                 <td data-label="Status">
                                     <span class="badge <?php echo $emp['is_active'] ? 'bg-success' : 'bg-danger'; ?>">
                                         <?php echo $emp['is_active'] ? 'Active' : 'Inactive'; ?>
@@ -184,7 +229,12 @@ $employees = $conn->query("
                                 <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name'] . ' ' . $emp['middle_name']); ?></div>
                                 <div class="student-meta">
                                     <span class="company-id-text">ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span></span>
-                                    &bull; <span><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
+                                    &bull; 
+                                    <?php 
+                                        $rankIdMob = (int)($emp['rank_category_id'] ?? 0);
+                                        $badgeClassMob = getJobTitleBadgeClass($rankIdMob);
+                                    ?>
+                                    <span class="job-badge <?php echo $badgeClassMob; ?>"><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
                                 </div>
                                 <div class="student-meta" style="margin-top: 2px;">
                                     <span><?php echo e($emp['department_name'] ?? 'N/A'); ?></span>

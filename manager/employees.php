@@ -1,4 +1,24 @@
 <?php
+/**
+ * Returns the CSS class for a job title badge based on rank_category_id.
+ *  1 = Executives      → gold
+ *  2 = Management Team → purple
+ *  3 = Manager         → blue
+ *  4 = Supervisor      → teal
+ *  5 = R&F / Staff     → green
+ */
+function getJobTitleBadgeClass(int $rankId): string {
+    return match ($rankId) {
+        1 => 'job-badge-executive',
+        2 => 'job-badge-mgmt-team',
+        3 => 'job-badge-manager',
+        4 => 'job-badge-supervisor',
+        5 => 'job-badge-rf',
+        default => 'job-badge-default',
+    };
+}
+?>
+<?php
 $page_title = 'Employees';
 require_once '../includes/session-check.php';
 checkRole(['HR Manager']);
@@ -148,6 +168,23 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 ?>
 
 <style>
+    /* ── Job Title Rank Badges ───────────────────────── */
+    .job-badge {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 12px;
+        font-size: .72rem;
+        font-weight: 600;
+        letter-spacing: .3px;
+        white-space: nowrap;
+    }
+    .job-badge-executive   { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+    .job-badge-mgmt-team   { background: #ede7f6; color: #5e35b1; border: 1px solid #9c77e0; }
+    .job-badge-manager     { background: #dbeafe; color: #1d4ed8; border: 1px solid #60a5fa; }
+    .job-badge-supervisor  { background: #ccfbf1; color: #0f766e; border: 1px solid #2dd4bf; }
+    .job-badge-rf          { background: #f0fdf4; color: #166534; border: 1px solid #86efac; }
+    .job-badge-default     { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
     /* Filter Toolbar */
     .filter-toolbar {
         padding: 16px 20px;
@@ -468,7 +505,13 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                                     <strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong>
                                 </div>
                             </td>
-                            <td data-label="Job Title"><?php echo e($emp['job_title']); ?></td>
+                            <td data-label="Job Title">
+                                <?php
+                                    $rankId = (int)($emp['rank_category_id'] ?? 0);
+                                    $badgeClass = getJobTitleBadgeClass($rankId);
+                                ?>
+                                <span class="job-badge <?php echo $badgeClass; ?>"><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
+                            </td>
                             <td data-label="Department"><?php echo e($emp['department_name'] ?? 'N/A'); ?></td>
                             <td data-label="Branch"><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
                             <td data-label="Status">
@@ -537,7 +580,11 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                     <div class="student-info" style="flex:1;min-width:0;overflow:hidden;">
                         <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></div>
                         <div class="student-meta">
-                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;"><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
+                            <?php
+                                $rankIdMob = (int)($emp['rank_category_id'] ?? 0);
+                                $badgeClassMob = getJobTitleBadgeClass($rankIdMob);
+                            ?>
+                            <span class="job-badge <?php echo $badgeClassMob; ?>" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;"><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
                             &bull; <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo e($emp['department_name'] ?? 'N/A'); ?></span>
                         </div>
                         <div class="student-meta" style="margin-top:2px;">
