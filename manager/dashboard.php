@@ -356,7 +356,7 @@ while ($row = $age_dist_q->fetch_assoc()) {
         display: block;
     }
     .premium-branch-bg {
-        background: linear-gradient(135deg, rgba(9, 32, 63, 0.85), rgba(83, 120, 149, 0.85)), url("<?php echo BASE_URL; ?>/assets/img/logo/621580631_2109586223124918_6598389711140444032_n.jpg") no-repeat center center;
+        background: linear-gradient(135deg, rgba(9, 32, 63, 0.85), rgba(83, 120, 149, 0.85)), url("<?php echo BASE_URL; ?>/assets/img/logo/main_branch.jpg") no-repeat center center;
         background-size: cover;
         color: #ffffff !important;
         transition: all 0.5s ease;

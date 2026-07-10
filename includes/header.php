@@ -87,7 +87,7 @@ switch ($effective_role) {
 
             'CAREER' => [
                 ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/manager/career-movements.php', 'page' => 'career-movements.php'],
-                ['icon' => 'fas fa-chart-line', 'label' => 'Career Progression', 'url' => BASE_URL . '/manager/career-progression.php', 'page' => 'career-progression.php'],
+                // ['icon' => 'fas fa-chart-line', 'label' => 'Career Progression', 'url' => BASE_URL . '/manager/career-progression.php', 'page' => 'career-progression.php'],
             ],
             'ANALYTICS' => [
                 ['icon' => 'fas fa-chart-bar', 'label' => 'Analytics', 'url' => BASE_URL . '/manager/analytics.php', 'page' => 'analytics.php'],
@@ -498,6 +498,25 @@ switch ($effective_role) {
                     <li>
                         <hr class="dropdown-divider">
                     </li>
+                    <?php
+                    $profile_settings_url = '';
+                    if ($effective_role === 'HR Manager') {
+                        $profile_settings_url = BASE_URL . '/manager/profile-settings.php';
+                    } elseif ($effective_role === 'HR Supervisor') {
+                        $profile_settings_url = BASE_URL . '/supervisor/profile-settings.php';
+                    } elseif ($effective_role === 'HR Staff') {
+                        $profile_settings_url = BASE_URL . '/staff/profile-settings.php';
+                    } elseif ($effective_role === 'Employee') {
+                        $profile_settings_url = BASE_URL . '/employee/profile-settings.php';
+                    }
+                    ?>
+                    <?php if (!empty($profile_settings_url)): ?>
+                        <li><a class="dropdown-item" href="<?php echo $profile_settings_url; ?>"><i
+                                    class="fas fa-user-cog me-2"></i>Profile & Settings</a></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                    <?php endif; ?>
                     <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/logout.php"><i
                                 class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
                 </ul>
