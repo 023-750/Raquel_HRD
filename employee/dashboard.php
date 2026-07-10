@@ -235,7 +235,7 @@ function movementIcon(string $type): string {
                  onclick="viewFullImage('<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>', '<?php echo e(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? '')); ?>')"
                  class="cursor-pointer"
                  loading="lazy"
-                 style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.35);box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .2s;">
+                 style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.35);box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .2s;background-color:#ffffff;">
             <div>
                 <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.55);">Employee Portal · Welcome Back</div>
                 <h2 class="text-white fw-bold mb-1 mt-1" style="font-size:1.6rem;">

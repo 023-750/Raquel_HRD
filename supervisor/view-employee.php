@@ -1282,7 +1282,7 @@ $rankBadgeClass = $rankBadgeClassMap[$emp['rank_name'] ?? ''] ?? 'rank-badge-def
                 style="top: 15px; right: 15px; z-index: 1100; background-color: rgba(0,0,0,0.6); border: none;"
                 data-bs-dismiss="modal" aria-label="Close"></button>
             <div class="modal-body p-0 text-center">
-                <img id="fullImage" src="" class="img-fluid rounded shadow" style="max-height: 85vh;">
+                <img id="fullImage" src="" class="img-fluid rounded shadow" style="max-height: 85vh; background-color: #ffffff;">
                 <h6 id="fullImageName" class="text-white mt-3 fw-bold"></h6>
             </div>
         </div>

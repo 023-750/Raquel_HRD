@@ -14,7 +14,7 @@ Department
 
 Each department must have all employee positions:
 
--Acquired Properties-
+-Acquired Properties- ✔ 17
 > AP Manager I (manager)
 > AP Manager II (manager)
 > AP Manager III (manager)
@@ -33,7 +33,7 @@ Each department must have all employee positions:
 > Sales Associate on Probation (R&F)
 > VP for Acquired Properties (Executives)
 
--Audit-
+-Audit- ✔ 12
 > Audit Manager I (Manager)
 > Audit Manager II (Manager)
 > Audit Manager III (Manager)
@@ -47,13 +47,13 @@ Each department must have all employee positions:
 > Auditor on Probation (R&F)
 > Auditor V (R&F)
 
--Business Development-
+-Business Development- (Manager Only ✔) 4
 > Business Development Officer I (Manager)
 > Business Development Staff I (R&F)
 > Business Development Staff II (R&F)
 > Business Development Staff on Training (R&F)
 
--Compliance-
+-Compliance- (Supervisor Only ✔) 6
 > Compliance Staff I (R&F)
 > Compliance Staff II (R&F)
 > Compliance Staff III (R&F)
@@ -61,7 +61,7 @@ Each department must have all employee positions:
 > Compliance Supervisor II (Supervisor)
 > Compliance Supervisor III (Supervisor)
 
--Finance-
+-Finance- (Supervisor Only ✔) 18
 > Accounting Staff I (R&F)
 > Accounting Staff II (R&F)
 > Accounting Staff III (R&F)
@@ -81,7 +81,7 @@ Each department must have all employee positions:
 > Treasury Supervisor V (Supervisor)
 > VP for Finance (Executives)
 
--General Services-
+-General Services- ✔ 24
 > Driver I (R&F)
 > Driver II (R&F)
 > Driver III (R&F)
@@ -107,7 +107,7 @@ Each department must have all employee positions:
 > VP for General Services (Executives)
 > Warehouse Staff I (R&F)
 
--Human resources-
+-Human resources- ✔ 15
 > HR Manager I (Manager)
 > HR Manager II (Manager)
 > HR Manager III (Manager)
@@ -124,7 +124,7 @@ Each department must have all employee positions:
 > HR Supervisor IV (Supervisor)
 > HR Supervisor V (Supervisor)
 
--Information Technology-
+-Information Technology- ✔ 19
 > Helpdesk Assistant I (R&F)
 > Helpdesk Assistant II (R&F)
 > Helpdesk Assistant III (R&F)
@@ -145,7 +145,7 @@ Each department must have all employee positions:
 > Technical Support Staff IV (R&F)
 > Technical Support Staff V (R&F)
 
--Marketing-
+-Marketing- ✔ 7 
 > Marketing Manager I (Manager)
 > Marketing Manager II (Manager)
 > Marketing Staff I (R&F)
@@ -154,13 +154,13 @@ Each department must have all employee positions:
 > Marketing Supervisor I (Supervisor)
 > Marketing Supervisor II (Supervisor)
 
--Office of the President-
+-Office of the President- (keep an eye of this ⚠) 4
 > Executive Assistant I (R&F)
 > Executive Assistant II (R&F)
 > Executive Assistant III (R&F)
 > President and CEO (Executives)
 
--Operations-
+-Operations- ✔ 16
 > Area Coordinator I (Supervisor)
 > Area Coordinator II (Supervisor)
 > Branch Staff I (R&F)
@@ -178,7 +178,7 @@ Each department must have all employee positions:
 > Regional Manager II (Manager)
 > VP for Operations (Executives)
 
--Purchasing-
+-Purchasing- (Supervisor Only ✔) 3
 > Purchasing Staff I (R&F)
 > Purchasing Supervisor I (Supervisor)
 > Purchasing Supervisor on Training (Supervisor)

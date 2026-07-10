@@ -147,7 +147,7 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
                 style="top: 15px; right: 15px; z-index: 1100; background-color: rgba(0,0,0,0.6); border: none;"
                 data-bs-dismiss="modal" aria-label="Close"></button>
             <div class="modal-body p-0 text-center">
-                <img id="fullImage" src="" class="img-fluid rounded shadow" style="max-height: 85vh; border: 3px solid rgba(255,255,255,0.1);">
+                <img id="fullImage" src="" class="img-fluid rounded shadow" style="max-height: 85vh; border: 3px solid rgba(255,255,255,0.1); background-color: #ffffff;">
                 <h6 id="fullImageName" class="text-white mt-3 fw-bold" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);"></h6>
             </div>
         </div>
