@@ -333,39 +333,16 @@ require_once '../includes/header.php';
                             </div>
 
                             <!-- Movement Type -->
-                            <div class="col-12">
-                                <label class="form-label fw-semibold" id="movement-type-label">Movement Type <span class="text-danger" aria-label="required">*</span></label>
-                                <div class="row g-3" role="radiogroup" aria-labelledby="movement-type-label">
-                                    <?php
-                                    $movement_types_list = [
-                                        ['value'=>'Promotion',    'icon'=>'fas fa-arrow-up',     'desc'=>'Advance to a higher role or pay grade', 'color'=>'#0F6B2E'],
-                                        ['value'=>'Transfer',     'icon'=>'fas fa-exchange-alt',  'desc'=>'Move to different branch or department', 'color'=>'#065F73'],
-                                        ['value'=>'Demotion',     'icon'=>'fas fa-arrow-down',    'desc'=>'Move to a lower position',               'color'=>'#991B1B'],
-                                        ['value'=>'Role Change',  'icon'=>'fas fa-sync-alt',       'desc'=>'Same level, different responsibilities', 'color'=>'#7F5C00'],
-                                    ];
-                                    foreach ($movement_types_list as $mt):
-                                        $mt_id = 'mtcard-' . strtolower(str_replace(' ', '-', $mt['value']));
-                                    ?>
-                                    <div class="col-6 col-md-3">
-                                        <div class="movement-type-card"
-                                             role="radio"
-                                             aria-checked="false"
-                                             tabindex="0"
-                                             id="<?php echo $mt_id; ?>"
-                                             onclick="selectMovementType('<?php echo addslashes($mt['value']); ?>')"
-                                             onkeydown="if(event.key==='Enter'||event.key===' '){selectMovementType('<?php echo addslashes($mt['value']); ?>')}"
-                                             style="border: 2px solid #D1D5CE; border-radius: 12px; padding: 1rem; cursor: pointer; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; transition: all 0.2s; background: #fff; user-select: none;">
-                                            <i class="<?php echo $mt['icon']; ?>" aria-hidden="true" style="font-size: 1.75rem; color: <?php echo $mt['color']; ?>; margin-bottom: 0.5rem;"></i>
-                                            <div style="font-weight: 700; font-size: 0.9rem; color: #1C271B;"><?php echo e($mt['value']); ?></div>
-                                            <div style="font-size: 0.72rem; color: #5E6B5C; margin-top: 0.25rem; line-height: 1.3;"><?php echo e($mt['desc']); ?></div>
-                                        </div>
-                                    </div>
-                                    <?php endforeach; ?>
-                                </div>
-                                <input type="hidden" name="movement_type" id="movement_type_hidden" required>
-                                <div id="movement_type_error" class="text-danger small mt-1" role="alert" style="display:none;">
-                                    <i class="fas fa-exclamation-circle me-1"></i>Please select a movement type.
-                                </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="movement_type_select">Movement Type <span class="text-danger" aria-label="required">*</span></label>
+                                <select name="movement_type" id="movement_type_select" class="form-select" required>
+                                    <option value="">-- Select type --</option>
+                                    <option value="Transfer"  <?php if (!empty($_POST['movement_type']) && $_POST['movement_type']==='Transfer')  echo 'selected'; ?>>Transfer</option>
+                                    <option value="Promotion" <?php if (!empty($_POST['movement_type']) && $_POST['movement_type']==='Promotion') echo 'selected'; ?>>Promotion</option>
+                                    <option value="Demotion"  <?php if (!empty($_POST['movement_type']) && $_POST['movement_type']==='Demotion')  echo 'selected'; ?>>Demotion</option>
+                                    <option value="Role Change" <?php if (!empty($_POST['movement_type']) && $_POST['movement_type']==='Role Change') echo 'selected'; ?>>Role Change</option>
+                                </select>
+                                <div class="form-text">Select <strong>Transfer</strong> for branch re-assignment.</div>
                             </div>
 
                             <!-- New Position -->
@@ -498,96 +475,54 @@ require_once '../includes/header.php';
     <?php endif; ?>
 <?php endif; ?>
 
+
 <script>
-function selectMovementType(value) {
-    // Reset all cards
-    document.querySelectorAll('.movement-type-card').forEach(function(c) {
-        c.style.borderColor = '#D1D5CE';
-        c.style.background  = '#fff';
-        c.style.transform   = '';
-        c.setAttribute('aria-checked', 'false');
-    });
-    // Highlight selected
-    var id   = 'mtcard-' + value.toLowerCase().replace(/\s+/g, '-');
-    var card = document.getElementById(id);
-    if (card) {
-        card.style.borderColor = '#082E06';
-        card.style.background  = 'rgba(8,46,6,0.06)';
-        card.style.transform   = 'translateY(-3px)';
-        card.setAttribute('aria-checked', 'true');
-    }
-    document.getElementById('movement_type_hidden').value = value;
-    document.getElementById('movement_type_error').style.display = 'none';
+document.addEventListener('DOMContentLoaded', function () {
 
-    // Advance progress to step 2 now that a type is selected
-    updateProgressIndicator();
-}
+    // Progress indicator — driven by employee + movement type dropdowns
+    var empSel  = document.getElementById('employee_id_select');
+    var typeSel = document.getElementById('movement_type_select');
 
-// Called when employee select changes — advances step 1 visually
-function onEmployeeSelected(sel) {
-    updateProgressIndicator();
-}
+    function updateProgress() {
+        var step2 = document.getElementById('prog-step-2');
+        var step3 = document.getElementById('prog-step-3');
+        var line2 = document.getElementById('prog-line-2');
 
-function updateProgressIndicator() {
-    var employeeSelected = document.getElementById('employee_id_select') &&
-                           document.getElementById('employee_id_select').value !== '';
-    var typeSelected     = document.getElementById('movement_type_hidden').value !== '';
+        var empOk  = empSel  && empSel.value  !== '';
+        var typeOk = typeSel && typeSel.value !== '';
 
-    // Step 1 circle — driven by employee selection
-    var step2 = document.getElementById('prog-step-2');
-    var line1 = document.getElementById('prog-line-1');
-
-    if (employeeSelected) {
-        // Step 1 stays completed; step 2 becomes active
-        if (step2) {
-            step2.classList.remove('active');
-            step2.classList.add('active'); // already active by default; keep
+        if (empOk && !typeOk) {
+            if (step2) { step2.classList.remove('completed'); step2.classList.add('active'); }
         }
-    }
-
-    // Step 3 — becomes active when both employee and type are selected
-    var step3 = document.getElementById('prog-step-3');
-    var line2 = document.getElementById('prog-line-2');
-    if (employeeSelected && typeSelected) {
-        if (step2) {
-            step2.classList.remove('active');
-            step2.classList.add('completed');
-            // Replace number with checkmark
-            var numEl = step2.querySelector('.progress-step-number');
-            if (numEl && numEl.textContent.trim() === '2') {
-                numEl.innerHTML = '<i class="fas fa-check" aria-hidden="true"></i>';
+        if (empOk && typeOk) {
+            if (step2) {
+                step2.classList.remove('active');
+                step2.classList.add('completed');
+                var n = step2.querySelector('.progress-step-number');
+                if (n) n.innerHTML = '<i class="fas fa-check"></i>';
             }
+            if (line2) line2.classList.add('completed');
+            if (step3) step3.classList.add('active');
+        } else {
+            if (step2 && step2.classList.contains('completed')) {
+                step2.classList.remove('completed');
+                step2.classList.add('active');
+                var n2 = step2.querySelector('.progress-step-number');
+                if (n2) n2.innerHTML = '2';
+            }
+            if (line2) line2.classList.remove('completed');
+            if (step3) step3.classList.remove('active');
         }
-        if (line2) line2.classList.add('completed');
-        if (step3) {
-            step3.classList.remove('active');
-            step3.classList.add('active');
-        }
-    } else {
-        // Revert step 2 to active if conditions unmet
-        if (step2 && step2.classList.contains('completed')) {
-            step2.classList.remove('completed');
-            step2.classList.add('active');
-            var numEl2 = step2.querySelector('.progress-step-number');
-            if (numEl2) numEl2.innerHTML = '2';
-        }
-        if (line2) line2.classList.remove('completed');
-        if (step3) step3.classList.remove('active');
     }
-}
 
-// Validate movement type before submit
-document.addEventListener('DOMContentLoaded', function() {
+    if (empSel)  empSel.addEventListener('change',  updateProgress);
+    if (typeSel) typeSel.addEventListener('change', updateProgress);
+    updateProgress();
+
+    // Prevent double-submit
     var form = document.getElementById('career-request-form');
     if (form) {
-        form.addEventListener('submit', function(e) {
-            if (!document.getElementById('movement_type_hidden').value) {
-                e.preventDefault();
-                document.getElementById('movement_type_error').style.display = 'block';
-                document.querySelector('.movement-type-card').scrollIntoView({behavior:'smooth', block:'center'});
-                return;
-            }
-            // Disable submit button to prevent duplicates (Req 15.2)
+        form.addEventListener('submit', function (e) {
             var btn = document.getElementById('submit-btn');
             if (btn) {
                 btn.disabled = true;
@@ -596,21 +531,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Scroll to confirmation panel if present
+    // Auto-scroll to confirmation after successful submit
     var conf = document.getElementById('submission-confirmation');
     if (conf) {
-        conf.scrollIntoView({behavior: 'smooth', block: 'start'});
+        conf.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-
-    // Restore selection if POST had errors
-    <?php if (!empty($_POST['movement_type'])): ?>
-    selectMovementType('<?php echo addslashes($_POST['movement_type']); ?>');
-    <?php endif; ?>
-
-    // Restore employee selection state for progress indicator
-    var empSel = document.getElementById('employee_id_select');
-    if (empSel && empSel.value) updateProgressIndicator();
 });
 </script>
 
-<?php require_once '../includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

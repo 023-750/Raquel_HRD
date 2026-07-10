@@ -4,6 +4,63 @@ require_once '../includes/session-check.php';
 checkRole(['HR Manager']);
 require_once '../includes/functions.php';
 
+// ── Employee Change Request: approve / reject ────────────────────────────────
+ensureEmployeeChangeRequests($conn);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ecr_action'], $_POST['ecr_request_id'])) {
+    $ecr_id     = (int) $_POST['ecr_request_id'];
+    $ecr_action = $_POST['ecr_action'];
+    $mgr_notes  = trim($_POST['manager_notes'] ?? '');
+    $reviewer   = (int) ($_SESSION['user_id'] ?? 0);
+
+    // Load the request
+    $ecr_stmt = $conn->prepare("SELECT ecr.*, CONCAT(e.first_name,' ',e.last_name) AS emp_name, u.full_name AS staff_name, ecr.submitted_by
+        FROM employee_change_requests ecr
+        LEFT JOIN employees e ON ecr.employee_id = e.employee_id
+        LEFT JOIN users u ON ecr.submitted_by = u.user_id
+        WHERE ecr.request_id = ? AND ecr.status = 'Pending' LIMIT 1");
+    $ecr_stmt->bind_param('i', $ecr_id);
+    $ecr_stmt->execute();
+    $ecr_row = $ecr_stmt->get_result()->fetch_assoc();
+    $ecr_stmt->close();
+
+    if (!$ecr_row) {
+        redirectWith(BASE_URL . '/manager/pending-approvals.php?tab=changes', 'danger', 'Change request not found or already processed.');
+    }
+
+    if ($ecr_action === 'approve') {
+        // Mark approved first so applyEmployeeChangeRequest can verify status
+        $upd = $conn->prepare("UPDATE employee_change_requests SET status='Approved', reviewed_by=?, reviewed_at=NOW(), manager_notes=? WHERE request_id=?");
+        $upd->bind_param('isi', $reviewer, $mgr_notes, $ecr_id);
+        $upd->execute(); $upd->close();
+
+        // Apply the diff to the live employee record
+        applyEmployeeChangeRequest($conn, $ecr_id);
+
+        // Notify HR Staff submitter
+        createNotification($conn, (int)$ecr_row['submitted_by'],
+            'Edit Request Approved',
+            "Your change request for {$ecr_row['emp_name']} has been approved by the HR Manager." . ($mgr_notes ? ' Notes: ' . $mgr_notes : ''),
+            BASE_URL . '/staff/employees.php'
+        );
+        logAudit($conn, $reviewer, 'APPROVE', 'EmployeeChangeRequest', $ecr_id, "Approved change request for {$ecr_row['emp_name']}");
+        redirectWith(BASE_URL . '/manager/pending-approvals.php?tab=changes', 'success', "Changes for {$ecr_row['emp_name']} approved and applied.");
+
+    } elseif ($ecr_action === 'reject') {
+        $upd = $conn->prepare("UPDATE employee_change_requests SET status='Rejected', reviewed_by=?, reviewed_at=NOW(), manager_notes=? WHERE request_id=?");
+        $upd->bind_param('isi', $reviewer, $mgr_notes, $ecr_id);
+        $upd->execute(); $upd->close();
+
+        createNotification($conn, (int)$ecr_row['submitted_by'],
+            'Edit Request Rejected',
+            "Your change request for {$ecr_row['emp_name']} was rejected." . ($mgr_notes ? ' Reason: ' . $mgr_notes : ''),
+            BASE_URL . '/staff/employees.php'
+        );
+        logAudit($conn, $reviewer, 'REJECT', 'EmployeeChangeRequest', $ecr_id, "Rejected change request for {$ecr_row['emp_name']}");
+        redirectWith(BASE_URL . '/manager/pending-approvals.php?tab=changes', 'warning', "Change request for {$ecr_row['emp_name']} rejected.");
+    }
+}
+// ── End Employee Change Request handler ─────────────────────────────────────
+
 // Handle approval/rejection (MUST be before header.php to allow redirect)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $eval_id = (int) $_POST['evaluation_id'];
@@ -376,6 +433,26 @@ foreach ($filter_params as $value) {
     }
 }
 $filter_query = http_build_query(array_filter($filter_params));
+
+// ── Fetch pending employee change requests ───────────────────────────────────
+$active_tab = $_GET['tab'] ?? 'evaluations';
+$ecr_pending = $conn->query("
+    SELECT ecr.*, CONCAT(e.first_name,' ',e.last_name) AS emp_name,
+           e.job_title, e.profile_picture,
+           b.branch_name, d.department_name,
+           u.full_name AS staff_name
+    FROM employee_change_requests ecr
+    LEFT JOIN employees e ON ecr.employee_id = e.employee_id
+    LEFT JOIN branches b ON e.branch_id = b.branch_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN users u ON ecr.submitted_by = u.user_id
+    WHERE ecr.status = 'Pending'
+    ORDER BY ecr.created_at DESC
+");
+$ecr_pending_count = $ecr_pending ? (int)$ecr_pending->num_rows : 0;
+$ecr_all_pending = [];
+if ($ecr_pending) { while ($r = $ecr_pending->fetch_assoc()) $ecr_all_pending[] = $r; }
+// ── End change request fetch ─────────────────────────────────────────────────
 ?>
 
 <div class="page-hero fadeup">
@@ -464,6 +541,29 @@ $filter_query = http_build_query(array_filter($filter_params));
         </div>
     </div>
 </div>
+
+<!-- ── Section Tab Switcher ──────────────────────────────────────────── -->
+<div class="d-flex gap-2 mb-3 fadeup" style="border-bottom:2px solid #e8ecf1;padding-bottom:0;">
+    <a href="#" data-pa-tab="evaluations"
+       class="btn btn-sm fw-semibold rounded-0 border-0 border-bottom pb-2 px-3"
+       style="margin-bottom:-2px;border-bottom-width:2px !important;">
+        <i class="fas fa-check-double me-1"></i>Evaluation Approvals
+        <?php if ($branch_pending_count > 0): ?>
+            <span class="badge rounded-pill bg-primary ms-1"><?php echo $branch_pending_count > 9 ? '9+' : $branch_pending_count; ?></span>
+        <?php endif; ?>
+    </a>
+    <a href="#" data-pa-tab="changes"
+       class="btn btn-sm fw-semibold rounded-0 border-0 border-bottom pb-2 px-3"
+       style="margin-bottom:-2px;border-bottom-width:2px !important;">
+        <i class="fas fa-user-edit me-1"></i>Employee Edit Requests
+        <?php if ($ecr_pending_count > 0): ?>
+            <span class="badge rounded-pill bg-warning text-dark ms-1"><?php echo $ecr_pending_count > 9 ? '9+' : $ecr_pending_count; ?></span>
+        <?php endif; ?>
+    </a>
+</div>
+
+<!-- ── PANE: Evaluations ─────────────────────────────────────────────── -->
+<div data-pa-pane data-pa-pane-id="evaluations">
 
 <!-- Modern Filter System -->
 <div class="pending-filter-card fadeup fadeup-1" style="background:#fff; border:1px solid #eef2e8; border-radius:14px; box-shadow:0 8px 22px rgba(12,32,8,0.06); margin-bottom:18px; padding:16px;">
@@ -1887,6 +1987,202 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+});
+</script>
+
+<?php
+// ── Tab switcher JS must come before footer ───────────────────────────────
+?>
+
+</div><!-- end evaluations pane -->
+
+<!-- ── PANE: Employee Edit Requests ──────────────────────────────────────── -->
+<div data-pa-pane data-pa-pane-id="changes">
+
+<style>
+.ecr-card { background:#fff; border:1px solid #eef2e8; border-radius:14px; box-shadow:0 4px 16px rgba(12,32,8,.06); margin-bottom:16px; overflow:hidden; }
+.ecr-card-header { display:flex; align-items:center; gap:14px; padding:16px 20px; border-bottom:1px solid #f0f4eb; }
+.ecr-emp-avatar { width:46px; height:46px; border-radius:12px; object-fit:cover; flex-shrink:0; }
+.ecr-emp-info .emp-name { font-weight:700; font-size:.97rem; }
+.ecr-emp-info .emp-meta { font-size:.75rem; color:#8094ae; }
+.ecr-submitted-by { margin-left:auto; text-align:right; font-size:.75rem; color:#8094ae; }
+.ecr-card-body { padding:16px 20px; }
+.diff-table { width:100%; border-collapse:collapse; font-size:.83rem; }
+.diff-table th { background:#f8f9fc; color:#8094ae; font-size:.7rem; text-transform:uppercase; letter-spacing:.4px; padding:7px 12px; border-bottom:1px solid #e8ecf1; }
+.diff-table td { padding:8px 12px; border-bottom:1px solid #f4f6f9; vertical-align:top; }
+.diff-table tr:last-child td { border-bottom:none; }
+.diff-old { color:#dc3545; text-decoration:line-through; opacity:.8; }
+.diff-new { color:#198754; font-weight:600; }
+.diff-field { color:#344357; font-weight:600; }
+.ecr-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; padding-top:14px; border-top:1px solid #f0f4eb; margin-top:14px; }
+.ecr-empty { text-align:center; padding:60px 20px; color:#8094ae; }
+.ecr-empty i { font-size:3rem; opacity:.2; display:block; margin-bottom:16px; }
+</style>
+
+<div class="chart-card fadeup">
+    <div class="cc-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-user-edit me-2"></i>Pending Employee Edit Requests
+            <?php if ($ecr_pending_count > 0): ?>
+                <span class="badge rounded-pill bg-warning text-dark ms-2"><?php echo $ecr_pending_count; ?></span>
+            <?php endif; ?>
+        </h5>
+        <small class="text-muted">Changes submitted by HR Staff await your review before applying to the live record.</small>
+    </div>
+    <div class="cc-body">
+        <?php if (empty($ecr_all_pending)): ?>
+            <div class="ecr-empty">
+                <i class="fas fa-inbox"></i>
+                <p class="mb-0 fw-semibold">No pending employee edit requests</p>
+                <p class="small mt-1">When HR Staff submits a change request, it will appear here for your review.</p>
+            </div>
+        <?php else: ?>
+            <?php foreach ($ecr_all_pending as $ecr):
+                $diff = json_decode($ecr['changes_json'] ?? '{}', true);
+                $diff = is_array($diff) ? $diff : [];
+                $field_labels = [
+                    'employee_code' => 'Employee Code',
+                    'first_name' => 'First Name', 'last_name' => 'Last Name',
+                    'middle_name' => 'Middle Name', 'name_extension' => 'Name Extension',
+                    'date_of_birth' => 'Date of Birth', 'place_of_birth' => 'Place of Birth',
+                    'gender' => 'Gender', 'civil_status' => 'Civil Status',
+                    'height_m' => 'Height (m)', 'weight_kg' => 'Weight (kg)',
+                    'blood_type' => 'Blood Type', 'citizenship' => 'Citizenship',
+                    'sss_number' => 'SSS No.', 'philhealth_number' => 'PhilHealth No.',
+                    'pagibig_number' => 'Pag-IBIG No.', 'tin_number' => 'TIN',
+                    'telephone_number' => 'Telephone', 'mobile_number' => 'Mobile',
+                    'personal_email' => 'Email',
+                    'hire_date' => 'Hire Date', 'employment_status' => 'Employment Status',
+                    'employment_type' => 'Employment Type', 'job_title' => 'Job Title',
+                    'branch_id' => 'Branch ID', 'department_id' => 'Department ID',
+                    'rank_category_id' => 'Rank Category', 'contract_start_date' => 'Contract Start',
+                    'contract_end_date' => 'Contract End',
+                    'res_house_no' => 'Res. House No.', 'res_street' => 'Res. Street',
+                    'res_subdivision' => 'Res. Subdivision', 'res_barangay' => 'Res. Barangay',
+                    'res_city' => 'Res. City', 'res_province' => 'Res. Province', 'res_zip_code' => 'Res. ZIP',
+                    'perm_house_no' => 'Perm. House No.', 'perm_street' => 'Perm. Street',
+                    'perm_subdivision' => 'Perm. Subdivision', 'perm_barangay' => 'Perm. Barangay',
+                    'perm_city' => 'Perm. City', 'perm_province' => 'Perm. Province', 'perm_zip_code' => 'Perm. ZIP',
+                    'emergency_contact_name' => 'Emergency Contact', 'emergency_contact_relationship' => 'Emergency Relationship',
+                    'emergency_contact_number' => 'Emergency Number',
+                ];
+            ?>
+            <div class="ecr-card">
+                <div class="ecr-card-header">
+                    <img src="<?php echo getEmployeeAvatar($ecr['profile_picture'] ?? null); ?>" alt="Avatar" class="ecr-emp-avatar">
+                    <div class="ecr-emp-info">
+                        <div class="emp-name"><?php echo e($ecr['emp_name']); ?></div>
+                        <div class="emp-meta">
+                            <?php echo e($ecr['job_title'] ?? ''); ?>
+                            <?php if (!empty($ecr['branch_name'])): ?> · <?php echo e($ecr['branch_name']); ?><?php endif; ?>
+                        </div>
+                    </div>
+                    <div class="ecr-submitted-by">
+                        <div><i class="fas fa-user-edit me-1"></i><?php echo e($ecr['staff_name'] ?? 'HR Staff'); ?></div>
+                        <div class="text-muted" style="font-size:.7rem;"><?php echo $ecr['created_at'] ? formatDate($ecr['created_at']) : ''; ?></div>
+                        <div class="mt-1"><span class="badge bg-warning text-dark" style="font-size:.65rem;"><?php echo count($diff); ?> field(s) changed</span></div>
+                    </div>
+                </div>
+
+                <div class="ecr-card-body">
+                    <?php if (!empty($ecr['change_summary'])): ?>
+                        <p class="text-muted small mb-2"><i class="fas fa-info-circle me-1"></i><?php echo e($ecr['change_summary']); ?></p>
+                    <?php endif; ?>
+
+                    <!-- Toggle Button -->
+                    <button type="button" class="btn btn-sm btn-outline-primary mb-3 ecr-diff-toggle" data-rid="<?php echo $ecr['request_id']; ?>">
+                        <i class="fas fa-chevron-down me-1"></i>View Changes
+                    </button>
+
+                    <!-- Diff Table (collapsed by default) -->
+                    <div id="ecr-diff-<?php echo $ecr['request_id']; ?>" style="display:none;">
+                        <?php if (empty($diff)): ?>
+                            <p class="text-muted small">No field-level diff available.</p>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="diff-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width:25%">Field</th>
+                                            <th style="width:37.5%">Current Value</th>
+                                            <th style="width:37.5%">Proposed Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($diff as $field => $vals): ?>
+                                            <tr>
+                                                <td class="diff-field"><?php echo e($field_labels[$field] ?? ucwords(str_replace('_', ' ', $field))); ?></td>
+                                                <td><span class="diff-old"><?php echo e($vals['old'] !== '' ? $vals['old'] : '—'); ?></span></td>
+                                                <td><span class="diff-new"><?php echo e($vals['new'] !== '' ? $vals['new'] : '—'); ?></span></td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Approve / Reject Forms -->
+                    <div class="ecr-actions">
+                        <!-- Approve Form -->
+                        <form method="POST" action="?tab=changes" class="d-flex gap-2 align-items-center flex-wrap">
+                            <input type="hidden" name="ecr_request_id" value="<?php echo $ecr['request_id']; ?>">
+                            <input type="hidden" name="ecr_action" value="approve">
+                            <input type="text" name="manager_notes" class="form-control form-control-sm" placeholder="Optional notes..." style="max-width:220px;">
+                            <button type="submit" class="btn btn-sm btn-success px-4"
+                                onclick="return confirm('Approve and apply these changes to the employee record?')">
+                                <i class="fas fa-check me-1"></i>Approve & Apply
+                            </button>
+                        </form>
+
+                        <!-- Reject Form -->
+                        <form method="POST" action="?tab=changes" class="d-flex gap-2 align-items-center flex-wrap">
+                            <input type="hidden" name="ecr_request_id" value="<?php echo $ecr['request_id']; ?>">
+                            <input type="hidden" name="ecr_action" value="reject">
+                            <input type="text" name="manager_notes" class="form-control form-control-sm" placeholder="Reason for rejection..." style="max-width:220px;">
+                            <button type="submit" class="btn btn-sm btn-outline-danger px-4"
+                                onclick="return confirm('Reject this change request?')">
+                                <i class="fas fa-times me-1"></i>Reject
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </div>
+</div>
+
+</div><!-- end changes pane -->
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching (evaluations / changes)
+    const tabLinks = document.querySelectorAll('[data-pa-tab]');
+    const tabPanes = document.querySelectorAll('[data-pa-pane]');
+    function activateTab(tabName) {
+        tabLinks.forEach(t => t.classList.toggle('active', t.dataset.paTab === tabName));
+        tabPanes.forEach(p => p.style.display = p.dataset.paPaneId === tabName ? '' : 'none');
+        try { history.replaceState(null,'', '?tab=' + tabName); } catch(e){}
+    }
+    tabLinks.forEach(t => t.addEventListener('click', e => { e.preventDefault(); activateTab(t.dataset.paTab); }));
+    // Honor URL param on load
+    const urlTab = new URLSearchParams(window.location.search).get('tab') || 'evaluations';
+    activateTab(urlTab);
+
+    // Diff expand toggle
+    document.querySelectorAll('.ecr-diff-toggle').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const rid = this.dataset.rid;
+            const diff = document.getElementById('ecr-diff-' + rid);
+            if (diff) {
+                const isVisible = diff.style.display !== 'none';
+                diff.style.display = isVisible ? 'none' : '';
+                this.innerHTML = isVisible
+                    ? '<i class="fas fa-chevron-down me-1"></i>View Changes'
+                    : '<i class="fas fa-chevron-up me-1"></i>Hide Changes';
+            }
+        });
+    });
 });
 </script>
 

@@ -32,8 +32,8 @@ if (!$result || $result->num_rows === 0)
   die("Evaluation not found.");
 $row = $result->fetch_assoc();
 
-// Security check: Staff can only print their own
-if ($_SESSION['role'] === 'HR Staff' && $row['submitted_by'] != $_SESSION['user_id']) {
+// Staff check: Allowed as they have access to evaluation history in the staff portal
+if (!in_array($_SESSION['role'], ['HR Manager', 'HR Supervisor', 'HR Staff'])) {
   die("Access denied.");
 }
 

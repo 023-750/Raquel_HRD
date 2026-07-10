@@ -437,6 +437,22 @@ foreach ($all_history as $row):
                         </div>
                     <?php endif; ?>
                 </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <div class="text-muted small">
+                            <i class="fas fa-clock me-1"></i>
+                            Last updated: <?php echo $row['updated_at'] ? formatDate($row['updated_at']) : 'N/A'; ?>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+                                <i class="fas fa-times me-1"></i>Close
+                            </button>
+                            <a href="../manager/print-evaluation.php?id=<?php echo $row['evaluation_id']; ?>" target="_blank" class="btn btn-primary btn-sm px-3">
+                                <i class="fas fa-print me-1"></i>Print Form
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

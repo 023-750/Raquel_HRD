@@ -1,3 +1,4 @@
+-- Import this after seed employees
 USE raquel_hris;
 SET FOREIGN_KEY_CHECKS = 0;
 

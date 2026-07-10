@@ -792,6 +792,158 @@ function ensureCareerProgressionMovements($conn)
 
 
 
+/**
+ * Ensures the employee_change_requests table exists (auto-migration).
+ */
+function ensureEmployeeChangeRequests($conn)
+{
+    static $ecr_ensured = false;
+    if ($ecr_ensured) return true;
+    try {
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS employee_change_requests (
+                request_id    INT AUTO_INCREMENT PRIMARY KEY,
+                employee_id   INT NOT NULL,
+                submitted_by  INT NOT NULL,
+                changes_json  LONGTEXT NOT NULL,
+                change_summary TEXT NULL,
+                status        ENUM('Pending','Approved','Rejected') DEFAULT 'Pending',
+                reviewed_by   INT NULL,
+                reviewed_at   DATETIME NULL,
+                manager_notes TEXT NULL,
+                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT fk_ecr_employee  FOREIGN KEY (employee_id)  REFERENCES employees(employee_id) ON DELETE CASCADE,
+                CONSTRAINT fk_ecr_submitter FOREIGN KEY (submitted_by) REFERENCES users(user_id) ON DELETE CASCADE,
+                CONSTRAINT fk_ecr_reviewer  FOREIGN KEY (reviewed_by)  REFERENCES users(user_id) ON DELETE SET NULL,
+                INDEX idx_ecr_status (status, employee_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        $ecr_ensured = true;
+        return true;
+    } catch (mysqli_sql_exception $e) {
+        return false;
+    }
+}
+
+/**
+ * Applies an approved employee change request JSON diff to the live employee record.
+ * Handles the main employees table and all sub-tables.
+ * Returns true on success, false on failure.
+ */
+function applyEmployeeChangeRequest($conn, $request_id)
+{
+    $stmt = $conn->prepare("SELECT * FROM employee_change_requests WHERE request_id = ? AND status = 'Approved' LIMIT 1");
+    $stmt->bind_param("i", $request_id);
+    $stmt->execute();
+    $req = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$req) return false;
+
+    $eid        = (int) $req['employee_id'];
+    $changes    = json_decode($req['changes_json'], true);
+    if (!$changes || !is_array($changes)) return false;
+
+    // ── 1. Main employees table flat fields ──────────────────────────────────
+    $emp_fields = [
+        'employee_code','first_name','last_name','middle_name','name_extension',
+        'date_of_birth','place_of_birth','gender','civil_status',
+        'hire_date','job_title','job_title_id','department_id','rank_category_id','branch_id',
+        'employment_status','employment_type','contract_start_date','contract_end_date','is_active',
+    ];
+    $set_parts = []; $set_vals = []; $set_types = '';
+    foreach ($emp_fields as $f) {
+        if (array_key_exists($f, $changes)) {
+            $set_parts[] = "`$f` = ?";
+            $set_vals[]  = $changes[$f]['new'];
+            $set_types  .= 's';
+        }
+    }
+    if ($set_parts) {
+        $set_vals[] = $eid; $set_types .= 'i';
+        $sql = "UPDATE employees SET " . implode(', ', $set_parts) . " WHERE employee_id = ?";
+        $u = $conn->prepare($sql);
+        $u->bind_param($set_types, ...$set_vals);
+        $u->execute(); $u->close();
+    }
+
+    // ── 2. employee_details ──────────────────────────────────────────────────
+    $det_fields = ['height_m','weight_kg','blood_type','citizenship'];
+    $det_vals = [];
+    foreach ($det_fields as $f) {
+        $det_vals[$f] = isset($changes[$f]) ? $changes[$f]['new'] : null;
+    }
+    if (array_intersect_key($changes, array_flip($det_fields))) {
+        // Fetch current to fill missing
+        $cur = $conn->query("SELECT * FROM employee_details WHERE employee_id=$eid")->fetch_assoc() ?? [];
+        $h = $det_vals['height_m'] ?? ($cur['height_m'] ?? null);
+        $w = $det_vals['weight_kg'] ?? ($cur['weight_kg'] ?? null);
+        $b = $det_vals['blood_type'] ?? ($cur['blood_type'] ?? null);
+        $c = $det_vals['citizenship'] ?? ($cur['citizenship'] ?? 'Filipino');
+        $u = $conn->prepare("REPLACE INTO employee_details (employee_id,height_m,weight_kg,blood_type,citizenship) VALUES (?,?,?,?,?)");
+        $u->bind_param("iddss", $eid, $h, $w, $b, $c); $u->execute(); $u->close();
+    }
+
+    // ── 3. employee_government_ids ───────────────────────────────────────────
+    $gov_fields = ['sss_number','philhealth_number','pagibig_number','tin_number'];
+    if (array_intersect_key($changes, array_flip($gov_fields))) {
+        $cur = $conn->query("SELECT * FROM employee_government_ids WHERE employee_id=$eid")->fetch_assoc() ?? [];
+        $s = isset($changes['sss_number']) ? $changes['sss_number']['new'] : ($cur['sss_number'] ?? '');
+        $p = isset($changes['philhealth_number']) ? $changes['philhealth_number']['new'] : ($cur['philhealth_number'] ?? '');
+        $g = isset($changes['pagibig_number']) ? $changes['pagibig_number']['new'] : ($cur['pagibig_number'] ?? '');
+        $t = isset($changes['tin_number']) ? $changes['tin_number']['new'] : ($cur['tin_number'] ?? '');
+        $u = $conn->prepare("REPLACE INTO employee_government_ids (employee_id,sss_number,philhealth_number,pagibig_number,tin_number) VALUES (?,?,?,?,?)");
+        $u->bind_param("issss", $eid, $s, $p, $g, $t); $u->execute(); $u->close();
+    }
+
+    // ── 4. employee_contacts ─────────────────────────────────────────────────
+    $con_fields = ['telephone_number','mobile_number','personal_email'];
+    if (array_intersect_key($changes, array_flip($con_fields))) {
+        $cur = $conn->query("SELECT * FROM employee_contacts WHERE employee_id=$eid")->fetch_assoc() ?? [];
+        $tel = isset($changes['telephone_number']) ? $changes['telephone_number']['new'] : ($cur['telephone_number'] ?? '');
+        $mob = isset($changes['mobile_number']) ? $changes['mobile_number']['new'] : ($cur['mobile_number'] ?? '');
+        $eml = isset($changes['personal_email']) ? $changes['personal_email']['new'] : ($cur['personal_email'] ?? null);
+        $u = $conn->prepare("REPLACE INTO employee_contacts (employee_id,telephone_number,mobile_number,personal_email) VALUES (?,?,?,?)");
+        $u->bind_param("isss", $eid, $tel, $mob, $eml); $u->execute(); $u->close();
+    }
+
+    // ── 5. employee_addresses (residential + permanent) ──────────────────────
+    $addr_pfxs = ['res_','perm_'];
+    $addr_types = ['res_' => 'Residential', 'perm_' => 'Permanent'];
+    $addr_subs  = ['house_no','street','subdivision','barangay','city','province','zip_code'];
+    foreach ($addr_pfxs as $pfx) {
+        $changed_addr = false;
+        foreach ($addr_subs as $sub) { if (isset($changes[$pfx.$sub])) { $changed_addr = true; break; } }
+        if ($changed_addr) {
+            $cur = $conn->query("SELECT * FROM employee_addresses WHERE employee_id=$eid AND address_type='" . $addr_types[$pfx] . "'")->fetch_assoc() ?? [];
+            $vals = [];
+            foreach ($addr_subs as $sub) {
+                $vals[$sub] = isset($changes[$pfx.$sub]) ? $changes[$pfx.$sub]['new'] : ($cur[$sub] ?? '');
+            }
+            $conn->query("DELETE FROM employee_addresses WHERE employee_id=$eid AND address_type='" . $addr_types[$pfx] . "'");
+            if (!empty($vals['street']) || !empty($vals['city'])) {
+                $u = $conn->prepare("INSERT INTO employee_addresses (employee_id,address_type,house_no,street,subdivision,barangay,city,province,zip_code) VALUES (?,?,?,?,?,?,?,?,?)");
+                $t = $addr_types[$pfx];
+                $u->bind_param("isssssss", $eid, $t, $vals['house_no'], $vals['street'], $vals['subdivision'], $vals['barangay'], $vals['city'], $vals['province'], $vals['zip_code']);
+                $u->execute(); $u->close();
+            }
+        }
+    }
+
+    // ── 6. emergency contact ─────────────────────────────────────────────────
+    $emg_fields = ['emergency_contact_name','emergency_contact_relationship','emergency_contact_number'];
+    if (array_intersect_key($changes, array_flip($emg_fields))) {
+        $cur = $conn->query("SELECT * FROM employee_emergency_contacts WHERE employee_id=$eid LIMIT 1")->fetch_assoc() ?? [];
+        $en = isset($changes['emergency_contact_name']) ? $changes['emergency_contact_name']['new'] : ($cur['contact_name'] ?? '');
+        $er = isset($changes['emergency_contact_relationship']) ? $changes['emergency_contact_relationship']['new'] : ($cur['relationship'] ?? '');
+        $ec = isset($changes['emergency_contact_number']) ? $changes['emergency_contact_number']['new'] : ($cur['contact_number'] ?? '');
+        $u = $conn->prepare("REPLACE INTO employee_emergency_contacts (employee_id,contact_name,relationship,contact_number) VALUES (?,?,?,?)");
+        $u->bind_param("isss", $eid, $en, $er, $ec); $u->execute(); $u->close();
+    }
+
+    return true;
+}
+
 function applyDueCareerProgressionMovements($conn)
 {
 
@@ -1215,6 +1367,43 @@ function hasEmployeeSubordinates($conn, $employee_id)
 
     return $count > 0;
 
+}
+
+
+
+/**
+ * Check if a branch has no active Manager or Supervisor.
+ * Used to determine whether HR Staff must initiate career movement
+ * requests on behalf of that branch (leaderless branch scenario).
+ *
+ * @param  mysqli $conn
+ * @param  int    $branch_id
+ * @return bool   true = leaderless (no Manager/Supervisor found)
+ */
+function isBranchLeaderless($conn, $branch_id)
+{
+    $branch_id = (int) $branch_id;
+    if ($branch_id <= 0) {
+        return true; // no branch assigned → treat as leaderless
+    }
+
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS cnt
+        FROM employees
+        WHERE branch_id = ?
+          AND is_active  = 1
+          AND deleted_at IS NULL
+          AND (
+                job_title LIKE '%Manager%'
+             OR job_title LIKE '%Supervisor%'
+          )
+    ");
+    $stmt->bind_param("i", $branch_id);
+    $stmt->execute();
+    $cnt = (int) ($stmt->get_result()->fetch_assoc()['cnt'] ?? 0);
+    $stmt->close();
+
+    return $cnt === 0; // true = leaderless
 }
 
 

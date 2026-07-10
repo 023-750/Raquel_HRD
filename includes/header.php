@@ -78,7 +78,10 @@ switch ($effective_role) {
             ],
             'EVALUATIONS' => [
                 ['icon' => 'fas fa-file-alt', 'label' => 'Templates', 'url' => BASE_URL . '/manager/templates.php', 'page' => 'templates.php'],
-                ['icon' => 'fas fa-check-double', 'label' => 'Pending Approvals', 'url' => BASE_URL . '/manager/pending-approvals.php', 'page' => 'pending-approvals.php'],
+                ['icon' => 'fas fa-check-double', 'label' => 'Pending Approvals', 'url' => BASE_URL . '/manager/pending-approvals.php', 'page' => 'pending-approvals.php',
+                 'badge' => (function() use ($conn) {
+                     try { $r = $conn->query("SELECT COUNT(*) as c FROM employee_change_requests WHERE status='Pending'"); return $r ? (int)($r->fetch_assoc()['c'] ?? 0) : 0; } catch(Exception $e){ return 0; }
+                 })(), 'badge_class' => 'bg-warning text-dark'],
                 ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/manager/evaluation-history.php', 'page' => 'evaluation-history.php'],
             ],
 
@@ -119,12 +122,21 @@ switch ($effective_role) {
         break;
 
     case 'HR Staff':
+        // Count pending change requests for badge
+        $staff_pending_ecr = 0;
+        if ($conn) {
+            try {
+                $ecr_res = $conn->query("SELECT COUNT(*) as c FROM employee_change_requests WHERE status = 'Pending'");
+                if ($ecr_res) $staff_pending_ecr = (int)($ecr_res->fetch_assoc()['c'] ?? 0);
+            } catch (Exception $e) {}
+        }
         $sidebar_menus = [
             'MAIN' => [
                 ['icon' => 'fas fa-tachometer-alt', 'label' => 'Dashboard', 'url' => BASE_URL . '/staff/dashboard.php', 'page' => 'dashboard.php'],
             ],
-            'DIRECTORY' => [
-                ['icon' => 'fas fa-users', 'label' => 'Employee Directory', 'url' => BASE_URL . '/staff/search-employees.php', 'page' => 'search-employees.php'],
+            'EMPLOYEES' => [
+                ['icon' => 'fas fa-users', 'label' => 'Employees', 'url' => BASE_URL . '/staff/employees.php', 'page' => 'employees.php',
+                 'badge' => $staff_pending_ecr > 0 ? $staff_pending_ecr : null, 'badge_class' => 'bg-warning text-dark'],
             ],
             'EVALUATIONS' => [
                 ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/staff/evaluation-history.php', 'page' => 'evaluation-history.php'],
@@ -383,7 +395,7 @@ switch ($effective_role) {
                         <i class="<?php echo $item['icon']; ?>"></i>
                         <span class="nav-text"><?php echo e($item['label']); ?></span>
                         <?php if (!empty($item['badge'])): ?>
-                            <span class="badge rounded-pill bg-danger ms-auto"><?php echo (int)$item['badge'] > 9 ? '9+' : (int)$item['badge']; ?></span>
+                            <span class="badge rounded-pill <?php echo $item['badge_class'] ?? 'bg-danger'; ?> ms-auto"><?php echo (int)$item['badge'] > 9 ? '9+' : (int)$item['badge']; ?></span>
                         <?php endif; ?>
                     </a>
                 <?php endforeach; ?>
