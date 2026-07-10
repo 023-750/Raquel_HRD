@@ -1162,3 +1162,68 @@ document.addEventListener("DOMContentLoaded", function () {
         };
     }
 });
+
+// ── Job Title → Rank auto-fill ───────────────────────────────────────────────
+/**
+ * Infer rank_category_id from job title name when data-rank-id is not set.
+ * Matches against DB rank_categories defaults:
+ *   1 = Executives, 2 = Management Team, 3 = Manager, 4 = Supervisor, 5 = R&F
+ */
+function inferRankFromTitle(titleText) {
+    if (!titleText) return null;
+    var t = titleText.toLowerCase();
+    if (t.includes('executive') || t.includes('president') || t.includes('ceo') || t.includes('coo') || t.includes('cfo') || t.includes('chief')) {
+        return '1'; // Executives
+    }
+    if (t.includes('director') || t.includes('vp') || t.includes('vice president') || t.includes('general manager')) {
+        return '2'; // Management Team
+    }
+    if (t.includes('manager') || t.includes('head')) {
+        return '3'; // Manager
+    }
+    if (t.includes('supervisor') || t.includes('team lead') || t.includes('team leader') || t.includes('lead')) {
+        return '4'; // Supervisor
+    }
+    return '5'; // Default: Rank & File
+}
+
+function applyJobTitleRankAutofill(jobTitleSelect, rankSelect) {
+    if (!jobTitleSelect || !rankSelect) return;
+    var opt    = jobTitleSelect.options[jobTitleSelect.selectedIndex];
+    if (!opt || !opt.value) {
+        rankSelect.value = "";
+        return;
+    }
+    // 1. Prefer the data-rank-id from the DB
+    var rankId = opt.getAttribute('data-rank-id');
+    // 2. Fallback: infer from job title text
+    if (!rankId || rankId === '0') {
+        var titleText = opt.getAttribute('data-title') || opt.textContent || '';
+        rankId = inferRankFromTitle(titleText.trim());
+    }
+    if (rankId && rankId !== '0') {
+        rankSelect.value = rankId;
+        // Visual hint: briefly highlight the rank field
+        rankSelect.classList.add('border-success');
+        setTimeout(function () { rankSelect.classList.remove('border-success'); }, 1500);
+    }
+}
+
+function bindJobTitleRankAutofill() {
+    var jobTitleSelect = document.getElementById('job_title_id');
+    var rankSelect     = document.getElementById('rank_category_id');
+
+    if (!jobTitleSelect || !rankSelect) return;
+
+    // Auto-fill on change
+    jobTitleSelect.addEventListener('change', function () {
+        applyJobTitleRankAutofill(jobTitleSelect, rankSelect);
+    });
+
+    // Also fire immediately if a job title is already selected (edit mode / URL step=12)
+    if (jobTitleSelect.value) {
+        applyJobTitleRankAutofill(jobTitleSelect, rankSelect);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', bindJobTitleRankAutofill);

@@ -109,6 +109,7 @@ $rankCategories = $rankCategories ?? [
                 <option value="">Select</option>
                 <option value="Male" <?php echo $sel('gender', 'Male'); ?>>Male</option>
                 <option value="Female" <?php echo $sel('gender', 'Female'); ?>>Female</option>
+                <option value="Other" <?php echo $sel('gender', 'Other'); ?>>Other</option>
             </select>
         </div>
         <div class="col-md-3 mb-3">
@@ -911,6 +912,7 @@ $rankCategories = $rankCategories ?? [
                             }
                             ?>
                             data-position-group="<?php echo $group; ?>"
+                            data-rank-id="<?php echo (int)($jt['rank_category_id'] ?? 0); ?>"
                             <?php echo $selected ? 'selected' : ''; ?>>
                             <?php echo e($jt['job_title']); ?>
                         </option>
@@ -938,6 +940,8 @@ $rankCategories = $rankCategories ?? [
             </select>
         </div>
     </div>
+        </div>
+    </div>
     <div class="row">
         <div class="col-md-4 mb-3">
             <label class="form-label">Branch</label>
@@ -957,7 +961,7 @@ $rankCategories = $rankCategories ?? [
         <div class="col-md-4 mb-3">
             <label class="form-label">Employment Status</label>
             <?php
-            $employmentStatuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
+            $employmentStatuses = ['OJT', 'Probationary', 'Project Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
             $employmentStatusValue = $e['employment_status'] ?? 'Regular';
             ?>
             <select class="form-select" name="employment_status">
@@ -1136,7 +1140,8 @@ document.addEventListener("DOMContentLoaded", function() {
             text:   opt.text.trim(),
             title:  (opt.getAttribute("data-title") || opt.textContent || "").trim(),
             deptId: parseInt(opt.getAttribute("data-dept-id") || "0", 10),
-            group:  opt.getAttribute("data-position-group") || "other"
+            group:  opt.getAttribute("data-position-group") || "other",
+            rankId: opt.getAttribute("data-rank-id") || "0"
         }));
 
     // Remember the job title that was pre-selected (edit mode).
@@ -1149,6 +1154,7 @@ document.addEventListener("DOMContentLoaded", function() {
         opt.setAttribute("data-title", jobTitle.title || jobTitle.text);
         opt.setAttribute("data-dept-id", jobTitle.deptId);
         opt.setAttribute("data-position-group", jobTitle.group);
+        opt.setAttribute("data-rank-id", jobTitle.rankId || "0");
         if (jobTitle.value === currentJobTitle) {
             opt.selected = true;
         }
@@ -1218,6 +1224,9 @@ document.addEventListener("DOMContentLoaded", function() {
         if (jobTitleSelect.value !== currentJobTitle) {
             jobTitleSelect.value = "";
         }
+
+        // Trigger change event to sync rank autofill listener
+        jobTitleSelect.dispatchEvent(new Event('change'));
     }
 
     deptSelect.addEventListener("change", updateJobTitles);

@@ -97,7 +97,7 @@ CREATE TABLE employees (
     department_id INT NULL,
     rank_category_id INT NULL,
     branch_id INT NULL,
-    employment_status ENUM('OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause') DEFAULT 'Regular',
+    employment_status ENUM('OJT', 'Probationary', 'Project Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause') DEFAULT 'Regular',
     employment_type ENUM('Full-time', 'Part-time') DEFAULT 'Full-time',
     contract_start_date DATE NULL,
     contract_end_date DATE NULL,
