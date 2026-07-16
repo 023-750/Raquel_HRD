@@ -24,9 +24,9 @@
     /* ── Page Hero Banner Colors ──────────────────
        Change these three to retheme every page-hero
        banner across the entire system at once.     */
-    --hero-from:   #183a03;   /* left-edge gradient  */
+    --hero-from:   #294306;   /* left-edge gradient  */
     --hero-mid:    #294306;   /* centre gradient     */
-    --hero-to:     #183a03;   /* right-edge gradient */
+    --hero-to:     #294306;   /* right-edge gradient */
 
     /* ── Sidebar Background & Active State Colors ─ */
     --sidebar-from:             #183a03;              /* Deep brand-tinted sidebar start */
