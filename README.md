@@ -15,5 +15,5 @@ Department
 > Operations
 > Purchasing
 
-note: 
-    All department has their own seeds, Testing na lang kulang.
+Personal Note:
+> Test the remaining department (evaluation)
