@@ -89,7 +89,6 @@ require_once '../includes/header.php';
             <i class="fas fa-users me-1"></i> HR Manager · HR Supervisor · HR Staff &nbsp;·&nbsp; Latest 200 records
         </div>
     </div>
-    <p class="text-white-50 small mb-0"><i class="fas fa-search me-1"></i>Review all HR-side actions: employee updates, approvals, logins, and more.</p>
 </div>
 
 <!-- Stat Cards -->

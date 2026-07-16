@@ -360,10 +360,10 @@ function movementIcon(string $type): string {
 <!-- ══════════════════════════════════════════════════════════════════════════
      MAIN BODY — 2 columns (responsive: single col on mobile, 2-col on md+)
 ══════════════════════════════════════════════════════════════════════════ -->
-<div class="dashboard-grid row g-4 fadeup">
+<div class="dashboard-grid row g-4 fadeup align-items-stretch">
 
-    <!-- LEFT COL ─────────────────────────────────────────────────────────── -->
-    <div class="col-12 col-md-6">
+    <!-- COLUMN 1: My Evaluation Status -->
+    <div class="col-12 col-lg-4 d-flex flex-column">
 
         <!-- Current Evaluation Status -->
         <div class="content-card mb-4">
@@ -589,82 +589,14 @@ function movementIcon(string $type): string {
                 <?php endif; ?>
             </div>
         </div>
+    </div>
 
-        <!-- Employment Snapshot -->
-        <div class="content-card mb-4">
-            <div class="content-card-header">
-                <h2 class="content-card-title">
-                    <i class="fas fa-id-badge" aria-hidden="true"></i>
-                    Employment Snapshot
-                </h2>
-                <a href="<?php echo BASE_URL; ?>/employee/my-employment.php" class="btn btn-sm btn-outline-primary">Full Details</a>
-            </div>
-            <div class="content-card-body" style="padding: 0;">
-                <table class="table table-borderless table-sm mb-0" style="font-size:.85rem;">
-                    <tr style="border-bottom:1px solid var(--border-color);">
-                        <td class="text-muted px-3 py-2" style="width:40%;">Company ID</td>
-                        <td class="px-3 py-2 fw-semibold"><?php echo e(getEmployeeDisplayId($emp)); ?></td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border-color);">
-                        <td class="text-muted px-3 py-2">Full Name</td>
-                        <td class="px-3 py-2 fw-semibold"><?php echo e(trim(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? ''))); ?></td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border-color);">
-                        <td class="text-muted px-3 py-2">Position</td>
-                        <td class="px-3 py-2"><?php echo e($emp['job_title'] ?? '—'); ?></td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border-color);">
-                        <td class="text-muted px-3 py-2">Department</td>
-                        <td class="px-3 py-2"><?php echo e($emp['department_name'] ?? '—'); ?></td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border-color);">
-                        <td class="text-muted px-3 py-2">Branch</td>
-                        <td class="px-3 py-2"><?php echo e($emp['branch_name'] ?? '—'); ?></td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border-color);">
-                        <td class="text-muted px-3 py-2">Rank</td>
-                        <td class="px-3 py-2">
-                            <?php if (!empty($emp['rank_name'])): ?>
-                            <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size:.72rem;"><i class="fas fa-layer-group me-1"></i><?php echo e($emp['rank_name']); ?></span>
-                            <?php else: ?>—<?php endif; ?>
-                        </td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border-color);">
-                        <td class="text-muted px-3 py-2">Status</td>
-                        <td class="px-3 py-2">
-                            <?php
-                            $st = $emp['employment_status'] ?? '—';
-                            if (in_array($st, ['Regular', 'Full-time'])) {
-                                $stc = 'success'; $sti = 'fa-check-circle';
-                            } elseif (in_array($st, ['Probationary', 'OJT', 'Trainee'])) {
-                                $stc = 'warning'; $sti = 'fa-clock';
-                            } else {
-                                $stc = 'secondary'; $sti = 'fa-circle';
-                            }
-                            echo "<span class=\"badge bg-{$stc} text-white\" style=\"font-size:.72rem;\"><i class=\"fas {$sti} me-1\"></i>" . e($st) . "</span>";
-                            ?>
-                        </td>
-                    </tr>
-                    <tr style="border-bottom:1px solid var(--border-color);">
-                        <td class="text-muted px-3 py-2">Type</td>
-                        <td class="px-3 py-2"><?php echo e($emp['employment_type'] ?? '—'); ?></td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted px-3 py-2">Hire Date</td>
-                        <td class="px-3 py-2"><?php echo formatDate($emp['hire_date'] ?? ''); ?></td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-
-    </div><!-- /LEFT COL -->
-
-    <!-- RIGHT COL ────────────────────────────────────────────────────────── -->
-    <div class="col-12 col-md-6">
+    <!-- COLUMN 2: Career Timeline -->
+    <div class="col-12 col-lg-4 d-flex flex-column gap-4">
 
         <?php if ($show_validation_queue): ?>
         <!-- HR Supervisor Validation Queue -->
-        <div class="content-card mb-4" id="validationQueueCard" data-validation-queue-card>
+        <div class="content-card mb-0" id="validationQueueCard" data-validation-queue-card>
             <div class="content-card-header">
                 <h2 class="content-card-title">
                     <i class="fas fa-user-check" aria-hidden="true"></i>
@@ -732,7 +664,7 @@ function movementIcon(string $type): string {
         <?php endif; ?>
 
         <!-- Career Timeline -->
-        <div class="content-card mb-4">
+        <div class="content-card mb-0 h-100">
             <div class="content-card-header">
                 <h2 class="content-card-title">
                     <i class="fas fa-route" aria-hidden="true"></i>
@@ -784,10 +716,57 @@ function movementIcon(string $type): string {
                 <?php endif; ?>
             </div>
         </div>
+    </div>
 
-
-
-    </div><!-- /RIGHT COL -->
+    <!-- COLUMN 3: Employment Snapshot -->
+    <div class="col-12 col-lg-4 d-flex flex-column">
+        <!-- Employment Snapshot -->
+        <div class="content-card mb-0 h-100">
+            <div class="content-card-header">
+                <h2 class="content-card-title">
+                    <i class="fas fa-id-badge" aria-hidden="true"></i>
+                    Employment Snapshot
+                </h2>
+                <a href="<?php echo BASE_URL; ?>/employee/my-employment.php" class="btn btn-sm btn-outline-primary">Full Details</a>
+            </div>
+            <div class="content-card-body p-0" style="padding: 0 !important; display: block;">
+                <table class="table table-borderless table-striped-custom mb-0" style="font-size:.85rem; width: 100%;">
+                    <tr>
+                        <td class="text-muted px-3 py-2" style="width:40%;">Company ID</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo e(getEmployeeDisplayId($emp)); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted px-3 py-2">Full Name</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo e(trim(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? ''))); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted px-3 py-2">Position</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo e($emp['job_title'] ?? '—'); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted px-3 py-2">Department</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo e($emp['department_name'] ?? '—'); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted px-3 py-2">Branch</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo e($emp['branch_name'] ?? '—'); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted px-3 py-2">Employment Type</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo e($emp['employment_type'] ?? '—'); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted px-3 py-2">Hire Date</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo formatDate($emp['hire_date'] ?? ''); ?></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted px-3 py-2">Years of Service</td>
+                        <td class="px-3 py-2 fw-semibold"><?php echo $years_of_service; ?> yr<?php echo $years_of_service != 1 ? 's' : ''; ?></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
 
 </div>
 

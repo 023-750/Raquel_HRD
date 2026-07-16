@@ -27,6 +27,7 @@
        Everything below auto-computes from these values.            */
   --green-dark:    #031b02;   /* deepest background dark             */
   --green-forest:  #045202;   /* HRIS panel & form accent (main)     */
+  
   --green-mid:     #1a2b04;   /* ESS panel mid tone                  */
   --green-primary: #294306;   /* ESS panel primary / darker accent   */
   --green-bright:  #28a745;   /* ESS sign-in button highlight        */

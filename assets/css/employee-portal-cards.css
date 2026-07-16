@@ -9,14 +9,15 @@
 .stat-card {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
-  min-height: 100px;
-  padding: var(--space-lg);
+  gap: 12px;
+  min-height: 90px;
+  padding: 14px 16px;
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border-light);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   transition: all var(--transition-base);
+  height: 100%;
 }
 
 .stat-card:hover {
@@ -26,13 +27,13 @@
 
 .stat-icon {
   flex-shrink: 0;
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-lg);
-  font-size: 2rem;
+  font-size: 1.5rem;
 }
 
 .stat-icon-success {
@@ -61,19 +62,19 @@
 }
 
 .stat-value {
-  font-size: 2.25rem;
+  font-size: 1.5rem;
   font-weight: 800;
   line-height: var(--line-height-tight);
-  margin: 0 0 var(--space-xs);
+  margin: 0 0 2px;
   color: var(--color-text-primary);
   letter-spacing: -0.02em;
 }
 
 .stat-label {
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wide);
+  letter-spacing: 0.02em;
   margin: 0;
   color: var(--color-text-muted);
 }
@@ -83,10 +84,10 @@
   .stat-card {
     flex-direction: column;
     text-align: center;
+    padding: var(--space-md);
+    gap: var(--space-md);
   }
 }
-
-/* ===== CONTENT CARD (GENERIC) ===== */
 
 .content-card {
   background: var(--color-bg-primary);
@@ -95,6 +96,9 @@
   box-shadow: var(--shadow-sm);
   margin-bottom: var(--space-lg);
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .content-card-header {
@@ -103,16 +107,17 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--space-md);
-  padding: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--color-border-light);
   background: var(--color-bg-secondary);
+  flex-shrink: 0;
 }
 
 .content-card-title {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  font-size: 1.5rem;
+  font-size: 1.15rem;
   font-weight: 700;
   margin: 0;
   color: var(--color-text-primary);
@@ -120,11 +125,14 @@
 
 .content-card-title i {
   color: var(--color-primary-light);
-  font-size: 1.75rem;
+  font-size: 1.35rem;
 }
 
 .content-card-body {
   padding: var(--space-lg);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Mobile: Reduce padding */
@@ -135,7 +143,7 @@
   }
   
   .content-card-title {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
   }
 }
 
@@ -252,4 +260,18 @@
   background: var(--status-bg, var(--color-bg-secondary));
   color: var(--status-text, var(--color-text-secondary));
   letter-spacing: var(--letter-spacing-base);
+}
+
+/* Custom Striped Table for Employment Snapshot */
+.table-striped-custom tr:nth-child(even) {
+  background-color: var(--color-bg-secondary) !important;
+}
+.table-striped-custom tr {
+  border-bottom: 1px solid var(--color-border-light) !important;
+}
+.table-striped-custom tr:last-child {
+  border-bottom: none !important;
+}
+.table-striped-custom td {
+  padding: 10px 16px !important;
 }

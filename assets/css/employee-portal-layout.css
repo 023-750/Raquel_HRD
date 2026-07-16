@@ -30,20 +30,15 @@ img {
   gap: var(--space-md);
 }
 
-/* Tablet and up: use grid for complex layouts */
+/* Tablet and up: sidebar layout */
 @media (min-width: 768px) {
   .main-content {
     gap: var(--space-lg);
     margin-left: 260px;
     padding: var(--space-lg);
   }
-  
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--space-lg);
-  }
 }
+
 
 /* Mobile adjustments */
 @media (max-width: 767px) {

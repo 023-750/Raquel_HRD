@@ -42,7 +42,11 @@ require_once '../includes/header.php';
 
 // Get all backups
 $backup_dir = dirname(__DIR__) . '/backups/';
-$files = array_diff(scandir($backup_dir), array('.', '..', '.htaccess'));
+if (!is_dir($backup_dir)) {
+    @mkdir($backup_dir, 0777, true);
+}
+$files = is_dir($backup_dir) ? @scandir($backup_dir) : false;
+$files = is_array($files) ? array_diff($files, array('.', '..', '.htaccess')) : [];
 $backups = [];
 foreach ($files as $file) {
     if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {

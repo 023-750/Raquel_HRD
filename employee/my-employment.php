@@ -33,6 +33,43 @@ if (!$emp) {
     redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'No employment record was found for your account.');
 }
 
+// Fetch Addresses
+$addr_stmt = $conn->prepare("SELECT * FROM employee_addresses WHERE employee_id = ?");
+$addr_stmt->bind_param("i", $employee_id);
+$addr_stmt->execute();
+$addr_res = $addr_stmt->get_result();
+$addresses = [];
+while ($row = $addr_res->fetch_assoc()) {
+    $addresses[$row['address_type']] = $row;
+}
+$addr_stmt->close();
+
+// Fetch Emergency Contacts
+$emerg_stmt = $conn->prepare("SELECT * FROM employee_emergency_contacts WHERE employee_id = ? ORDER BY is_primary DESC, emergency_id ASC");
+$emerg_stmt->bind_param("i", $employee_id);
+$emerg_stmt->execute();
+$emerg_res = $emerg_stmt->get_result();
+$emergency_contacts = [];
+while ($row = $emerg_res->fetch_assoc()) {
+    $emergency_contacts[] = $row;
+}
+$emerg_stmt->close();
+
+if (!function_exists('formatAddress')) {
+    function formatAddress($addr) {
+        if (!$addr) return '—';
+        $parts = [];
+        if (!empty($addr['house_no'])) $parts[] = $addr['house_no'];
+        if (!empty($addr['street'])) $parts[] = $addr['street'];
+        if (!empty($addr['subdivision'])) $parts[] = $addr['subdivision'];
+        if (!empty($addr['barangay'])) $parts[] = 'Brgy. ' . $addr['barangay'];
+        if (!empty($addr['city'])) $parts[] = $addr['city'];
+        if (!empty($addr['province'])) $parts[] = $addr['province'];
+        if (!empty($addr['zip_code'])) $parts[] = $addr['zip_code'];
+        return implode(', ', $parts);
+    }
+}
+
 require_once '../includes/header.php';
 ?>
 
@@ -153,6 +190,53 @@ require_once '../includes/header.php';
                 class="value"><?php echo e($emp['blood_type'] ?? '—'); ?></span></div>
         <div class="pds-data-row"><span class="label">Account Status</span><span
                 class="value"><?php echo !empty($emp['is_active']) ? 'Active' : 'Inactive'; ?></span></div>
+    </div>
+
+    <div class="pds-card fadeup-5">
+        <div class="pds-card-title"><i class="fas fa-map-marker-alt"></i>Addresses</div>
+        <div class="pds-data-row flex-column align-items-start mb-3">
+            <span class="label mb-1" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Residential Address</span>
+            <span class="value text-start fw-semibold" style="text-align: left; color: #1e293b; font-size: 0.88rem; line-height: 1.4;">
+                <?php echo e(formatAddress($addresses['Residential'] ?? null)); ?>
+            </span>
+        </div>
+        <hr style="border-top: 1px solid #eee; margin: 12px 0;">
+        <div class="pds-data-row flex-column align-items-start mb-0">
+            <span class="label mb-1" style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;">Permanent Address</span>
+            <span class="value text-start fw-semibold" style="text-align: left; color: #1e293b; font-size: 0.88rem; line-height: 1.4;">
+                <?php echo e(formatAddress($addresses['Permanent'] ?? null)); ?>
+            </span>
+        </div>
+    </div>
+
+    <div class="pds-card fadeup-6">
+        <div class="pds-card-title"><i class="fas fa-exclamation-circle"></i>Emergency Contacts</div>
+        <?php if (empty($emergency_contacts)): ?>
+            <div class="text-muted small text-center py-3">No emergency contacts listed.</div>
+        <?php else: ?>
+            <?php foreach ($emergency_contacts as $idx => $contact): ?>
+                <?php if ($idx > 0): ?>
+                    <hr class="my-2" style="border-top: 1px dashed #eee; margin-top: 10px; margin-bottom: 10px;">
+                <?php endif; ?>
+                <div class="pds-data-row">
+                    <span class="label">Contact Person</span>
+                    <span class="value">
+                        <?php echo e($contact['contact_name']); ?>
+                        <?php if ($contact['is_primary']): ?>
+                            <span class="badge bg-success-light text-success ms-1" style="font-size: 0.65rem; background-color: #e6fcf5; color: #0ca678 !important; padding: 2px 5px; border-radius: 4px; font-weight: bold; border: 1px solid rgba(12, 166, 120, 0.15);">Primary</span>
+                        <?php endif; ?>
+                    </span>
+                </div>
+                <div class="pds-data-row">
+                    <span class="label">Relationship</span>
+                    <span class="value"><?php echo e($contact['relationship'] ?? '—'); ?></span>
+                </div>
+                <div class="pds-data-row">
+                    <span class="label">Contact Number</span>
+                    <span class="value"><?php echo e($contact['contact_number'] ?? '—'); ?></span>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 </div>
 

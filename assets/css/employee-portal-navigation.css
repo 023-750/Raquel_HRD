@@ -105,7 +105,7 @@
   left: 0;
   width: 260px;
   height: 100vh;
-  background: linear-gradient(180deg, #082E06 0%, #041D03 100%);
+  background: linear-gradient(180deg, var(--sidebar-from) 0%, var(--sidebar-to) 100%);
   color: rgba(255, 255, 255, 0.9);
   overflow-y: auto;
   z-index: 1040;
@@ -169,12 +169,12 @@
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.95);
   transform: translateX(4px);
-  outline: 2px solid rgba(203, 161, 53, 0.5);
+  outline: 2px solid color-mix(in srgb, var(--color-primary-light) 50%, transparent);
   outline-offset: -2px;
 }
 
 .sidebar-link.active {
-  background: linear-gradient(135deg, rgba(203, 161, 53, 0.25) 0%, rgba(8, 46, 6, 0.4) 100%);
+  background: linear-gradient(135deg, var(--sidebar-active-bg-start) 0%, var(--sidebar-active-bg-end) 100%);
   color: #fff;
   font-weight: 600;
 }

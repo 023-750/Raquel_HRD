@@ -13,6 +13,12 @@
   --color-primary-dark: #041D03;
   --color-accent: #E1232A;
   
+  /* Sidebar background and active states */
+  --sidebar-from:             #082E06;             /* Desktop sidebar top gradient */
+  --sidebar-to:               #041D03;             /* Desktop sidebar bottom gradient */
+  --sidebar-active-bg-start:  color-mix(in srgb, var(--color-primary-light) 25%, transparent);
+  --sidebar-active-bg-end:    color-mix(in srgb, var(--color-primary) 40%, transparent);
+
   /* Neutral colors - WCAG AAA compliant */
   --color-bg-primary: #FFFFFF;
   --color-bg-secondary: #F4F6F2;

@@ -16,7 +16,7 @@
   line-height: var(--line-height-base);
   text-align: center;
   text-decoration: none;
-  border: 2px solid transparent;
+  
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-fast);
