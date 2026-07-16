@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("
             SELECT user_id, employee_id, username, email, password_hash, full_name, role, branch_id, is_active, first_login_completed
             FROM users
-            WHERE username = ?
+            WHERE BINARY username = ? 
               AND employee_id IS NOT NULL
               AND role = 'Employee'
             LIMIT 1
