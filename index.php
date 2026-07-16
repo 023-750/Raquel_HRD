@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please enter your password.';
     } else {
         // Query user by username
-        $stmt = $conn->prepare("SELECT user_id, employee_id, username, email, password_hash, full_name, role, branch_id, is_active, first_login_completed FROM users WHERE username = ?");
+        $stmt = $conn->prepare("SELECT user_id, employee_id, username, email, password_hash, full_name, role, branch_id, is_active, first_login_completed FROM users WHERE BINARY username = ?");
         $stmt->bind_param("s", $username);
         $stmt->execute();
         $result = $stmt->get_result();
