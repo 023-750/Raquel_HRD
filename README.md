@@ -15,7 +15,7 @@ Department
 > Operations
 > Purchasing
 
-jister
+jister may conflict sa github
 
 
 do-to 
