@@ -933,12 +933,21 @@ function applyEmployeeChangeRequest($conn, $request_id)
     // ── 6. emergency contact ─────────────────────────────────────────────────
     $emg_fields = ['emergency_contact_name','emergency_contact_relationship','emergency_contact_number'];
     if (array_intersect_key($changes, array_flip($emg_fields))) {
-        $cur = $conn->query("SELECT * FROM employee_emergency_contacts WHERE employee_id=$eid LIMIT 1")->fetch_assoc() ?? [];
+        $cur = $conn->query("SELECT * FROM employee_emergency_contacts WHERE employee_id=$eid AND is_primary=1 LIMIT 1")->fetch_assoc() ?? [];
         $en = isset($changes['emergency_contact_name']) ? $changes['emergency_contact_name']['new'] : ($cur['contact_name'] ?? '');
         $er = isset($changes['emergency_contact_relationship']) ? $changes['emergency_contact_relationship']['new'] : ($cur['relationship'] ?? '');
         $ec = isset($changes['emergency_contact_number']) ? $changes['emergency_contact_number']['new'] : ($cur['contact_number'] ?? '');
-        $u = $conn->prepare("REPLACE INTO employee_emergency_contacts (employee_id,contact_name,relationship,contact_number) VALUES (?,?,?,?)");
-        $u->bind_param("isss", $eid, $en, $er, $ec); $u->execute(); $u->close();
+        if (!empty($cur['emergency_id'])) {
+            $u = $conn->prepare("UPDATE employee_emergency_contacts SET contact_name=?, relationship=?, contact_number=? WHERE emergency_id=?");
+            $u->bind_param("sssi", $en, $er, $ec, $cur['emergency_id']);
+            $u->execute();
+            $u->close();
+        } else {
+            $u = $conn->prepare("INSERT INTO employee_emergency_contacts (employee_id,contact_name,relationship,contact_number,is_primary) VALUES (?,?,?,?,1)");
+            $u->bind_param("isss", $eid, $en, $er, $ec);
+            $u->execute();
+            $u->close();
+        }
     }
 
     return true;

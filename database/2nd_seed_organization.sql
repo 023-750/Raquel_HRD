@@ -7,7 +7,7 @@ USE raquel_hris;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ============================================
--- Branches (154 entries)
+-- Branches (151 entries)
 -- ============================================
 REPLACE INTO branches (branch_id, branch_name, location, is_active, created_at, updated_at) VALUES
 (102, 'Raquel Pawnshop Main Office', 'RGC Building, Diversion Road, Sitio 1 Barangay Mayuwi Tayabas City', 1, NOW(), NOW()),

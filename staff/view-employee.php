@@ -55,9 +55,9 @@ $trainings = $conn->query("SELECT * FROM employee_trainings WHERE employee_id=$e
 require_once '../includes/header.php';
 
 // Helper for UI
-function field($label, $value) {
+function field($label, $value, $escape = true) {
     $is_company_id = strcasecmp($label, 'Company ID') === 0;
-    $val = !empty($value) ? e($value) : '<span class="text-muted">N/A</span>';
+    $val = !empty($value) ? ($escape ? e($value) : $value) : '<span class="text-muted">N/A</span>';
     $label_class = $is_company_id ? 'company-id-text detail-label' : 'detail-label';
     $value_class = $is_company_id ? 'company-id-value detail-value' : 'detail-value';
     return "<div class='detail-item'><div class='$label_class'>$label</div><div class='$value_class'>$val</div></div>";
@@ -219,8 +219,10 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
 .employee-table-wrap {
     border: 1px solid #edf2f7;
     border-radius: 16px;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     background: #fff;
+    -webkit-overflow-scrolling: touch;
 }
 
 .employee-table-wrap .table {
@@ -417,14 +419,25 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
                             <div class="detail-grid"><?php echo field('Address', $permAddr); ?></div>
                         </div>
                         <div class="employee-subsection">
-                            <div class="employee-subsection-title">Emergency Contact</div>
-                            <div class="detail-grid">
-                                <?php
-                                echo field('Name', $emp['emergency_contact_name']);
-                                echo field('Relationship', $emp['emergency_contact_relationship']);
-                                echo field('Number', $emp['emergency_contact_number']);
-                                ?>
-                            </div>
+                            <div class="employee-subsection-title">Emergency Contacts</div>
+                            <?php 
+                            $emergContacts = $conn->query("SELECT * FROM employee_emergency_contacts WHERE employee_id=$eid ORDER BY is_primary DESC, emergency_id ASC")->fetch_all(MYSQLI_ASSOC);
+                            if (!empty($emergContacts)):
+                                foreach ($emergContacts as $c):
+                            ?>
+                                <div class="detail-grid mb-3 pb-2 <?php echo $c['is_primary'] ? 'border-start border-3 border-warning ps-2' : ''; ?>" style="grid-gap: 8px;">
+                                    <?php
+                                    echo field('Name', e($c['contact_name']) . ($c['is_primary'] ? ' <span class="badge bg-warning text-dark ms-1" style="font-size:0.68rem; padding: 2px 6px;"><i class="fas fa-star"></i> Primary</span>' : ''), false);
+                                    echo field('Relationship', e($c['relationship']));
+                                    echo field('Number', e($c['contact_number']));
+                                    ?>
+                                </div>
+                            <?php 
+                                endforeach;
+                            else:
+                                echo '<p class="text-muted small">No emergency contacts listed.</p>';
+                            endif;
+                            ?>
                         </div>
                     </div>
                 </div>

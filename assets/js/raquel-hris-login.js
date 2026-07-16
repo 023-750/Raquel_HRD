@@ -36,6 +36,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('track').classList.add('show-ess');
     document.body.classList.add('show-ess');
 
+    // Remember choice across page refreshes
+    localStorage.setItem('loginPortal', 'ess');
+
     // Update mobile tab active states
     ['mobTabHRIS', 'mobTabHRIS2'].forEach(function (id) {
       var el = document.getElementById(id);
@@ -55,6 +58,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('track').classList.remove('show-ess');
     document.body.classList.remove('show-ess');
 
+    // Remember choice across page refreshes
+    localStorage.setItem('loginPortal', 'hris');
+
     // Update mobile tab active states
     ['mobTabESS', 'mobTabESS2'].forEach(function (id) {
       var el = document.getElementById(id);
@@ -66,6 +72,13 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
   };
+
+  /* ─────────────────────────────────────────
+     Restore last active portal on page load
+  ───────────────────────────────────────── */
+  if (localStorage.getItem('loginPortal') === 'ess') {
+    window.showESS();
+  }
 
   /* ─────────────────────────────────────────
      HRIS form — client-side validation

@@ -244,10 +244,11 @@ CREATE TABLE employee_emergency_contacts (
     contact_name VARCHAR(150) NOT NULL,
     relationship VARCHAR(50) NULL,
     contact_number VARCHAR(20) NOT NULL,
+    is_primary TINYINT(1) NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_emergency_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE,
-    UNIQUE KEY uniq_emergency_employee (employee_id)
+    INDEX idx_emergency_employee (employee_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================

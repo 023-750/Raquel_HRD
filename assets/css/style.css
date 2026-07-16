@@ -21,6 +21,13 @@
     --sidebar-collapsed-width: 70px;
     --header-height: 64px;
 
+    /* ── Page Hero Banner Colors ──────────────────
+       Change these three to retheme every page-hero
+       banner across the entire system at once.     */
+    --hero-from:   #1a2e06;   /* left-edge gradient  */
+    --hero-mid:    #294306;   /* centre gradient     */
+    --hero-to:     #3d6309;   /* right-edge gradient */
+
     /* Premium shadows & borders */
     --shadow-sm: 0 2px 8px rgba(8, 46, 6, 0.04);
     --shadow-md: 0 8px 24px rgba(8, 46, 6, 0.06);
@@ -3174,7 +3181,7 @@ body.mobile-sidebar-active .sidebar {
    Premium UI Design System (Standardised for Manager Pages)
 ───────────────────────────────────────────── */
 .page-hero {
-    background: linear-gradient(135deg, #1a2e06 0%, #294306 50%, #3d6309 100%);
+    background: linear-gradient(135deg, var(--hero-from) 0%, var(--hero-mid) 50%, var(--hero-to) 100%);
     border-radius: 16px;
     padding: 28px 32px 20px;
     margin-bottom: 28px;
@@ -5431,3 +5438,192 @@ body.has-wizard-footer {
     box-shadow: 0 6px 18px rgba(220, 53, 69, 0.45);
 }
 
+/* ============================================================
+   PDS WIZARD — REDESIGNED SECTION CARD STYLES
+   ============================================================ */
+
+/* ── Pds Section Card Base ──────────────────────────────────── */
+.pds-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid rgba(8,46,6,0.09);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    position: relative;
+    transition: box-shadow 0.2s, transform 0.2s;
+    box-shadow: 0 2px 10px rgba(8,46,6,0.04);
+}
+.pds-card:hover { box-shadow: 0 6px 24px rgba(8,46,6,0.09); }
+
+/* ── Card Header ─────────────────────────────────────────────── */
+.pds-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(8,46,6,0.07);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.pds-card-title { display: flex; align-items: center; gap: 10px; }
+.pds-card-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, #082E06, #155112);
+    display: flex; align-items: center; justify-content: center;
+    color: #CBA135; font-size: 0.85rem; flex-shrink: 0;
+}
+.pds-card-label { font-size: 0.95rem; font-weight: 700; color: #082E06; letter-spacing: 0.01em; }
+.pds-card-subtitle { font-size: 0.75rem; color: #5e6b5c; margin-top: 1px; }
+.pds-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.pds-card-btn {
+    width: 30px; height: 30px; border-radius: 8px; border: none;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem; transition: all 0.18s;
+}
+.pds-card-btn.btn-move-up, .pds-card-btn.btn-move-down { background: rgba(8,46,6,0.07); color: #082E06; }
+.pds-card-btn.btn-move-up:hover, .pds-card-btn.btn-move-down:hover { background: rgba(8,46,6,0.15); }
+.pds-card-btn.btn-delete { background: rgba(220,38,38,0.08); color: #dc2626; }
+.pds-card-btn.btn-delete:hover { background: rgba(220,38,38,0.18); transform: scale(1.08); }
+
+/* ── Education Level Badge ──────────────────────────────────── */
+.edu-level-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.edu-level-badge.level-elementary   { background: #fef3c7; color: #92400e; }
+.edu-level-badge.level-secondary    { background: #dbeafe; color: #1e40af; }
+.edu-level-badge.level-shs          { background: #ede9fe; color: #5b21b6; }
+.edu-level-badge.level-vocational   { background: #d1fae5; color: #065f46; }
+.edu-level-badge.level-college      { background: #cffafe; color: #0e7490; }
+.edu-level-badge.level-graduate     { background: #fce7f3; color: #9d174d; }
+
+/* ── Duplicate Level Warning ─────────────────────────────────── */
+.edu-duplicate-warning {
+    background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px;
+    padding: 8px 12px; margin-top: 8px; font-size: 0.8rem; color: #78350f; display: none;
+}
+.edu-duplicate-warning.show { display: flex; align-items: flex-start; gap: 8px; }
+
+/* ── Two-Column Form Grid ────────────────────────────────────── */
+.pds-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+}
+.pds-form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.pds-form-grid .full-width { grid-column: 1 / -1; }
+.pds-field-label {
+    font-size: 0.73rem; font-weight: 600; color: #5e6b5c;
+    margin-bottom: 4px; display: block; letter-spacing: 0.02em; text-transform: uppercase;
+}
+.pds-field-required::after { content: ' *'; color: #dc2626; }
+
+/* ── Work Experience Timeline ────────────────────────────────── */
+.work-timeline { position: relative; padding-left: 28px; }
+.work-timeline::before {
+    content: ''; position: absolute; left: 10px; top: 0; bottom: 0;
+    width: 2px; background: linear-gradient(to bottom, #CBA135 0%, rgba(203,161,53,0.2) 100%);
+}
+.work-timeline .pds-card { position: relative; }
+.work-timeline .pds-card::before {
+    content: ''; position: absolute; left: -22px; top: 24px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #CBA135; border: 2px solid #fff; box-shadow: 0 0 0 2px #CBA135;
+}
+
+/* ── Section Type Icon Colors ─────────────────────────────────── */
+.training-card .pds-card-icon   { background: linear-gradient(135deg, #0891b2, #06b6d4); }
+.voluntary-card .pds-card-icon  { background: linear-gradient(135deg, #16a34a, #22c55e); }
+.eligibility-card .pds-card-icon{ background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+.property-card .pds-card-icon   { background: linear-gradient(135deg, #b45309, #d97706); }
+
+/* ── Emergency Contact Cards ─────────────────────────────────── */
+.emergency-contact-card {
+    border: 2px solid rgba(8,46,6,0.1); border-radius: 14px;
+    padding: 16px 20px; margin-bottom: 14px; background: #fff;
+    position: relative; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.emergency-contact-card.is-primary-contact {
+    border-color: #CBA135;
+    background: linear-gradient(135deg, rgba(203,161,53,0.04), #fff);
+    box-shadow: 0 4px 16px rgba(203,161,53,0.15);
+}
+.emergency-primary-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #CBA135; color: #fff; font-size: 0.65rem;
+    font-weight: 700; padding: 2px 8px; border-radius: 10px;
+    letter-spacing: 0.05em; text-transform: uppercase;
+}
+.emergency-contact-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+}
+.emergency-contact-radio {
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; font-size: 0.82rem; font-weight: 600; color: #082E06;
+}
+.emergency-contact-radio input[type="radio"] {
+    accent-color: #CBA135; width: 16px; height: 16px; cursor: pointer;
+}
+
+/* ── Add Section Button ─────────────────────────────────────── */
+.btn-add-pds-section {
+    width: 100%; padding: 12px;
+    border: 2px dashed #CBA135; background: rgba(203,161,53,0.04);
+    color: #82640e; border-radius: 12px; font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px;
+}
+.btn-add-pds-section:hover {
+    background: rgba(203,161,53,0.12); border-color: #82640e;
+    transform: translateY(-1px); box-shadow: 0 4px 12px rgba(203,161,53,0.2);
+}
+
+/* ── Section Group Title ─────────────────────────────────────── */
+.pds-group-title {
+    font-size: 0.78rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.08em; color: #5e6b5c;
+    padding: 6px 0 10px; border-bottom: 1px dashed #dee2e6;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.pds-group-title i { color: #CBA135; }
+
+/* ── Employment Section Cards ───────────────────────────────── */
+.employment-section-card {
+    background: #fff; border: 1px solid rgba(8,46,6,0.09);
+    border-radius: 14px; padding: 20px 22px; margin-bottom: 16px;
+    box-shadow: 0 2px 10px rgba(8,46,6,0.03);
+}
+.employment-section-card .section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; padding-bottom: 10px;
+    border-bottom: 1px solid rgba(8,46,6,0.06);
+}
+.employment-section-card .section-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, #082E06, #155112);
+    display: flex; align-items: center; justify-content: center;
+    color: #CBA135; font-size: 0.75rem; flex-shrink: 0;
+}
+.employment-section-card .section-title { font-size: 0.87rem; font-weight: 700; color: #082E06; }
+
+/* ── Inline Validation ───────────────────────────────────────── */
+.pds-field-wrapper.is-invalid input,
+.pds-field-wrapper.is-invalid select,
+.pds-field-wrapper.is-invalid textarea {
+    border-color: #dc2626; box-shadow: 0 0 0 2px rgba(220,38,38,0.12);
+}
+.pds-invalid-feedback { color: #dc2626; font-size: 0.73rem; margin-top: 3px; display: none; }
+.pds-field-wrapper.is-invalid .pds-invalid-feedback { display: block; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .pds-form-grid, .pds-form-grid.cols-3 { grid-template-columns: 1fr; }
+    .pds-form-grid .full-width { grid-column: 1; }
+    .work-timeline { padding-left: 16px; }
+    .work-timeline::before { left: 4px; }
+    .work-timeline .pds-card::before { left: -16px; }
+    .pds-card { padding: 14px 16px; }
+}

@@ -363,8 +363,10 @@ $discList = [
     .employee-table-wrap {
         border: 1px solid #edf2f7;
         border-radius: 16px;
-        overflow: hidden;
+        overflow-x: auto;
+        overflow-y: hidden;
         background: #fff;
+        -webkit-overflow-scrolling: touch;
     }
 
     .employee-table-wrap .table {
@@ -644,14 +646,25 @@ $discList = [
                             </div>
                         </div>
                         <div class="employee-subsection">
-                            <div class="employee-subsection-title">Emergency Contact</div>
-                            <div class="detail-grid">
-                                <?php
-                                echo field('Name', $emp['emergency_contact_name']);
-                                echo field('Relationship', $emp['emergency_contact_relationship']);
-                                echo field('Number', $emp['emergency_contact_number']);
-                                ?>
-                            </div>
+                            <div class="employee-subsection-title">Emergency Contacts</div>
+                            <?php 
+                            $emergContacts = $conn->query("SELECT * FROM employee_emergency_contacts WHERE employee_id=$eid ORDER BY is_primary DESC, emergency_id ASC")->fetch_all(MYSQLI_ASSOC);
+                            if (!empty($emergContacts)):
+                                foreach ($emergContacts as $c):
+                            ?>
+                                <div class="detail-grid mb-3 pb-2 <?php echo $c['is_primary'] ? 'border-start border-3 border-warning ps-2' : ''; ?>" style="grid-gap: 8px;">
+                                    <?php
+                                    echo field('Name', e($c['contact_name']) . ($c['is_primary'] ? ' <span class="badge bg-warning text-dark ms-1" style="font-size:0.68rem; padding: 2px 6px;"><i class="fas fa-star"></i> Primary</span>' : ''), false);
+                                    echo field('Relationship', e($c['relationship']));
+                                    echo field('Number', e($c['contact_number']));
+                                    ?>
+                                </div>
+                            <?php 
+                                endforeach;
+                            else:
+                                echo '<p class="text-muted small">No emergency contacts listed.</p>';
+                            endif;
+                            ?>
                         </div>
                     </div>
                 </div>

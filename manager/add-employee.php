@@ -406,9 +406,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
     $employee_code = strtoupper(trim($_POST['employee_code'] ?? ''));
     if ($employee_code === '')
         $employee_code = null;
-    $emergency_contact_name = trim($_POST['emergency_contact_name'] ?? '');
-    $emergency_contact_relationship = trim($_POST['emergency_contact_relationship'] ?? '');
-    $emergency_contact_number = trim($_POST['emergency_contact_number'] ?? '');
+    // emergency contact fields are now arrays — handled in the save block below
     $contract_start_date = !empty($_POST['contract_start_date']) ? $_POST['contract_start_date'] : null;
     $contract_end_date = !empty($_POST['contract_end_date']) ? $_POST['contract_end_date'] : null;
 
@@ -559,11 +557,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
             $stmt->close();
         }
 
-        // 6. Emergency Contact
-        $stmt = $conn->prepare("INSERT INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES (?,?,?,?)");
-        $stmt->bind_param("isss", $new_id, $emergency_contact_name, $emergency_contact_relationship, $emergency_contact_number);
-        $stmt->execute();
-        $stmt->close();
+        // 6. Emergency Contacts
+        if (!empty($_POST['emergency_contact_name'])) {
+            $primary_idx = isset($_POST['emergency_is_primary']) ? (int)$_POST['emergency_is_primary'] : 1;
+            $idx = 0;
+            $stmt = $conn->prepare("INSERT INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number, is_primary) VALUES (?,?,?,?,?)");
+            foreach ($_POST['emergency_contact_name'] as $i => $name) {
+                $name = trim($name);
+                if ($name === '') continue;
+                $idx++;
+                $rel = trim($_POST['emergency_contact_relationship'][$i] ?? '');
+                $num = trim($_POST['emergency_contact_number'][$i] ?? '');
+                $is_pri = ($idx === $primary_idx) ? 1 : 0;
+                $stmt->bind_param("isssi", $new_id, $name, $rel, $num, $is_pri);
+                $stmt->execute();
+            }
+            $stmt->close();
+        }
 
         // 7. Disclosures
         $stmt = $conn->prepare("INSERT INTO employee_disclosures (

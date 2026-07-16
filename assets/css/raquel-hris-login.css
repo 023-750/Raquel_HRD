@@ -22,28 +22,47 @@
 ============================================= */
 
 :root {
-  /* Brand greens */
-  --green-dark:    #031b02;
-  --green-forest:  #045202;
-  --green-mid:     #1a2b04;
-  --green-primary: #294306;
-  --green-bright:  #28a745;
+  /* ── Brand greens ─────────────────────────────────────────────────
+     ★ CHANGE ONLY THESE 5 to retheme the entire login page.
+       Everything below auto-computes from these values.            */
+  --green-dark:    #031b02;   /* deepest background dark             */
+  --green-forest:  #045202;   /* HRIS panel & form accent (main)     */
+  --green-mid:     #1a2b04;   /* ESS panel mid tone                  */
+  --green-primary: #294306;   /* ESS panel primary / darker accent   */
+  --green-bright:  #28a745;   /* ESS sign-in button highlight        */
 
-  /* Brand gold (used on brand panels only) */
+  /* ── Derived aliases — auto-computed from the brand greens above ─
+     DO NOT edit these manually; change the 5 variables above only. */
+  --login-brand-top:       color-mix(in srgb, var(--green-forest) 60%, #000);
+  --login-hris-btn-from:   color-mix(in srgb, var(--green-forest) 60%, #fff 40%);
+  --login-form-shadow:     color-mix(in srgb, var(--green-forest)  7%, transparent);
+  --login-form-shadow2:    color-mix(in srgb, var(--green-forest) 14%, transparent);
+  --login-form-shadow3:    color-mix(in srgb, var(--green-forest) 22%, transparent);
+  --login-border-line:     color-mix(in srgb, var(--green-forest)  7%, transparent);
+  --login-footer-line:     color-mix(in srgb, var(--green-forest) 15%, transparent);
+  --login-focus-ring:      color-mix(in srgb, var(--green-forest) 12%, transparent);
+  --login-ess-ring:        color-mix(in srgb, var(--green-primary) 12%, transparent);
+  --login-btn-shadow:      color-mix(in srgb, var(--green-forest) 35%, transparent);
+  --login-btn-shadow2:     color-mix(in srgb, var(--green-forest) 50%, transparent);
+  --login-ess-shadow:      color-mix(in srgb, var(--green-primary) 30%, transparent);
+  --login-ess-shadow2:     color-mix(in srgb, var(--green-primary) 45%, transparent);
+  --login-mob-card-shadow: color-mix(in srgb, var(--green-forest) 22%, transparent);
+
+  /* ── Brand gold (used on brand panels only) ───────────────────── */
   --gold:          #bd9414;
   --gold-light:    #ffd754;
 
-  /* Text & UI */
+  /* ── Text & UI ────────────────────────────────────────────────── */
   --text-dark:     #1a1a2e;
   --text-muted:    #6c757d;
   --text-light:    #9db0a3;
 
-  /* Form surface */
+  /* ── Form surface ──────────────────────────────────────────────── */
   --input-bg:      #f8faf8;
   --input-border:  #e2ebe4;
   --input-hover:   #c8d8cb;
 
-  /* Transition speed */
+  /* ── Transition speed ──────────────────────────────────────────── */
   --speed-fast:    0.2s;
   --speed-normal:  0.35s;
   --speed-slow:    0.58s;
@@ -120,7 +139,7 @@ input, button, select, textarea {
   align-items: center;
   justify-content: center;
   padding: 48px 32px;
-  background: linear-gradient(160deg, #0f2d0d 0%, var(--green-forest) 60%, var(--green-dark) 100%);
+  background: linear-gradient(160deg, var(--login-brand-top) 0%, var(--green-forest) 60%, var(--green-dark) 100%);
   overflow: hidden;
   z-index: 1;
   opacity: 1;
@@ -137,9 +156,6 @@ input, button, select, textarea {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-image:
-    repeating-linear-gradient(45deg,  transparent, transparent 28px, rgba(189,148,20,.04) 28px, rgba(189,148,20,.04) 29px),
-    repeating-linear-gradient(-45deg, transparent, transparent 28px, rgba(189,148,20,.04) 28px, rgba(189,148,20,.04) 29px);
 }
 
 /* Corner bracket decorations */
@@ -309,9 +325,6 @@ body:not(.show-ess) .bcon {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-image:
-    repeating-linear-gradient(45deg,  transparent, transparent 26px, rgba(255,255,255,.03) 26px, rgba(255,255,255,.03) 27px),
-    repeating-linear-gradient(-45deg, transparent, transparent 26px, rgba(255,255,255,.03) 26px, rgba(255,255,255,.03) 27px);
 }
 
 /* ESS corner brackets (white instead of gold) */
@@ -458,9 +471,9 @@ body:not(.show-ess) .bcon {
   padding: 36px 32px 28px;
   border: 1px solid rgba(210,221,213,0.4);
   box-shadow:
-    0 0 0 1px rgba(4,82,2,0.07),
-    0 8px 24px rgba(4,82,2,0.14),
-    0 32px 72px rgba(4,82,2,0.22);
+    0 0 0 1px var(--login-form-shadow),
+    0 8px 24px var(--login-form-shadow2),
+    0 32px 72px var(--login-form-shadow3);
   position: relative;
   z-index: 1;
   transition: opacity var(--speed-normal) ease;
@@ -558,7 +571,7 @@ body:not(.show-ess) .bcon {
   line-height: 1.5;
   margin-bottom: 18px;
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(4,82,2,0.07);
+  border-bottom: 1px solid var(--login-border-line);
 }
 
 /* Error message box */
@@ -642,7 +655,7 @@ body:not(.show-ess) .bcon {
 .hris .iwrap input:focus {
   background: #fff;
   border-color: var(--green-forest);
-  box-shadow: 0 0 0 4px rgba(4,82,2,0.12);
+  box-shadow: 0 0 0 4px var(--login-focus-ring);
 }
 
 .hris .iwrap:focus-within .iico {
@@ -653,7 +666,7 @@ body:not(.show-ess) .bcon {
 .essf .iwrap input:focus {
   background: #fff;
   border-color: var(--green-primary);
-  box-shadow: 0 0 0 4px rgba(41,67,6,0.12);
+  box-shadow: 0 0 0 4px var(--login-ess-ring);
 }
 
 .essf .iwrap:focus-within .iico {
@@ -726,7 +739,7 @@ body:not(.show-ess) .bcon {
   color: #3d4d42 !important;
   letter-spacing: 0.3px;
   padding-top: 16px !important;
-  border-top: 1px solid rgba(4,82,2,0.15) !important;
+  border-top: 1px solid var(--login-footer-line) !important;
   font-weight: 500 !important;
 }
 
@@ -769,24 +782,24 @@ body:not(.show-ess) .bcon {
 
 /* HRIS Sign In — forest green */
 .btn-gold {
-  background: linear-gradient(135deg, #1a5c18 0%, var(--green-forest) 50%, var(--green-dark) 100%);
+  background: linear-gradient(135deg, var(--login-hris-btn-from) 0%, var(--green-forest) 50%, var(--green-dark) 100%);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(4,82,2,0.35);
+  box-shadow: 0 4px 14px var(--login-btn-shadow);
 }
 
 .btn-gold:hover {
-  box-shadow: 0 8px 24px rgba(4,82,2,0.5);
+  box-shadow: 0 8px 24px var(--login-btn-shadow2);
 }
 
 /* ESS Sign In — darker green */
 .btn-green {
   background: linear-gradient(135deg, var(--green-primary) 0%, var(--green-mid) 100%);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(41,67,6,0.3);
+  box-shadow: 0 4px 14px var(--login-ess-shadow);
 }
 
 .btn-green:hover {
-  box-shadow: 0 8px 24px rgba(41,67,6,0.45);
+  box-shadow: 0 8px 24px var(--login-ess-shadow2);
 }
 
 /* Secondary "Switch portal" button */
@@ -859,7 +872,7 @@ body:not(.show-ess) .bcon {
     height: auto;
     min-height: 100vh;
     overflow-y: auto;
-    background: linear-gradient(160deg, #0f2d0d 0%, var(--green-forest) 60%, var(--green-dark) 100%);
+    background: linear-gradient(160deg, var(--login-brand-top) 0%, var(--green-forest) 60%, var(--green-dark) 100%);
   }
 
   .root {
@@ -976,7 +989,7 @@ body:not(.show-ess) .bcon {
     max-width: 100%;
     border-radius: 28px 28px 0 0;
     padding: 32px 20px 40px;
-    box-shadow: 0 -8px 40px rgba(4,82,2,0.22);
+    box-shadow: 0 -8px 40px var(--login-mob-card-shadow);
     min-height: calc(100vh - 220px);
     opacity: 1;
     pointer-events: auto;

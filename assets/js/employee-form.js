@@ -380,41 +380,198 @@ function addRepeaterRow(containerId, prefix) {
     c.appendChild(div);
 }
 
-// Education row
-function addEducationRow() {
-    const c = document.getElementById('educationContainer');
+// ── Education helpers ──────────────────────────────────────────────────────
+const EDU_LEVELS = ['Elementary','Secondary','Senior High School','Vocational','College','Graduate Studies'];
+const EDU_LEVEL_LABELS = {
+    'Elementary':        'Elementary',
+    'Secondary':         'Secondary / Junior High',
+    'Senior High School':'Senior High School',
+    'Vocational':        'Vocational / Trade Course',
+    'College':           'College',
+    'Graduate Studies':  'Graduate Studies'
+};
+const EDU_LEVEL_ICONS = {
+    'Elementary':        'fas fa-school',
+    'Secondary':         'fas fa-book',
+    'Senior High School':'fas fa-book-open',
+    'Vocational':        'fas fa-tools',
+    'College':           'fas fa-graduation-cap',
+    'Graduate Studies':  'fas fa-user-graduate'
+};
+const EDU_LEVEL_CSS = {
+    'Elementary':        'level-elementary',
+    'Secondary':         'level-secondary',
+    'Senior High School':'level-shs',
+    'Vocational':        'level-vocational',
+    'College':           'level-college',
+    'Graduate Studies':  'level-graduate'
+};
+
+function getExistingEduLevels() {
+    return Array.from(document.querySelectorAll('#educationContainer select[name="edu_level[]"]'))
+        .map(s => s.value);
+}
+
+function getSuggestedEduLevel() {
+    const existing = getExistingEduLevels();
+    for (const lvl of EDU_LEVELS) {
+        if (!existing.includes(lvl)) return lvl;
+    }
+    return 'College'; // all taken, default to College
+}
+
+function updateEduCardBadge(card) {
+    const sel = card.querySelector('select[name="edu_level[]"]');
+    const badge = card.querySelector('.edu-level-badge');
+    const label = card.querySelector('.pds-card-label');
+    const lvl = sel ? sel.value : '';
+    if (badge && lvl) {
+        badge.className = 'edu-level-badge ' + (EDU_LEVEL_CSS[lvl] || '');
+        badge.innerHTML = `<i class="${EDU_LEVEL_ICONS[lvl] || 'fas fa-graduation-cap'}"></i> ${EDU_LEVEL_LABELS[lvl] || lvl}`;
+    }
+    if (label && lvl) label.textContent = EDU_LEVEL_LABELS[lvl] || lvl;
+    // Check duplicates
+    const existing = getExistingEduLevels();
+    const dupWarning = card.querySelector('.edu-duplicate-warning');
+    if (dupWarning) {
+        const isDup = existing.filter(v => v === lvl).length > 1;
+        dupWarning.classList.toggle('show', isDup);
+    }
+}
+
+function moveCard(btn, direction) {
+    const card = btn.closest('.pds-card');
+    const container = card.parentElement;
+    if (direction === 'up' && card.previousElementSibling) {
+        container.insertBefore(card, card.previousElementSibling);
+    } else if (direction === 'down' && card.nextElementSibling) {
+        container.insertBefore(card.nextElementSibling, card);
+    }
+}
+
+function buildEduLevelOptions(selected) {
+    return EDU_LEVELS.map(lvl =>
+        `<option value="${lvl}" ${lvl === selected ? 'selected' : ''}>${EDU_LEVEL_LABELS[lvl]}</option>`
+    ).join('');
+}
+
+function buildEduCard(selectedLevel) {
+    const lvl = selectedLevel || getSuggestedEduLevel();
+    const cssClass = EDU_LEVEL_CSS[lvl] || 'level-college';
+    const icon = EDU_LEVEL_ICONS[lvl] || 'fas fa-graduation-cap';
+    const label = EDU_LEVEL_LABELS[lvl] || lvl;
     const div = document.createElement('div');
-    div.className = 'repeater-row';
+    div.className = 'pds-card';
     div.innerHTML = `
-        <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-2 mb-2"><select class="form-select form-select-sm" name="edu_level[]"><option value="Elementary">Elementary</option><option value="Secondary">Secondary / Junior High</option><option value="Senior High School">Senior High School</option><option value="Vocational">Vocational / Trade Course</option><option value="College" selected>College</option><option value="Graduate Studies">Graduate Studies</option></select></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_school[]" placeholder="School Name"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_degree[]" placeholder="Degree/Course"></div>
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">From (Year)</label><input type="number" class="form-control form-control-sm" name="edu_from[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">To (Year)</label><input type="number" class="form-control form-control-sm" name="edu_to[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_units[]" placeholder="Highest Level/Units"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="edu_year_grad[]" placeholder="Year Grad"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_honors[]" placeholder="Honors"></div>
+        <div class="pds-card-header">
+            <div class="pds-card-title">
+                <div class="pds-card-icon"><i class="${icon}"></i></div>
+                <div>
+                    <div class="pds-card-label">${label}</div>
+                    <span class="edu-level-badge ${cssClass}"><i class="${icon}"></i> ${label}</span>
+                </div>
+            </div>
+            <div class="pds-card-actions">
+                <button type="button" class="pds-card-btn btn-move-up" onclick="moveCard(this,'up')" title="Move Up"><i class="fas fa-chevron-up"></i></button>
+                <button type="button" class="pds-card-btn btn-move-down" onclick="moveCard(this,'down')" title="Move Down"><i class="fas fa-chevron-down"></i></button>
+                <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove(); document.querySelectorAll('#educationContainer select[name=\'edu_level[]\']').forEach(s=>{const c=s.closest('.pds-card');if(c)updateEduCardBadge(c)})" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="pds-form-grid">
+            <div class="full-width">
+                <label class="pds-field-label">Education Level</label>
+                <select class="form-select form-select-sm" name="edu_level[]" onchange="updateEduCardBadge(this.closest('.pds-card'))">
+                    ${buildEduLevelOptions(lvl)}
+                </select>
+                <div class="edu-duplicate-warning"><i class="fas fa-exclamation-triangle"></i><span>This education level already exists. Are you sure you want to add another record for the same level?</span></div>
+            </div>
+            <div>
+                <label class="pds-field-label">School Name</label>
+                <input type="text" class="form-control form-control-sm" name="edu_school[]" placeholder="e.g. University of the Philippines">
+            </div>
+            <div>
+                <label class="pds-field-label">Degree / Course / Strand</label>
+                <input type="text" class="form-control form-control-sm" name="edu_degree[]" placeholder="e.g. Bachelor of Science in IT">
+            </div>
+            <div>
+                <label class="pds-field-label">Year From</label>
+                <input type="number" class="form-control form-control-sm" name="edu_from[]" min="1900" max="2099" placeholder="e.g. 2015">
+            </div>
+            <div>
+                <label class="pds-field-label">Year To</label>
+                <input type="number" class="form-control form-control-sm" name="edu_to[]" min="1900" max="2099" placeholder="e.g. 2019">
+            </div>
+            <div>
+                <label class="pds-field-label">Highest Level / Units Earned</label>
+                <input type="text" class="form-control form-control-sm" name="edu_units[]" placeholder="e.g. Completed / 120 units">
+            </div>
+            <div>
+                <label class="pds-field-label">Year Graduated</label>
+                <input type="text" class="form-control form-control-sm" name="edu_year_grad[]" placeholder="e.g. 2019 or N/A">
+            </div>
+            <div class="full-width">
+                <label class="pds-field-label">Honors / Awards / Distinctions Received</label>
+                <textarea class="form-control form-control-sm" name="edu_honors[]" rows="2" placeholder="e.g. Cum Laude, Dean's List, With Honors"></textarea>
+            </div>
         </div>`;
-    c.appendChild(div);
+    return div;
+}
+
+// Education row
+function addEducationRow(selectedLevel) {
+    const c = document.getElementById('educationContainer');
+    const card = buildEduCard(selectedLevel);
+    c.appendChild(card);
+    updateEduCardBadge(card);
 }
 
 // Work experience row
 function addWorkRow() {
     const c = document.getElementById('workContainer');
     const div = document.createElement('div');
-    div.className = 'repeater-row';
+    div.className = 'pds-card';
     div.innerHTML = `
-        <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">Start (Year)</label><input type="number" class="form-control form-control-sm" name="work_from[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">End (Year)</label><input type="number" class="form-control form-control-sm" name="work_to[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_title[]" placeholder="Job Title"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_company[]" placeholder="Company"></div>
-            <div class="col-md-2 mb-2"><input type="number" step="0.01" class="form-control form-control-sm" name="work_salary[]" placeholder="Salary"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_status[]" placeholder="Status"></div>
-            <div class="col-md-4 mb-2"><input type="text" class="form-control form-control-sm" name="work_reason[]" placeholder="Reason for Leaving"></div>
+        <div class="pds-card-header">
+            <div class="pds-card-title">
+                <div class="pds-card-icon"><i class="fas fa-briefcase"></i></div>
+                <div>
+                    <div class="pds-card-label">Work Experience</div>
+                    <div class="pds-card-subtitle">Fill in the details below</div>
+                </div>
+            </div>
+            <div class="pds-card-actions">
+                <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="pds-form-grid">
+            <div>
+                <label class="pds-field-label">Date From (Year)</label>
+                <input type="number" class="form-control form-control-sm" name="work_from[]" min="1900" max="2099" placeholder="e.g. 2018">
+            </div>
+            <div>
+                <label class="pds-field-label">Date To (Year or Present)</label>
+                <input type="text" class="form-control form-control-sm" name="work_to[]" placeholder="e.g. 2022 or Present">
+            </div>
+            <div>
+                <label class="pds-field-label">Job Title / Position</label>
+                <input type="text" class="form-control form-control-sm" name="work_title[]" placeholder="e.g. Software Engineer">
+            </div>
+            <div>
+                <label class="pds-field-label">Company / Employer Name</label>
+                <input type="text" class="form-control form-control-sm" name="work_company[]" placeholder="e.g. Raquel Pawnshop">
+            </div>
+            <div>
+                <label class="pds-field-label">Monthly Salary (₱)</label>
+                <input type="number" step="0.01" class="form-control form-control-sm" name="work_salary[]" placeholder="e.g. 18000.00">
+            </div>
+            <div>
+                <label class="pds-field-label">Appointment / Employment Status</label>
+                <input type="text" class="form-control form-control-sm" name="work_status[]" placeholder="e.g. Regular, Contractual">
+            </div>
+            <div class="full-width">
+                <label class="pds-field-label">Reason for Leaving</label>
+                <input type="text" class="form-control form-control-sm" name="work_reason[]" placeholder="e.g. Career growth, Resigned">
+            </div>
         </div>`;
     c.appendChild(div);
 }
@@ -423,16 +580,45 @@ function addWorkRow() {
 function addTrainingRow() {
     const c = document.getElementById('trainingContainer');
     const div = document.createElement('div');
-    div.className = 'repeater-row';
+    div.className = 'pds-card training-card';
     div.innerHTML = `
-        <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">Start (Year)</label><input type="number" class="form-control form-control-sm" name="training_from[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">End (Year)</label><input type="number" class="form-control form-control-sm" name="training_to[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="training_title[]" placeholder="Training Title"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="training_type[]" placeholder="Type"></div>
-            <div class="col-md-1 mb-2"><input type="number" class="form-control form-control-sm" name="training_hours[]" placeholder="Hrs"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="training_conducted[]" placeholder="Conducted By"></div>
+        <div class="pds-card-header">
+            <div class="pds-card-title">
+                <div class="pds-card-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                <div>
+                    <div class="pds-card-label">Training Program</div>
+                    <div class="pds-card-subtitle">Seminar, workshop, or training attended</div>
+                </div>
+            </div>
+            <div class="pds-card-actions">
+                <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="pds-form-grid cols-3">
+            <div class="full-width">
+                <label class="pds-field-label">Training Title / Program Name</label>
+                <input type="text" class="form-control form-control-sm" name="training_title[]" placeholder="e.g. Basic Fire Safety Training">
+            </div>
+            <div>
+                <label class="pds-field-label">Date From</label>
+                <input type="number" class="form-control form-control-sm" name="training_from[]" min="1900" max="2099" placeholder="Year">
+            </div>
+            <div>
+                <label class="pds-field-label">Date To</label>
+                <input type="number" class="form-control form-control-sm" name="training_to[]" min="1900" max="2099" placeholder="Year">
+            </div>
+            <div>
+                <label class="pds-field-label">No. of Hours</label>
+                <input type="number" class="form-control form-control-sm" name="training_hours[]" placeholder="e.g. 8">
+            </div>
+            <div>
+                <label class="pds-field-label">Type (L/D/ET/Other)</label>
+                <input type="text" class="form-control form-control-sm" name="training_type[]" placeholder="e.g. Leadership, Technical">
+            </div>
+            <div class="full-width">
+                <label class="pds-field-label">Conducted / Sponsored By</label>
+                <input type="text" class="form-control form-control-sm" name="training_conducted[]" placeholder="e.g. DOLE, Company HR Dept.">
+            </div>
         </div>`;
     c.appendChild(div);
 }
@@ -441,16 +627,45 @@ function addTrainingRow() {
 function addVoluntaryRow() {
     const c = document.getElementById('voluntaryContainer');
     const div = document.createElement('div');
-    div.className = 'repeater-row';
+    div.className = 'pds-card voluntary-card';
     div.innerHTML = `
-        <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">Start (Year)</label><input type="number" class="form-control form-control-sm" name="vol_from[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">End (Year)</label><input type="number" class="form-control form-control-sm" name="vol_to[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_org[]" placeholder="Organization"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_address[]" placeholder="Address"></div>
-            <div class="col-md-1 mb-2"><input type="number" class="form-control form-control-sm" name="vol_hours[]" placeholder="Hrs"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_position[]" placeholder="Position/Nature"></div>
+        <div class="pds-card-header">
+            <div class="pds-card-title">
+                <div class="pds-card-icon"><i class="fas fa-hands-helping"></i></div>
+                <div>
+                    <div class="pds-card-label">Voluntary / Civic Work</div>
+                    <div class="pds-card-subtitle">Organization involvement or community service</div>
+                </div>
+            </div>
+            <div class="pds-card-actions">
+                <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="pds-form-grid">
+            <div>
+                <label class="pds-field-label">Organization Name</label>
+                <input type="text" class="form-control form-control-sm" name="vol_org[]" placeholder="e.g. Red Cross, Barangay Council">
+            </div>
+            <div>
+                <label class="pds-field-label">Organization Address</label>
+                <input type="text" class="form-control form-control-sm" name="vol_address[]" placeholder="City/Province">
+            </div>
+            <div>
+                <label class="pds-field-label">Date From</label>
+                <input type="number" class="form-control form-control-sm" name="vol_from[]" min="1900" max="2099" placeholder="Year">
+            </div>
+            <div>
+                <label class="pds-field-label">Date To</label>
+                <input type="number" class="form-control form-control-sm" name="vol_to[]" min="1900" max="2099" placeholder="Year">
+            </div>
+            <div>
+                <label class="pds-field-label">No. of Hours</label>
+                <input type="number" class="form-control form-control-sm" name="vol_hours[]" placeholder="e.g. 40">
+            </div>
+            <div>
+                <label class="pds-field-label">Position / Nature of Work</label>
+                <input type="text" class="form-control form-control-sm" name="vol_position[]" placeholder="e.g. Volunteer, Secretary">
+            </div>
         </div>`;
     c.appendChild(div);
 }
@@ -459,16 +674,45 @@ function addVoluntaryRow() {
 function addEligibilityRow() {
     const c = document.getElementById('eligibilityContainer');
     const div = document.createElement('div');
-    div.className = 'repeater-row';
+    div.className = 'pds-card eligibility-card';
     div.innerHTML = `
-        <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="elig_title[]" placeholder="License/Cert Title"></div>
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">Start (Year)</label><input type="number" class="form-control form-control-sm" name="elig_from[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-2 mb-2"><label class="small text-muted d-block">End (Year)</label><input type="number" class="form-control form-control-sm" name="elig_to[]" min="1900" max="2099" placeholder="Year"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="elig_number[]" placeholder="License No."></div>
-            <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm" name="elig_exam_date[]"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="elig_exam_place[]" placeholder="Place of Exam"></div>
+        <div class="pds-card-header">
+            <div class="pds-card-title">
+                <div class="pds-card-icon"><i class="fas fa-certificate"></i></div>
+                <div>
+                    <div class="pds-card-label">License / Eligibility</div>
+                    <div class="pds-card-subtitle">PRC, CSE, or other professional license</div>
+                </div>
+            </div>
+            <div class="pds-card-actions">
+                <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="pds-form-grid">
+            <div class="full-width">
+                <label class="pds-field-label">License / Eligibility Title</label>
+                <input type="text" class="form-control form-control-sm" name="elig_title[]" placeholder="e.g. PRC Nurse License, CS Professional">
+            </div>
+            <div>
+                <label class="pds-field-label">License Number</label>
+                <input type="text" class="form-control form-control-sm" name="elig_number[]" placeholder="e.g. 0012345">
+            </div>
+            <div>
+                <label class="pds-field-label">Date of Exam</label>
+                <input type="date" class="form-control form-control-sm" name="elig_exam_date[]">
+            </div>
+            <div>
+                <label class="pds-field-label">Place of Exam</label>
+                <input type="text" class="form-control form-control-sm" name="elig_exam_place[]" placeholder="e.g. Manila, Cebu City">
+            </div>
+            <div>
+                <label class="pds-field-label">Valid From (Year)</label>
+                <input type="number" class="form-control form-control-sm" name="elig_from[]" min="1900" max="2099" placeholder="Year">
+            </div>
+            <div>
+                <label class="pds-field-label">Valid To (Year)</label>
+                <input type="number" class="form-control form-control-sm" name="elig_to[]" min="1900" max="2099" placeholder="Year or leave blank if lifetime">
+            </div>
         </div>`;
     c.appendChild(div);
 }
@@ -503,17 +747,49 @@ function addSimpleRow(containerId, fieldName, placeholder) {
 function addRealPropertyRow() {
     const c = document.getElementById('realPropContainer');
     const div = document.createElement('div');
-    div.className = 'repeater-row';
+    div.className = 'pds-card property-card';
     div.innerHTML = `
-        <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="rprop_desc[]" placeholder="Description"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="rprop_kind[]" placeholder="Kind"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="rprop_location[]" placeholder="Location"></div>
-            <div class="col-md-2 mb-2"><input type="number" step="0.01" class="form-control form-control-sm" name="rprop_assessed[]" placeholder="Assessed Value"></div>
-            <div class="col-md-2 mb-2"><input type="number" step="0.01" class="form-control form-control-sm" name="rprop_market[]" placeholder="Market Value"></div>
-            <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="rprop_acq_mode[]" placeholder="Year-Mode"></div>
-            <div class="col-md-2 mb-2"><input type="number" step="0.01" class="form-control form-control-sm" name="rprop_acq_cost[]" placeholder="Acq. Cost"></div>
+        <div class="pds-card-header">
+            <div class="pds-card-title">
+                <div class="pds-card-icon"><i class="fas fa-building"></i></div>
+                <div>
+                    <div class="pds-card-label">Real Property</div>
+                    <div class="pds-card-subtitle">Land, house, or commercial property</div>
+                </div>
+            </div>
+            <div class="pds-card-actions">
+                <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="pds-form-grid cols-3">
+            <div>
+                <label class="pds-field-label">Description</label>
+                <input type="text" class="form-control form-control-sm" name="rprop_desc[]" placeholder="e.g. Residential House and Lot">
+            </div>
+            <div>
+                <label class="pds-field-label">Kind</label>
+                <input type="text" class="form-control form-control-sm" name="rprop_kind[]" placeholder="e.g. Land, House, Condo">
+            </div>
+            <div>
+                <label class="pds-field-label">Exact Location</label>
+                <input type="text" class="form-control form-control-sm" name="rprop_location[]" placeholder="City / Province">
+            </div>
+            <div>
+                <label class="pds-field-label">Assessed Value (₱)</label>
+                <input type="number" step="0.01" class="form-control form-control-sm" name="rprop_assessed[]" placeholder="0.00">
+            </div>
+            <div>
+                <label class="pds-field-label">Current Market Value (₱)</label>
+                <input type="number" step="0.01" class="form-control form-control-sm" name="rprop_market[]" placeholder="0.00">
+            </div>
+            <div>
+                <label class="pds-field-label">Year &amp; Mode of Acquisition</label>
+                <input type="text" class="form-control form-control-sm" name="rprop_acq_mode[]" placeholder="e.g. 2018-Bought, 2020-Inherited">
+            </div>
+            <div>
+                <label class="pds-field-label">Acquisition Cost (₱)</label>
+                <input type="number" step="0.01" class="form-control form-control-sm" name="rprop_acq_cost[]" placeholder="0.00">
+            </div>
         </div>`;
     c.appendChild(div);
 }
@@ -522,13 +798,33 @@ function addRealPropertyRow() {
 function addPersonalPropertyRow() {
     const c = document.getElementById('personalPropContainer');
     const div = document.createElement('div');
-    div.className = 'repeater-row';
+    div.className = 'pds-card property-card';
     div.innerHTML = `
-        <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-5 mb-2"><input type="text" class="form-control form-control-sm" name="pprop_desc[]" placeholder="Description"></div>
-            <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="pprop_year[]" placeholder="Year Acquired"></div>
-            <div class="col-md-4 mb-2"><input type="number" step="0.01" class="form-control form-control-sm" name="pprop_cost[]" placeholder="Acquisition Cost"></div>
+        <div class="pds-card-header">
+            <div class="pds-card-title">
+                <div class="pds-card-icon"><i class="fas fa-car"></i></div>
+                <div>
+                    <div class="pds-card-label">Personal Property</div>
+                    <div class="pds-card-subtitle">Vehicle, jewelry, equipment, etc.</div>
+                </div>
+            </div>
+            <div class="pds-card-actions">
+                <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="pds-form-grid cols-3">
+            <div class="full-width">
+                <label class="pds-field-label">Description</label>
+                <input type="text" class="form-control form-control-sm" name="pprop_desc[]" placeholder="e.g. Toyota Vios 2019, Gold Necklace">
+            </div>
+            <div>
+                <label class="pds-field-label">Year Acquired</label>
+                <input type="text" class="form-control form-control-sm" name="pprop_year[]" placeholder="e.g. 2020">
+            </div>
+            <div>
+                <label class="pds-field-label">Acquisition Cost (₱)</label>
+                <input type="number" step="0.01" class="form-control form-control-sm" name="pprop_cost[]" placeholder="0.00">
+            </div>
         </div>`;
     c.appendChild(div);
 }
@@ -537,15 +833,102 @@ function addPersonalPropertyRow() {
 function addLiabilityRow() {
     const c = document.getElementById('liabilitiesContainer');
     const div = document.createElement('div');
-    div.className = 'repeater-row';
+    div.className = 'pds-card';
     div.innerHTML = `
-        <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-        <div class="row">
-            <div class="col-md-4 mb-2"><input type="text" class="form-control form-control-sm" name="liab_nature[]" placeholder="Nature of Liability"></div>
-            <div class="col-md-4 mb-2"><input type="text" class="form-control form-control-sm" name="liab_creditor[]" placeholder="Name of Creditor"></div>
-            <div class="col-md-4 mb-2"><input type="number" step="0.01" class="form-control form-control-sm" name="liab_balance[]" placeholder="Outstanding Balance"></div>
+        <div class="pds-card-header">
+            <div class="pds-card-title">
+                <div class="pds-card-icon" style="background:linear-gradient(135deg,#dc2626,#ef4444)"><i class="fas fa-file-invoice-dollar"></i></div>
+                <div>
+                    <div class="pds-card-label">Liability</div>
+                    <div class="pds-card-subtitle">Outstanding loans or debts</div>
+                </div>
+            </div>
+            <div class="pds-card-actions">
+                <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="pds-form-grid cols-3">
+            <div>
+                <label class="pds-field-label">Nature of Liability</label>
+                <input type="text" class="form-control form-control-sm" name="liab_nature[]" placeholder="e.g. Housing Loan, Car Loan">
+            </div>
+            <div>
+                <label class="pds-field-label">Name of Creditor</label>
+                <input type="text" class="form-control form-control-sm" name="liab_creditor[]" placeholder="e.g. PNB, SSS">
+            </div>
+            <div>
+                <label class="pds-field-label">Outstanding Balance (₱)</label>
+                <input type="number" step="0.01" class="form-control form-control-sm" name="liab_balance[]" placeholder="0.00">
+            </div>
         </div>`;
     c.appendChild(div);
+}
+
+// Emergency contact row
+let _emergencyContactIndex = 0;
+function addEmergencyContactRow(isFirst) {
+    const c = document.getElementById('emergencyContactsContainer');
+    if (!c) return;
+    _emergencyContactIndex++;
+    const idx = _emergencyContactIndex;
+    const isPrimary = isFirst || c.querySelectorAll('.emergency-contact-card').length === 0;
+    const div = document.createElement('div');
+    div.className = 'emergency-contact-card' + (isPrimary ? ' is-primary-contact' : '');
+    div.innerHTML = `
+        <div class="emergency-contact-header">
+            <label class="emergency-contact-radio">
+                <input type="radio" name="emergency_is_primary" value="${idx}" ${isPrimary ? 'checked' : ''}
+                    onchange="document.querySelectorAll('.emergency-contact-card').forEach(el=>el.classList.remove('is-primary-contact')); this.closest('.emergency-contact-card').classList.add('is-primary-contact');">
+                Set as Primary Contact
+                ${isPrimary ? '<span class="emergency-primary-badge ms-2"><i class="fas fa-star"></i> Primary</span>' : ''}
+            </label>
+            <button type="button" class="pds-card-btn btn-delete" onclick="removeEmergencyContact(this)" title="Remove"><i class="fas fa-trash"></i></button>
+        </div>
+        <div class="pds-form-grid cols-3">
+            <div>
+                <label class="pds-field-label">Contact Name</label>
+                <input type="text" class="form-control form-control-sm" name="emergency_contact_name[]" placeholder="Full Name">
+            </div>
+            <div>
+                <label class="pds-field-label">Relationship</label>
+                <input type="text" class="form-control form-control-sm" name="emergency_contact_relationship[]" placeholder="e.g. Spouse, Parent, Sibling">
+            </div>
+            <div>
+                <label class="pds-field-label">Contact Number</label>
+                <input type="text" class="form-control form-control-sm" name="emergency_contact_number[]" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric">
+            </div>
+        </div>`;
+    c.appendChild(div);
+    // Bind radio change to update primary badge dynamically
+    div.querySelector('input[type=radio]').addEventListener('change', function() {
+        document.querySelectorAll('.emergency-contact-card').forEach(card => {
+            const badge = card.querySelector('.emergency-primary-badge');
+            if (badge) badge.remove();
+            card.classList.remove('is-primary-contact');
+        });
+        this.closest('.emergency-contact-card').classList.add('is-primary-contact');
+        const label = this.closest('label');
+        if (label && !label.querySelector('.emergency-primary-badge')) {
+            const b = document.createElement('span');
+            b.className = 'emergency-primary-badge ms-2';
+            b.innerHTML = '<i class="fas fa-star"></i> Primary';
+            label.appendChild(b);
+        }
+    });
+}
+
+function removeEmergencyContact(btn) {
+    const card = btn.closest('.emergency-contact-card');
+    const wasPrimary = card.classList.contains('is-primary-contact');
+    card.remove();
+    if (wasPrimary) {
+        const first = document.querySelector('.emergency-contact-card');
+        if (first) {
+            first.classList.add('is-primary-contact');
+            const radio = first.querySelector('input[type=radio]');
+            if (radio) radio.checked = true;
+        }
+    }
 }
 
 // Profile image preview

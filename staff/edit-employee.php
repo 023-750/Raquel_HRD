@@ -174,10 +174,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$existingPending) {
         'perm_city'        => trim($_POST['perm_city'] ?? ''),
         'perm_province'    => trim($_POST['perm_province'] ?? ''),
         'perm_zip_code'    => trim($_POST['perm_zip_code'] ?? ''),
-        // Emergency
-        'emergency_contact_name'         => trim($_POST['emergency_contact_name'] ?? ''),
-        'emergency_contact_relationship' => trim($_POST['emergency_contact_relationship'] ?? ''),
-        'emergency_contact_number'       => trim($_POST['emergency_contact_number'] ?? ''),
+        // Emergency (Read primary contact from array inputs)
+        'emergency_contact_name'         => isset($_POST['emergency_contact_name']) ? (is_array($_POST['emergency_contact_name']) ? trim($_POST['emergency_contact_name'][(isset($_POST['emergency_is_primary']) ? (int)$_POST['emergency_is_primary'] - 1 : 0)] ?? '') : trim($_POST['emergency_contact_name'])) : '',
+        'emergency_contact_relationship' => isset($_POST['emergency_contact_relationship']) ? (is_array($_POST['emergency_contact_relationship']) ? trim($_POST['emergency_contact_relationship'][(isset($_POST['emergency_is_primary']) ? (int)$_POST['emergency_is_primary'] - 1 : 0)] ?? '') : trim($_POST['emergency_contact_relationship'])) : '',
+        'emergency_contact_number'       => isset($_POST['emergency_contact_number']) ? (is_array($_POST['emergency_contact_number']) ? trim($_POST['emergency_contact_number'][(isset($_POST['emergency_is_primary']) ? (int)$_POST['emergency_is_primary'] - 1 : 0)] ?? '') : trim($_POST['emergency_contact_number'])) : '',
     ];
 
     // Current (old) values from DB

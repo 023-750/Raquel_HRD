@@ -412,49 +412,100 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 3: Educational Background ====== -->
 <div class="step-content" id="step3" style="display:none;">
     <div class="form-section-title"><i class="fas fa-graduation-cap"></i> Educational Background</div>
-    <div id="educationContainer" class="repeater-accordion">
+    
+    <?php
+    $eduOrder = ['Elementary' => 1, 'Secondary' => 2, 'Senior High School' => 3, 'Vocational' => 4, 'College' => 5, 'Graduate Studies' => 6];
+    $eduLabels = [
+        'Elementary' => 'Elementary',
+        'Secondary' => 'Secondary / Junior High',
+        'Senior High School' => 'Senior High School',
+        'Vocational' => 'Vocational / Trade Course',
+        'College' => 'College',
+        'Graduate Studies' => 'Graduate Studies'
+    ];
+    $eduIcons = [
+        'Elementary' => 'fas fa-school',
+        'Secondary' => 'fas fa-book',
+        'Senior High School' => 'fas fa-book-open',
+        'Vocational' => 'fas fa-tools',
+        'College' => 'fas fa-graduation-cap',
+        'Graduate Studies' => 'fas fa-user-graduate'
+    ];
+    $eduCss = [
+        'Elementary' => 'level-elementary',
+        'Secondary' => 'level-secondary',
+        'Senior High School' => 'level-shs',
+        'Vocational' => 'level-vocational',
+        'College' => 'level-college',
+        'Graduate Studies' => 'level-graduate'
+    ];
+
+    if ($isEdit && !empty($employeeEducation)) {
+        usort($employeeEducation, function($a, $b) use ($eduOrder) {
+            return ($eduOrder[$a['education_level']] ?? 99) <=> ($eduOrder[$b['education_level']] ?? 99);
+        });
+    }
+    ?>
+
+    <div id="educationContainer">
         <?php if ($isEdit && !empty($employeeEducation)): ?>
-            <?php foreach ($employeeEducation as $edu): ?>
-                <div class="repeater-row">
-                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i
-                            class="fas fa-times"></i></button>
-                    <div class="row">
-                        <div class="col-md-2 mb-2"><select class="form-select form-select-sm" name="edu_level[]">
-                                <option value="Elementary" <?php echo $edu['education_level'] === 'Elementary' ? 'selected' : ''; ?>>
-                                    Elementary</option>
-                                <option value="Secondary" <?php echo $edu['education_level'] === 'Secondary' ? 'selected' : ''; ?>>
-                                    Secondary / Junior High</option>
-                                <option value="Senior High School" <?php echo $edu['education_level'] === 'Senior High School' ? 'selected' : ''; ?>>
-                                    Senior High School</option>
-                                <option value="Vocational" <?php echo $edu['education_level'] === 'Vocational' ? 'selected' : ''; ?>>
-                                    Vocational / Trade Course</option>
-                                <option value="College" <?php echo $edu['education_level'] === 'College' ? 'selected' : ''; ?>>College
-                                </option>
-                                <option value="Graduate Studies" <?php echo $edu['education_level'] === 'Graduate Studies' ? 'selected' : ''; ?>>Graduate Studies</option>
-                            </select></div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_school[]"
-                                value="<?php echo e($edu['school_name']); ?>" placeholder="School Name"></div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_degree[]"
-                                value="<?php echo e($edu['degree_course']); ?>" placeholder="Degree/Course"></div>
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">From (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="edu_from[]"
-                                value="<?php echo !empty($edu['period_from']) ? date('Y', strtotime($edu['period_from'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+            <?php foreach ($employeeEducation as $edu): 
+                $lvl = $edu['education_level'];
+                $label = $eduLabels[$lvl] ?? $lvl;
+                $icon = $eduIcons[$lvl] ?? 'fas fa-graduation-cap';
+                $css = $eduCss[$lvl] ?? 'level-college';
+            ?>
+                <div class="pds-card">
+                    <div class="pds-card-header">
+                        <div class="pds-card-title">
+                            <div class="pds-card-icon"><i class="<?php echo $icon; ?>"></i></div>
+                            <div>
+                                <div class="pds-card-label"><?php echo $label; ?></div>
+                                <span class="edu-level-badge <?php echo $css; ?>"><i class="<?php echo $icon; ?>"></i> <?php echo $label; ?></span>
+                            </div>
                         </div>
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">To (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="edu_to[]"
-                                value="<?php echo !empty($edu['period_to']) ? date('Y', strtotime($edu['period_to'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+                        <div class="pds-card-actions">
+                            <button type="button" class="pds-card-btn btn-move-up" onclick="moveCard(this,'up')" title="Move Up"><i class="fas fa-chevron-up"></i></button>
+                            <button type="button" class="pds-card-btn btn-move-down" onclick="moveCard(this,'down')" title="Move Down"><i class="fas fa-chevron-down"></i></button>
+                            <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove(); document.querySelectorAll('#educationContainer select[name=\'edu_level[]\']').forEach(s=>{const c=s.closest('.pds-card');if(c)updateEduCardBadge(c)})" title="Remove"><i class="fas fa-trash"></i></button>
                         </div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="edu_units[]"
-                                value="<?php echo e($edu['highest_level_units']); ?>" placeholder="Highest Level/Units"></div>
-                        <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm"
-                                name="edu_year_grad[]" value="<?php echo e($edu['year_graduated']); ?>" placeholder="Year Grad">
+                    </div>
+                    <div class="pds-form-grid">
+                        <div class="full-width">
+                            <label class="pds-field-label">Education Level</label>
+                            <select class="form-select form-select-sm" name="edu_level[]" onchange="updateEduCardBadge(this.closest('.pds-card'))">
+                                <?php foreach ($eduLabels as $val => $lbl): ?>
+                                    <option value="<?php echo $val; ?>" <?php echo $lvl === $val ? 'selected' : ''; ?>><?php echo $lbl; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="edu-duplicate-warning"><i class="fas fa-exclamation-triangle"></i><span>This education level already exists. Are you sure you want to add another record for the same level?</span></div>
                         </div>
-                        <div class="col-md-12 mb-2">
-                            <label class="small text-muted d-block">Honors / Awards / Distinctions Received</label>
+                        <div>
+                            <label class="pds-field-label">School Name</label>
+                            <input type="text" class="form-control form-control-sm" name="edu_school[]" value="<?php echo e($edu['school_name']); ?>" placeholder="School Name">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Degree / Course / Strand</label>
+                            <input type="text" class="form-control form-control-sm" name="edu_degree[]" value="<?php echo e($edu['degree_course']); ?>" placeholder="Degree/Course">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Year From</label>
+                            <input type="number" class="form-control form-control-sm" name="edu_from[]" value="<?php echo !empty($edu['period_from']) ? date('Y', strtotime($edu['period_from'])) : ''; ?>" min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Year To</label>
+                            <input type="number" class="form-control form-control-sm" name="edu_to[]" value="<?php echo !empty($edu['period_to']) ? date('Y', strtotime($edu['period_to'])) : ''; ?>" min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Highest Level / Units Earned</label>
+                            <input type="text" class="form-control form-control-sm" name="edu_units[]" value="<?php echo e($edu['highest_level_units']); ?>" placeholder="Highest Level/Units">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Year Graduated</label>
+                            <input type="text" class="form-control form-control-sm" name="edu_year_grad[]" value="<?php echo e($edu['year_graduated']); ?>" placeholder="Year Grad">
+                        </div>
+                        <div class="full-width">
+                            <label class="pds-field-label">Honors / Awards / Distinctions Received</label>
                             <textarea class="form-control form-control-sm" name="edu_honors[]" rows="2" placeholder="List honors received (e.g., Cum Laude, Dean's List, etc.)"><?php echo e($edu['honors_received']); ?></textarea>
                         </div>
                     </div>
@@ -462,8 +513,7 @@ $rankCategories = $rankCategories ?? [
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-    <button type="button" class="btn-add-row mb-3" onclick="addEducationRow()"><i class="fas fa-plus me-1"></i> Add
-        Education Entry</button>
+    <button type="button" class="btn-add-pds-section mb-3" onclick="addEducationRow()"><i class="fas fa-plus me-1"></i> Add Education Entry</button>
 </div>
 
 
@@ -471,165 +521,227 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 4: Work Experience ====== -->
 <div class="step-content" id="step4" style="display:none;">
     <div class="form-section-title"><i class="fas fa-briefcase"></i> Work Experience</div>
-    <div id="workContainer" class="repeater-accordion">
-        <?php if ($isEdit && !empty($employeeWork)): ?>
-            <?php foreach ($employeeWork as $w): ?>
-                <div class="repeater-row">
-                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i
-                            class="fas fa-times"></i></button>
-                    <div class="row">
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">Start (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="work_from[]"
-                                value="<?php echo !empty($w['date_from']) ? date('Y', strtotime($w['date_from'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+    <div class="work-timeline">
+        <div id="workContainer">
+            <?php if ($isEdit && !empty($employeeWork)): ?>
+                <?php foreach ($employeeWork as $w): ?>
+                    <div class="pds-card">
+                        <div class="pds-card-header">
+                            <div class="pds-card-title">
+                                <div class="pds-card-icon"><i class="fas fa-briefcase"></i></div>
+                                <div>
+                                    <div class="pds-card-label">Work Experience</div>
+                                    <div class="pds-card-subtitle">Fill in the details below</div>
+                                </div>
+                            </div>
+                            <div class="pds-card-actions">
+                                <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+                            </div>
                         </div>
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">End (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="work_to[]"
-                                value="<?php echo !empty($w['date_to']) ? date('Y', strtotime($w['date_to'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+                        <div class="pds-form-grid">
+                            <div>
+                                <label class="pds-field-label">Date From (Year)</label>
+                                <input type="number" class="form-control form-control-sm" name="work_from[]"
+                                    value="<?php echo !empty($w['date_from']) ? date('Y', strtotime($w['date_from'])) : ''; ?>" 
+                                    min="1900" max="2099" placeholder="e.g. 2018">
+                            </div>
+                            <div>
+                                <label class="pds-field-label">Date To (Year or Present)</label>
+                                <input type="text" class="form-control form-control-sm" name="work_to[]"
+                                    value="<?php echo !empty($w['date_to']) && $w['date_to'] !== '0000-00-00' ? (strtotime($w['date_to']) ? date('Y', strtotime($w['date_to'])) : $w['date_to']) : 'Present'; ?>" 
+                                    placeholder="e.g. 2022 or Present">
+                            </div>
+                            <div>
+                                <label class="pds-field-label">Job Title / Position</label>
+                                <input type="text" class="form-control form-control-sm" name="work_title[]"
+                                    value="<?php echo e($w['job_title']); ?>" placeholder="e.g. Software Engineer">
+                            </div>
+                            <div>
+                                <label class="pds-field-label">Company / Employer Name</label>
+                                <input type="text" class="form-control form-control-sm" name="work_company[]"
+                                    value="<?php echo e($w['company_name']); ?>" placeholder="e.g. Raquel Pawnshop">
+                            </div>
+                            <div>
+                                <label class="pds-field-label">Monthly Salary (₱)</label>
+                                <input type="number" step="0.01" class="form-control form-control-sm"
+                                    name="work_salary[]" value="<?php echo e($w['monthly_salary']); ?>" placeholder="e.g. 18000.00">
+                            </div>
+                            <div>
+                                <label class="pds-field-label">Appointment / Employment Status</label>
+                                <input type="text" class="form-control form-control-sm" name="work_status[]"
+                                    value="<?php echo e($w['appointment_status']); ?>" placeholder="e.g. Regular, Contractual">
+                            </div>
+                            <div class="full-width">
+                                <label class="pds-field-label">Reason for Leaving</label>
+                                <input type="text" class="form-control form-control-sm" name="work_reason[]"
+                                    value="<?php echo e($w['reason_for_leaving']); ?>" placeholder="e.g. Career growth, Resigned">
+                            </div>
                         </div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_title[]"
-                                value="<?php echo e($w['job_title']); ?>" placeholder="Job Title"></div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_company[]"
-                                value="<?php echo e($w['company_name']); ?>" placeholder="Company"></div>
-                        <div class="col-md-2 mb-2"><input type="number" step="0.01" class="form-control form-control-sm"
-                                name="work_salary[]" value="<?php echo e($w['monthly_salary']); ?>" placeholder="Salary"></div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="work_status[]"
-                                value="<?php echo e($w['appointment_status']); ?>" placeholder="Status"></div>
-                        <div class="col-md-4 mb-2"><input type="text" class="form-control form-control-sm" name="work_reason[]"
-                                value="<?php echo e($w['reason_for_leaving']); ?>" placeholder="Reason for Leaving"></div>
                     </div>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
     </div>
-    <button type="button" class="btn-add-row mb-3" onclick="addWorkRow()"><i class="fas fa-plus me-1"></i> Add Work
-        Entry</button>
+    <button type="button" class="btn-add-pds-section mb-3" onclick="addWorkRow()"><i class="fas fa-plus me-1"></i> Add Work Entry</button>
 </div>
 
 
 <!-- ====== STEP 5: Training Programs ====== -->
 <div class="step-content" id="step5" style="display:none;">
     <div class="form-section-title"><i class="fas fa-chalkboard-teacher"></i> Training Programs Attended</div>
-    <div id="trainingContainer" class="repeater-accordion">
+    <div id="trainingContainer">
         <?php if ($isEdit && !empty($employeeTrainings)): ?>
             <?php foreach ($employeeTrainings as $t): ?>
-                <div class="repeater-row">
-                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i
-                            class="fas fa-times"></i></button>
-                    <div class="row">
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">Start (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="training_from[]"
-                                value="<?php echo !empty($t['date_from']) ? date('Y', strtotime($t['date_from'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+                <div class="pds-card training-card">
+                    <div class="pds-card-header">
+                        <div class="pds-card-title">
+                            <div class="pds-card-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                            <div>
+                                <div class="pds-card-label">Training Program</div>
+                                <div class="pds-card-subtitle">Seminar, workshop, or training attended</div>
+                            </div>
                         </div>
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">End (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="training_to[]"
-                                value="<?php echo !empty($t['date_to']) ? date('Y', strtotime($t['date_to'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+                        <div class="pds-card-actions">
+                            <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
                         </div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm"
-                                name="training_title[]" value="<?php echo e($t['training_title']); ?>"
-                                placeholder="Training Title"></div>
-                        <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm"
-                                name="training_type[]" value="<?php echo e($t['training_type']); ?>" placeholder="Type"></div>
-                        <div class="col-md-1 mb-2"><input type="number" class="form-control form-control-sm"
-                                name="training_hours[]" value="<?php echo e($t['no_of_hours']); ?>" placeholder="Hrs"></div>
-                        <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm"
-                                name="training_conducted[]" value="<?php echo e($t['conducted_by']); ?>"
-                                placeholder="Conducted By"></div>
+                    </div>
+                    <div class="pds-form-grid cols-3">
+                        <div class="full-width">
+                            <label class="pds-field-label">Training Title / Program Name</label>
+                            <input type="text" class="form-control form-control-sm" name="training_title[]" value="<?php echo e($t['training_title']); ?>" placeholder="e.g. Basic Fire Safety Training">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Date From</label>
+                            <input type="number" class="form-control form-control-sm" name="training_from[]" value="<?php echo !empty($t['date_from']) ? date('Y', strtotime($t['date_from'])) : ''; ?>" min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Date To</label>
+                            <input type="number" class="form-control form-control-sm" name="training_to[]" value="<?php echo !empty($t['date_to']) ? date('Y', strtotime($t['date_to'])) : ''; ?>" min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">No. of Hours</label>
+                            <input type="number" class="form-control form-control-sm" name="training_hours[]" value="<?php echo e($t['no_of_hours']); ?>" placeholder="e.g. 8">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Type (L/D/ET/Other)</label>
+                            <input type="text" class="form-control form-control-sm" name="training_type[]" value="<?php echo e($t['training_type']); ?>" placeholder="e.g. Leadership, Technical">
+                        </div>
+                        <div class="full-width">
+                            <label class="pds-field-label">Conducted / Sponsored By</label>
+                            <input type="text" class="form-control form-control-sm" name="training_conducted[]" value="<?php echo e($t['conducted_by']); ?>" placeholder="e.g. DOLE, Company HR Dept.">
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-    <button type="button" class="btn-add-row mb-3" onclick="addTrainingRow()"><i class="fas fa-plus me-1"></i> Add
-        Training</button>
+    <button type="button" class="btn-add-pds-section mb-3" onclick="addTrainingRow()"><i class="fas fa-plus me-1"></i> Add Training</button>
 </div>
 
 
 <!-- ====== STEP 6: Voluntary Work ====== -->
 <div class="step-content" id="step6" style="display:none;">
     <div class="form-section-title"><i class="fas fa-hands-helping"></i> Voluntary Work / Civic Involvement</div>
-    <div id="voluntaryContainer" class="repeater-accordion">
+    <div id="voluntaryContainer">
         <?php if ($isEdit && !empty($employeeVoluntary)): ?>
             <?php foreach ($employeeVoluntary as $vol): ?>
-                <div class="repeater-row">
-                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i
-                            class="fas fa-times"></i></button>
-                    <div class="row">
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">Start (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="vol_from[]"
-                                value="<?php echo !empty($vol['date_from']) ? date('Y', strtotime($vol['date_from'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+                <div class="pds-card voluntary-card">
+                    <div class="pds-card-header">
+                        <div class="pds-card-title">
+                            <div class="pds-card-icon"><i class="fas fa-hands-helping"></i></div>
+                            <div>
+                                <div class="pds-card-label">Voluntary / Civic Work</div>
+                                <div class="pds-card-subtitle">Organization involvement or community service</div>
+                            </div>
                         </div>
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">End (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="vol_to[]"
-                                value="<?php echo !empty($vol['date_to']) ? date('Y', strtotime($vol['date_to'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+                        <div class="pds-card-actions">
+                            <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
                         </div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_org[]"
-                                value="<?php echo e($vol['organization_name']); ?>" placeholder="Organization"></div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_address[]"
-                                value="<?php echo e($vol['organization_address']); ?>" placeholder="Address"></div>
-                        <div class="col-md-1 mb-2"><input type="number" class="form-control form-control-sm" name="vol_hours[]"
-                                value="<?php echo e($vol['no_of_hours']); ?>" placeholder="Hrs"></div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="vol_position[]"
-                                value="<?php echo e($vol['position_nature']); ?>" placeholder="Position/Nature"></div>
+                    </div>
+                    <div class="pds-form-grid">
+                        <div>
+                            <label class="pds-field-label">Organization Name</label>
+                            <input type="text" class="form-control form-control-sm" name="vol_org[]" value="<?php echo e($vol['organization_name']); ?>" placeholder="e.g. Red Cross, Barangay Council">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Organization Address</label>
+                            <input type="text" class="form-control form-control-sm" name="vol_address[]" value="<?php echo e($vol['organization_address']); ?>" placeholder="City/Province">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Date From</label>
+                            <input type="number" class="form-control form-control-sm" name="vol_from[]" value="<?php echo !empty($vol['date_from']) ? date('Y', strtotime($vol['date_from'])) : ''; ?>" min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Date To</label>
+                            <input type="number" class="form-control form-control-sm" name="vol_to[]" value="<?php echo !empty($vol['date_to']) ? date('Y', strtotime($vol['date_to'])) : ''; ?>" min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">No. of Hours</label>
+                            <input type="number" class="form-control form-control-sm" name="vol_hours[]" value="<?php echo e($vol['no_of_hours']); ?>" placeholder="e.g. 40">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Position / Nature of Work</label>
+                            <input type="text" class="form-control form-control-sm" name="vol_position[]" value="<?php echo e($vol['position_nature']); ?>" placeholder="e.g. Volunteer, Secretary">
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-    <button type="button" class="btn-add-row mb-3" onclick="addVoluntaryRow()"><i class="fas fa-plus me-1"></i> Add
-        Voluntary Work</button>
+    <button type="button" class="btn-add-pds-section mb-3" onclick="addVoluntaryRow()"><i class="fas fa-plus me-1"></i> Add Voluntary Work</button>
 </div>
 
 
 <!-- ====== STEP 7: Service Eligibility ====== -->
 <div class="step-content" id="step7" style="display:none;">
     <div class="form-section-title"><i class="fas fa-certificate"></i> Service Eligibility / Licenses</div>
-    <div id="eligibilityContainer" class="repeater-accordion">
+    <div id="eligibilityContainer">
         <?php if ($isEdit && !empty($employeeEligibility)): ?>
             <?php foreach ($employeeEligibility as $el): ?>
-                <div class="repeater-row">
-                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i
-                            class="fas fa-times"></i></button>
-                    <div class="row">
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm" name="elig_title[]"
-                                value="<?php echo e($el['license_title']); ?>" placeholder="License/Cert Title"></div>
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">Start (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="elig_from[]"
-                                value="<?php echo !empty($el['date_from']) ? date('Y', strtotime($el['date_from'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+                <div class="pds-card eligibility-card">
+                    <div class="pds-card-header">
+                        <div class="pds-card-title">
+                            <div class="pds-card-icon"><i class="fas fa-certificate"></i></div>
+                            <div>
+                                <div class="pds-card-label">License / Eligibility</div>
+                                <div class="pds-card-subtitle">PRC, CSE, or other professional license</div>
+                            </div>
                         </div>
-                        <div class="col-md-2 mb-2">
-                            <label class="small text-muted d-block">End (Year)</label>
-                            <input type="number" class="form-control form-control-sm" name="elig_to[]"
-                                value="<?php echo !empty($el['date_to']) ? date('Y', strtotime($el['date_to'])) : ''; ?>" 
-                                min="1900" max="2099" placeholder="Year">
+                        <div class="pds-card-actions">
+                            <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
                         </div>
-                        <div class="col-md-2 mb-2"><input type="text" class="form-control form-control-sm" name="elig_number[]"
-                                value="<?php echo e($el['license_number']); ?>" placeholder="License No."></div>
-                        <div class="col-md-2 mb-2"><input type="date" class="form-control form-control-sm"
-                                name="elig_exam_date[]" value="<?php echo e($el['date_of_exam']); ?>"></div>
-                        <div class="col-md-3 mb-2"><input type="text" class="form-control form-control-sm"
-                                name="elig_exam_place[]" value="<?php echo e($el['place_of_exam']); ?>"
-                                placeholder="Place of Exam"></div>
+                    </div>
+                    <div class="pds-form-grid">
+                        <div class="full-width">
+                            <label class="pds-field-label">License / Eligibility Title</label>
+                            <input type="text" class="form-control form-control-sm" name="elig_title[]" value="<?php echo e($el['license_title']); ?>" placeholder="e.g. PRC Nurse License, CS Professional">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">License Number</label>
+                            <input type="text" class="form-control form-control-sm" name="elig_number[]" value="<?php echo e($el['license_number']); ?>" placeholder="e.g. 0012345">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Date of Exam</label>
+                            <input type="date" class="form-control form-control-sm" name="elig_exam_date[]" value="<?php echo e($el['date_of_exam']); ?>">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Place of Exam</label>
+                            <input type="text" class="form-control form-control-sm" name="elig_exam_place[]" value="<?php echo e($el['place_of_exam']); ?>" placeholder="e.g. Manila, Cebu City">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Valid From (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="elig_from[]" value="<?php echo !empty($el['date_from']) ? date('Y', strtotime($el['date_from'])) : ''; ?>" min="1900" max="2099" placeholder="Year">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Valid To (Year)</label>
+                            <input type="number" class="form-control form-control-sm" name="elig_to[]" value="<?php echo !empty($el['date_to']) ? date('Y', strtotime($el['date_to'])) : ''; ?>" min="1900" max="2099" placeholder="Year or leave blank if lifetime">
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-    <button type="button" class="btn-add-row mb-3" onclick="addEligibilityRow()"><i class="fas fa-plus me-1"></i> Add
-        License/Eligibility</button>
+    <button type="button" class="btn-add-pds-section mb-3" onclick="addEligibilityRow()"><i class="fas fa-plus me-1"></i> Add License/Eligibility</button>
 </div>
 
 
@@ -699,60 +811,131 @@ $rankCategories = $rankCategories ?? [
 <!-- ====== STEP 9: Assets & Liabilities ====== -->
 <div class="step-content" id="step9" style="display:none;">
     <div class="form-section-title"><i class="fas fa-building"></i> Real Properties</div>
-    <div id="realPropContainer" class="repeater-accordion">
+    <div id="realPropContainer">
         <?php if ($isEdit && !empty($employeeRealProps)): ?>
             <?php foreach ($employeeRealProps as $rp): ?>
-                <div class="repeater-row">
-                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-                    <div class="row">
-                        <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="rprop_desc[]" value="<?php echo e($rp['description']); ?>" placeholder="Description"></div>
-                        <div class="col-md-2"><input type="text" class="form-control form-control-sm" name="rprop_kind[]" value="<?php echo e($rp['kind']); ?>" placeholder="Kind"></div>
-                        <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="rprop_location[]" value="<?php echo e($rp['exact_location']); ?>" placeholder="Location"></div>
-                        <div class="col-md-2"><input type="number" step="0.01" class="form-control form-control-sm" name="rprop_assessed[]" value="<?php echo e($rp['assessed_value']); ?>" placeholder="Assessed Value"></div>
-                        <div class="col-md-2"><input type="number" step="0.01" class="form-control form-control-sm" name="rprop_market[]" value="<?php echo e($rp['market_value']); ?>" placeholder="Market Value"></div>
+                <div class="pds-card property-card">
+                    <div class="pds-card-header">
+                        <div class="pds-card-title">
+                            <div class="pds-card-icon"><i class="fas fa-building"></i></div>
+                            <div>
+                                <div class="pds-card-label">Real Property</div>
+                                <div class="pds-card-subtitle">Land, house, or commercial property</div>
+                            </div>
+                        </div>
+                        <div class="pds-card-actions">
+                            <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="pds-form-grid cols-3">
+                        <div>
+                            <label class="pds-field-label">Description</label>
+                            <input type="text" class="form-control form-control-sm" name="rprop_desc[]" value="<?php echo e($rp['description']); ?>" placeholder="e.g. Residential House and Lot">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Kind</label>
+                            <input type="text" class="form-control form-control-sm" name="rprop_kind[]" value="<?php echo e($rp['kind']); ?>" placeholder="e.g. Land, House, Condo">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Exact Location</label>
+                            <input type="text" class="form-control form-control-sm" name="rprop_location[]" value="<?php echo e($rp['exact_location']); ?>" placeholder="City / Province">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Assessed Value (₱)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="rprop_assessed[]" value="<?php echo e($rp['assessed_value']); ?>" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Current Market Value (₱)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="rprop_market[]" value="<?php echo e($rp['market_value']); ?>" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Year &amp; Mode of Acquisition</label>
+                            <input type="text" class="form-control form-control-sm" name="rprop_acq_mode[]" value="<?php echo e($rp['acquisition_year_mode'] ?? ''); ?>" placeholder="e.g. 2018-Bought, 2020-Inherited">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Acquisition Cost (₱)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="rprop_acq_cost[]" value="<?php echo e($rp['acquisition_cost'] ?? ''); ?>" placeholder="0.00">
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-    <button type="button" class="btn-add-row mb-3" onclick="addRealPropertyRow()"><i class="fas fa-plus me-1"></i> Add
-        Real Property</button>
+    <button type="button" class="btn-add-pds-section mb-3" onclick="addRealPropertyRow()"><i class="fas fa-plus me-1"></i> Add Real Property</button>
 
     <div class="form-section-title mt-3"><i class="fas fa-car"></i> Personal Properties</div>
-    <div id="personalPropContainer" class="repeater-accordion">
+    <div id="personalPropContainer">
         <?php if ($isEdit && !empty($employeePersonalProps)): ?>
             <?php foreach ($employeePersonalProps as $pp): ?>
-                <div class="repeater-row">
-                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-                    <div class="row">
-                        <div class="col-md-5"><input type="text" class="form-control form-control-sm" name="pprop_desc[]" value="<?php echo e($pp['description']); ?>" placeholder="Description"></div>
-                        <div class="col-md-3"><input type="text" class="form-control form-control-sm" name="pprop_year[]" value="<?php echo e($pp['year_acquired']); ?>" placeholder="Year Acquired"></div>
-                        <div class="col-md-4"><input type="number" step="0.01" class="form-control form-control-sm" name="pprop_cost[]" value="<?php echo e($pp['acquisition_cost']); ?>" placeholder="Acquisition Cost"></div>
+                <div class="pds-card property-card">
+                    <div class="pds-card-header">
+                        <div class="pds-card-title">
+                            <div class="pds-card-icon"><i class="fas fa-car"></i></div>
+                            <div>
+                                <div class="pds-card-label">Personal Property</div>
+                                <div class="pds-card-subtitle">Vehicle, jewelry, equipment, etc.</div>
+                            </div>
+                        </div>
+                        <div class="pds-card-actions">
+                            <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="pds-form-grid cols-3">
+                        <div class="full-width">
+                            <label class="pds-field-label">Description</label>
+                            <input type="text" class="form-control form-control-sm" name="pprop_desc[]" value="<?php echo e($pp['description']); ?>" placeholder="e.g. Toyota Vios 2019, Gold Necklace">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Year Acquired</label>
+                            <input type="text" class="form-control form-control-sm" name="pprop_year[]" value="<?php echo e($pp['year_acquired']); ?>" placeholder="e.g. 2020">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Acquisition Cost (₱)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="pprop_cost[]" value="<?php echo e($pp['acquisition_cost']); ?>" placeholder="0.00">
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-    <button type="button" class="btn-add-row mb-3" onclick="addPersonalPropertyRow()"><i class="fas fa-plus me-1"></i>
-        Add Personal Property</button>
+    <button type="button" class="btn-add-pds-section mb-3" onclick="addPersonalPropertyRow()"><i class="fas fa-plus me-1"></i> Add Personal Property</button>
 
     <div class="form-section-title mt-3"><i class="fas fa-file-invoice-dollar"></i> Liabilities</div>
-    <div id="liabilitiesContainer" class="repeater-accordion">
+    <div id="liabilitiesContainer">
         <?php if ($isEdit && !empty($employeeLiabilities)): ?>
             <?php foreach ($employeeLiabilities as $lb): ?>
-                <div class="repeater-row">
-                    <button type="button" class="btn-remove-row" onclick="this.closest('.repeater-row').remove()"><i class="fas fa-times"></i></button>
-                    <div class="row">
-                        <div class="col-md-5"><input type="text" class="form-control form-control-sm" name="liab_nature[]" value="<?php echo e($lb['nature_of_liability']); ?>" placeholder="Nature of Liability"></div>
-                        <div class="col-md-4"><input type="text" class="form-control form-control-sm" name="liab_creditor[]" value="<?php echo e($lb['creditor_name']); ?>" placeholder="Creditor"></div>
-                        <div class="col-md-3"><input type="number" step="0.01" class="form-control form-control-sm" name="liab_balance[]" value="<?php echo e($lb['outstanding_balance']); ?>" placeholder="Balance"></div>
+                <div class="pds-card">
+                    <div class="pds-card-header">
+                        <div class="pds-card-title">
+                            <div class="pds-card-icon" style="background:linear-gradient(135deg,#dc2626,#ef4444)"><i class="fas fa-file-invoice-dollar"></i></div>
+                            <div>
+                                <div class="pds-card-label">Liability</div>
+                                <div class="pds-card-subtitle">Outstanding loans or debts</div>
+                            </div>
+                        </div>
+                        <div class="pds-card-actions">
+                            <button type="button" class="pds-card-btn btn-delete" onclick="this.closest('.pds-card').remove()" title="Remove"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="pds-form-grid cols-3">
+                        <div>
+                            <label class="pds-field-label">Nature of Liability</label>
+                            <input type="text" class="form-control form-control-sm" name="liab_nature[]" value="<?php echo e($lb['nature_of_liability']); ?>" placeholder="e.g. Housing Loan, Car Loan">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Name of Creditor</label>
+                            <input type="text" class="form-control form-control-sm" name="liab_creditor[]" value="<?php echo e($lb['creditor_name']); ?>" placeholder="e.g. PNB, SSS">
+                        </div>
+                        <div>
+                            <label class="pds-field-label">Outstanding Balance (₱)</label>
+                            <input type="number" step="0.01" class="form-control form-control-sm" name="liab_balance[]" value="<?php echo e($lb['outstanding_balance']); ?>" placeholder="0.00">
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
-    <button type="button" class="btn-add-row mb-3" onclick="addLiabilityRow()"><i class="fas fa-plus me-1"></i> Add
-        Liability</button>
+    <button type="button" class="btn-add-pds-section mb-3" onclick="addLiabilityRow()"><i class="fas fa-plus me-1"></i> Add Liability</button>
 
 </div>
 
@@ -940,8 +1123,6 @@ $rankCategories = $rankCategories ?? [
             </select>
         </div>
     </div>
-        </div>
-    </div>
     <div class="row">
         <div class="col-md-4 mb-3">
             <label class="form-label">Branch</label>
@@ -1016,24 +1197,75 @@ $rankCategories = $rankCategories ?? [
         </div>
     <?php endif; ?>
 
-    <div class="form-section-title mt-3"><i class="fas fa-heartbeat"></i> Emergency Contact</div>
-    <div class="row">
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Contact Name</label>
-            <input type="text" class="form-control" name="emergency_contact_name"
-                value="<?php echo $v('emergency_contact_name'); ?>">
-        </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Relationship</label>
-            <input type="text" class="form-control" name="emergency_contact_relationship"
-                value="<?php echo $v('emergency_contact_relationship'); ?>" placeholder="e.g. Spouse, Parent">
-        </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Contact Number</label>
-            <input type="text" class="form-control" name="emergency_contact_number"
-                value="<?php echo $v('emergency_contact_number'); ?>"
-                placeholder="09171234567" pattern="\d{11}" title="Format: 11 digits (e.g. 09171234567)" inputmode="numeric">
-        </div>
+    <div class="form-section-title mt-4"><i class="fas fa-heartbeat"></i> Emergency Contacts</div>
+    
+    <?php
+    $emergencies = [];
+    if ($isEdit && !empty($eid)) {
+        $emergencies = $conn->query("SELECT * FROM employee_emergency_contacts WHERE employee_id=$eid ORDER BY is_primary DESC, emergency_id ASC")->fetch_all(MYSQLI_ASSOC);
+    }
+    if (empty($emergencies) && !empty($v('emergency_contact_name'))) {
+        $emergencies[] = [
+            'emergency_id' => 0,
+            'contact_name' => $v('emergency_contact_name'),
+            'relationship' => $v('emergency_contact_relationship'),
+            'contact_number' => $v('emergency_contact_number'),
+            'is_primary' => 1
+        ];
+    }
+    ?>
+
+    <div id="emergencyContactsContainer">
+        <?php 
+        $contactIdx = 0;
+        if (!empty($emergencies)): 
+            foreach ($emergencies as $emerg): 
+                $contactIdx++;
+                $isPrimary = (int)$emerg['is_primary'] === 1;
+        ?>
+            <div class="emergency-contact-card <?php echo $isPrimary ? 'is-primary-contact' : ''; ?>">
+                <div class="emergency-contact-header">
+                    <label class="emergency-contact-radio">
+                        <input type="radio" name="emergency_is_primary" value="<?php echo $contactIdx; ?>" <?php echo $isPrimary ? 'checked' : ''; ?>
+                            onchange="document.querySelectorAll('.emergency-contact-card').forEach(el=>el.classList.remove('is-primary-contact')); this.closest('.emergency-contact-card').classList.add('is-primary-contact');">
+                        Set as Primary Contact
+                        <?php if ($isPrimary): ?>
+                            <span class="emergency-primary-badge ms-2"><i class="fas fa-star"></i> Primary</span>
+                        <?php endif; ?>
+                    </label>
+                    <button type="button" class="pds-card-btn btn-delete" onclick="removeEmergencyContact(this)" title="Remove"><i class="fas fa-trash"></i></button>
+                </div>
+                <div class="pds-form-grid cols-3">
+                    <div>
+                        <label class="pds-field-label">Contact Name</label>
+                        <input type="text" class="form-control form-control-sm" name="emergency_contact_name[]" value="<?php echo e($emerg['contact_name']); ?>" placeholder="Full Name">
+                    </div>
+                    <div>
+                        <label class="pds-field-label">Relationship</label>
+                        <input type="text" class="form-control form-control-sm" name="emergency_contact_relationship[]" value="<?php echo e($emerg['relationship']); ?>" placeholder="e.g. Spouse, Parent, Sibling">
+                    </div>
+                    <div>
+                        <label class="pds-field-label">Contact Number</label>
+                        <input type="text" class="form-control form-control-sm" name="emergency_contact_number[]" value="<?php echo e($emerg['contact_number']); ?>" placeholder="09XXXXXXXXX" maxlength="11" inputmode="numeric">
+                    </div>
+                </div>
+            </div>
+        <?php 
+            endforeach; 
+        endif; 
+        ?>
+    </div>
+    <button type="button" class="btn-add-pds-section mb-4" onclick="addEmergencyContactRow(false)"><i class="fas fa-plus me-1"></i> Add Emergency Contact</button>
+
+    <script>
+    // Make sure we have at least one emergency contact if blank
+    document.addEventListener("DOMContentLoaded", function() {
+        const container = document.getElementById('emergencyContactsContainer');
+        if (container && container.querySelectorAll('.emergency-contact-card').length === 0) {
+            addEmergencyContactRow(true);
+        }
+    });
+    </script>
 
         <!-- Summary Cards (populated dynamically by updatePDSSummary() on showStep(12)) -->
         <div class="row mt-4 pt-3 border-top">

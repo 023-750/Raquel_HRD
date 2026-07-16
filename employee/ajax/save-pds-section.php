@@ -127,20 +127,25 @@ try {
         $c->bind_param("isss",$employee_id,$phone,$mobile,$email); $c->execute(); $c->close();
     }
 
-    // ── 6. Emergency contact ──────────────────────────────────────────────────
-    $ecn = $_POST['emergency_contact_name']   ?? null;
-    $ecr = $_POST['emergency_relationship']   ?? null;
-    $ecp = $_POST['emergency_contact_number'] ?? null;
-    if ($ecn) {
-        $em_ex = $conn->query("SELECT emergency_id FROM employee_emergency_contacts WHERE employee_id=$employee_id LIMIT 1")->fetch_assoc();
-        if ($em_ex) {
-            $em = $conn->prepare("UPDATE employee_emergency_contacts SET contact_name=?,relationship=?,contact_number=? WHERE employee_id=? LIMIT 1");
-            $em->bind_param("sssi",$ecn,$ecr,$ecp,$employee_id); $em->execute(); $em->close();
-        } else {
-            $em = $conn->prepare("INSERT INTO employee_emergency_contacts (employee_id,contact_name,relationship,contact_number) VALUES (?,?,?,?)");
-            $em->bind_param("isss",$employee_id,$ecn,$ecr,$ecp); $em->execute(); $em->close();
+    // ── 6. Emergency contacts ──────────────────────────────────────────────────
+    if (isset($_POST['emergency_contact_name'])) {
+        $conn->query("DELETE FROM employee_emergency_contacts WHERE employee_id=$employee_id");
+        $primary_idx = isset($_POST['emergency_is_primary']) ? (int)$_POST['emergency_is_primary'] : 1;
+        $idx = 0;
+        $em = $conn->prepare("INSERT INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number, is_primary) VALUES (?,?,?,?,?)");
+        foreach ($_POST['emergency_contact_name'] as $i => $name) {
+            $name = trim($name);
+            if ($name === '') continue;
+            $idx++;
+            $rel = trim($_POST['emergency_contact_relationship'][$i] ?? '');
+            $num = trim($_POST['emergency_contact_number'][$i] ?? '');
+            $is_pri = ($idx === $primary_idx) ? 1 : 0;
+            $em->bind_param("isssi", $employee_id, $name, $rel, $num, $is_pri);
+            $em->execute();
         }
+        $em->close();
     }
+
 
     // ── 7. Family ─────────────────────────────────────────────────────────────
     $familyTypes = [
@@ -257,8 +262,8 @@ try {
     // Real properties
     if (isset($_POST['rprop_desc'])) {
         saveRepeater($conn,'employee_real_properties',$employee_id,
-            ['description','kind','exact_location','assessed_value','market_value'],
-            ['rprop_desc','rprop_kind','rprop_location','rprop_assessed','rprop_market']);
+            ['description','kind','exact_location','assessed_value','market_value','acquisition_year_mode','acquisition_cost'],
+            ['rprop_desc','rprop_kind','rprop_location','rprop_assessed','rprop_market','rprop_acq_mode','rprop_acq_cost']);
     }
     // Personal properties
     if (isset($_POST['pprop_desc'])) {
