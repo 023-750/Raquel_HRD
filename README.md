@@ -15,13 +15,18 @@ Department
 > Operations
 > Purchasing
 
+jister
 
 Fixes Required kay fred!!
 1. Career Movements Module
-- The Career Movements feature is not yet implemented.
+- The Career Movements feature is not yet implemented. (MERON NA PERO DI PA SURE YONG FEATURES) ❌
 2. Employee Portal Dashboard (Web View)
 - The dashboard is not yet fully optimized for web viewing and requires UI refactoring to improve layout, usability, and visual consistency.
 3. My Employment Page
 - The My Employment section requires further improvements in terms of design, content presentation, and user experience.
 4. Screen Responsiveness
 - Improve responsiveness across all screen sizes and resolutions to ensure a consistent and usable experience on desktop, tablet, and mobile devices.
+
+
+note: 
+    All department has their own seeds, Testing na lang kulang.
