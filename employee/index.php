@@ -62,9 +62,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['first_login_completed'] = (bool) ($user['first_login_completed'] ?? false);
 
                 logAudit($conn, $user['user_id'], 'LOGIN', 'User', $user['user_id'], 'Employee ' . e($user['username']) . ' logged into ESS portal.');
+                header("Location: dashboard.php");
                 exit();
             } else {
-                $error = 'Invalid cred  entials.';
+                $error = 'Invalid credentials.';
             }
         } else {
             $error = 'Only Employee accounts can access the Employee Portal.';
