@@ -1165,61 +1165,46 @@ function updateSetting($conn, $key, $value)
 
 function checkLoginBruteForce($conn, $identifier, $ip)
 {
-
-    $lockout_time = 5; // minutes
-
+    $lockout_time = 30; // seconds
     $max_attempts = 5;
-
     $max_ip_attempts = 10;
 
-
+    $remaining_identifier = 0;
+    $remaining_ip = 0;
 
     // Check by Identifier (Username/Email)
-
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM login_attempts WHERE identifier = ? AND attempt_time > DATE_SUB(NOW(), INTERVAL ? MINUTE)");
-
-    $stmt->bind_param("si", $identifier, $lockout_time);
-
+    $stmt = $conn->prepare("
+        SELECT 
+            COUNT(*) as attempt_count,
+            TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(MAX(attempt_time), INTERVAL ? SECOND)) as remaining
+        FROM login_attempts
+        WHERE identifier = ? AND attempt_time > DATE_SUB(NOW(), INTERVAL ? SECOND)
+    ");
+    $stmt->bind_param("isi", $lockout_time, $identifier, $lockout_time);
     $stmt->execute();
-
-    $id_count = $stmt->get_result()->fetch_assoc()['count'];
-
-    $stmt->close();
-
-
-
-    if ($id_count >= $max_attempts) {
-
-        return true;
-
+    $result = $stmt->get_result()->fetch_assoc();
+    if ($result && (int)$result['attempt_count'] >= $max_attempts) {
+        $remaining_identifier = max(0, (int)$result['remaining']);
     }
-
-
+    $stmt->close();
 
     // Check by IP
-
-    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM login_attempts WHERE ip_address = ? AND attempt_time > DATE_SUB(NOW(), INTERVAL ? MINUTE)");
-
-    $stmt->bind_param("si", $ip, $lockout_time);
-
+    $stmt = $conn->prepare("
+        SELECT 
+            COUNT(*) as attempt_count,
+            TIMESTAMPDIFF(SECOND, NOW(), DATE_ADD(MAX(attempt_time), INTERVAL ? SECOND)) as remaining
+        FROM login_attempts
+        WHERE ip_address = ? AND attempt_time > DATE_SUB(NOW(), INTERVAL ? SECOND)
+    ");
+    $stmt->bind_param("isi", $lockout_time, $ip, $lockout_time);
     $stmt->execute();
-
-    $ip_count = $stmt->get_result()->fetch_assoc()['count'];
-
+    $result = $stmt->get_result()->fetch_assoc();
+    if ($result && (int)$result['attempt_count'] >= $max_ip_attempts) {
+        $remaining_ip = max(0, (int)$result['remaining']);
+    }
     $stmt->close();
 
-
-
-    if ($ip_count >= $max_ip_attempts) {
-
-        return true;
-
-    }
-
-
-
-    return false;
-
+    return max($remaining_identifier, $remaining_ip);
 }
 
 

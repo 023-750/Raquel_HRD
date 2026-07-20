@@ -15,8 +15,12 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 
-    if (empty($username) || empty($password)) {
+    $lockout_seconds = checkLoginBruteForce($conn, $username, $ip);
+    if ($lockout_seconds > 0) {
+        $error = "Too many failed login attempts. Please try again in $lockout_seconds seconds.";
+    } elseif (empty($username) || empty($password)) {
         $error = 'Please enter both username and password.';
     } else {
         $stmt = $conn->prepare("
@@ -35,7 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $result->fetch_assoc();
             if (!$user['is_active']) {
                 $error = 'Your account has been deactivated.';
+                registerLoginAttempt($conn, $username, $ip);
             } elseif (password_verify($password, $user['password_hash'])) {
+                // Clear attempts on successful login
+                clearLoginAttempts($conn, $username, $ip);
+
                 // Handle Remember Me functionality
                 if (!empty($_POST['remember'])) {
                     setcookie('remember_employee_username', $username, time() + (30 * 24 * 60 * 60), '/');
@@ -66,9 +74,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit();
             } else {
                 $error = 'Invalid credentials.';
+                registerLoginAttempt($conn, $username, $ip);
             }
         } else {
             $error = 'Only Employee accounts can access the Employee Portal.';
+            registerLoginAttempt($conn, $username, $ip);
         }
     }
 }
@@ -265,6 +275,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div><!-- /root -->
 
   <script src="<?php echo BASE_URL; ?>/assets/js/raquel-hris-login.js" defer></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const hrisErrorEl = document.getElementById("hrisErrorMsg");
+        const essErrorEl = document.getElementById("essErrorMsg");
+        
+        function handleCountdown(errorEl, containerId) {
+            if (!errorEl) return;
+            const text = errorEl.textContent;
+            const match = text.match(/Please try again in (\d+) seconds/);
+            if (match) {
+                let seconds = parseInt(match[1], 10);
+                const errorContainer = document.getElementById(containerId);
+                const interval = setInterval(function() {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(interval);
+                        if (errorContainer) errorContainer.style.display = "none";
+                        errorEl.textContent = "";
+                    } else {
+                        errorEl.textContent = `Too many failed login attempts. Please try again in ${seconds} seconds.`;
+                    }
+                }, 1000);
+            }
+        }
+        
+        handleCountdown(hrisErrorEl, "hrisError");
+        handleCountdown(essErrorEl, "essError");
+    });
+  </script>
 
 </body>
 

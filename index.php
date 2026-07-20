@@ -57,11 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 
-    // NOTE: Brute force protection temporarily disabled for testing
-    // if (checkLoginBruteForce($conn, $username, $ip)) {
-    //     $error = 'Too many failed login attempts. Please try again in 15 minutes.';
-    // } elseif (empty($username)) {
-    if (empty($username)) {
+    // Nasa plugin/functions.php yong time duration for bruteforce
+    $lockout_seconds = checkLoginBruteForce($conn, $username, $ip);
+    if ($lockout_seconds > 0) {
+        $error = "Too many failed login attempts. Please try again in $lockout_seconds seconds.";
+    } elseif (empty($username)) {
         $error = 'Please enter your username.';
     } elseif (empty($password)) {
         $error = 'Please enter your password.';
@@ -382,6 +382,29 @@ render_login:
   </div><!-- /root -->
 
   <script src="<?php echo BASE_URL; ?>/assets/js/raquel-hris-login.js" defer></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const errorEl = document.getElementById("hrisErrorMsg");
+        if (errorEl) {
+            const text = errorEl.textContent;
+            const match = text.match(/Please try again in (\d+) seconds/);
+            if (match) {
+                let seconds = parseInt(match[1], 10);
+                const errorContainer = document.getElementById("hrisError");
+                const interval = setInterval(function() {
+                    seconds--;
+                    if (seconds <= 0) {
+                        clearInterval(interval);
+                        if (errorContainer) errorContainer.style.display = "none";
+                        errorEl.textContent = "";
+                    } else {
+                        errorEl.textContent = `Too many failed login attempts. Please try again in ${seconds} seconds.`;
+                    }
+                }, 1000);
+            }
+        }
+    });
+  </script>
 
 </body>
 

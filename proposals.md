@@ -11,7 +11,7 @@ Comprehensive proposals organized by **impact area** and **role affected**. Each
 
 The login protection was **commented out** in [`index.php`](file:///c:/xampp/htdocs/Raquel_HRD_System/index.php#L60-L63). The `login_attempts` table already exists in the schema — it just needs to be re-wired.
 
-- Re-enable `checkLoginBruteForce()` after testing
+- [x] Re-enable `checkLoginBruteForce()` after testing (Completed)
 - Add a visible "Too many attempts" countdown timer on the login page
 - Add IP-based lockout notification to Admin's audit trail
 
