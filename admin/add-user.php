@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Hash password and insert
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
     
-    // ── Handle Profile Picture Upload ───────────────────────────────────────────
+    // Handle Profile Picture Upload
     $profile_picture = null;
     if ($employee_id !== null && isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
         $file_tmp = $_FILES['profile_picture']['tmp_name'];

@@ -161,7 +161,17 @@ require_once '../includes/header.php';
         <div class="pds-data-row"><span class="label">Civil Status</span><span
                 class="value"><?php echo e($emp['civil_status'] ?? '—'); ?></span></div>
         <div class="pds-data-row"><span class="label">Date of Birth</span><span
-                class="value"><?php echo formatDate($emp['date_of_birth'] ?? ''); ?></span></div>
+                class="value"><?php 
+                    $dob_text = '';
+                    if (!empty($emp['date_of_birth'])) {
+                        $dob_text = formatDate($emp['date_of_birth']);
+                        $dob = new DateTime($emp['date_of_birth']);
+                        $today = new DateTime();
+                        $age = $today->diff($dob)->y;
+                        $dob_text .= " ($age years old)";
+                    }
+                    echo $dob_text ?: '—';
+                ?></span></div>
     </div>
 
     <div class="pds-card fadeup-3">

@@ -170,7 +170,17 @@ require_once '../includes/header.php';
               <tr><td class="text-muted fw-semibold">First Name</td><td><?php echo e($sub['first_name']??'—'); ?></td></tr>
               <tr><td class="text-muted fw-semibold">Middle Name</td><td><?php echo e($sub['middle_name']??'—'); ?></td></tr>
               <tr><td class="text-muted fw-semibold">Extension</td><td><?php echo e($sub['name_extension']??'—'); ?></td></tr>
-              <tr><td class="text-muted fw-semibold">Date of Birth</td><td><?php echo formatDate($sub['date_of_birth']??''); ?></td></tr>
+              <tr><td class="text-muted fw-semibold">Date of Birth</td><td><?php 
+                $dob_text = '';
+                if (!empty($sub['date_of_birth'])) {
+                    $dob_text = formatDate($sub['date_of_birth']);
+                    $dob = new DateTime($sub['date_of_birth']);
+                    $today = new DateTime();
+                    $age = $today->diff($dob)->y;
+                    $dob_text .= " ($age years old)";
+                }
+                echo $dob_text ?: '—'; 
+              ?></td></tr>
               <tr><td class="text-muted fw-semibold">Place of Birth</td><td><?php echo e($sub['place_of_birth']??'—'); ?></td></tr>
               <tr><td class="text-muted fw-semibold">Gender</td><td><?php echo e($sub['gender']??'—'); ?></td></tr>
               <tr><td class="text-muted fw-semibold">Civil Status</td><td><?php echo e($sub['civil_status']??'—'); ?></td></tr>

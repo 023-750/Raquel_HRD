@@ -380,7 +380,13 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
                         <div class="detail-grid">
                             <?php
                             echo field('Full Name', $fullName);
-                            echo field('Date of Birth', formatDate($emp['date_of_birth']));
+                            $age = '';
+                            if (!empty($emp['date_of_birth'])) {
+                                $dob = new DateTime($emp['date_of_birth']);
+                                $today = new DateTime();
+                                $age = $today->diff($dob)->y;
+                            }
+                            echo field('Date of Birth', $emp['date_of_birth'] ? formatDate($emp['date_of_birth']) . " ($age years old)" : '');
                             echo field('Place of Birth', $emp['place_of_birth']);
                             echo field('Gender', $emp['gender']);
                             echo field('Civil Status', $emp['civil_status']);

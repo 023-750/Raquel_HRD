@@ -626,7 +626,13 @@ $rankBadgeClass = $rankBadgeClassMap[$emp['rank_name'] ?? ''] ?? 'rank-badge-def
                             echo field('First Name', $emp['first_name']);
                             echo field('Middle Name', $emp['middle_name']);
                             echo field('Name Extension', $emp['name_extension']);
-                            echo field('Date of Birth', $emp['date_of_birth'] ? formatDate($emp['date_of_birth']) : '');
+                            $age = '';
+                            if (!empty($emp['date_of_birth'])) {
+                                $dob = new DateTime($emp['date_of_birth']);
+                                $today = new DateTime();
+                                $age = $today->diff($dob)->y;
+                            }
+                            echo field('Date of Birth', $emp['date_of_birth'] ? formatDate($emp['date_of_birth']) . " ($age years old)" : '');
                             echo field('Place of Birth', $emp['place_of_birth']);
                             echo field('Gender', $emp['gender']);
                             echo field('Civil Status', $emp['civil_status']);
