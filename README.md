@@ -18,4 +18,4 @@ Department
 Personal Note:
 > Test the remaining department (evaluation)
 
-ccyc!
+git clone --single-branch --branch kirro-version <repository_url>
