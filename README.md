@@ -18,4 +18,4 @@ Department
 Personal Note:
 > Test the remaining department (evaluation)
 
-git clone --single-branch --branch kirro-version <repository_url>
+git clone --single-branch --branch kiro-version https://github.com/justinelusteriorovira-ai/FINAL_RAQUEL_PAWNSHOP_HRD.git
