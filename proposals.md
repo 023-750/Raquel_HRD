@@ -3,7 +3,7 @@
 Comprehensive proposals organized by **impact area** and **role affected**. Each item includes context from the existing codebase.
 
 ---
-
+ 
 ## 🔐 Security & System Reliability
 
 ### 1. Re-enable Brute-Force Login Protection

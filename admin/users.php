@@ -4,7 +4,7 @@ require_once '../includes/session-check.php';
 checkRole(['Admin']);
 require_once '../includes/functions.php';
 
-// ── Handle toggle active status ──────────────────────────────────────────────
+// Handle toggle active status   
 if (isset($_GET['toggle']) && is_numeric($_GET['toggle'])) {
     $uid = (int) $_GET['toggle'];
     if ($uid !== (int) $_SESSION['user_id']) {
@@ -14,7 +14,7 @@ if (isset($_GET['toggle']) && is_numeric($_GET['toggle'])) {
     }
 }
 
-// ── Handle delete ─────────────────────────────────────────────────────────────
+// Handle delete     
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
     $uid = (int) $_GET['delete'];
     if ($uid !== (int) $_SESSION['user_id']) {
@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
     <?php endif; ?>
 </div>
 
-<!-- ── Add User Modal ─────────────────────────────────────────────────────── -->
+<!-- Add User Modal -->
 <div class="modal fade" id="addUserModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
     </div>
 </div>
 
-<!-- ── Add Admin Modal ────────────────────────────────────────────────────── -->
+<!-- Add Admin Modal -->
 <div class="modal fade" id="addAdminModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -514,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
     </div>
 </div>
 
-<!-- ── Delete Confirmation Modal ──────────────────────────────────────────── -->
+<!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">

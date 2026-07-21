@@ -5,7 +5,7 @@ checkRole(['HR Supervisor']);
 require_once '../includes/functions.php';
 require_once '../includes/header.php';
 
-// Fetch evaluation history
+// Fetch evaluation history 
 $history = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.rank_category_id, d.department_name,
     u.full_name as submitted_by_name, u2.full_name as endorsed_by_name, u3.full_name as approved_by_name, et.template_name
     FROM evaluations ev

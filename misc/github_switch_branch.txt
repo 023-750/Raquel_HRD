@@ -5,4 +5,4 @@ git reset --hard origin/anthropic
 
 Switch branch
 git checkout kiro-version
-git reset --hard origin/kiro-version
+git reset --hard origin/kiro-version 

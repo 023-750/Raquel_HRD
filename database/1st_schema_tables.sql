@@ -414,7 +414,7 @@ CREATE TABLE evaluation_criteria (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 17. Evaluations
+-- 17. Evaluations 
 -- ============================================
 DROP TABLE IF EXISTS evaluations;
 CREATE TABLE evaluations (

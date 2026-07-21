@@ -1,11 +1,4 @@
-/**
- * Employee Portal Card Components
- * 
- * Stat cards for dashboard and generic content cards
- */
-
 /* ===== STAT CARD (DASHBOARD) ===== */
-
 .stat-card {
   display: flex;
   align-items: center;
@@ -147,7 +140,7 @@
   }
 }
 
-/* ===== STATUS BADGES — DUAL SIGNALING (Req 6.6, 14.3) ===== */
+/* STATUS BADGES — DUAL SIGNALING (Req 6.6, 14.3) */
 /*
  * All status badges use BOTH color AND an icon or text label.
  * Color alone is never used to convey status (WCAG SC 1.4.1 / Req 4.6).
@@ -212,7 +205,7 @@
   gap: 0.25rem;
 }
 
-/* ===== STATUS INDICATOR VARIANTS (semantic color classes) ===== */
+/* STATUS INDICATOR VARIANTS (semantic color classes) */
 /*
  * Named semantic colour variants for direct use in templates.
  * Each variant pairs a background tint, border, and text colour

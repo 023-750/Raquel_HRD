@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
         $emp_status = $getV('Employment Status', 37) ?: 'Regular';
         $emp_type = $getV('Employment Type', 38) ?: 'Full-time';
 
-        // Validate Status against ENUM
+        // Validate Status against ENUM 
         $foundStatus = false;
         foreach ($allowed_statuses as $as) {
             if (strcasecmp($as, $emp_status) === 0) {

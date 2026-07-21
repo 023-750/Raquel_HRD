@@ -17,7 +17,7 @@ if ($movement_ready) {
 
 $current_user_id = (int) ($_SESSION['user_id'] ?? 0);
 
-// ── POST: Create movement (HR Staff for leaderless branch) ────────────────────
+//  POST: Create movement (HR Staff for leaderless branch)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_movement'])) {
     if (!$movement_ready) {
         redirectWith(BASE_URL . '/staff/career-movements.php', 'danger', 'Career Movements could not be initialized.');

@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
 
-    // Nasa plugin/functions.php yong time duration for bruteforce
+    // Nasa plugin/functions.php yong time duration for bruteforce 
     $lockout_seconds = checkLoginBruteForce($conn, $username, $ip);
     if ($lockout_seconds > 0) {
         $error = "Too many failed login attempts. Please try again in $lockout_seconds seconds.";

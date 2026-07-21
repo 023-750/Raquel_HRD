@@ -1,10 +1,4 @@
 <?php
-/**
- * Shared employee form steps (12 sections)
- * Used by both add-employee.php and edit-employee.php
- * Expects: $emp (array|null), $branches (mysqli_result)
- * In add mode $emp is null; in edit mode $emp has current values.
- */
 $e = $emp ?? [];
 $v = function ($key, $default = '') use ($e) {
     return htmlspecialchars($e[$key] ?? $default, ENT_QUOTES, 'UTF-8');

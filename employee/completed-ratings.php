@@ -32,7 +32,7 @@ $evaluations = $conn->query("
 ");
 $evaluation_rows = $evaluations ? $evaluations->fetch_all(MYSQLI_ASSOC) : [];
 
-// ── Per-status counts for filter badges ─────────────────────────────────
+// Per-status counts for filter badges
 $esf_counts = ['all'=>0,'approved'=>0,'pending'=>0,'rejected'=>0,'returned'=>0,'draft'=>0];
 foreach ($evaluation_rows as $r) {
     $esf_counts['all']++;

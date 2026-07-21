@@ -1,12 +1,4 @@
 <?php
-/**
- * Returns the CSS class for a job title badge based on rank_category_id.
- *  1 = Executives     → gold
- *  2 = Management Team → purple
- *  3 = Manager         → blue
- *  4 = Supervisor      → teal
- *  5 = R&F / Staff     → slate
- */
 function getJobTitleBadgeClass(int $rankId): string {
     return match ($rankId) {
         1 => 'job-badge-executive',
