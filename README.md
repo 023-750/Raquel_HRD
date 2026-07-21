@@ -17,4 +17,5 @@ Department
 
 Personal Note:
 > Test the remaining department (evaluation)
-> Sample seeds for analytics
+
+ccyc!
