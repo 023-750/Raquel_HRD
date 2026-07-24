@@ -353,38 +353,47 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
                 <?php else:
                     $branches->data_seek(0);
                     while ($b = $branches->fetch_assoc()): ?>
-                    <div class="student-item" data-branch-id="<?php echo $b['branch_id']; ?>">
-                        <div class="student-avatar">
-                            <div class="rounded-circle text-white d-flex align-items-center justify-content-center"
-                                style="width: 46px; height: 46px; background: var(--primary-light); font-size: 1.2rem; font-weight: bold; border: 2px solid var(--bg-gray); box-shadow: 0 2px 5px rgba(0,0,0,0.08);">
-                                <i class="fas fa-building" style="font-size: 1rem;"></i>
+                    <div class="student-item hr-mobile-card mb-3 p-3 bg-white rounded-3 shadow-sm border"
+                         data-branch-id="<?php echo $b['branch_id']; ?>"
+                         style="flex-direction: column; align-items: stretch; width: 100%; box-sizing: border-box;">
+                        
+                        <!-- Header Row: Branch Icon + Name + Location | Actions -->
+                        <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom gap-2">
+                            <div class="d-flex align-items-center gap-2.5" style="min-width: 0;">
+                                <div class="rounded-circle text-white d-flex align-items-center justify-content-center flex-shrink-0"
+                                    style="width: 40px; height: 40px; background: var(--primary-light, #1b4d2e); font-size: 0.95rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.08);">
+                                    <i class="fas fa-building"></i>
+                                </div>
+                                <div style="min-width: 0;">
+                                    <h6 class="fw-bold mb-0 text-truncate" style="font-size: 0.92rem; color: #1c271b;">
+                                        <?php echo e($b['branch_name']); ?>
+                                    </h6>
+                                    <small class="text-muted text-truncate d-block" style="font-size: 0.74rem;">
+                                        <i class="fas fa-map-marker-alt text-danger me-1"></i><?php echo e($b['location']); ?>
+                                    </small>
+                                </div>
                             </div>
-                        </div>
-                        <div class="student-info">
-                            <div class="student-name"><?php echo e($b['branch_name']); ?></div>
-                            <div class="student-meta">
-                                <i class="fas fa-map-marker-alt text-danger me-1"></i>
-                                <span><?php echo e($b['location']); ?></span>
-                            </div>
-                            <div class="student-meta mt-1">
-                                <span class="badge bg-info">Employees: <?php echo $b['employee_count']; ?></span>
-                                &bull; <span class="badge bg-secondary">Users: <?php echo $b['user_count']; ?></span>
-                            </div>
-                        </div>
-                        <div class="ms-auto text-end d-flex flex-column align-items-end gap-2">
-                            <small class="text-muted" style="font-size: 0.68rem;"><?php echo formatDate($b['created_at']); ?></small>
-                            <div class="d-flex gap-1">
-                                <button class="btn btn-xs btn-outline-primary" title="Edit"
+                            <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                <button class="btn btn-sm btn-outline-primary py-1 px-2" title="Edit"
                                     onclick="openEditModal(<?php echo $b['branch_id']; ?>, '<?php echo e(addslashes($b['branch_name'])); ?>', '<?php echo e(addslashes($b['location'])); ?>')"
                                     data-bs-toggle="modal" data-bs-target="#editBranchModal">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-xs btn-outline-danger" title="Delete"
+                                <button class="btn btn-sm btn-outline-danger py-1 px-2" title="Delete"
                                     onclick="setDeleteTarget(<?php echo $b['branch_id']; ?>, '<?php echo e(addslashes($b['branch_name'])); ?>', <?php echo $b['employee_count'] + $b['user_count']; ?>)"
                                     data-bs-toggle="modal" data-bs-target="#deleteBranchModal">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
+                        </div>
+
+                        <!-- Details Row: Badges + Date -->
+                        <div class="d-flex justify-content-between align-items-center pt-1 text-muted small" style="font-size: 0.78rem;">
+                            <div class="d-flex gap-1.5 align-items-center">
+                                <span class="badge bg-info" style="font-size:0.7rem;"><i class="fas fa-users me-1"></i><?php echo $b['employee_count']; ?> Emps</span>
+                                <span class="badge bg-secondary" style="font-size:0.7rem;"><i class="fas fa-user-shield me-1"></i><?php echo $b['user_count']; ?> Users</span>
+                            </div>
+                            <span><i class="fas fa-calendar-alt me-1 text-warning"></i><?php echo formatDate($b['created_at']); ?></span>
                         </div>
                     </div>
                     <?php endwhile;

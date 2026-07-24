@@ -394,38 +394,34 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                     <?php else:
                         $positions->data_seek(0);
                         while ($position = $positions->fetch_assoc()): ?>
-                        <div class="student-item" data-position-id="<?php echo $position['job_title_id']; ?>">
-                            <div class="student-avatar">
-                                <div class="rounded-circle text-white d-flex align-items-center justify-content-center"
-                                    style="width: 46px; height: 46px; background: var(--primary-blue); font-size: 1.2rem; font-weight: bold; border: 2px solid var(--bg-gray); box-shadow: 0 2px 5px rgba(0,0,0,0.08);">
-                                    <i class="fas fa-id-badge" style="font-size: 1rem;"></i>
+                        <div class="student-item hr-mobile-card mb-3 p-3 bg-white rounded-3 shadow-sm border"
+                             data-position-id="<?php echo $position['job_title_id']; ?>"
+                             style="flex-direction: column; align-items: stretch; width: 100%; box-sizing: border-box;">
+                            
+                            <!-- Header Row: Position Icon + Title + Head Badge | Actions -->
+                            <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom gap-2">
+                                <div class="d-flex align-items-center gap-2.5" style="min-width: 0;">
+                                    <div class="rounded-circle text-white d-flex align-items-center justify-content-center flex-shrink-0"
+                                        style="width: 40px; height: 40px; background: var(--primary-blue, #2563eb); font-size: 0.95rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.08);">
+                                        <i class="fas fa-id-badge"></i>
+                                    </div>
+                                    <div style="min-width: 0;">
+                                        <h6 class="fw-bold mb-0 text-truncate" style="font-size: 0.92rem; color: #1c271b;">
+                                            <?php echo e($position['job_title']); ?>
+                                            <?php if ((int) $position['is_head'] === 1): ?>
+                                                <span class="badge bg-primary ms-1" style="font-size: 0.65rem;"><i class="fas fa-crown me-1"></i>Head</span>
+                                            <?php endif; ?>
+                                        </h6>
+                                        <small class="text-muted text-truncate d-block" style="font-size: 0.74rem;">
+                                            <i class="fas fa-sitemap me-1 text-primary"></i><?php echo e($position['department_name'] ?: 'Unassigned'); ?> &bull; <i class="fas fa-layer-group me-1 text-secondary"></i><?php echo e($position['rank_name'] ?: 'Unassigned'); ?>
+                                        </small>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="student-info">
-                                <div class="student-name">
-                                    <?php echo e($position['job_title']); ?>
-                                    <?php if ((int) $position['is_head'] === 1): ?>
-                                        <span class="badge bg-primary ms-1" style="font-size: 0.65rem;"><i class="fas fa-crown me-1"></i>Head</span>
-                                    <?php endif; ?>
-                                </div>
-                                <div class="student-meta">
-                                    <span>Dept: <?php echo e($position['department_name'] ?: 'Unassigned'); ?></span>
-                                    &bull; <span>Rank: <?php echo e($position['rank_name'] ?: 'Unassigned'); ?></span>
-                                </div>
-                                <div class="student-meta mt-1">
-                                    <span>Reports to: <?php echo e($position['reports_to_title'] ?: 'None'); ?></span>
-                                </div>
-                                <div class="student-meta mt-1">
-                                    <span class="badge bg-info">Employees: <?php echo (int) $position['employee_count']; ?></span>
-                                    &bull;
-                                    <span class="badge <?php echo (int) $position['is_active'] === 1 ? 'bg-success' : 'bg-secondary'; ?>">
+                                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                                    <span class="badge <?php echo (int) $position['is_active'] === 1 ? 'bg-success' : 'bg-secondary'; ?>" style="font-size: 0.68rem;">
                                         <?php echo (int) $position['is_active'] === 1 ? 'Active' : 'Inactive'; ?>
                                     </span>
-                                </div>
-                            </div>
-                            <div class="ms-auto text-end d-flex flex-column align-items-end gap-2">
-                                <div class="d-flex gap-1">
-                                    <button class="btn btn-xs btn-outline-primary" data-bs-toggle="modal"
+                                    <button class="btn btn-sm btn-outline-primary py-1 px-2 ms-1" data-bs-toggle="modal"
                                         data-bs-target="#editPositionModal" onclick="openEditPositionModal(
                                             <?php echo (int) $position['job_title_id']; ?>,
                                             '<?php echo e(addslashes($position['job_title'])); ?>',
@@ -437,7 +433,7 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                                         )">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-xs btn-outline-danger" data-bs-toggle="modal"
+                                    <button class="btn btn-sm btn-outline-danger py-1 px-2" data-bs-toggle="modal"
                                         data-bs-target="#deletePositionModal" onclick="setDeletePositionTarget(
                                             <?php echo (int) $position['job_title_id']; ?>,
                                             '<?php echo e(addslashes($position['job_title'])); ?>',
@@ -446,6 +442,12 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
+                            </div>
+
+                            <!-- Details Row: Reports To + Employees Count -->
+                            <div class="d-flex justify-content-between align-items-center pt-1 text-muted small" style="font-size: 0.78rem;">
+                                <span><i class="fas fa-level-up-alt me-1 text-info"></i>Reports to: <strong><?php echo e($position['reports_to_title'] ?: 'None'); ?></strong></span>
+                                <span class="badge bg-info" style="font-size:0.7rem;"><i class="fas fa-users me-1"></i><?php echo (int) $position['employee_count']; ?> Emps</span>
                             </div>
                         </div>
                         <?php endwhile;

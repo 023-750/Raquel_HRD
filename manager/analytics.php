@@ -657,14 +657,14 @@ $yoy_emp    = formatYoYData($yoy_emp_raw, $yoy_years);
                             $lvl = $tp['performance_level'] ?? getPerformanceLevel($tp['total_score']);
                             $meta = $level_meta[$lvl] ?? ['icon'=>'fa-circle','color'=>'#888','bg'=>'#f0f0f0'];
                         ?>
-                        <div class="performer-row">
+                        <div class="performer-row <?php echo $rkClass; ?>-row">
                             <div class="performer-rank <?php echo $rkClass; ?>"><?php echo $idx+1; ?></div>
-                            <div class="d-flex align-items-center gap-2 flex-grow-1 min-w-0">
+                            <div class="d-flex align-items-center gap-2 flex-grow-1" style="min-width: 0; overflow: hidden;">
                                 <div style="width:36px;height:36px;border-radius:50%;background:<?php echo $meta['bg']; ?>;
                                             display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                                     <i class="fas <?php echo $meta['icon']; ?>" style="color:<?php echo $meta['color']; ?>;font-size:.85rem;"></i>
                                 </div>
-                                <div class="min-w-0">
+                                <div style="min-width: 0; flex: 1; overflow: hidden;">
                                     <div class="performer-name text-truncate"><?php echo e($tp['name']); ?></div>
                                     <div class="performer-meta text-truncate">
                                         <?php echo e($tp['job_title'] ?? ''); ?>

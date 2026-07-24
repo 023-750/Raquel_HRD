@@ -258,42 +258,49 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
                 <?php else:
                     $departments->data_seek(0);
                     while ($d = $departments->fetch_assoc()): ?>
-                    <div class="student-item" data-department-id="<?php echo $d['department_id']; ?>">
-                        <div class="student-avatar">
-                            <div class="rounded-circle text-white d-flex align-items-center justify-content-center"
-                                style="width: 46px; height: 46px; background: var(--primary-blue); font-size: 1.2rem; font-weight: bold; border: 2px solid var(--bg-gray); box-shadow: 0 2px 5px rgba(0,0,0,0.08);">
-                                <i class="fas fa-sitemap" style="font-size: 1rem;"></i>
+                    <div class="student-item hr-mobile-card mb-3 p-3 bg-white rounded-3 shadow-sm border"
+                         data-department-id="<?php echo $d['department_id']; ?>"
+                         style="flex-direction: column; align-items: stretch; width: 100%; box-sizing: border-box;">
+                        
+                        <!-- Header Row: Dept Icon + Name + Description | Status Badge & Actions -->
+                        <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom gap-2">
+                            <div class="d-flex align-items-center gap-2.5" style="min-width: 0;">
+                                <div class="rounded-circle text-white d-flex align-items-center justify-content-center flex-shrink-0"
+                                    style="width: 40px; height: 40px; background: var(--primary-blue, #2563eb); font-size: 0.95rem; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.08);">
+                                    <i class="fas fa-sitemap"></i>
+                                </div>
+                                <div style="min-width: 0;">
+                                    <h6 class="fw-bold mb-0 text-truncate" style="font-size: 0.92rem; color: #1c271b;">
+                                        <?php echo e($d['department_name']); ?>
+                                    </h6>
+                                    <small class="text-muted text-truncate d-block" style="font-size: 0.74rem;">
+                                        <?php echo e($d['description'] ?: 'No description'); ?>
+                                    </small>
+                                </div>
                             </div>
-                        </div>
-                        <div class="student-info">
-                            <div class="student-name"><?php echo e($d['department_name']); ?></div>
-                            <div class="student-meta">
-                                <span><?php echo e($d['description'] ?: 'No description'); ?></span>
-                            </div>
-                            <div class="student-meta mt-1">
-                                <span class="badge bg-info">Employees: <?php echo $d['employee_count']; ?></span>
-                                &bull; 
+                            <div class="d-flex align-items-center gap-1 flex-shrink-0">
                                 <?php if ($d['is_active']): ?>
-                                    <span class="badge bg-success">Active</span>
+                                    <span class="badge bg-success" style="font-size: 0.68rem;">Active</span>
                                 <?php else: ?>
-                                    <span class="badge bg-secondary">Inactive</span>
+                                    <span class="badge bg-secondary" style="font-size: 0.68rem;">Inactive</span>
                                 <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="ms-auto text-end d-flex flex-column align-items-end gap-2">
-                            <small class="text-muted" style="font-size: 0.68rem;"><?php echo formatDate($d['created_at']); ?></small>
-                            <div class="d-flex gap-1">
-                                <button class="btn btn-xs btn-outline-primary" title="Edit"
+                                <button class="btn btn-sm btn-outline-primary py-1 px-2 ms-1" title="Edit"
                                     onclick="openEditModal(<?php echo $d['department_id']; ?>, '<?php echo e(addslashes($d['department_name'])); ?>', '<?php echo e(addslashes($d['description'] ?? '')); ?>', <?php echo $d['is_active']; ?>)"
                                     data-bs-toggle="modal" data-bs-target="#editDeptModal">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <button class="btn btn-xs btn-outline-danger" title="Delete"
+                                <button class="btn btn-sm btn-outline-danger py-1 px-2" title="Delete"
                                     onclick="setDeleteTarget(<?php echo $d['department_id']; ?>, '<?php echo e(addslashes($d['department_name'])); ?>', <?php echo $d['employee_count']; ?>)"
                                     data-bs-toggle="modal" data-bs-target="#deleteDeptModal">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
+                        </div>
+
+                        <!-- Details Row: Employees Count + Created Date -->
+                        <div class="d-flex justify-content-between align-items-center pt-1 text-muted small" style="font-size: 0.78rem;">
+                            <span class="badge bg-info" style="font-size:0.7rem;"><i class="fas fa-users me-1"></i><?php echo $d['employee_count']; ?> Employees</span>
+                            <span><i class="fas fa-calendar-alt me-1 text-warning"></i><?php echo formatDate($d['created_at']); ?></span>
                         </div>
                     </div>
                     <?php endwhile;

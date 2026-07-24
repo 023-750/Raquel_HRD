@@ -660,7 +660,50 @@
 
 
     /* ============================================================
-       8. UTILITIES & INITIALISATION
+       8. BACK TO TOP BUTTON (Inline & Floating)
+    ============================================================ */
+    function initHRBackToTop() {
+        if (window.innerWidth >= 992) return;
+        if (window.location.pathname.indexOf('add-employee.php') !== -1) return;
+
+        // 1. Create floating back to top button if not exists
+        let floatBtn = document.getElementById('hrFloatingTopBtn');
+        if (!floatBtn) {
+            floatBtn = document.createElement('button');
+            floatBtn.id = 'hrFloatingTopBtn';
+            floatBtn.className = 'hr-floating-top-btn d-lg-none';
+            floatBtn.type = 'button';
+            floatBtn.setAttribute('aria-label', 'Back to top');
+            floatBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+            document.body.appendChild(floatBtn);
+        }
+
+        window.addEventListener('scroll', function () {
+            if (window.scrollY > 250) {
+                floatBtn.classList.add('visible');
+            } else {
+                floatBtn.classList.remove('visible');
+            }
+        }, { passive: true });
+
+        floatBtn.addEventListener('click', function () {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // 2. Wire up inline back to top buttons (.hr-back-to-top-btn)
+        document.querySelectorAll('.hr-back-to-top-btn').forEach(function (btn) {
+            if (btn.dataset.hrBackTopInit) return;
+            btn.dataset.hrBackTopInit = 'true';
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        });
+    }
+
+
+    /* ============================================================
+       9. UTILITIES & INITIALISATION
     ============================================================ */
 
     /**
@@ -676,6 +719,7 @@
         initHRActionSheet();
         initHRMobileCharts();
         initHRCardAccordions();
+        initHRBackToTop();
     }
 
     if (document.readyState === 'loading') {

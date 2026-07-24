@@ -1,6 +1,18 @@
 </main><!-- end .main-content -->
 
 <?php 
+$_curr_p_btt = $current_page ?? basename($_SERVER['PHP_SELF']);
+if (in_array($_SESSION['role'] ?? '', ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin', 'Employee']) && $_curr_p_btt !== 'add-employee.php'): 
+?>
+<!-- Mobile Back to Top Button at bottom of content -->
+<div class="hr-back-to-top-wrapper d-lg-none">
+    <button type="button" class="hr-back-to-top-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'});">
+        <i class="fas fa-arrow-up"></i> Back to Top
+    </button>
+</div>
+<?php endif; ?>
+
+<?php 
 if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'): 
     $curr_p = $current_page ?? basename($_SERVER['PHP_SELF']);
     $m_notif_count = $notif_count ?? 0;
