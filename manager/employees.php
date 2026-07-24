@@ -964,14 +964,36 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         });
     }
 
+    const jobTitleCache = {};
+
+    function initJobTitleSelectCache() {
+        ['filterJobTitle', 'mobileFilterJobTitle'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !jobTitleCache[id]) {
+                jobTitleCache[id] = Array.from(el.children).map(child => child.cloneNode(true));
+            }
+        });
+    }
+
     function filterJobTitleOptgroups(selectedDept) {
-        ['filterJobTitle', 'mobileFilterJobTitle'].forEach(selectId => {
-            const select = document.getElementById(selectId);
-            if (select) {
-                const optgroups = select.querySelectorAll('optgroup');
-                optgroups.forEach(group => {
-                    group.style.display = (selectedDept === '' || group.label === selectedDept) ? '' : 'none';
+        initJobTitleSelectCache();
+        ['filterJobTitle', 'mobileFilterJobTitle'].forEach(id => {
+            const select = document.getElementById(id);
+            if (select && jobTitleCache[id]) {
+                const curVal = select.value;
+                select.innerHTML = '';
+                jobTitleCache[id].forEach(node => {
+                    if (node.tagName.toLowerCase() === 'option') {
+                        select.appendChild(node.cloneNode(true));
+                    } else if (node.tagName.toLowerCase() === 'optgroup') {
+                        const groupLabel = node.getAttribute('label') || '';
+                        if (selectedDept === '' || groupLabel === selectedDept) {
+                            select.appendChild(node.cloneNode(true));
+                        }
+                    }
                 });
+                select.value = curVal;
+                if (select.selectedIndex === -1) select.value = '';
             }
         });
     }
@@ -1085,18 +1107,28 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         const allRows = Array.from(tbody.querySelectorAll("tr:not(.no-results-row)"));
         const filterInput = document.getElementById('customSearchEmp').value.toLowerCase().trim();
 
-        const isMobile = window.innerWidth < 768;
+        // Detect mobile by checking if the mobile card list is actually visible in CSS
+        // (same breakpoint as Bootstrap d-block d-md-none — avoids window.innerWidth discrepancies on Android)
+        const mobileView = document.querySelector('.mobile-list-view');
+        const isMobile   = mobileView
+            ? window.getComputedStyle(mobileView).display !== 'none'
+            : window.matchMedia('(max-width: 767.98px)').matches;
 
         function normText(str) {
             if (!str) return '';
             return str.replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().toLowerCase();
         }
 
-        // On mobile: read from mobile selects. On desktop: read from desktop selects.
+        // Read from the correct select based on which view is actually visible.
+        // Fallback: if the primary select is empty, also check the other one.
         function getFilterVal(desktopId, mobileId) {
-            const id  = isMobile ? mobileId : desktopId;
-            const el  = document.getElementById(id);
-            return el ? el.value : '';
+            const primaryId = isMobile ? mobileId : desktopId;
+            const fallbackId = isMobile ? desktopId : mobileId;
+            const primary = document.getElementById(primaryId);
+            const fallback = document.getElementById(fallbackId);
+            if (primary && primary.value !== '') return primary.value;
+            if (fallback && fallback.value !== '') return fallback.value;
+            return '';
         }
 
         const fJobTitle   = getFilterVal('filterJobTitle',   'mobileFilterJobTitle');
@@ -1157,8 +1189,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         });
 
         // 2. Paginate — desktop uses row count, mobile uses card count independently
-        const isMobileView = window.innerWidth < 768;
-        const activeCount  = isMobileView ? visibleCards.length : visibleRows.length;
+        const activeCount  = isMobile ? visibleCards.length : visibleRows.length;
         const totalPages   = Math.ceil(activeCount / ITEMS_PER_PAGE);
         if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
         if (currentPage < 1) currentPage = 1;
@@ -1193,7 +1224,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         });
 
         updatePaginationUI(activeCount, totalPages);
-        handleNoResults(isMobileView ? visibleCards.length : visibleRows.length, filterInput, tbody);
+        handleNoResults(isMobile ? visibleCards.length : visibleRows.length, filterInput, tbody);
         updateStatCards(visibleRows);
     }
 
@@ -1288,6 +1319,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 
     // Initial Render on Load
     document.addEventListener("DOMContentLoaded", function () {
+        initJobTitleSelectCache();
         applyFiltersFromUrl();
         updateEmployeeActionLinks();
         renderTable();
