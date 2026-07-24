@@ -101,10 +101,11 @@ require_once '../includes/header.php';
 
 // Fetch employees
 $employees = $conn->query("
-    SELECT e.*, b.branch_name, d.department_name 
-    FROM employees e 
-    LEFT JOIN branches b ON e.branch_id = b.branch_id 
-    LEFT JOIN departments d ON e.department_id = d.department_id 
+    SELECT e.*, b.branch_name, d.department_name, jt.job_title, jt.rank_category_id
+    FROM employees e
+    LEFT JOIN branches b ON e.branch_id = b.branch_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN job_titles jt ON e.job_title_id = jt.job_title_id
     WHERE e.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
     ORDER BY e.last_name, e.first_name
 ");
@@ -330,8 +331,17 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
     }
 
     @media (max-width: 768px) {
-        .filter-group {
-            min-width: 140px;
+        /* Hide the multi-dropdown filter toolbar on mobile */
+        .filter-toolbar {
+            display: none !important;
+        }
+        /* Hide filter chips row on mobile (handled by filter sheet) */
+        .filter-summary {
+            display: none !important;
+        }
+        /* Hide desktop search box on mobile (replaced by hr-mobile-search-bar) */
+        .cc-header .search-box {
+            display: none !important;
         }
         #paginationWrapper {
             flex-direction: column;
@@ -402,6 +412,18 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 </div>
 
 <div class="chart-card fadeup">
+    <!-- Mobile-only: compact search + filter sheet trigger -->
+    <div class="hr-mobile-search-bar d-md-none px-3 pt-3 pb-1">
+        <div class="hr-search-input-wrap">
+            <i class="fas fa-search hr-search-icon"></i>
+            <input type="text" class="hr-search-input" id="mobileSearchEmp" placeholder="Search employees...">
+        </div>
+        <button type="button" class="hr-filter-btn" id="mobileFilterOpenBtn" data-hr-filter-open>
+            <i class="fas fa-sliders-h"></i> Filters
+            <span class="hr-filter-count" style="display:none;">0</span>
+        </button>
+    </div>
+
     <div class="cc-header">
         <h5 class="d-none d-md-block"><i class="fas fa-users me-2"></i>All Employees</h5>
         <div class="search-box">
@@ -557,60 +579,101 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             </table>
         </div>
 
-        <!-- Mobile Card List (student check-in style, visible only on mobile) -->
+        <!-- Mobile Card List (visible only on mobile) -->
         <div class="mobile-list-view d-block d-md-none p-3">
             <div class="student-list">
                 <?php
                 $employees->data_seek(0);
-                $mob_count = 0;
                 while ($emp = $employees->fetch_assoc()):
-                    $initials = strtoupper(substr($emp['first_name'] ?? '', 0, 1) . substr($emp['last_name'] ?? '', 0, 1));
-                    $avatar_num = ($mob_count % 6) + 1;
-                    $mob_count++;
                 ?>
-                <div class="student-item"
+                <div class="student-item hr-mobile-card mb-3 p-3 bg-white rounded-3 shadow-sm border"
                      data-jobtitle="<?php echo e($emp['job_title']); ?>"
                      data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                      data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                      data-status="<?php echo e($emp['employment_status']); ?>"
-                     style="display: none;">
-                        <div class="student-avatar">
-                            <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="avatar-img">
-                        </div>
-                    <div class="student-info" style="flex:1;min-width:0;overflow:hidden;">
-                        <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></div>
-                        <div class="student-meta">
-                            <?php
-                                $rankIdMob = (int)($emp['rank_category_id'] ?? 0);
-                                $badgeClassMob = getJobTitleBadgeClass($rankIdMob);
-                            ?>
-                            <span class="job-badge <?php echo $badgeClassMob; ?>" style="max-width:100%;overflow:hidden;text-overflow:ellipsis;"><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
-                            &bull; <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo e($emp['department_name'] ?? 'N/A'); ?></span>
-                        </div>
-                        <div class="student-meta" style="margin-top:2px;">
-                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?php echo e($emp['branch_name'] ?? 'N/A'); ?></span>
-                            &bull; <small><?php echo formatDate($emp['hire_date']); ?></small>
+                     style="display: none; flex-direction: column; align-items: stretch; width: 100%; box-sizing: border-box;">
+
+                    <!-- Top Header Bar: Status Badge on left + Actions Menu Button on right -->
+                    <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
+                        <span class="badge <?php echo $emp['is_active'] ? 'bg-success' : 'bg-danger'; ?>" style="font-size: 0.7rem; padding: 4px 9px; letter-spacing: 0.3px;">
+                            <i class="fas fa-circle me-1" style="font-size:0.45rem;"></i><?php echo $emp['employment_status']; ?>
+                        </span>
+
+                        <!-- Actions Dropdown Menu -->
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light rounded-pill border shadow-sm px-2.5 py-1 d-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown" data-bs-boundary="window" aria-expanded="false" style="background: #f8fafc; border-color: #cbd5e1 !important; font-size: 0.78rem;" title="Actions">
+                                <i class="fas fa-ellipsis-h text-dark"></i> <span class="fw-semibold text-secondary" style="font-size:0.72rem;">Actions</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-1" style="border-radius: 12px; min-width: 170px; font-size: 0.85rem; z-index: 1095;">
+                                <li>
+                                    <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                       class="dropdown-item py-2 d-flex align-items-center gap-2 employee-view-link"
+                                       data-base-href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>">
+                                        <i class="fas fa-eye text-info" style="width: 18px;"></i> View Details
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>"
+                                       class="dropdown-item py-2 d-flex align-items-center gap-2 employee-edit-link"
+                                       data-base-href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>">
+                                        <i class="fas fa-edit text-primary" style="width: 18px;"></i> Edit Info
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider my-1"></li>
+                                <?php if ($emp['is_active']): ?>
+                                    <li>
+                                        <button type="button" class="dropdown-item py-2 d-flex align-items-center gap-2 text-warning"
+                                            onclick="setDeactivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                            data-bs-toggle="modal" data-bs-target="#deactivateModal">
+                                            <i class="fas fa-user-slash" style="width: 18px;"></i> Deactivate
+                                        </button>
+                                    </li>
+                                <?php else: ?>
+                                    <li>
+                                        <button type="button" class="dropdown-item py-2 d-flex align-items-center gap-2 text-success"
+                                            onclick="setActivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                            data-bs-toggle="modal" data-bs-target="#activateModal">
+                                            <i class="fas fa-user-check" style="width: 18px;"></i> Activate
+                                        </button>
+                                    </li>
+                                <?php endif; ?>
+                                <li>
+                                    <button type="button" class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger"
+                                        onclick="setDeleteTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
+                                        data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                        <i class="fas fa-trash" style="width: 18px;"></i> Delete
+                                    </button>
+                                </li>
+                            </ul>
                         </div>
                     </div>
-                    <div class="d-flex flex-column align-items-end gap-1" style="flex-shrink:0;margin-left:8px;">
-                        <span class="badge <?php echo $emp['is_active'] ? 'bg-success' : 'bg-danger'; ?>" style="white-space:nowrap;font-size:0.68rem;">
-                            <?php echo $emp['employment_status']; ?>
-                        </span>
-                        <div class="d-flex gap-1 flex-wrap justify-content-end">
-                            <a href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-info employee-view-link" data-base-href="<?php echo BASE_URL; ?>/manager/view-employee.php?id=<?php echo $emp['employee_id']; ?>" title="View"><i class="fas fa-eye"></i></a>
-                            <a href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" class="btn btn-xs btn-outline-primary employee-edit-link" data-base-href="<?php echo BASE_URL; ?>/manager/edit-employee.php?id=<?php echo $emp['employee_id']; ?>" title="Edit"><i class="fas fa-edit"></i></a>
-                            <?php if ($emp['is_active']): ?>
-                            <button class="btn btn-xs btn-outline-warning" title="Deactivate"
-                                onclick="setDeactivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
-                                data-bs-toggle="modal" data-bs-target="#deactivateModal"><i class="fas fa-user-slash"></i></button>
-                            <?php else: ?>
-                            <button class="btn btn-xs btn-outline-success" title="Activate"
-                                onclick="setActivateTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
-                                data-bs-toggle="modal" data-bs-target="#activateModal"><i class="fas fa-user-check"></i></button>
-                            <?php endif; ?>
-                            <button class="btn btn-xs btn-outline-danger" title="Delete"
-                                onclick="setDeleteTarget(<?php echo $emp['employee_id']; ?>, '<?php echo e(addslashes($emp['first_name'] . ' ' . $emp['last_name'])); ?>')"
-                                data-bs-toggle="modal" data-bs-target="#deleteModal"><i class="fas fa-trash"></i></button>
+
+                    <!-- Main Card Body: Avatar + Name + Rank Badge -->
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile"
+                             class="rounded-circle border flex-shrink-0" style="width: 48px; height: 48px; object-fit: cover;">
+                        <div style="flex:1; min-width:0;">
+                            <h6 class="fw-bold mb-1 text-truncate" style="font-size: 0.95rem; color: #1c271b;">
+                                <?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?>
+                            </h6>
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <?php
+                                    $rankIdMob = (int)($emp['rank_category_id'] ?? 0);
+                                    $badgeClassMob = getJobTitleBadgeClass($rankIdMob);
+                                ?>
+                                <span class="job-badge <?php echo $badgeClassMob; ?>"><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Full-Width Metadata Grid (makes the design feel rich & occupied) -->
+                    <div class="p-2.5 rounded-2 bg-light border text-muted small mt-2">
+                        <div class="d-flex align-items-center justify-content-between mb-1 gap-2">
+                            <span class="text-truncate"><i class="fas fa-sitemap me-1 opacity-75" style="color:var(--hrm-green-mid);"></i><strong>Dept:</strong> <?php echo e($emp['department_name'] ?? 'N/A'); ?></span>
+                            <span class="text-nowrap"><i class="fas fa-calendar-alt me-1 opacity-75" style="color:var(--hrm-gold);"></i><?php echo formatDate($emp['hire_date']); ?></span>
+                        </div>
+                        <div class="text-truncate">
+                            <i class="fas fa-building me-1 opacity-75" style="color:var(--hrm-green-mid);"></i><strong>Branch:</strong> <?php echo e($emp['branch_name'] ?? 'N/A'); ?>
                         </div>
                     </div>
                 </div>
@@ -710,6 +773,63 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
     </div>
 </div>
 
+<!-- Mobile Filter Bottom Sheet Drawer -->
+<div class="hr-filter-backdrop" id="hrFilterBackdrop"></div>
+<div class="hr-filter-sheet" id="hrFilterSheet">
+    <div class="hr-filter-sheet-handle"></div>
+    <div class="hr-filter-sheet-header">
+        <h6 class="hr-filter-sheet-title"><i class="fas fa-sliders-h me-2" style="color:var(--hrm-gold);"></i>Filter Employees</h6>
+        <button type="button" class="hr-filter-clear-btn" id="hrFilterClear">Reset All</button>
+    </div>
+    <div class="hr-filter-sheet-body">
+        <div class="hr-filter-group">
+            <label><i class="fas fa-briefcase me-1"></i>Job Title</label>
+            <select id="mobileFilterJobTitle">
+                <option value="">All Titles</option>
+                <?php foreach ($job_titles_by_dept as $dept_name => $titles): ?>
+                    <optgroup label="<?php echo e($dept_name); ?>">
+                        <?php foreach ($titles as $jt): ?>
+                            <option value="<?php echo e($jt['job_title']); ?>"><?php echo e($jt['job_title']); ?></option>
+                        <?php endforeach; ?>
+                    </optgroup>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="hr-filter-group">
+            <label><i class="fas fa-sitemap me-1"></i>Department</label>
+            <select id="mobileFilterDepartment">
+                <option value="">All Departments</option>
+                <?php foreach ($departments as $dept): ?>
+                    <option value="<?php echo e($dept); ?>"><?php echo e($dept); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="hr-filter-group">
+            <label><i class="fas fa-building me-1"></i>Branch</label>
+            <select id="mobileFilterBranch">
+                <option value="">All Branches</option>
+                <?php foreach ($branches as $br): ?>
+                    <option value="<?php echo e($br); ?>" <?php echo ($selected_branch === $br) ? 'selected' : ''; ?>><?php echo e($br); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="hr-filter-group">
+            <label><i class="fas fa-user-tag me-1"></i>Status</label>
+            <select id="mobileFilterStatus">
+                <option value="">All Statuses</option>
+                <?php foreach ($statuses as $st): ?>
+                    <option value="<?php echo e($st); ?>"><?php echo e($st); ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+    <div class="hr-filter-sheet-footer">
+        <button type="button" class="hr-filter-apply-btn" id="hrFilterApply">
+            <i class="fas fa-check me-1"></i>Apply Filters
+        </button>
+    </div>
+</div>
+
 <script>
     let deactivateTargetId = null;
     function setDeactivateTarget(id, name) {
@@ -742,6 +862,45 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         renderTable();
     });
 
+    // --- Mobile Search Sync ---
+    const mobSearch = document.getElementById('mobileSearchEmp');
+    if (mobSearch) {
+        mobSearch.addEventListener('input', function () {
+            document.getElementById('customSearchEmp').value = this.value;
+            currentPage = 1;
+            syncFiltersToUrl();
+            renderTable();
+        });
+    }
+
+    // --- Mobile Filter Apply ---
+    function updateMobileFilterBadge() {
+        const ids = ['mobileFilterJobTitle','mobileFilterDepartment','mobileFilterBranch','mobileFilterStatus'];
+        const activeCount = ids.filter(id => { const el = document.getElementById(id); return el && el.value !== ''; }).length;
+        const badge = document.querySelector('#mobileFilterOpenBtn .hr-filter-count');
+        if (badge) { badge.textContent = activeCount; badge.style.display = activeCount > 0 ? 'inline-flex' : 'none'; }
+        const filterBtn = document.getElementById('mobileFilterOpenBtn');
+        if (filterBtn) filterBtn.classList.toggle('active', activeCount > 0);
+    }
+
+    document.getElementById('hrFilterApply')?.addEventListener('click', function () {
+        currentPage = 1;
+        updateMobileFilterBadge();
+        renderTable();
+        updateFilterChips();
+    });
+
+    document.getElementById('hrFilterClear')?.addEventListener('click', function () {
+        ['mobileFilterJobTitle','mobileFilterDepartment','mobileFilterBranch','mobileFilterStatus'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+        currentPage = 1;
+        updateMobileFilterBadge();
+        renderTable();
+        updateFilterChips();
+    });
+
     // --- Dropdown Filter Logic ---
     const filterSelects = ['filterJobTitle', 'filterDepartment', 'filterBranch', 'filterStatus'];
     const filterLabels = { filterJobTitle: 'Job Title', filterDepartment: 'Department', filterBranch: 'Branch', filterStatus: 'Status' };
@@ -749,23 +908,34 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 
     function applyFiltersFromUrl() {
         const params = new URLSearchParams(window.location.search);
-        document.getElementById('customSearchEmp').value = params.get('search') || '';
+        const searchVal = params.get('search') || '';
+        document.getElementById('customSearchEmp').value = searchVal;
+        const mobSearch = document.getElementById('mobileSearchEmp');
+        if (mobSearch) mobSearch.value = searchVal;
+
         filterSelects.forEach(id => {
             const el = document.getElementById(id);
             const value = params.get(filterParams[id]) || '';
-            el.value = value;
-            el.classList.toggle('active-filter', value !== '');
+            if (el) {
+                el.value = value;
+                el.classList.toggle('active-filter', value !== '');
+            }
         });
-        
-        // Apply department filter to job title dropdown on page load
+
+        // Sync mobile filter selects
+        const mobMap = {
+            job_title: 'mobileFilterJobTitle',
+            department: 'mobileFilterDepartment',
+            branch: 'mobileFilterBranch',
+            status: 'mobileFilterStatus'
+        };
+        Object.entries(mobMap).forEach(([paramKey, mobId]) => {
+            const mobEl = document.getElementById(mobId);
+            if (mobEl) mobEl.value = params.get(paramKey) || '';
+        });
+
         const selectedDept = params.get('department') || '';
-        if (selectedDept !== '') {
-            const jobTitleSelect = document.getElementById('filterJobTitle');
-            const optgroups = jobTitleSelect.querySelectorAll('optgroup');
-            optgroups.forEach(group => {
-                group.style.display = group.label === selectedDept ? '' : 'none';
-            });
-        }
+        filterJobTitleOptgroups(selectedDept);
     }
 
     function syncFiltersToUrl() {
@@ -794,36 +964,47 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         });
     }
 
-    // Special handler for Department filter to update Job Title options
-    document.getElementById('filterDepartment').addEventListener('change', function () {
-        const selectedDept = this.value;
-        const jobTitleSelect = document.getElementById('filterJobTitle');
-        const optgroups = jobTitleSelect.querySelectorAll('optgroup');
-        
-        optgroups.forEach(group => {
-            if (selectedDept === '') {
-                // Show all optgroups
-                group.style.display = '';
-            } else {
-                // Show only matching department optgroup
-                group.style.display = group.label === selectedDept ? '' : 'none';
+    function filterJobTitleOptgroups(selectedDept) {
+        ['filterJobTitle', 'mobileFilterJobTitle'].forEach(selectId => {
+            const select = document.getElementById(selectId);
+            if (select) {
+                const optgroups = select.querySelectorAll('optgroup');
+                optgroups.forEach(group => {
+                    group.style.display = (selectedDept === '' || group.label === selectedDept) ? '' : 'none';
+                });
             }
         });
-        
-        // Clear job title filter when department changes
-        jobTitleSelect.value = '';
-        jobTitleSelect.classList.remove('active-filter');
-        
+    }
+
+    // --- Department Filter Handler (syncs both desktop & mobile job title optgroups) ---
+    function handleDepartmentChange(selectedDept) {
+        filterJobTitleOptgroups(selectedDept);
+
+        // Reset job title selections
+        const mainJT = document.getElementById('filterJobTitle');
+        const mobJT = document.getElementById('mobileFilterJobTitle');
+        if (mainJT) { mainJT.value = ''; mainJT.classList.remove('active-filter'); }
+        if (mobJT)  { mobJT.value = ''; }
+
         currentPage = 1;
-        this.classList.toggle('active-filter', this.value !== '');
         syncFiltersToUrl();
         renderTable();
         updateFilterChips();
+    }
+
+    document.getElementById('filterDepartment')?.addEventListener('change', function () {
+        handleDepartmentChange(this.value);
+    });
+
+    document.getElementById('mobileFilterDepartment')?.addEventListener('change', function () {
+        filterJobTitleOptgroups(this.value);
+        const mobJT = document.getElementById('mobileFilterJobTitle');
+        if (mobJT) mobJT.value = '';
     });
 
     // Regular handlers for other filters
     ['filterJobTitle', 'filterBranch', 'filterStatus'].forEach(id => {
-        document.getElementById(id).addEventListener('change', function () {
+        document.getElementById(id)?.addEventListener('change', function () {
             currentPage = 1;
             this.classList.toggle('active-filter', this.value !== '');
             syncFiltersToUrl();
@@ -904,11 +1085,29 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         const allRows = Array.from(tbody.querySelectorAll("tr:not(.no-results-row)"));
         const filterInput = document.getElementById('customSearchEmp').value.toLowerCase().trim();
 
-        // Get dropdown filter values
-        const fJobTitle = document.getElementById('filterJobTitle').value;
-        const fDepartment = document.getElementById('filterDepartment').value;
-        const fBranch = document.getElementById('filterBranch').value;
-        const fStatus = document.getElementById('filterStatus').value;
+        const isMobile = window.innerWidth < 768;
+
+        function normText(str) {
+            if (!str) return '';
+            return str.replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim().toLowerCase();
+        }
+
+        // On mobile: read from mobile selects. On desktop: read from desktop selects.
+        function getFilterVal(desktopId, mobileId) {
+            const id  = isMobile ? mobileId : desktopId;
+            const el  = document.getElementById(id);
+            return el ? el.value : '';
+        }
+
+        const fJobTitle   = getFilterVal('filterJobTitle',   'mobileFilterJobTitle');
+        const fDepartment = getFilterVal('filterDepartment', 'mobileFilterDepartment');
+        const fBranch     = getFilterVal('filterBranch',     'mobileFilterBranch');
+        const fStatus     = getFilterVal('filterStatus',     'mobileFilterStatus');
+
+        const normFJobTitle = normText(fJobTitle);
+        const normFDept     = normText(fDepartment);
+        const normFBranch   = normText(fBranch);
+        const normFStatus   = normText(fStatus);
 
         let visibleRows = [];
 
@@ -922,10 +1121,10 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 
                 // Dropdown filters
                 const dropdownMatch =
-                    (fJobTitle === '' || row.dataset.jobtitle === fJobTitle) &&
-                    (fDepartment === '' || row.dataset.department === fDepartment) &&
-                    (fBranch === '' || row.dataset.branch === fBranch) &&
-                    (fStatus === '' || row.dataset.status === fStatus);
+                    (normFJobTitle === '' || normText(row.dataset.jobtitle) === normFJobTitle) &&
+                    (normFDept     === '' || normText(row.dataset.department) === normFDept) &&
+                    (normFBranch   === '' || normText(row.dataset.branch) === normFBranch) &&
+                    (normFStatus   === '' || normText(row.dataset.status) === normFStatus);
 
                 if (textMatch && dropdownMatch) {
                     visibleRows.push(row);
@@ -945,10 +1144,10 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             const cardText = card.textContent.toLowerCase();
             const textMatch = filterInput === "" || cardText.includes(filterInput);
             const dropdownMatch =
-                (fJobTitle === '' || card.dataset.jobtitle === fJobTitle) &&
-                (fDepartment === '' || card.dataset.department === fDepartment) &&
-                (fBranch === '' || card.dataset.branch === fBranch) &&
-                (fStatus === '' || card.dataset.status === fStatus);
+                (normFJobTitle === '' || normText(card.dataset.jobtitle) === normFJobTitle) &&
+                (normFDept     === '' || normText(card.dataset.department) === normFDept) &&
+                (normFBranch   === '' || normText(card.dataset.branch) === normFBranch) &&
+                (normFStatus   === '' || normText(card.dataset.status) === normFStatus);
 
             if (textMatch && dropdownMatch) {
                 visibleCards.push(card);
@@ -957,13 +1156,15 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             }
         });
 
-        // 2. Paginate
-        const totalPages = Math.ceil(visibleRows.length / ITEMS_PER_PAGE);
+        // 2. Paginate — desktop uses row count, mobile uses card count independently
+        const isMobileView = window.innerWidth < 768;
+        const activeCount  = isMobileView ? visibleCards.length : visibleRows.length;
+        const totalPages   = Math.ceil(activeCount / ITEMS_PER_PAGE);
         if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
         if (currentPage < 1) currentPage = 1;
 
         const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
-        const endIdx = startIdx + ITEMS_PER_PAGE;
+        const endIdx   = startIdx + ITEMS_PER_PAGE;
 
         // Paginate desktop rows
         let visibleCount = 0;
@@ -971,12 +1172,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             if (index >= startIdx && index < endIdx) {
                 row.style.display = "";
                 row.classList.remove('odd-row', 'even-row');
-                if (visibleCount % 2 === 0) {
-                    row.classList.add('odd-row');
-                } else {
-                    row.classList.add('even-row');
-                }
-                // Renumber the # column based on current page position
+                row.classList.add(visibleCount % 2 === 0 ? 'odd-row' : 'even-row');
                 const numCell = row.querySelector('td:first-child strong');
                 if (numCell) numCell.textContent = startIdx + visibleCount + 1;
                 visibleCount++;
@@ -985,17 +1181,19 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             }
         });
 
-        // Paginate mobile cards
+        // Paginate mobile cards (independent pagination)
+        const cardStartIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+        const cardEndIdx   = cardStartIdx + ITEMS_PER_PAGE;
         visibleCards.forEach((card, index) => {
-            if (index >= startIdx && index < endIdx) {
-                card.style.display = "";
+            if (index >= cardStartIdx && index < cardEndIdx) {
+                card.style.display = "flex"; // explicit — overrides inline display:none
             } else {
                 card.style.display = "none";
             }
         });
 
-        updatePaginationUI(visibleRows.length, totalPages);
-        handleNoResults(visibleRows.length, filterInput, tbody);
+        updatePaginationUI(activeCount, totalPages);
+        handleNoResults(isMobileView ? visibleCards.length : visibleRows.length, filterInput, tbody);
         updateStatCards(visibleRows);
     }
 

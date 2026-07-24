@@ -325,6 +325,10 @@ switch ($effective_role) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>/assets/css/style.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <?php if (in_array($effective_role, ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin'])): ?>
+    <!-- HR Department Mobile View — exclusive CSS for HR roles on mobile -->
+    <link href="<?php echo BASE_URL; ?>/assets/css/hr-department-mobile.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <?php endif; ?>
     <?php if ($effective_role === 'Employee'): ?>
     <!-- Employee Portal UX Revamp CSS — loaded for Employee role only -->
     <!-- Critical CSS inlined for above-the-fold render speed (Task 24.4) -->
@@ -415,7 +419,7 @@ switch ($effective_role) {
     <!-- Top Navbar -->
     <header class="top-navbar">
         <div class="d-flex align-items-center gap-3">
-            <button class="sidebar-toggle <?php echo ($effective_role === 'Employee') ? 'd-none d-md-block' : ''; ?>" onclick="toggleSidebar()">
+            <button class="sidebar-toggle <?php echo ($effective_role === 'Employee') ? 'd-none d-md-block' : (in_array($effective_role, ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin']) ? 'd-lg-block' : ''); ?>" onclick="toggleSidebar()">
                 <i class="fas fa-bars"></i>
             </button>
             <div class="navbar-logo d-flex align-items-center gap-2">

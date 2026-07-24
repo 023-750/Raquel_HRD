@@ -1,0 +1,1314 @@
+/* ============================================================
+   hr-department-mobile.css
+   Raquel Pawnshop HRIS — HR Department Exclusive Mobile Styles
+   Applies to: HR Manager, HR Supervisor, HR Staff, Admin roles
+   Desktop layouts are completely unaffected by this file.
+   ============================================================ */
+
+
+/* ============================================================
+   1. DESIGN TOKENS & VARIABLES
+   ============================================================ */
+:root {
+    /* Brand Palette (inherits from style.css :root — defined here
+       for self-containment in case this file is loaded standalone) */
+    --hrm-green:        #082E06;   /* Raquel deep forest green */
+    --hrm-green-dark:   #041D03;   /* Deeper shade for pressed states */
+    --hrm-green-mid:    #0c2908;   /* Sidebar-like mid green */
+    --hrm-gold:         #CBA135;   /* Raquel premium gold accent */
+    --hrm-gold-light:   rgba(203, 161, 53, 0.12);
+    --hrm-success:      #16a34a;   /* Active / approved green */
+    --hrm-warning:      #F59E0B;   /* Pending / warning amber */
+    --hrm-danger:       #DC2626;   /* Danger / rejection red */
+    --hrm-info:         #0891b2;   /* Info cyan */
+    --hrm-purple:       #7c3aed;   /* Analytics purple */
+
+    /* Neutral Tones */
+    --hrm-white:        #ffffff;
+    --hrm-bg:           #F4F6F2;   /* Light sage background */
+    --hrm-card-bg:      #ffffff;
+    --hrm-border:       rgba(8, 46, 6, 0.07);
+    --hrm-text:         #1c271b;
+    --hrm-muted:        #5e6b5c;
+
+    /* Shadows */
+    --hrm-shadow-sm:    0 2px 8px rgba(8, 46, 6, 0.05);
+    --hrm-shadow-md:    0 6px 20px rgba(8, 46, 6, 0.09);
+    --hrm-shadow-lg:    0 12px 32px rgba(8, 46, 6, 0.14);
+
+    /* Radii */
+    --hrm-radius-sm:    8px;
+    --hrm-radius-md:    14px;
+    --hrm-radius-lg:    20px;
+    --hrm-radius-xl:    28px;
+
+    /* Safe Areas (notch/home-indicator support) */
+    --hrm-safe-top:     env(safe-area-inset-top, 0px);
+    --hrm-safe-bottom:  env(safe-area-inset-bottom, 0px);
+
+    /* Bottom Nav */
+    --hrm-bottom-nav-height: 64px;
+}
+
+
+/* ============================================================
+   2. LAYOUT & CONTAINER FIXES (mobile-only overrides)
+   ============================================================ */
+@media (max-width: 767.98px) {
+
+    /* Push main content down from top-navbar and up from bottom-nav */
+    body.hr-mobile-active .main-content {
+        margin-left: 0 !important;
+        padding-bottom: 120px !important;
+    }
+
+    /* Prevent container wrappers from clipping cards or dropdown menus on mobile */
+    body.hr-mobile-active .chart-card {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin-bottom: 20px !important;
+        overflow: visible !important;
+    }
+
+    body.hr-mobile-active .mobile-list-view,
+    body.hr-mobile-active .student-list {
+        overflow: visible !important;
+    }
+
+    body.hr-mobile-active .student-item,
+    body.hr-mobile-active .hr-mobile-card {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        overflow: visible !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    body.hr-mobile-active .student-item .dropdown,
+    body.hr-mobile-active .hr-mobile-card .dropdown {
+        position: relative !important;
+        z-index: 1050 !important;
+    }
+
+    body.hr-mobile-active .dropdown-menu {
+        z-index: 1095 !important;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18) !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    }
+
+    /* Extra bottom margin for mobile card list containers */
+    body.hr-mobile-active .mobile-list-view,
+    body.hr-mobile-active .hr-card-list,
+    body.hr-mobile-active .hr-card-view {
+        padding-bottom: 80px !important;
+    }
+
+    /* Card styling on mobile */
+    body.hr-mobile-active .student-item,
+    body.hr-mobile-active .hr-mobile-card {
+        margin-bottom: 16px !important;
+        box-shadow: 0 4px 14px rgba(8, 46, 6, 0.08) !important;
+    }
+
+    /* Prevent sidebar from obscuring content on mobile */
+    body.hr-mobile-active .sidebar {
+        transform: translateX(-100%);
+    }
+
+    body.hr-mobile-active .sidebar.show {
+        transform: translateX(0);
+    }
+
+    /* Move top navbar full-width on mobile */
+    body.hr-mobile-active .top-navbar {
+        left: 0 !important;
+    }
+
+    /* Suppress the desktop sidebar toggle on mobile for HR roles
+       (bottom navigation replaces it) */
+    body.hr-mobile-active .sidebar-toggle {
+        display: none !important;
+    }
+
+    /* Prevent horizontal overflow on any page */
+    body.hr-mobile-active {
+        overflow-x: hidden;
+        padding-bottom: calc(var(--hrm-bottom-nav-height) + var(--hrm-safe-bottom));
+    }
+
+    /* Scale down page hero banners on mobile */
+    body.hr-mobile-active .page-hero {
+        padding: 1.25rem 1rem !important;
+        border-radius: var(--hrm-radius-md) !important;
+    }
+
+    body.hr-mobile-active .page-hero h1,
+    body.hr-mobile-active .page-hero .hero-title {
+        font-size: 1.2rem !important;
+    }
+
+    body.hr-mobile-active .page-hero p,
+    body.hr-mobile-active .page-hero .hero-subtitle {
+        font-size: 0.82rem !important;
+    }
+
+    /* Make full-width tables scroll horizontally */
+    body.hr-mobile-active .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Stat card grid: 2 columns on mobile */
+    body.hr-mobile-active .row.g-3 > [class*="col-xl-3"],
+    body.hr-mobile-active .row.g-3 > [class*="col-lg-3"],
+    body.hr-mobile-active .row.g-3 > [class*="col-md-3"] {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+
+    /* Chart containers: reasonable mobile height */
+    body.hr-mobile-active .chart-container canvas,
+    body.hr-mobile-active canvas[id] {
+        max-height: 240px !important;
+    }
+
+    body.hr-mobile-active .chart-container {
+        height: 240px !important;
+        max-height: 240px !important;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    /* Tablet: keep sidebar toggle but add some bottom spacing */
+    body.hr-mobile-active .main-content {
+        padding-bottom: calc(var(--hrm-bottom-nav-height) + var(--hrm-safe-bottom) + 10px);
+    }
+}
+
+
+/* ============================================================
+   3. ROLE-AWARE BOTTOM NAVIGATION BAR (.hr-bottom-nav)
+   ============================================================ */
+
+/* The bottom nav is rendered in footer.php and shown only on
+   screens ≤ 991px via Bootstrap's d-lg-none utility.
+   It is ALWAYS hidden on desktops (992px+). */
+
+.hr-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    height: calc(var(--hrm-bottom-nav-height) + var(--hrm-safe-bottom));
+    padding-bottom: var(--hrm-safe-bottom);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--hrm-border);
+    box-shadow: 0 -4px 20px rgba(8, 46, 6, 0.08);
+    display: flex;
+    align-items: stretch;
+}
+
+.hr-bottom-nav .hr-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    text-decoration: none;
+    color: var(--hrm-muted);
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+    padding: 6px 4px;
+    position: relative;
+    transition: color 0.2s ease;
+    cursor: pointer;
+    background: none;
+    border: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hr-bottom-nav .hr-nav-item .hr-nav-icon {
+    font-size: 1.2rem;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+    line-height: 1;
+}
+
+.hr-bottom-nav .hr-nav-item .hr-nav-label {
+    font-size: 0.65rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+/* Active state */
+.hr-bottom-nav .hr-nav-item.active {
+    color: var(--hrm-green);
+}
+
+.hr-bottom-nav .hr-nav-item.active .hr-nav-icon {
+    transform: translateY(-2px) scale(1.15);
+    color: var(--hrm-green);
+}
+
+.hr-bottom-nav .hr-nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--hrm-green), var(--hrm-gold));
+    border-radius: 0 0 4px 4px;
+}
+
+/* Hover state (touch devices won't trigger, desktop does) */
+.hr-bottom-nav .hr-nav-item:hover:not(.active) {
+    color: var(--hrm-green-mid);
+}
+
+.hr-bottom-nav .hr-nav-item:hover .hr-nav-icon {
+    transform: translateY(-2px);
+}
+
+/* Live action badge overlay (.hr-mobile-badge) */
+.hr-mobile-badge {
+    position: absolute;
+    top: 5px;
+    right: calc(50% - 18px);
+    background: var(--hrm-danger);
+    color: var(--hrm-white);
+    font-size: 0.58rem;
+    font-weight: 700;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 4px rgba(220, 38, 38, 0.4);
+    border: 1.5px solid #fff;
+    pointer-events: none;
+    line-height: 1;
+}
+
+/* "More" quick menu — mobile gear dropdown in bottom nav */
+.hr-bottom-nav .hr-nav-more-dropdown {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    right: 0;
+    width: 220px;
+    background: var(--hrm-white);
+    border-radius: var(--hrm-radius-lg) var(--hrm-radius-lg) var(--hrm-radius-md) var(--hrm-radius-md);
+    border: 1px solid var(--hrm-border);
+    box-shadow: var(--hrm-shadow-lg);
+    padding: 8px 0;
+    display: none;
+    z-index: 1060;
+    animation: hrDropUp 0.2s ease;
+}
+
+.hr-bottom-nav .hr-nav-more-dropdown.show {
+    display: block;
+}
+
+@keyframes hrDropUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.hr-bottom-nav .hr-nav-more-dropdown a,
+.hr-bottom-nav .hr-nav-more-dropdown button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 18px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--hrm-text);
+    text-decoration: none;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.hr-bottom-nav .hr-nav-more-dropdown a:hover,
+.hr-bottom-nav .hr-nav-more-dropdown button:hover {
+    background: var(--hrm-bg);
+}
+
+.hr-bottom-nav .hr-nav-more-dropdown a i,
+.hr-bottom-nav .hr-nav-more-dropdown button i {
+    width: 20px;
+    text-align: center;
+    color: var(--hrm-green);
+    font-size: 0.95rem;
+}
+
+.hr-bottom-nav .hr-nav-more-dropdown hr {
+    margin: 4px 14px;
+    border-color: var(--hrm-border);
+}
+
+.hr-bottom-nav .hr-nav-more-dropdown a.text-danger,
+.hr-bottom-nav .hr-nav-more-dropdown button.text-danger {
+    color: var(--hrm-danger);
+}
+
+.hr-bottom-nav .hr-nav-more-dropdown a.text-danger i,
+.hr-bottom-nav .hr-nav-more-dropdown button.text-danger i {
+    color: var(--hrm-danger);
+}
+
+
+/* ============================================================
+   4. MOBILE EMPLOYEE / DATA CARDS (.hr-mobile-card)
+   These cards replace wide data tables on small viewports.
+   ============================================================ */
+@media (max-width: 767.98px) {
+
+    /* Hide table view, show card view */
+    body.hr-mobile-active .hr-table-view {
+        display: none !important;
+    }
+
+    body.hr-mobile-active .hr-card-view {
+        display: block !important;
+    }
+}
+
+@media (min-width: 768px) {
+    /* Hide card view, show table view on larger screens */
+    body.hr-mobile-active .hr-card-view {
+        display: none !important;
+    }
+}
+
+/* Card list wrapper */
+.hr-card-view {
+    display: none; /* Hidden by default; JS/media-query shows it */
+}
+
+.hr-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 4px 0 8px;
+}
+
+/* Single HR data card */
+.hr-mobile-card {
+    background: var(--hrm-white);
+    border-radius: var(--hrm-radius-md);
+    box-shadow: var(--hrm-shadow-sm);
+    border: 1px solid var(--hrm-border);
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hr-mobile-card:active {
+    transform: scale(0.99);
+}
+
+/* Card main info row */
+.hr-mobile-card-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 14px 10px;
+}
+
+/* Avatar thumbnail */
+.hr-card-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 2px solid var(--hrm-gold-light);
+    background: var(--hrm-bg);
+}
+
+.hr-card-avatar-initials {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--hrm-green) 0%, var(--hrm-green-mid) 100%);
+    color: var(--hrm-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+}
+
+/* Card text block */
+.hr-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.hr-card-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--hrm-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 0 2px;
+}
+
+.hr-card-sub {
+    font-size: 0.76rem;
+    color: var(--hrm-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0 0 5px;
+}
+
+/* Status / tag pill row */
+.hr-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 2px;
+}
+
+.hr-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+
+.hr-tag-green   { background: rgba(22, 163, 74, 0.10);  color: var(--hrm-success); }
+.hr-tag-gold    { background: var(--hrm-gold-light);     color: #7a5e0e; }
+.hr-tag-amber   { background: rgba(245, 158, 11, 0.12); color: #92580a; }
+.hr-tag-red     { background: rgba(220, 38, 38, 0.10);  color: var(--hrm-danger); }
+.hr-tag-blue    { background: rgba(8, 145, 178, 0.10);  color: var(--hrm-info); }
+.hr-tag-purple  { background: rgba(124, 58, 237, 0.10); color: var(--hrm-purple); }
+.hr-tag-slate   { background: rgba(28, 39, 27, 0.07);   color: var(--hrm-muted); }
+
+/* Card action toolbar */
+.hr-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--hrm-border);
+    background: rgba(244, 246, 242, 0.6);
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    touch-action: pan-x;
+    scrollbar-width: none;
+}
+
+.hr-card-actions::-webkit-scrollbar {
+    display: none;
+}
+
+.hr-card-actions .btn,
+.hr-card-actions .hr-card-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap;
+}
+
+.hr-card-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 7px 10px;
+    border-radius: var(--hrm-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: background 0.18s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+}
+
+.hr-card-btn:active {
+    transform: scale(0.96);
+}
+
+.hr-card-btn-primary {
+    background: var(--hrm-green);
+    color: var(--hrm-white);
+    border-color: var(--hrm-green);
+}
+
+.hr-card-btn-primary:hover {
+    background: var(--hrm-green-dark);
+    color: var(--hrm-white);
+}
+
+.hr-card-btn-outline {
+    background: transparent;
+    color: var(--hrm-green);
+    border-color: var(--hrm-border);
+}
+
+.hr-card-btn-outline:hover {
+    background: var(--hrm-bg);
+    color: var(--hrm-green);
+}
+
+.hr-card-btn-danger {
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--hrm-danger);
+    border-color: rgba(220, 38, 38, 0.15);
+}
+
+.hr-card-btn-gold {
+    background: var(--hrm-gold-light);
+    color: #7a5e0e;
+    border-color: rgba(203, 161, 53, 0.25);
+}
+
+/* Icon-only action button */
+.hr-card-btn-icon {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: var(--hrm-radius-sm);
+}
+
+/* Expandable card detail section (toggled by accordion) */
+.hr-card-detail {
+    padding: 0 14px;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.hr-card-detail.open {
+    max-height: 600px;
+    padding: 10px 14px 12px;
+}
+
+.hr-card-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--hrm-border);
+    font-size: 0.78rem;
+    gap: 8px;
+}
+
+.hr-card-detail-row:last-child {
+    border-bottom: none;
+}
+
+.hr-card-detail-label {
+    color: var(--hrm-muted);
+    font-weight: 500;
+    flex-shrink: 0;
+}
+
+.hr-card-detail-value {
+    color: var(--hrm-text);
+    font-weight: 600;
+    text-align: right;
+    word-break: break-word;
+}
+
+/* Card collapse toggle chevron */
+.hr-card-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 100%;
+    padding: 7px 14px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--hrm-muted);
+    background: none;
+    border: none;
+    border-top: 1px dashed var(--hrm-border);
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hr-card-toggle:hover {
+    color: var(--hrm-green);
+    background: rgba(8, 46, 6, 0.03);
+}
+
+.hr-card-toggle .toggle-chevron {
+    transition: transform 0.25s ease;
+    font-size: 0.7rem;
+}
+
+.hr-card-toggle.expanded .toggle-chevron {
+    transform: rotate(180deg);
+}
+
+
+/* ============================================================
+   5. SEARCH BAR & FILTER BOTTOM SHEET
+   ============================================================ */
+
+/* Mobile sticky search toolbar */
+.hr-mobile-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0 6px;
+    position: sticky;
+    top: 64px; /* below top-navbar */
+    z-index: 100;
+    background: var(--hrm-bg);
+}
+
+@media (min-width: 768px) {
+    .hr-mobile-search-bar {
+        position: static;
+    }
+}
+
+.hr-mobile-search-bar .hr-search-input-wrap {
+    flex: 1;
+    position: relative;
+}
+
+.hr-mobile-search-bar .hr-search-input {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px 0 38px;
+    border: 1.5px solid var(--hrm-border);
+    border-radius: 999px;
+    font-size: 0.875rem;
+    background: var(--hrm-white);
+    color: var(--hrm-text);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    /* Prevent iOS font-size zoom */
+    font-size: 16px;
+}
+
+.hr-mobile-search-bar .hr-search-input:focus {
+    border-color: var(--hrm-green);
+    box-shadow: 0 0 0 3px rgba(8, 46, 6, 0.08);
+}
+
+.hr-mobile-search-bar .hr-search-icon {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--hrm-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+/* Filter trigger button */
+.hr-filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 14px;
+    height: 42px;
+    border: 1.5px solid var(--hrm-border);
+    border-radius: 999px;
+    background: var(--hrm-white);
+    color: var(--hrm-text);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hr-filter-btn.active,
+.hr-filter-btn:focus {
+    background: var(--hrm-green);
+    border-color: var(--hrm-green);
+    color: var(--hrm-white);
+}
+
+.hr-filter-btn .hr-filter-count {
+    background: var(--hrm-gold);
+    color: #fff;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 0 5px;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Filter Sheet Backdrop */
+.hr-filter-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1060;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.hr-filter-backdrop.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Filter Sheet Drawer */
+.hr-filter-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1070;
+    background: var(--hrm-white);
+    border-radius: var(--hrm-radius-xl) var(--hrm-radius-xl) 0 0;
+    box-shadow: var(--hrm-shadow-lg);
+    padding: 0 0 calc(16px + var(--hrm-safe-bottom));
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    max-height: 85vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.hr-filter-sheet.open {
+    transform: translateY(0);
+}
+
+/* Drag handle */
+.hr-filter-sheet-handle {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 8px;
+}
+
+.hr-filter-sheet-handle::before {
+    content: '';
+    width: 36px;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 999px;
+}
+
+/* Filter sheet header */
+.hr-filter-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 20px 14px;
+    border-bottom: 1px solid var(--hrm-border);
+}
+
+.hr-filter-sheet-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--hrm-text);
+    margin: 0;
+}
+
+.hr-filter-clear-btn {
+    background: none;
+    border: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--hrm-danger);
+    cursor: pointer;
+    padding: 4px 0;
+    transition: opacity 0.2s ease;
+}
+
+.hr-filter-clear-btn:hover {
+    opacity: 0.75;
+}
+
+/* Filter sheet body */
+.hr-filter-sheet-body {
+    padding: 16px 20px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.hr-filter-group label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--hrm-muted);
+    margin-bottom: 8px;
+}
+
+.hr-filter-group select,
+.hr-filter-group input[type="date"],
+.hr-filter-group input[type="text"] {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    border: 1.5px solid var(--hrm-border);
+    border-radius: var(--hrm-radius-sm);
+    font-size: 16px; /* Prevents iOS zoom */
+    color: var(--hrm-text);
+    background: var(--hrm-bg);
+    outline: none;
+    appearance: none;
+    transition: border-color 0.2s ease;
+}
+
+.hr-filter-group select:focus,
+.hr-filter-group input:focus {
+    border-color: var(--hrm-green);
+    box-shadow: 0 0 0 3px rgba(8, 46, 6, 0.06);
+    background: var(--hrm-white);
+}
+
+/* Date row (from — to) */
+.hr-filter-date-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+/* Filter sheet apply button */
+.hr-filter-sheet-footer {
+    padding: 12px 20px 4px;
+    border-top: 1px solid var(--hrm-border);
+}
+
+.hr-filter-apply-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(135deg, var(--hrm-green) 0%, var(--hrm-green-mid) 100%);
+    color: var(--hrm-white);
+    border: none;
+    border-radius: var(--hrm-radius-sm);
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hr-filter-apply-btn:active {
+    transform: scale(0.98);
+    opacity: 0.92;
+}
+
+
+/* ============================================================
+   6. MODALS, ACTION SHEETS & WORKFLOW DRAWERS
+   ============================================================ */
+
+/* Full-screen modal on mobile */
+@media (max-width: 767.98px) {
+    body.hr-mobile-active .modal-dialog {
+        margin: 0;
+        width: 100%;
+        max-width: 100%;
+        height: 100%;
+        max-height: 100%;
+    }
+
+    body.hr-mobile-active .modal-content {
+        border-radius: 0;
+        min-height: 100vh;
+        border: none;
+    }
+}
+
+/* HR Action Drawer (e.g. Approve/Reject confirmation) */
+.hr-action-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1070;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.hr-action-backdrop.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.hr-action-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1080;
+    background: var(--hrm-white);
+    border-radius: var(--hrm-radius-xl) var(--hrm-radius-xl) 0 0;
+    padding: 0 20px calc(20px + var(--hrm-safe-bottom));
+    box-shadow: var(--hrm-shadow-lg);
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hr-action-sheet.open {
+    transform: translateY(0);
+}
+
+.hr-action-sheet-handle {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 8px;
+}
+
+.hr-action-sheet-handle::before {
+    content: '';
+    width: 36px;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 999px;
+}
+
+.hr-action-sheet-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--hrm-text);
+    text-align: center;
+    margin: 0 0 4px;
+}
+
+.hr-action-sheet-subtitle {
+    font-size: 0.8rem;
+    color: var(--hrm-muted);
+    text-align: center;
+    margin: 0 0 16px;
+}
+
+/* Score summary row inside action sheet */
+.hr-score-row {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 12px 0;
+    border-radius: var(--hrm-radius-md);
+    background: var(--hrm-bg);
+    margin-bottom: 16px;
+}
+
+.hr-score-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.hr-score-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--hrm-green);
+    line-height: 1;
+}
+
+.hr-score-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    color: var(--hrm-muted);
+}
+
+/* Remarks textarea */
+.hr-action-sheet textarea {
+    width: 100%;
+    border: 1.5px solid var(--hrm-border);
+    border-radius: var(--hrm-radius-sm);
+    padding: 10px 14px;
+    font-size: 15px;
+    color: var(--hrm-text);
+    resize: none;
+    outline: none;
+    background: var(--hrm-bg);
+    transition: border-color 0.2s ease;
+    margin-bottom: 14px;
+}
+
+.hr-action-sheet textarea:focus {
+    border-color: var(--hrm-green);
+    box-shadow: 0 0 0 3px rgba(8, 46, 6, 0.07);
+    background: var(--hrm-white);
+}
+
+/* Two-button action row */
+.hr-action-btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.hr-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    height: 48px;
+    border-radius: var(--hrm-radius-sm);
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.2s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hr-action-btn:active {
+    transform: scale(0.97);
+    opacity: 0.9;
+}
+
+.hr-action-btn-approve {
+    background: linear-gradient(135deg, var(--hrm-green) 0%, var(--hrm-green-mid) 100%);
+    color: var(--hrm-white);
+}
+
+.hr-action-btn-reject {
+    background: rgba(220, 38, 38, 0.09);
+    color: var(--hrm-danger);
+    border: 1.5px solid rgba(220, 38, 38, 0.2);
+}
+
+.hr-action-btn-return {
+    background: rgba(245, 158, 11, 0.10);
+    color: #92580a;
+    border: 1.5px solid rgba(245, 158, 11, 0.25);
+}
+
+/* Full-width single action button */
+.hr-action-btn-full {
+    grid-column: 1 / -1;
+}
+
+
+/* ============================================================
+   7. DASHBOARD WIDGETS & CHART SCALING (mobile overrides)
+   ============================================================ */
+@media (max-width: 767.98px) {
+
+    /* Compact stat card layout for mobile */
+    body.hr-mobile-active .stat-card {
+        padding: 14px 12px;
+        gap: 12px;
+        border-radius: var(--hrm-radius-md);
+    }
+
+    body.hr-mobile-active .stat-card .stat-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 1.1rem;
+        border-radius: 10px;
+        flex-shrink: 0;
+    }
+
+    body.hr-mobile-active .stat-value,
+    body.hr-mobile-active .stat-card .stat-info h3 {
+        font-size: 1.35rem !important;
+    }
+
+    body.hr-mobile-active .stat-label,
+    body.hr-mobile-active .stat-card .stat-info p {
+        font-size: 0.68rem !important;
+    }
+
+    /* Content card spacing on mobile */
+    body.hr-mobile-active .content-card .card-header,
+    body.hr-mobile-active .content-card .content-card-header {
+        padding: 14px 14px;
+    }
+
+    body.hr-mobile-active .content-card .card-body,
+    body.hr-mobile-active .content-card .content-card-body {
+        padding: 14px;
+    }
+
+    body.hr-mobile-active .content-card .card-header h5,
+    body.hr-mobile-active .content-card .content-card-title {
+        font-size: 0.9rem !important;
+    }
+
+    /* Reduce chart height to conserve screen real estate */
+    body.hr-mobile-active .chart-container {
+        height: 220px !important;
+        max-height: 220px !important;
+    }
+
+    body.hr-mobile-active .chart-container canvas {
+        max-height: 220px !important;
+    }
+
+    /* Approval queue preview cards on mobile dashboard */
+    body.hr-mobile-active .queue-employee-card {
+        padding: 12px !important;
+    }
+
+    /* Smaller avatar in queue cards */
+    body.hr-mobile-active .queue-employee-card img,
+    body.hr-mobile-active .queue-employee-card .employee-avatar {
+        width: 38px !important;
+        height: 38px !important;
+    }
+
+    /* Truncate long evaluation template names on mobile */
+    body.hr-mobile-active .eval-template-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 180px;
+        display: inline-block;
+    }
+
+    /* Table action buttons in mobile compact mode */
+    body.hr-mobile-active .table td .btn-group .btn,
+    body.hr-mobile-active .table td .btn {
+        padding: 4px 8px;
+        font-size: 0.72rem;
+    }
+
+    /* Breadcrumb hide on mobile */
+    body.hr-mobile-active .breadcrumb {
+        display: none !important;
+    }
+
+    /* Section header typography adjustments */
+    body.hr-mobile-active h4 {
+        font-size: 1.05rem !important;
+    }
+
+    body.hr-mobile-active h5 {
+        font-size: 0.95rem !important;
+    }
+}
+
+
+/* ============================================================
+   8. MOBILE EMPTY STATE, LOADING INDICATORS
+   ============================================================ */
+.hr-mobile-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--hrm-muted);
+}
+
+.hr-mobile-empty .hr-empty-icon {
+    font-size: 2.8rem;
+    opacity: 0.25;
+    margin-bottom: 12px;
+}
+
+.hr-mobile-empty p {
+    font-size: 0.85rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Skeleton loading shimmer for card list */
+@keyframes hrShimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+}
+
+.hr-card-skeleton {
+    background: var(--hrm-white);
+    border-radius: var(--hrm-radius-md);
+    border: 1px solid var(--hrm-border);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.hr-skeleton-line {
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ebebeb 25%, #f5f5f5 50%, #ebebeb 75%);
+    background-size: 400px 100%;
+    animation: hrShimmer 1.4s ease infinite;
+}
+
+.hr-skeleton-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: linear-gradient(90deg, #ebebeb 25%, #f5f5f5 50%, #ebebeb 75%);
+    background-size: 400px 100%;
+    animation: hrShimmer 1.4s ease infinite;
+}
+
+/* ============================================================
+   9. ACCESSIBILITY & UTILITY OVERRIDES
+   ============================================================ */
+
+/* 44px minimum touch target on all interactive elements */
+@media (max-width: 991.98px) {
+    body.hr-mobile-active .btn,
+    body.hr-mobile-active button,
+    body.hr-mobile-active [role="button"],
+    body.hr-mobile-active a.dropdown-item {
+        min-height: 40px;
+    }
+}
+
+/* Smooth momentum scroll for overflowing containers */
+body.hr-mobile-active {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text-size-adjust on rotation */
+body.hr-mobile-active {
+    -webkit-text-size-adjust: 100%;
+}
+
+/* Remove tap highlight on all interactive elements */
+@media (max-width: 991.98px) {
+    body.hr-mobile-active a,
+    body.hr-mobile-active button {
+        -webkit-tap-highlight-color: transparent;
+    }
+}

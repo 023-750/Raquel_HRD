@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $page_title = 'Career Movements';
 require_once '../includes/session-check.php';
 checkRole(['HR Manager']);
@@ -147,7 +147,8 @@ function mgrCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
         </div>
     </div>
     <div class="cc-body p-0">
-        <div class="table-responsive">
+        <!-- Desktop Table (hidden on mobile) -->
+        <div class="table-responsive d-none d-md-block">
             <table class="table modern-table align-middle mb-0" id="mgrMovTable">
                 <thead>
                     <tr>
@@ -240,6 +241,82 @@ function mgrCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                     <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Card List View (visible only on mobile) -->
+        <div class="hr-card-list d-block d-md-none p-3" id="mgrMovMobileList">
+            <?php if (empty($movements)): ?>
+                <div class="hr-mobile-empty">
+                    <i class="fas fa-route hr-empty-icon"></i>
+                    <p>No career movements have been submitted yet.</p>
+                </div>
+            <?php else: ?>
+                <?php foreach ($movements as $mv):
+                    $is_pending = $mv['approval_status'] === 'Pending';
+                    $is_hr_staff_req = ($mv['request_source']==='HR Portal' && ($mv['initiated_by_role']??'')==='HR Staff');
+                ?>
+                <div class="hr-mobile-card mb-3" data-mov-search="<?php echo e(strtolower($mv['employee_name'] . ' ' . $mv['movement_type'] . ' ' . $mv['new_position'])); ?>">
+                    <div class="hr-mobile-card-body">
+                        <div class="hr-card-avatar-initials">
+                            <?php echo strtoupper(substr($mv['employee_name'], 0, 1)); ?>
+                        </div>
+                        <div class="hr-card-info">
+                            <div class="hr-card-name"><?php echo e($mv['employee_name']); ?></div>
+                            <div class="hr-card-sub"><?php echo e(getEmployeeDisplayId($mv)); ?> &middot; <?php echo e($mv['current_job_title']); ?></div>
+                            <div class="hr-card-tags mt-1">
+                                <span class="badge <?php echo mgrCmTypeClass($mv['movement_type']); ?>"><?php echo e($mv['movement_type']); ?></span>
+                                <span class="badge <?php echo mgrCmStatusClass($mv['approval_status']); ?>"><?php echo e($mv['approval_status']); ?></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hr-card-detail open p-3 bg-light border-top border-bottom">
+                        <div class="hr-card-detail-row">
+                            <span class="hr-card-detail-label">Position Change</span>
+                            <span class="hr-card-detail-value">
+                                <small class="text-muted d-block"><?php echo e($mv['previous_position']?:'N/A'); ?></small>
+                                <strong><?php echo e($mv['new_position']); ?></strong>
+                            </span>
+                        </div>
+                        <?php if (!empty($mv['new_branch_id'])): ?>
+                        <div class="hr-card-detail-row">
+                            <span class="hr-card-detail-label">Branch Change</span>
+                            <span class="hr-card-detail-value">
+                                <small class="text-muted d-block"><?php echo e($mv['previous_branch_name']?:'N/A'); ?></small>
+                                <strong><?php echo e($mv['new_branch_name']?:'N/A'); ?></strong>
+                            </span>
+                        </div>
+                        <?php endif; ?>
+                        <div class="hr-card-detail-row">
+                            <span class="hr-card-detail-label">Effective Date</span>
+                            <span class="hr-card-detail-value"><?php echo formatDate($mv['effective_date']); ?></span>
+                        </div>
+                        <?php if (!empty($mv['reason'])): ?>
+                        <div class="hr-card-detail-row">
+                            <span class="hr-card-detail-label">Reason</span>
+                            <span class="hr-card-detail-value text-start"><?php echo e($mv['reason']); ?></span>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php if ($is_pending): ?>
+                    <div class="hr-card-actions">
+                        <form method="POST" class="w-50 me-1">
+                            <input type="hidden" name="movement_id" value="<?php echo (int)$mv['movement_id']; ?>">
+                            <input type="hidden" name="movement_action" value="Approve">
+                            <button type="submit" class="hr-card-btn hr-card-btn-primary w-100" onclick="return confirm('Approve this career movement?');">
+                                <i class="fas fa-check me-1"></i>Approve
+                            </button>
+                        </form>
+                        <button type="button" class="hr-card-btn hr-card-btn-danger w-50 ms-1"
+                            data-bs-toggle="modal" data-bs-target="#mgrRejectModal"
+                            data-mvid="<?php echo (int)$mv['movement_id']; ?>"
+                            data-empname="<?php echo e($mv['employee_name']); ?>">
+                            <i class="fas fa-times me-1"></i>Reject
+                        </button>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
 </div>
