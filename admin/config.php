@@ -6,6 +6,7 @@ require_once '../includes/functions.php';
 
 // Handle Post Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
+    verifyCsrfToken();
     $settings_to_save = [
         'company_name' => $_POST['company_name'],
         'contact_email' => $_POST['contact_email'],
@@ -56,6 +57,7 @@ while ($row = $settings_res->fetch_assoc()) {
     </div>
 
     <form method="POST" action="" class="fadeup-1">
+        <?php echo csrfField(); ?>
         <div class="row g-4">
             <!-- General Settings -->
             <div class="col-lg-6">

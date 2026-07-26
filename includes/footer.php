@@ -421,4 +421,37 @@ if (in_array($_ft_role, ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin'])):
 <script src="<?php echo BASE_URL; ?>/assets/js/hr-department-mobile.js?v=<?php echo time(); ?>" defer></script>
 <?php endif; ?>
 </body>
+<!-- Global CSRF token injection for fetch() and jQuery AJAX -->
+<script>
+(function () {
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (!csrfMeta) return;
+    var csrfToken = csrfMeta.getAttribute('content');
+    if (!csrfToken) return;
+
+    // Patch native fetch — auto-add header on non-GET requests
+    var _origFetch = window.fetch;
+    window.fetch = function (url, opts) {
+        opts = opts || {};
+        var method = (opts.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            opts.headers = Object.assign({}, opts.headers || {}, {
+                'X-CSRF-Token': csrfToken
+            });
+        }
+        return _origFetch.call(this, url, opts);
+    };
+
+    // Patch jQuery AJAX if loaded
+    if (typeof $ !== 'undefined' && typeof $.ajaxSetup === 'function') {
+        $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                if (settings.type && settings.type.toUpperCase() !== 'GET') {
+                    xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+                }
+            }
+        });
+    }
+})();
+</script>
 </html>

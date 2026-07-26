@@ -8,6 +8,84 @@
 
 
 
+// ============================================
+// CSRF Protection
+// ============================================
+
+/**
+ * Generate (or retrieve) the session-scoped CSRF token.
+ * Call this on any page that renders a POST form.
+ */
+function generateCsrfToken(): string
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Render a hidden CSRF input field for use inside HTML forms.
+ */
+function csrfField(): string
+{
+    $token = generateCsrfToken();
+    return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($token, ENT_QUOTES, 'UTF-8') . '">';
+}
+
+/**
+ * Verify the CSRF token submitted with a POST request.
+ * Accepts token from POST body (forms) or X-CSRF-Token header (AJAX/fetch).
+ * Immediately terminates the request with 403 if invalid.
+ */
+function verifyCsrfToken(): void
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        return;
+    }
+
+    $submitted = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+
+    if (empty($submitted) && function_exists('getallheaders')) {
+        $headers = array_change_key_case(getallheaders(), CASE_LOWER);
+        $submitted = $headers['x-csrf-token'] ?? '';
+    }
+
+    $expected = $_SESSION['csrf_token'] ?? '';
+
+    if (empty($expected) || !hash_equals($expected, $submitted)) {
+        http_response_code(403);
+        $is_ajax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                   || str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json')
+                   || str_contains($_SERVER['HTTP_CONTENT_TYPE'] ?? ($_SERVER['CONTENT_TYPE'] ?? ''), 'application/json')
+                   || str_contains($_SERVER['REQUEST_URI'] ?? '', '/ajax/')
+                   || str_contains($_SERVER['SCRIPT_NAME'] ?? '', '/ajax/');
+        if ($is_ajax) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid CSRF token. Please refresh the page and try again.',
+            ]);
+        } else {
+            echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Security Error</title>'
+               . '<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f8f9fa;}'
+               . '.card{background:#fff;border-radius:12px;padding:2.5rem;max-width:420px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.1);}'
+               . '.icon{font-size:3rem;margin-bottom:1rem;}.btn{display:inline-block;margin-top:1.5rem;padding:.75rem 2rem;background:#d32f2f;color:#fff;'
+               . 'border-radius:8px;text-decoration:none;font-weight:600;}</style></head>'
+               . '<body><div class="card"><div class="icon">&#x26a0;&#xfe0f;</div>'
+               . '<h2 style="color:#d32f2f;margin:0 0 .5rem">Security Error</h2>'
+               . '<p style="color:#555;margin:0">Invalid or missing CSRF token.<br>Please go back and try again.</p>'
+               . '<a class="btn" href="javascript:history.back()">&#8592; Go Back</a></div></body></html>';
+        }
+        exit;
+    }
+}
+
+
+
 /**
 
  * Sanitize output to prevent XSS

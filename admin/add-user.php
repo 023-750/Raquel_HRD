@@ -5,6 +5,7 @@ checkRole(['Admin']);
 require_once '../includes/functions.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
     $username = trim($_POST['username'] ?? '');
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
     $full_name = trim($_POST['full_name'] ?? '');

@@ -5,6 +5,7 @@ checkRole(['HR Manager']);
 require_once '../includes/functions.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    verifyCsrfToken();
     $action = $_POST['action'];
 
     if ($action === 'add_position' || $action === 'edit_position') {
@@ -462,6 +463,7 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="">
+                <?php echo csrfField(); ?>
                 <input type="hidden" name="action" value="add_position">
                 <div class="modal-header bg-primary text-white" id="addPositionModalHeader">
                     <h5 class="modal-title" id="addPositionModalTitle"><i class="fas fa-plus me-2"></i>Add Position</h5>
@@ -531,6 +533,7 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="">
+                <?php echo csrfField(); ?>
                 <input type="hidden" name="action" value="edit_position">
                 <input type="hidden" name="position_id" id="editPositionId">
                 <div class="modal-header bg-primary text-white">

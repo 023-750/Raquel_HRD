@@ -7,6 +7,7 @@ require_once '../../includes/session-check.php';
 checkRole(['Employee']);
 require_once '../../includes/functions.php';
 header('Content-Type: application/json');
+verifyCsrfToken();
 
 $employee_id = (int)($_SESSION['employee_id'] ?? 0);
 $user_id     = (int)$_SESSION['user_id'];

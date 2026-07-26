@@ -13,6 +13,7 @@ $current_user_id = (int)($_SESSION['user_id'] ?? 0);
 
 // ── POST: Approve / Reject (HR Manager has full access — no self-approval restriction) ──
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movement_action'])) {
+    verifyCsrfToken();
     if (!$movement_ready) {
         redirectWith(BASE_URL . '/manager/career-movements.php', 'danger', 'Career Movements could not be initialized.');
     }
@@ -214,6 +215,7 @@ function mgrCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                             <td class="text-end">
                                 <?php if ($is_pending): ?>
                                     <form method="POST" class="d-inline">
+                                        <?php echo csrfField(); ?>
                                         <input type="hidden" name="movement_id" value="<?php echo (int)$mv['movement_id']; ?>">
                                         <input type="hidden" name="movement_action" value="Approve">
                                         <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Approve this career movement?');"><i class="fas fa-check me-1"></i>Approve</button>
@@ -300,6 +302,7 @@ function mgrCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                     <?php if ($is_pending): ?>
                     <div class="hr-card-actions">
                         <form method="POST" class="w-50 me-1">
+                            <?php echo csrfField(); ?>
                             <input type="hidden" name="movement_id" value="<?php echo (int)$mv['movement_id']; ?>">
                             <input type="hidden" name="movement_action" value="Approve">
                             <button type="submit" class="hr-card-btn hr-card-btn-primary w-100" onclick="return confirm('Approve this career movement?');">
@@ -330,6 +333,7 @@ function mgrCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST">
+                <?php echo csrfField(); ?>
                 <input type="hidden" name="movement_id" id="mgrRejectMvId">
                 <input type="hidden" name="movement_action" value="Reject">
                 <div class="modal-body">

@@ -110,6 +110,7 @@ $employeeLiabilities = $conn->query("SELECT * FROM employee_liabilities WHERE em
 $employeeRefs = $conn->query("SELECT * FROM employee_references WHERE employee_id = $eid ORDER BY reference_id")->fetch_all(MYSQLI_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
     // Section 1
     $first_name = trim($_POST['first_name'] ?? '');
     $last_name = trim($_POST['last_name'] ?? '');
@@ -727,6 +728,7 @@ $stepLabels = [
     </div>
     <div class="card-body">
         <form method="POST" action="" id="editEmployeeForm" enctype="multipart/form-data" data-is-edit="true">
+            <?php echo csrfField(); ?>
             <input type="hidden" name="return_to" value="<?php echo e($return_to); ?>">
             
             <!-- Wizard Header / Progress (matches Employee PDS wizard UX) -->

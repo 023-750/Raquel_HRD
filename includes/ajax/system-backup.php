@@ -1,6 +1,8 @@
 <?php
 require_once '../../includes/session-check.php';
 checkRole(['Admin']);
+require_once '../../includes/functions.php';
+verifyCsrfToken();
 
 $db_host = DB_HOST;
 $db_user = DB_USER;

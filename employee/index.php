@@ -13,6 +13,7 @@ if (isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'Employee' && (
 
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
@@ -172,6 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <form method="POST" action="<?php echo BASE_URL; ?>/index.php" id="hrisForm">
+              <?php echo csrfField(); ?>
               <div class="field">
                 <label for="hris-username">Username</label>
                 <div class="iwrap">
@@ -229,6 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <form method="POST" action="index.php" id="essForm">
+              <?php echo csrfField(); ?>
               <div class="field">
                 <label for="ess-username">Employee ID / Username</label>
                 <div class="iwrap">

@@ -52,7 +52,7 @@ $error = '';
 
 // Handle login form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
+    verifyCsrfToken();
     $username = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
@@ -279,6 +279,7 @@ render_login:
             </div>
 
             <form method="POST" action="index.php" id="hrisForm">
+              <?php echo csrfField(); ?>
               <div class="field">
                 <label for="hris-username">Username</label>
                 <div class="iwrap">
@@ -336,6 +337,7 @@ render_login:
             </div>
 
             <form method="POST" action="<?php echo BASE_URL; ?>/employee/index.php" id="essForm">
+              <?php echo csrfField(); ?>
               <div class="field">
                 <label for="ess-username">Username</label>
                 <div class="iwrap">

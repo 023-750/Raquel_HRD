@@ -479,6 +479,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="add-user.php" class="portal-input-group mb-0">
+                <?php echo csrfField(); ?>
                 <div class="modal-body p-4">
                     <input type="hidden" name="employee_id" id="modal_employee_id">
                     <input type="hidden" name="full_name" id="modal_full_name">

@@ -45,6 +45,11 @@ if (!empty($_SESSION['employee_id'])) {
     $emp_stmt->close();
 }
 
+// Verify CSRF token on POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
+}
+
 // Handle Profile Picture Upload
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_photo') {
     if (isset($_FILES['profile_photo']) && $_FILES['profile_photo']['error'] === UPLOAD_ERR_OK) {
@@ -328,6 +333,7 @@ require_once __DIR__ . '/header.php';
                             <p class="text-muted small">Update your display name and email address.</p>
                         </div>
                         <form method="POST">
+                            <?php echo csrfField(); ?>
                             <input type="hidden" name="action" value="update_profile">
                             <div class="row g-3">
                                 <div class="col-md-6">
@@ -368,6 +374,7 @@ require_once __DIR__ . '/header.php';
                             <p class="text-muted small">Ensure your account uses a strong password for security.</p>
                         </div>
                         <form method="POST" id="passwordForm">
+                            <?php echo csrfField(); ?>
                             <input type="hidden" name="action" value="change_password">
                             <div class="row g-3">
                                 <div class="col-md-12">
@@ -491,6 +498,7 @@ require_once __DIR__ . '/header.php';
             </div>
             <div class="modal-body">
                 <form method="POST" enctype="multipart/form-data" id="photoForm">
+                    <?php echo csrfField(); ?>
                     <input type="hidden" name="action" value="upload_photo">
                     <div class="text-center mb-3">
                         <img src="<?php echo $current_avatar; ?>" class="rounded-circle shadow-sm mb-3" id="photoPreview"

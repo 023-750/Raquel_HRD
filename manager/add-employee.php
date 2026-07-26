@@ -8,6 +8,10 @@ require_once '../includes/functions.php';
 $emp = $_SESSION['form_draft'] ?? [];
 unset($_SESSION['form_draft']); // Clear it after retrieving to avoid stale data
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
     require_once '../includes/functions.php';
     if (!isset($_FILES['employee_csv']) || $_FILES['employee_csv']['error'] !== UPLOAD_ERR_OK) {
@@ -936,6 +940,7 @@ $stepLabels = [
     </div>
     <div class="card-body">
         <form method="POST" action="" id="addEmployeeForm" enctype="multipart/form-data" data-is-edit="false">
+            <?php echo csrfField(); ?>
             <!-- Wizard Header / Progress (matches Employee PDS wizard UX) -->
             <div class="pds-progress-container mb-3">
                 <div class="pds-progress-wrapper">
@@ -1023,6 +1028,7 @@ $stepLabels = [
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="" enctype="multipart/form-data">
+                <?php echo csrfField(); ?>
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title" id="importModalLabel"><i class="fas fa-file-csv me-2"></i>Import Employees
                         from CSV</h5>

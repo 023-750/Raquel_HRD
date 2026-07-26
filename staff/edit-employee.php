@@ -110,6 +110,7 @@ $employeeRefs         = $conn->query("SELECT * FROM employee_references WHERE em
 // POST: capture diff and save change request
 // ──────────────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$existingPending) {
+    verifyCsrfToken();
 
     $submitted_by = (int) $_SESSION['user_id'];
 
@@ -348,6 +349,7 @@ $stepLabels = [
     <div class="card-body">
         <form method="POST" action="" id="editEmployeeForm" enctype="multipart/form-data" data-is-edit="true"
             <?php echo $existingPending ? 'style="pointer-events:none;opacity:.55;"' : ''; ?>>
+            <?php echo csrfField(); ?>
 
             <!-- Wizard Header / Progress -->
             <div class="pds-progress-container mb-3">

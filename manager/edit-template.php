@@ -17,6 +17,7 @@ if (!$tmpl) {
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
     $template_name = trim($_POST['template_name'] ?? '');
     $description = trim($_POST['description'] ?? '');
     $target_department = trim($_POST['target_department'] ?? '');
@@ -132,6 +133,7 @@ require_once '../includes/header.php';
 </div>
 
 <form method="POST" action="" id="templateForm">
+    <?php echo csrfField(); ?>
 
     <!-- Template Info -->
     <div class="content-card mb-4 border-0 shadow-sm border-start border-4 border-primary">

@@ -1,9 +1,11 @@
 <?php
 // AJAX endpoint to mark all notifications as read
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../functions.php';
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_SESSION['user_id'])) {
+    verifyCsrfToken();
     $session_user_id = (int)$_SESSION['user_id'];
     $stmt = $conn->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0");
     $stmt->bind_param("i", $session_user_id);

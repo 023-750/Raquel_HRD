@@ -6,6 +6,7 @@ checkRole(['HR Manager']);
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once '../includes/functions.php';
+    verifyCsrfToken();
 
     $template_name = trim($_POST['template_name'] ?? '');
     $description = trim($_POST['description'] ?? '');
@@ -271,6 +272,7 @@ require_once '../includes/header.php';
 </div>
 
 <form method="POST" action="" id="templateForm" class="fadeup-1">
+<?php echo csrfField(); ?>
 
 <!-- Template Info Card -->
 <div class="content-card mb-4 border-0 shadow-sm border-start border-4 border-primary">

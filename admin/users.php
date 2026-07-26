@@ -409,6 +409,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="<?php echo BASE_URL; ?>/admin/add-user.php" enctype="multipart/form-data">
+                <?php echo csrfField(); ?>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Select Employee <span class="text-danger">*</span></label>
@@ -481,6 +482,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="<?php echo BASE_URL; ?>/admin/add-user.php">
+                <?php echo csrfField(); ?>
                 <div class="modal-body">
                     <div class="alert alert-info py-2 small">
                         <i class="fas fa-info-circle me-1"></i>Admin accounts are standalone and are not linked to employee records.

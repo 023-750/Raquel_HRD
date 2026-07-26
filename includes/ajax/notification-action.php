@@ -4,6 +4,7 @@
 // Handles: mark_read, mark_unread, delete, delete_all_read, mark_all_read
 // ============================================
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../functions.php';
 
 header('Content-Type: application/json');
 
@@ -11,6 +12,8 @@ if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'error' => 'Unauthorized']);
     exit;
 }
+
+verifyCsrfToken();
 
 $user_id = (int) $_SESSION['user_id'];
 $action = $_POST['action'] ?? '';

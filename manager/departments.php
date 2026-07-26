@@ -6,6 +6,7 @@ require_once '../includes/functions.php';
 
 // ─── Handle ADD ──────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    verifyCsrfToken();
 
     if ($_POST['action'] === 'add') {
         $name = trim($_POST['department_name'] ?? '');
@@ -315,6 +316,7 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="">
+                <?php echo csrfField(); ?>
                 <input type="hidden" name="action" value="add">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Add Department</h5>
@@ -346,6 +348,7 @@ $department_employee_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM emp
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="">
+                <?php echo csrfField(); ?>
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="department_id" id="editDeptId">
                 <div class="modal-header bg-primary text-white">

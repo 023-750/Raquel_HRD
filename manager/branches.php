@@ -30,6 +30,7 @@ if (isset($_GET['download_sample'])) {
 
 // ─── Handle ADD ──────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    verifyCsrfToken();
 
     if ($_POST['action'] === 'add') {
         $name = trim($_POST['branch_name'] ?? '');
@@ -416,6 +417,7 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="" enctype="multipart/form-data">
+                <?php echo csrfField(); ?>
                 <input type="hidden" name="action" value="import_csv">
                 <div class="modal-header bg-success text-white">
                     <h5 class="modal-title"><i class="fas fa-file-csv me-2"></i>Import Branches via CSV</h5>
@@ -448,6 +450,7 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="">
+                <?php echo csrfField(); ?>
                 <input type="hidden" name="action" value="add">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title"><i class="fas fa-plus me-2"></i>Add New Branch</h5>
@@ -479,6 +482,7 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="">
+                <?php echo csrfField(); ?>
                 <input type="hidden" name="action" value="edit">
                 <input type="hidden" name="branch_id" id="editBranchId">
                 <div class="modal-header" style="background:var(--primary);color:#fff;">

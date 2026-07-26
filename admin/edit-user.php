@@ -31,6 +31,7 @@ $is_standalone_admin = ($user['role'] === 'Admin' && empty($user['employee_id'])
 
 // ── Handle form submission ────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
     $username   = trim($_POST['username']  ?? '');
     $email      = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
     $full_name  = trim($_POST['full_name'] ?? '');
@@ -137,6 +138,7 @@ $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
     </div>
     <div class="card-body">
         <form method="POST" action="" enctype="multipart/form-data">
+            <?php echo csrfField(); ?>
             <div class="row mb-4 text-center">
                 <div class="col-12">
                     <div class="position-relative d-inline-block">

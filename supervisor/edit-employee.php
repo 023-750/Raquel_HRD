@@ -122,6 +122,7 @@ $employeeLiabilities = $conn->query("SELECT * FROM employee_liabilities WHERE em
 $employeeRefs = $conn->query("SELECT * FROM employee_references WHERE employee_id = $eid ORDER BY reference_id")->fetch_all(MYSQLI_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
     // Section 1
     $first_name = trim($_POST['first_name'] ?? '');
     $last_name = trim($_POST['last_name'] ?? '');
@@ -211,9 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $employee_code = null;
     // Supervisors may edit the employee profile, but activation/deactivation remains restricted.
     $is_active = (int) ($emp['is_active'] ?? 1);
-    $emergency_contact_name = trim($_POST['emergency_contact_name'] ?? '');
-    $emergency_contact_relationship = trim($_POST['emergency_contact_relationship'] ?? '');
-    $emergency_contact_number = trim($_POST['emergency_contact_number'] ?? '');
+    // Emergency contact fields are arrays — handled in section 5 save block below
     $contract_start_date = !empty($_POST['contract_start_date']) ? $_POST['contract_start_date'] : null;
     $contract_end_date = !empty($_POST['contract_end_date']) ? $_POST['contract_end_date'] : null;
 
@@ -744,6 +743,7 @@ $stepLabels = [
     </div>
     <div class="card-body">
         <form method="POST" action="" id="editEmployeeForm" enctype="multipart/form-data" data-is-edit="true">
+            <?php echo csrfField(); ?>
             <input type="hidden" name="return_to" value="<?php echo e($return_to); ?>">
             
             <!-- Wizard Header / Progress (matches Employee PDS wizard UX) -->

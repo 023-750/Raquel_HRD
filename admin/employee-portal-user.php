@@ -49,7 +49,11 @@ if (empty($user['employee_id'])) {
     redirectWith(BASE_URL . '/admin/employee-accounts.php?page=' . $page . ($dept > 0 ? '&department=' . $dept : ''), 'danger', 'This portal account is not linked to an employee record.');
 }
 
-// ── Handle delete ─────────────────────────────────────────────────────────────
+// ── Handle delete & update ───────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'delete_portal_user') {
     $confirm = (string)($_POST['confirm_delete'] ?? '');
     if ($confirm !== 'DELETE') {
@@ -251,6 +255,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
     </div>
     <div class="epu-form-card-body">
         <form method="POST" id="updatePortalForm">
+            <?php echo csrfField(); ?>
             <div class="row g-4">
                 <div class="col-md-6">
                     <label class="epu-field-label" for="portal_username">Portal Username</label>
@@ -363,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
             <i class="fas fa-times me-2"></i>Cancel
         </button>
         <form method="POST" id="deletePortalForm" class="d-inline">
+          <?php echo csrfField(); ?>
           <input type="hidden" name="action" value="delete_portal_user">
           <button type="submit" class="epu-btn-delete-confirm">
             <i class="fas fa-trash-alt me-2"></i>Delete Account
