@@ -18,4 +18,6 @@ Department
 Personal Note:
 > Test the remaining department (evaluation)
 
-ccyc!
+powershell command under (Cloudflared) - [C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe]:
+
+.\cloudflared.exe tunnel --url http://localhost/Raquel_HRD_System/
