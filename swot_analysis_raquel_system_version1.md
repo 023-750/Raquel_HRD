@@ -4,7 +4,7 @@
 
 > **Client:** Raquel Pawnshop  
 > **Stack:** PHP 7.4+ · MySQL/MariaDB · Bootstrap 5 · Chart.js · XAMPP  
-> **Date:** July 26, 2026  
+> **Date:** July 26, 2026 · *Updated: July 27, 2026 (post code-level audit)*  
 > **Scope:** Multi-role, multi-branch HRIS covering employee records, real-time performance analytics, career management, Personal Data Sheet (PDS), and audit trails across 11 departments.
 
 ---
@@ -29,6 +29,8 @@
 | **S13** | **Flexible evaluation templates** | Templates support multiple scoring methods (Scale 1–4, 1–5, 1–10, Percentage), lifecycle states (Draft → Active → Archived), and custom KRA/Behavior weight ratios |
 | **S14** | **Soft-delete data protection** | `deleted_at` timestamps used across all major entities — no permanent data loss on deactivation |
 | **S15** | **Performance-indexed database** | Composite indexes on high-frequency columns (`role`, `is_active`, `deleted_at`, `status`) with a dedicated `LAST_performance_indexes.sql` for post-seed optimization |
+| **S16** | **CSRF protection on all POST forms and AJAX requests** | `includes/functions.php` implements `generateCsrfToken()`, `csrfField()`, and `verifyCsrfToken()` — active across all role portals; `includes/footer.php` globally injects `X-CSRF-Token` header for all fetch() and jQuery AJAX calls — previously listed as W1, now confirmed fully implemented |
+| **S17** | **Brute-force login protection** | `checkLoginBruteForce()` and `registerLoginAttempt()` in `includes/functions.php` throttle failed logins per username/IP; failed and successful logins both trigger Admin security alert notifications via the notification system |
 
 ---
 
@@ -37,7 +39,7 @@
 
 | # | Weakness | Evidence |
 |---|----------|----------|
-| **W1** | **No CSRF protection on any POST form** | `proposals.md` #24 confirms zero CSRF tokens across all forms — a critical vulnerability for a system storing sensitive HR and government ID data |
+| ~~**W1**~~ | ~~**No CSRF protection on any POST form**~~ | ✅ **Resolved — see S16.** CSRF is fully implemented via `generateCsrfToken()`, `csrfField()`, and `verifyCsrfToken()` in `includes/functions.php`. Global AJAX coverage in `includes/footer.php`. This item has been promoted to a Strength. |
 | **W2** | **No 2FA for high-privilege accounts** | Admin, HR Manager, and HR Supervisor have no second factor; one compromised password grants full organizational access and analytics |
 | **W3** | **No evaluation deadline enforcement** | The `evaluations` table has no `due_date` column; evaluations can remain "Pending Self-Rating" indefinitely, distorting performance records |
 | **W4** | **Remember Me stores plain username in cookie** | `index.php` saves raw username in a cookie without a rotating token or IP fingerprint — susceptible to session fixation or replay attacks |
@@ -60,7 +62,7 @@
 
 | # | Opportunity | Strategic Rationale |
 |---|-------------|---------------------|
-| **O1** | **CSRF & 2FA security hardening** | RA 10173 (Data Privacy Act of the Philippines) compliance mandates protection of PII — REVAL stores SSS, PhilHealth, Pag-IBIG, TIN numbers and health disclosures |
+| **O1** | **2FA security hardening** | RA 10173 (Data Privacy Act of the Philippines) compliance mandates strong authentication for systems storing PII — REVAL stores SSS, PhilHealth, Pag-IBIG, TIN numbers and health disclosures. CSRF is already implemented (S16); implementing Email OTP / TOTP-based 2FA for Admin, Manager, and Supervisor accounts is the remaining critical security gap |
 | **O2** | **Evaluation deadline engine** | Automating due-date alerts and overdue flags directly reduces HR workload and guarantees timely performance cycle completion |
 | **O3** | **Department performance heatmap** | Adding color-coded heatmap views to the existing analytics dashboard turns REVAL from a reporting tool into an executive decision-support platform |
 | **O4** | **Succession planning module** | As Raquel Pawnshop grows branches, identifying pipeline candidates for critical positions becomes a strategic HR priority — the schema already supports it |
@@ -80,7 +82,7 @@
 
 | # | Threat | Risk Level |
 |---|--------|------------|
-| **T1** | **Data Privacy Act (RA 10173) non-compliance** | 🔴 High — REVAL stores health disclosures, government IDs, and criminal history flags. Missing CSRF and no 2FA create legal exposure for the organization |
+| **T1** | **Data Privacy Act (RA 10173) non-compliance** | 🔴 High — REVAL stores health disclosures, government IDs, and criminal history flags. CSRF is now resolved (S16); the remaining legal exposure is the absence of 2FA for high-privilege accounts and unencrypted HTTP transit (no SSL on XAMPP) |
 | **T2** | **XAMPP deployed as a production server** | 🔴 High — XAMPP's default configuration exposes phpMyAdmin publicly, has no SSL, and has permissive PHP error reporting — not hardened for internet-facing deployment |
 | **T3** | **No automated backup = single point of failure** | 🔴 High — A disk failure, accidental deletion, or ransomware event with no automated backup means permanent loss of all employee and evaluation records |
 | **T4** | **Cloudflare Tunnel + no 2FA = open attack surface** | 🟡 Medium — The tunnel makes REVAL accessible from anywhere on the internet; without 2FA, a single stolen credential gives full access to the entire system |
@@ -98,12 +100,12 @@
 ```
                         HELPFUL                       HARMFUL
                  ┌──────────────────────┬──────────────────────┐
-    I            │   STRENGTHS (15)     │   WEAKNESSES (15)    │
-    N            │  ✓ 11-view analytics │  ✗ No CSRF tokens    │
-    T            │  ✓ 9-state eval flow │  ✗ No 2FA            │
-    E            │  ✓ Full PDS schema   │  ✗ No eval deadlines │
-    R            │  ✓ Audit trail       │  ✗ No mobile layout  │
-    N            │  ✓ Multi-branch arch │  ✗ Monolithic pages  │
+    I            │   STRENGTHS (17)     │   WEAKNESSES (14)    │
+    N            │  ✓ 11-view analytics │  ✗ No 2FA            │
+    T            │  ✓ 9-state eval flow │  ✗ No eval deadlines │
+    E            │  ✓ Full PDS schema   │  ✗ No mobile layout  │
+    R            │  ✓ CSRF protected    │  ✗ Monolithic pages  │
+    N            │  ✓ Brute-force guard │  ✗ No auto-backup    │
     A            ├──────────────────────┼──────────────────────┤
     L            │  OPPORTUNITIES (12)  │     THREATS (10)     │
     ↕            │  ⭢ Security hardening│  ⚠ DPA compliance   │
@@ -123,7 +125,7 @@
 
 | Priority | Action | Category | SWOT Mapping |
 |----------|--------|----------|--------------|
-| 🔴 **P1 — Critical** | Add CSRF tokens to all POST forms | Security | W1 → T1, T6 |
+| ✅ **Completed** | CSRF tokens on all POST forms + global AJAX `X-CSRF-Token` header | Security | ~~W1~~ → S16 |
 | 🔴 **P1 — Critical** | Implement 2FA (Email OTP) for Admin / Manager / Supervisor | Security | W2 → T1, T4 |
 | 🔴 **P1 — Critical** | Enforce evaluation due dates + overdue notifications | Workflow | W3 → T7 |
 | 🔴 **P1 — Critical** | Harden deployment (SSL, proper web server, disable phpMyAdmin) | Infrastructure | T2, T4, T5 |
@@ -149,7 +151,7 @@
 
 | Dimension | Count | Key Highlight |
 |-----------|-------|---------------|
-| **Strengths** | 15 | 11-angle analytics engine, 9-state eval workflow, full PDS, audit trail |
-| **Weaknesses** | 15 | Security gaps (CSRF, 2FA), no deadlines, no mobile layout |
+| **Strengths** | 17 | 11-angle analytics engine, 9-state eval workflow, full PDS, CSRF protection, brute-force guard, audit trail |
+| **Weaknesses** | 14 | Missing 2FA, no eval deadlines, no mobile layout, plain-text Remember Me cookie |
 | **Opportunities** | 12 | Security compliance, PDF export, mobile redesign, succession planning |
 | **Threats** | 10 | DPA compliance risk, XAMPP in production, no auto-backup |
