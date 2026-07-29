@@ -4,13 +4,12 @@
 
 > **Client:** Raquel Pawnshop  
 > **Stack:** PHP 7.4+ · MySQL/MariaDB · Bootstrap 5 · Chart.js · XAMPP  
-> **Date:** July 26, 2026 · *Updated: July 27, 2026 (post code-level audit)*  
-> **Scope:** Multi-role, multi-branch HRIS covering employee records, real-time performance analytics, career management, Personal Data Sheet (PDS), and audit trails across 11 departments.
+> **Scope:** Multi-role, multi-branch HRIS covering employee records, real-time performance analytics, career management, Personal Data Sheet (PDS), and audit trails across all listed departments.
 
 ---
 
 ## 🟢 STRENGTHS
-*What REVAL already does exceptionally well in Version 1*
+*What REVAL already does exceptionally well in ourVersion 1*
 
 | # | Strength | Evidence in Codebase |
 |---|----------|----------------------|
@@ -45,8 +44,8 @@
 | **W4** | **Remember Me stores plain username in cookie** | `index.php` saves raw username in a cookie without a rotating token or IP fingerprint — susceptible to session fixation or replay attacks |
 | **W5** | **Supervisor override reason not captured** | `supervisor_override_score` is logged but there is no `supervisor_override_reason` field — administrators cannot explain *why* a score was changed |
 | **W6** | **Monolithic, heavy page files** | `employee/self-rating.php` is **128 KB** and `manager/pending-approvals.php` is **122 KB** — inline logic mixed with HTML creates maintenance debt |
-| **W7** | **No mobile-responsive layout** | Pages rely on dense table layouts not audited for small screens; critical for branch supervisors and employees who may use smartphones |
-| **W8** | **No session timeout warning** | Sessions expire silently, causing users to lose unsaved work — especially harmful during long self-rating sessions |
+| **W7** | **HR-side pages not optimized for mobile** | Employee portal has a mobile bottom nav and dedicated `hr-department-mobile.js` (30 KB), but core HR workflows — approvals, template management, analytics — rely on dense table layouts that are not audited or adapted for small screens; critical for branch supervisors using smartphones |
+| **W8** | **No session expiry warning modal** | Session timeout duration is configurable by Admin via `admin/config.php`, but users receive no "Session expiring soon — Stay Logged In?" prompt before automatic logout; unsaved work is silently lost — especially harmful during long self-rating sessions |
 | **W9** | **Manual-only database backup** | `admin/backup.php` is on-demand only; there is no scheduled or automated backup — one disk failure could erase all HR records |
 | **W10** | **No centralized error logging** | PHP errors either display to the screen or are silently lost; no `system_error_logs` table or Admin-viewable error panel |
 | **W11** | **Evaluation assignment is one-by-one** | No bulk-assignment wizard; HR Staff must manually assign templates to each employee individually across potentially hundreds of records |

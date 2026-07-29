@@ -1,0 +1,171 @@
+Branch Background Image Guide
+Folder path:
+
+assets/img/logo/branch_background_images/
+Accepted formats: .jpg .jpeg .png .webp
+
+Naming convention: branch_{id}.{ext} The Main Office is the only exception — it uses main_branch.jpg.
+- paste the selected branch image use the proper naming format listed below.
+
+Special
+File name	Branch
+main_branch.jpg	Raquel Pawnshop Main Office (already exists)
+
+Branches 1–50
+File name	Branch
+branch_1.jpg	Agdangan Branch (already exists)
+branch_2.jpg	Alabat Branch
+branch_3.jpg	Alaminos Branch
+branch_4.jpg	Angono Branch 1
+branch_5.jpg	Angono Branch 2
+branch_6.jpg	Antipolo Branch 2
+branch_7.jpg	Antipolo Branch 3
+branch_8.jpg	Apalit Branch
+branch_9.jpg	Apalit Branch 2
+branch_10.jpg	Atimonan Branch 1
+branch_11.jpg	Atimonan Branch 2
+branch_12.jpg	Bacoor Branch
+branch_13.jpg	Balayan Branch
+branch_14.jpg	Banilad Branch
+branch_15.jpg	Baras Branch
+branch_16.jpg	Bauan Branch
+branch_17.jpg	Biñan Branch
+branch_18.jpg	Binangonan Branch
+branch_19.jpg	Binangonan Branch 2
+branch_20.jpg	Binangonan Branch 3
+branch_21.jpg	Boac Branch
+branch_22.jpg	Butuan Branch 1
+branch_23.jpg	Cabana Branch
+branch_24.jpg	Cabuyao Branch 1
+branch_25.jpg	Cabuyao Branch 2
+branch_26.jpg	Cabuyao Branch 3
+branch_27.jpg	Cainta Branch
+branch_28.jpg	Calamba Branch 1
+branch_29.jpg	Calamba Branch 2
+branch_30.jpg	Calatagan Branch
+branch_31.jpg	Calauag Branch
+branch_32.jpg	Calauan Branch
+branch_33.jpg	Candelaria Branch 1
+branch_34.jpg	Candelaria Branch 2
+branch_35.jpg	Carmona Branch
+branch_36.jpg	Catanauan Branch
+branch_37.jpg	Cavite City Branch
+branch_38.jpg	CDO Branch 1
+branch_39.jpg	CDO Branch 3
+branch_40.jpg	CM Recto Branch
+branch_41.jpg	Commonwealth Branch
+branch_42.jpg	Cuenca Branch
+branch_43.jpg	Daet Branch
+branch_44.jpg	Daet Branch 2
+branch_45.jpg	Dalahican Branch
+branch_46.jpg	Dasmariñas Branch
+branch_47.jpg	Dolores Branch
+branch_48.jpg	Enriquez Branch
+branch_49.jpg	General Trias Branch 1
+branch_50.jpg	General Trias Branch 2
+
+Branches 51–101
+File name	Branch
+branch_51.jpg	GMA Branch
+branch_52.jpg	Gomez Branch
+branch_53.jpg	Guinyangan Branch
+branch_54.jpg	Gulang-Gulang Branch
+branch_55.jpg	Gumaca Branch
+branch_56.jpg	Indang Branch
+branch_57.jpg	Infanta Branch
+branch_58.jpg	Iyam Branch
+branch_59.jpg	Kawit Branch
+branch_60.jpg	Labangon Branch 2
+branch_61.jpg	Lapasan Branch
+branch_62.jpg	Lapu-Lapu Branch 1
+branch_63.jpg	Lapu-Lapu Branch 2
+branch_64.jpg	Las Piñas Branch 2
+branch_65.jpg	Laurel Branch
+branch_66.jpg	Lemery Branch
+branch_67.jpg	Lian Branch
+branch_68.jpg	Liliw Branch
+branch_69.jpg	Lipa Branch 1
+branch_70.jpg	Lipa TM Kalaw Branch
+branch_71.jpg	Lopez Branch
+branch_72.jpg	Los Baños Branch
+branch_73.jpg	Lubao Branch
+branch_74.jpg	Lucban Branch 1
+branch_75.jpg	Lucban Branch 2
+branch_76.jpg	Luisiana Branch
+branch_77.jpg	Lumban Branch
+branch_78.jpg	Macalelon Branch
+branch_79.jpg	Magdalena Branch
+branch_80.jpg	Majayjay Branch
+branch_81.jpg	Mariveles Branch
+branch_82.jpg	Mataas na Kahoy Branch
+branch_83.jpg	Mauban Branch
+branch_84.jpg	Mendez Branch
+branch_85.jpg	Mercedes Branch
+branch_86.jpg	Merchan Branch
+branch_87.jpg	Mogpog Branch
+branch_88.jpg	Morong Branch
+branch_89.jpg	Mulanay Branch
+branch_90.jpg	Muntinlupa Branch 1
+branch_91.jpg	Muntinlupa Branch 2
+branch_92.jpg	Nagcarlan Branch
+branch_93.jpg	Naic Branch
+branch_94.jpg	Nasugbu Branch
+branch_95.jpg	Obando Branch
+branch_96.jpg	Pacita Branch
+branch_97.jpg	Paete Branch
+branch_98.jpg	Pagbilao Branch
+branch_99.jpg	Pagbilao Branch 2
+branch_100.jpg	Pagsanjan Branch
+branch_101.jpg	Paracale Branch
+
+Branches 103–151 (note: 102 = Main Office)
+File name	Branch
+branch_103.jpg	Parañaque Branch
+branch_104.jpg	Pasig Branch 1
+branch_105.jpg	Perez Branch
+branch_106.jpg	Pililla Branch
+branch_107.jpg	Plaridel Branch
+branch_108.jpg	Profugo Branch
+branch_109.jpg	Quezon Avenue Branch
+branch_110.jpg	Real Branch
+branch_111.jpg	Retiro Branch
+branch_112.jpg	Rodriguez Branch
+branch_113.jpg	Rosario Branch
+branch_114.jpg	San Andres Branch
+branch_115.jpg	San Francisco Branch
+branch_116.jpg	San Juan Branch
+branch_117.jpg	San Mateo Banaba Branch
+branch_118.jpg	San Mateo Branch 2
+branch_119.jpg	San Narciso Branch
+branch_120.jpg	San Pablo Branch
+branch_121.jpg	San Pascual Branch
+branch_122.jpg	San Pedro Branch
+branch_123.jpg	Sariaya Branch 1
+branch_124.jpg	Sariaya Branch 2
+branch_125.jpg	Silang Branch
+branch_126.jpg	Siniloan Branch
+branch_127.jpg	Sta. Cruz Branch
+branch_128.jpg	Sta. Cruz, M. Branch
+branch_129.jpg	Sta. Elena Branch
+branch_130.jpg	Sta. Maria Branch
+branch_131.jpg	Sta. Rosa Branch
+branch_132.jpg	Sto. Tomas Branch
+branch_133.jpg	Taal Branch
+branch_134.jpg	Tagkawayan Branch
+branch_135.jpg	Talipan Branch
+branch_136.jpg	Talisay Branch
+branch_137.jpg	Tanauan Branch
+branch_138.jpg	Tanay Branch
+branch_139.jpg	Tanay Branch 2
+branch_140.jpg	Tanza Branch
+branch_141.jpg	Tayabas Branch 1
+branch_142.jpg	Tayabas Branch 2
+branch_143.jpg	Taytay Branch
+branch_144.jpg	Teresa Branch
+branch_145.jpg	Ternate Branch
+branch_146.jpg	Tiaong Branch
+branch_147.jpg	Trece Martires Branch
+branch_148.jpg	Tuy Branch
+branch_149.jpg	Unisan Branch
+branch_150.jpg	Victoria Branch
+branch_151.jpg	Zamora Branch

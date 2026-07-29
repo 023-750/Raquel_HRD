@@ -303,7 +303,7 @@ a {
     overflow-y: auto;
     overscroll-behavior: contain;
     /* Prevent scroll chaining to body */
-    transition: width 0.3s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: width 0.6s ease, transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform, width;
     border-right: none;
     box-shadow: 4px 0 18px rgba(0, 0, 0, 0.28);
@@ -344,11 +344,12 @@ a {
     font-size: 1.4rem;
     color: var(--primary-light);
 }
-
+/*
 .sidebar-nav {
     padding: 15px 0 100px;
-    /* Extra bottom padding to ensure logout is visible on long menus */
+     Extra bottom padding to ensure logout is visible on long menus
 }
+*/
 
 .sidebar-nav .nav-label {
     font-size: 0.7rem;

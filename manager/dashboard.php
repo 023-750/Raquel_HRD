@@ -356,10 +356,12 @@ while ($row = $age_dist_q->fetch_assoc()) {
         display: block;
     }
     .premium-branch-bg {
-        background: linear-gradient(135deg, rgba(9, 32, 63, 0.85), rgba(83, 120, 149, 0.85)), url("<?php echo BASE_URL; ?>/assets/img/logo/main_branch.jpg") no-repeat center center;
-        background-size: cover;
+        /* background-image is always set via inline style by JS */
+        background-size: cover !important;
+        background-position: center center !important;
+        background-repeat: no-repeat !important;
         color: #ffffff !important;
-        transition: all 0.5s ease;
+        transition: color 0.3s ease;
     }
     .premium-branch-bg h4,
     .premium-branch-bg p,
@@ -785,12 +787,28 @@ while ($row = $age_dist_q->fetch_assoc()) {
                                 <input type="text" placeholder="Search branches..." id="branchSearchInput">
                             </div>
                             <div class="results-container" id="branchResultsList">
-                                <?php foreach ($branches_insights as $br): ?>
+                                <?php foreach ($branches_insights as $br): 
+                                    // Resolve background image server-side — no JS probing needed
+                                    $bg_dir   = __DIR__ . '/../assets/img/logo/branch_background_images/';
+                                    $bg_url   = '';
+                                    $bid      = $br['branch_id'];
+                                    foreach (['jpg','jpeg','png','webp'] as $ext) {
+                                        if (file_exists($bg_dir . 'branch_' . $bid . '.' . $ext)) {
+                                            $bg_url = BASE_URL . '/assets/img/logo/branch_background_images/branch_' . $bid . '.' . $ext;
+                                            break;
+                                        }
+                                    }
+                                    // Main Office always uses its dedicated image
+                                    if ($br['branch_name'] === 'Raquel Pawnshop Main Office') {
+                                        $bg_url = BASE_URL . '/assets/img/logo/branch_background_images/main_branch.jpg';
+                                    }
+                                ?>
                                     <div class="select-option" data-id="<?php echo $br['branch_id']; ?>"
                                         data-name="<?php echo e($br['branch_name']); ?>"
                                         data-location="<?php echo e($br['location']); ?>"
                                         data-count="<?php echo $br['emp_count']; ?>"
-                                        data-percent="<?php echo round(($br['emp_count'] / $total_emp_calc) * 100, 1); ?>">
+                                        data-percent="<?php echo round(($br['emp_count'] / $total_emp_calc) * 100, 1); ?>"
+                                        data-bg="<?php echo e($bg_url); ?>">
                                         <div class="branch-name"><?php echo e($br['branch_name']); ?></div>
                                         <div class="emp-badge"><?php echo $br['emp_count']; ?> Staff</div>
                                     </div>
@@ -1053,18 +1071,37 @@ while ($row = $age_dist_q->fetch_assoc()) {
             });
         });
 
+        // Base URL for branch background images
+        const BRANCH_BG_BASE = window.APP_BASE_URL + '/assets/img/logo/branch_background_images/';
+
+        /**
+         * Applies branch background using the server-resolved data-bg URL.
+         * No probing — PHP already confirmed the file exists.
+         */
+        function applyBranchBackground(bgUrl) {
+            insightCard.classList.remove('premium-branch-bg');
+            insightCard.style.backgroundImage    = '';
+            insightCard.style.backgroundSize     = '';
+            insightCard.style.backgroundPosition = '';
+            insightCard.style.backgroundRepeat   = '';
+
+            if (!bgUrl) return; // no image — leave as default card style
+
+            insightCard.style.backgroundImage    = `linear-gradient(135deg, rgba(9,32,63,0.85), rgba(83,120,149,0.85)), url('${bgUrl}')`;
+            insightCard.style.backgroundSize     = 'cover';
+            insightCard.style.backgroundPosition = 'center center';
+            insightCard.style.backgroundRepeat   = 'no-repeat';
+            insightCard.classList.add('premium-branch-bg');
+        }
+
         function updateInsightCard(data) {
             insightPlaceholder.style.display = 'none';
             insightContent.style.display = 'block';
             insightCard.classList.add('updated-pulse');
             setTimeout(() => insightCard.classList.remove('updated-pulse'), 500);
 
-            // Exclusive background logic for Raquel Pawnshop Main Office
-            if (data.name === 'Raquel Pawnshop Main Office') {
-                insightCard.classList.add('premium-branch-bg');
-            } else {
-                insightCard.classList.remove('premium-branch-bg');
-            }
+            // Apply branch background (image if available, gradient fallback otherwise)
+            applyBranchBackground(data.bg);
 
             document.getElementById('brNameDisplay').innerText = data.name;
             document.getElementById('brLocationDisplay').innerHTML = `<i class="fas fa-map-marker-alt me-1"></i> ${data.location}`;
