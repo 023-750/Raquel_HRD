@@ -192,10 +192,30 @@ require_once '../includes/header.php';
               <tr><td class="text-muted fw-semibold">Weight</td><td><?php echo e($sub['weight_kg']??'—'); ?> kg</td></tr>
               <tr><td class="text-muted fw-semibold">Blood Type</td><td><?php echo e($sub['blood_type']??'—'); ?></td></tr>
               <tr><td class="text-muted fw-semibold">Citizenship</td><td><?php echo e($sub['citizenship']??'Filipino'); ?></td></tr>
-              <tr><td class="text-muted fw-semibold">SSS No.</td><td><?php echo e($sub['sss_number']??'—'); ?></td></tr>
-              <tr><td class="text-muted fw-semibold">PhilHealth</td><td><?php echo e($sub['philhealth_number']??'—'); ?></td></tr>
-              <tr><td class="text-muted fw-semibold">Pag-IBIG</td><td><?php echo e($sub['pagibig_number']??'—'); ?></td></tr>
-              <tr><td class="text-muted fw-semibold">TIN</td><td><?php echo e($sub['tin_number']??'—'); ?></td></tr>
+              <?php 
+              $pds_gov_ids = [
+                  'SSS No.' => $sub['sss_number'] ?? '',
+                  'PhilHealth' => $sub['philhealth_number'] ?? '',
+                  'Pag-IBIG' => $sub['pagibig_number'] ?? '',
+                  'TIN' => $sub['tin_number'] ?? '',
+              ];
+              foreach ($pds_gov_ids as $g_label => $g_val):
+                  $g_has = !empty(trim((string)$g_val));
+                  $g_raw = $g_has ? e(trim($g_val)) : '—';
+                  $g_masked = $g_has ? '••••••••••••' : '—';
+              ?>
+              <tr>
+                <td class="text-muted fw-semibold"><?php echo $g_label; ?></td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="gov-id-val" data-raw="<?php echo $g_raw; ?>" data-masked="<?php echo $g_masked; ?>"><?php echo $g_masked; ?></span>
+                    <?php if ($g_has): ?>
+                      <i class="fas fa-eye text-muted cursor-pointer single-id-toggle ms-auto" onclick="toggleSingleId(this)" title="Toggle <?php echo $g_label; ?>" style="font-size:0.82rem; opacity: 0.55; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.55'"></i>
+                    <?php endif; ?>
+                  </div>
+                </td>
+              </tr>
+              <?php endforeach; ?>
             </table>
           </div>
         </div>
@@ -386,6 +406,25 @@ require_once '../includes/header.php';
       </div>
     </div>
   </div>
-</div>
+<script>
+    function toggleSingleId(iconEl) {
+        const parent = iconEl.closest('td');
+        const valEl = parent ? parent.querySelector('.gov-id-val') : null;
+        if (!valEl) return;
+        
+        const raw = valEl.getAttribute('data-raw');
+        const masked = valEl.getAttribute('data-masked');
+        
+        if (valEl.innerHTML === masked) {
+            valEl.innerHTML = raw;
+            valEl.classList.add('fw-bold');
+            iconEl.className = 'fas fa-eye-slash text-primary cursor-pointer single-id-toggle ms-auto';
+        } else {
+            valEl.innerHTML = masked;
+            valEl.classList.remove('fw-bold');
+            iconEl.className = 'fas fa-eye text-muted cursor-pointer single-id-toggle ms-auto';
+        }
+    }
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

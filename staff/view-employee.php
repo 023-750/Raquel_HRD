@@ -62,6 +62,21 @@ function field($label, $value, $escape = true) {
     $value_class = $is_company_id ? 'company-id-value detail-value' : 'detail-value';
     return "<div class='detail-item'><div class='$label_class'>$label</div><div class='$value_class'>$val</div></div>";
 }
+function govField($label, $value)
+{
+    $has_val = !empty(trim((string)$value));
+    $raw = $has_val ? e(trim($value)) : '<span class="text-muted">N/A</span>';
+    $masked = $has_val ? '••••••••••••' : '<span class="text-muted">N/A</span>';
+    $eye_btn = $has_val ? '<i class="fas fa-eye text-muted cursor-pointer single-id-toggle ms-auto" onclick="toggleSingleId(this)" title="Toggle '.$label.'" style="font-size:0.82rem; opacity: 0.55; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.55\'"></i>' : '';
+
+    return "<div class='detail-item'>
+        <div class='detail-label'>$label</div>
+        <div class='detail-value d-flex align-items-center gap-2'>
+            <span class='gov-id-val' data-raw='$raw' data-masked='$masked'>$masked</span>
+            $eye_btn
+        </div>
+    </div>";
+}
 ?>
 
 <?php
@@ -473,13 +488,18 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
                             </div>
                         </div>
                         <div class="employee-subsection">
-                            <div class="employee-subsection-title">Government IDs</div>
+                            <div class="employee-subsection-title d-flex align-items-center justify-content-between">
+                                <span>Government IDs</span>
+                                <button type="button" class="btn btn-sm btn-light border py-1 px-2 rounded-pill shadow-none" id="toggleGovIdsBtn" onclick="toggleGovIds()" style="font-size: 0.75rem; font-weight: 600; color: #475569; background: #f8fafc; transition: all 0.2s ease;" title="Toggle Confidential IDs">
+                                    <i class="fas fa-eye me-1" id="govIdsEyeIcon" style="color: #64748b;"></i><span id="govIdsBtnText">Show IDs</span>
+                                </button>
+                            </div>
                             <div class="detail-grid">
                                 <?php
-                                echo field('SSS Number', $emp['sss_number'] ?? '');
-                                echo field('PhilHealth Number', $emp['philhealth_number'] ?? '');
-                                echo field('Pag-IBIG Number', $emp['pagibig_number'] ?? '');
-                                echo field('TIN Number', $emp['tin_number'] ?? '');
+                                echo govField('SSS Number', $emp['sss_number'] ?? '');
+                                echo govField('PhilHealth Number', $emp['philhealth_number'] ?? '');
+                                echo govField('Pag-IBIG Number', $emp['pagibig_number'] ?? '');
+                                echo govField('TIN Number', $emp['tin_number'] ?? '');
                                 ?>
                             </div>
                         </div>
@@ -634,6 +654,61 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
             </div>
         </div>
     </div>
-</div>
+<script>
+    let govIdsVisible = false;
+    function toggleGovIds() {
+        govIdsVisible = !govIdsVisible;
+        const btnText = document.getElementById('govIdsBtnText');
+        const eyeIcon = document.getElementById('govIdsEyeIcon');
+        const elements = document.querySelectorAll('.gov-id-val');
+        
+        if (govIdsVisible) {
+            if (btnText) btnText.textContent = 'Hide IDs';
+            if (eyeIcon) eyeIcon.className = 'fas fa-eye-slash me-1';
+            elements.forEach(el => {
+                const raw = el.getAttribute('data-raw');
+                if (raw && raw !== '<span class="text-muted">N/A</span>') {
+                    el.innerHTML = raw;
+                    el.classList.add('fw-bold');
+                }
+            });
+            document.querySelectorAll('.single-id-toggle').forEach(icon => {
+                icon.className = 'fas fa-eye-slash text-primary cursor-pointer single-id-toggle ms-auto';
+            });
+        } else {
+            if (btnText) btnText.textContent = 'Show IDs';
+            if (eyeIcon) eyeIcon.className = 'fas fa-eye me-1';
+            elements.forEach(el => {
+                const masked = el.getAttribute('data-masked');
+                if (masked) {
+                    el.innerHTML = masked;
+                    el.classList.remove('fw-bold');
+                }
+            });
+            document.querySelectorAll('.single-id-toggle').forEach(icon => {
+                icon.className = 'fas fa-eye text-muted cursor-pointer single-id-toggle ms-auto';
+            });
+        }
+    }
+
+    function toggleSingleId(iconEl) {
+        const parent = iconEl.closest('.detail-value');
+        const valEl = parent ? parent.querySelector('.gov-id-val') : null;
+        if (!valEl) return;
+        
+        const raw = valEl.getAttribute('data-raw');
+        const masked = valEl.getAttribute('data-masked');
+        
+        if (valEl.innerHTML === masked) {
+            valEl.innerHTML = raw;
+            valEl.classList.add('fw-bold');
+            iconEl.className = 'fas fa-eye-slash text-primary cursor-pointer single-id-toggle ms-auto';
+        } else {
+            valEl.innerHTML = masked;
+            valEl.classList.remove('fw-bold');
+            iconEl.className = 'fas fa-eye text-muted cursor-pointer single-id-toggle ms-auto';
+        }
+    }
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

@@ -235,6 +235,60 @@ require_once '../includes/header.php';
         </div>
     </div>
 
+    <!-- Traditional Evaluation Score Computation Guide -->
+    <div class="content-card mb-4 border-0 shadow-sm border-start border-4 border-primary">
+        <div class="card-header bg-white border-bottom pb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h5 class="mb-0 text-primary fw-bold">
+                <i class="fas fa-calculator me-2"></i>HR Manager Guide: Evaluation Score Computation
+            </h5>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2" style="font-size:0.75rem;">
+                Standard 80% KRA / 20% Behavior Model
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded-3 border h-100">
+                        <h6 class="fw-bold text-dark mb-2"><i class="fas fa-square-root-alt text-primary me-2"></i>Standard Formula</h6>
+                        <p class="small text-muted mb-2">Each KRA item carries a weight % (summing to 100% in Section I). Behavior ratings are averaged (Section II).</p>
+                        <div class="p-2 bg-white rounded border font-monospace small text-dark mb-2">
+                            <strong>KRA Subtotal</strong> = &Sigma;(KRA Item Weight &times; Rating) &divide; 100<br>
+                            <strong>Behavior Average</strong> = &Sigma;(Behavior Ratings) &divide; Total Behavior Items<br>
+                            <strong>Final Score</strong> = (KRA Subtotal &times; 80%) + (Behavior Avg &times; 20%)
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 rounded-3 border h-100" style="background:#eef6ff; border-color:#cce3ff !important;">
+                        <h6 class="fw-bold text-primary mb-2"><i class="fas fa-check-circle me-2"></i>Traditional Worked Example</h6>
+                        <ul class="small text-dark mb-2 ps-3">
+                            <li><strong>KRA 1</strong> (50% weight) @ 4.00 rating = <code>2.00</code></li>
+                            <li><strong>KRA 2</strong> (50% weight) @ 3.00 rating = <code>1.50</code></li>
+                            <li><strong>KRA Subtotal</strong> = <code>2.00 + 1.50 = 3.50</code> &times; 80% = <strong>2.80</strong></li>
+                            <li><strong>Behavior Average</strong> = <code>3.50</code> &times; 20% = <strong>0.70</strong></li>
+                        </ul>
+                        <div class="p-2 bg-white rounded border d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark small">Final Total Score:</span>
+                            <div>
+                                <span class="fs-6 fw-bold text-primary me-2">3.50</span>
+                                <span class="badge bg-info text-dark">Exceeds Expectations</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rating Scale Chips -->
+            <div class="d-flex flex-wrap gap-2 align-items-center pt-2 border-top">
+                <span class="text-muted small fw-bold me-1">Performance Scale:</span>
+                <span class="badge bg-success px-2 py-1" style="font-size:0.72rem;">3.60 – 4.00 Outstanding</span>
+                <span class="badge bg-info text-dark px-2 py-1" style="font-size:0.72rem;">2.60 – 3.59 Exceeds Expectations</span>
+                <span class="badge bg-warning text-dark px-2 py-1" style="font-size:0.72rem;">2.00 – 2.59 Meets Expectations</span>
+                <span class="badge bg-danger px-2 py-1" style="font-size:0.72rem;">1.00 – 1.99 Needs Improvement</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Weight Split -->
     <div class="content-card mb-4 border-0 shadow-sm border-start border-4 border-success">
         <div class="card-header bg-white border-bottom pb-3">
