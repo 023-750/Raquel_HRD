@@ -70,6 +70,14 @@ if (!function_exists('formatAddress')) {
     }
 }
 
+if (!function_exists('maskGovId')) {
+    function maskGovId($val) {
+        $trimmed = trim((string)$val);
+        if (empty($trimmed) || $trimmed === '—') return '—';
+        return '••••••••••••';
+    }
+}
+
 require_once '../includes/header.php';
 ?>
 
@@ -175,15 +183,35 @@ require_once '../includes/header.php';
     </div>
 
     <div class="pds-card fadeup-3">
-        <div class="pds-card-title"><i class="fas fa-id-badge"></i>Government IDs</div>
-        <div class="pds-data-row"><span class="label">SSS Number</span><span
-                class="value"><?php echo e($emp['sss_number'] ?? '—'); ?></span></div>
-        <div class="pds-data-row"><span class="label">PhilHealth Number</span><span
-                class="value"><?php echo e($emp['philhealth_number'] ?? '—'); ?></span></div>
-        <div class="pds-data-row"><span class="label">Pag-IBIG Number</span><span
-                class="value"><?php echo e($emp['pagibig_number'] ?? '—'); ?></span></div>
-        <div class="pds-data-row"><span class="label">TIN Number</span><span
-                class="value"><?php echo e($emp['tin_number'] ?? '—'); ?></span></div>
+        <div class="pds-card-title d-flex align-items-center justify-content-between">
+            <span><i class="fas fa-id-badge me-2"></i>Government IDs</span>
+            <button type="button" class="btn btn-sm btn-light border py-1 px-2 rounded-pill shadow-none" id="toggleGovIdsBtn" onclick="toggleGovIds()" style="font-size: 0.75rem; font-weight: 600; color: #475569; background: #f8fafc; transition: all 0.2s ease;" title="Toggle Confidential IDs">
+                <i class="fas fa-eye me-1" id="govIdsEyeIcon" style="color: #64748b;"></i><span id="govIdsBtnText">Show IDs</span>
+            </button>
+        </div>
+        
+        <?php 
+        $gov_ids = [
+            'SSS Number' => $emp['sss_number'] ?? '',
+            'PhilHealth Number' => $emp['philhealth_number'] ?? '',
+            'Pag-IBIG Number' => $emp['pagibig_number'] ?? '',
+            'TIN Number' => $emp['tin_number'] ?? '',
+        ];
+        foreach ($gov_ids as $label => $raw_val):
+            $has_val = !empty(trim((string)$raw_val));
+            $masked_val = maskGovId($raw_val);
+            $raw_val_clean = $has_val ? e(trim($raw_val)) : '—';
+        ?>
+            <div class="pds-data-row">
+                <span class="label"><?php echo $label; ?></span>
+                <span class="value d-flex align-items-center gap-2">
+                    <span class="gov-id-val" data-raw="<?php echo $raw_val_clean; ?>" data-masked="<?php echo $masked_val; ?>"><?php echo $masked_val; ?></span>
+                    <?php if ($has_val): ?>
+                        <i class="fas fa-eye text-muted cursor-pointer single-id-toggle ms-auto" onclick="toggleSingleId(this)" title="Toggle <?php echo $label; ?>" style="font-size:0.82rem; opacity: 0.55; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.55'"></i>
+                    <?php endif; ?>
+                </span>
+            </div>
+        <?php endforeach; ?>
     </div>
 
     <div class="pds-card fadeup-4">
@@ -249,5 +277,63 @@ require_once '../includes/header.php';
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+let govIdsVisible = false;
+
+function toggleGovIds() {
+    govIdsVisible = !govIdsVisible;
+    const btnText = document.getElementById('govIdsBtnText');
+    const eyeIcon = document.getElementById('govIdsEyeIcon');
+    const elements = document.querySelectorAll('.gov-id-val');
+    
+    if (govIdsVisible) {
+        if (btnText) btnText.textContent = 'Hide IDs';
+        if (eyeIcon) eyeIcon.className = 'fas fa-eye-slash me-1';
+        elements.forEach(el => {
+            const raw = el.getAttribute('data-raw');
+            if (raw && raw !== '—') {
+                el.textContent = raw;
+                el.classList.add('fw-bold');
+            }
+        });
+        document.querySelectorAll('.single-id-toggle').forEach(icon => {
+            icon.className = 'fas fa-eye-slash text-primary cursor-pointer single-id-toggle ms-auto';
+        });
+    } else {
+        if (btnText) btnText.textContent = 'Show IDs';
+        if (eyeIcon) eyeIcon.className = 'fas fa-eye me-1';
+        elements.forEach(el => {
+            const masked = el.getAttribute('data-masked');
+            if (masked) {
+                el.textContent = masked;
+                el.classList.remove('fw-bold');
+            }
+        });
+        document.querySelectorAll('.single-id-toggle').forEach(icon => {
+            icon.className = 'fas fa-eye text-muted cursor-pointer single-id-toggle ms-auto';
+        });
+    }
+}
+
+function toggleSingleId(iconEl) {
+    const parent = iconEl.closest('.value');
+    const valEl = parent ? parent.querySelector('.gov-id-val') : null;
+    if (!valEl) return;
+    
+    const raw = valEl.getAttribute('data-raw');
+    const masked = valEl.getAttribute('data-masked');
+    
+    if (valEl.textContent === masked) {
+        valEl.textContent = raw;
+        valEl.classList.add('fw-bold');
+        iconEl.className = 'fas fa-eye-slash text-primary cursor-pointer single-id-toggle ms-auto';
+    } else {
+        valEl.textContent = masked;
+        valEl.classList.remove('fw-bold');
+        iconEl.className = 'fas fa-eye text-muted cursor-pointer single-id-toggle ms-auto';
+    }
+}
+</script>
 
 <?php require_once '../includes/footer.php'; ?>
