@@ -295,6 +295,177 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             }
 
             $conn->commit();
+
+            // ─── Extended PDS sections (CSV columns 49–89) ───────────────────
+
+            // Children
+            $child_name    = $getV('Child 1 Name', 49);
+            $child_dob_raw = $getV('Child 1 Birthday', 50);
+            $child_dob = null;
+            if (!empty($child_dob_raw)) {
+                $d = DateTime::createFromFormat('m/d/Y', $child_dob_raw)
+                  ?: DateTime::createFromFormat('n/j/Y', $child_dob_raw)
+                  ?: DateTime::createFromFormat('Y-m-d', $child_dob_raw);
+                if ($d) $child_dob = $d->format('Y-m-d');
+            }
+            $conn->query("DELETE FROM employee_children WHERE employee_id = $eid");
+            if (!empty($child_name)) {
+                $stmt = $conn->prepare("INSERT INTO employee_children (employee_id, first_name, date_of_birth) VALUES (?,?,?)");
+                $stmt->bind_param("iss", $eid, $child_name, $child_dob);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // Siblings
+            $sib_name    = $getV('Sibling 1 Name', 51);
+            $sib_dob_raw = $getV('Sibling 1 Birthday', 52);
+            $sib_dob = null;
+            if (!empty($sib_dob_raw)) {
+                $d = DateTime::createFromFormat('m/d/Y', $sib_dob_raw)
+                  ?: DateTime::createFromFormat('n/j/Y', $sib_dob_raw)
+                  ?: DateTime::createFromFormat('Y-m-d', $sib_dob_raw);
+                if ($d) $sib_dob = $d->format('Y-m-d');
+            }
+            $conn->query("DELETE FROM employee_siblings WHERE employee_id = $eid");
+            if (!empty($sib_name)) {
+                $stmt = $conn->prepare("INSERT INTO employee_siblings (employee_id, first_name, date_of_birth) VALUES (?,?,?)");
+                $stmt->bind_param("iss", $eid, $sib_name, $sib_dob);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // Education
+            $conn->query("DELETE FROM employee_education WHERE employee_id = $eid");
+            $elem_school = $getV('Elementary School', 53);
+            $elem_grad   = $getV('Elementary Year Graduated', 54);
+            if (!empty($elem_school)) {
+                $stmt = $conn->prepare("INSERT INTO employee_education (employee_id, education_level, school_name, degree_course, period_from, period_to, highest_level_units, year_graduated, honors_received) VALUES (?, 'Elementary', ?, '', NULL, NULL, '', ?, '')");
+                $stmt->bind_param("iss", $eid, $elem_school, $elem_grad);
+                $stmt->execute(); $stmt->close();
+            }
+            $hs_school = $getV('High School', 55);
+            $hs_grad   = $getV('High School Year Graduated', 56);
+            if (!empty($hs_school)) {
+                $stmt = $conn->prepare("INSERT INTO employee_education (employee_id, education_level, school_name, degree_course, period_from, period_to, highest_level_units, year_graduated, honors_received) VALUES (?, 'Secondary', ?, '', NULL, NULL, '', ?, '')");
+                $stmt->bind_param("iss", $eid, $hs_school, $hs_grad);
+                $stmt->execute(); $stmt->close();
+            }
+            $col_school = $getV('College School', 57);
+            $col_course = $getV('College Degree/Course', 58);
+            $col_grad   = $getV('College Year Graduated', 59);
+            if (!empty($col_school)) {
+                $stmt = $conn->prepare("INSERT INTO employee_education (employee_id, education_level, school_name, degree_course, period_from, period_to, highest_level_units, year_graduated, honors_received) VALUES (?, 'College', ?, ?, NULL, NULL, '', ?, '')");
+                $stmt->bind_param("isss", $eid, $col_school, $col_course, $col_grad);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // Work Experience
+            $prev_company = $getV('Previous Company 1', 60);
+            $prev_pos     = $getV('Previous Position 1', 61);
+            $prev_sal_raw = $getV('Previous Monthly Salary 1', 62);
+            $prev_period  = $getV('Previous Employment Period 1', 63);
+            $prev_reason  = $getV('Previous Reason for Leaving 1', 64);
+            $conn->query("DELETE FROM employee_work_experience WHERE employee_id = $eid");
+            if (!empty($prev_company)) {
+                $wf = null; $wto = null;
+                if (!empty($prev_period) && preg_match('/(\d{4})\s*[-\x{2013}]\s*(\d{4})/u', $prev_period, $wm)) {
+                    $wf  = $wm[1] . '-01-01';
+                    $wto = $wm[2] . '-12-31';
+                }
+                $prev_sal_f = !empty($prev_sal_raw) ? (float)$prev_sal_raw : null;
+                $appt_status = '';
+                $stmt = $conn->prepare("INSERT INTO employee_work_experience (employee_id, date_from, date_to, job_title, company_name, monthly_salary, appointment_status, reason_for_leaving) VALUES (?,?,?,?,?,?,?,?)");
+                $stmt->bind_param("issssdis", $eid, $wf, $wto, $prev_pos, $prev_company, $prev_sal_f, $appt_status, $prev_reason);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // Trainings
+            $train_title = $getV('Training Title 1', 65);
+            $train_by    = $getV('Training Conducted By 1', 66);
+            $train_hrs   = $getV('Training Hours 1', 67);
+            $conn->query("DELETE FROM employee_trainings WHERE employee_id = $eid");
+            if (!empty($train_title)) {
+                $train_hrs_f = !empty($train_hrs) ? (float)$train_hrs : null;
+                $stmt = $conn->prepare("INSERT INTO employee_trainings (employee_id, date_from, date_to, training_title, training_type, no_of_hours, conducted_by) VALUES (?,NULL,NULL,?,'',?,?)");
+                $stmt->bind_param("isds", $eid, $train_title, $train_hrs_f, $train_by);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // Eligibility
+            $elig_title = $getV('Eligibility License Title 1', 68);
+            $elig_no    = $getV('Eligibility License No 1', 69);
+            $conn->query("DELETE FROM employee_eligibility WHERE employee_id = $eid");
+            if (!empty($elig_title)) {
+                $stmt = $conn->prepare("INSERT INTO employee_eligibility (employee_id, license_title, date_from, date_to, license_number, date_of_exam, place_of_exam) VALUES (?,?,NULL,NULL,?,NULL,'')");
+                $stmt->bind_param("iss", $eid, $elig_title, $elig_no);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // Disclosures
+            $is_related  = (strtolower($getV('Related to Company (Yes/No)', 70)) === 'yes') ? 1 : 0;
+            $related_det = $getV('Related Details', 71) ?: '';
+            $has_admin   = (strtolower($getV('Admin Offense (Yes/No)', 72)) === 'yes') ? 1 : 0;
+            $admin_det   = $getV('Admin Offense Details', 73) ?: '';
+            $has_crim    = (strtolower($getV('Criminal Charge (Yes/No)', 74)) === 'yes') ? 1 : 0;
+            $crim_det    = $getV('Criminal Charge Details', 75) ?: '';
+            $is_pwd_csv  = (strtolower($getV('PWD Status (Yes/No)', 76)) === 'yes') ? 1 : 0;
+            $is_solo_csv = (strtolower($getV('Solo Parent Status (Yes/No)', 77)) === 'yes') ? 1 : 0;
+            $conn->query("DELETE FROM employee_disclosures WHERE employee_id = $eid");
+            $stmt = $conn->prepare("INSERT INTO employee_disclosures (employee_id, is_related_to_company, related_details, has_admin_offense, admin_offense_details, has_criminal_charge, criminal_charge_details, is_pwd, is_solo_parent) VALUES (?,?,?,?,?,?,?,?,?)");
+            $stmt->bind_param("iisisisii", $eid, $is_related, $related_det, $has_admin, $admin_det, $has_crim, $crim_det, $is_pwd_csv, $is_solo_csv);
+            $stmt->execute(); $stmt->close();
+
+            // Real Properties
+            $real_desc   = $getV('Real Property 1 Description', 78);
+            $real_mval   = $getV('Real Property 1 Market Value', 79);
+            $conn->query("DELETE FROM employee_real_properties WHERE employee_id = $eid");
+            if (!empty($real_desc)) {
+                $real_mval_f = !empty($real_mval) ? (float)$real_mval : null;
+                $stmt = $conn->prepare("INSERT INTO employee_real_properties (employee_id, description, kind, exact_location, assessed_value, market_value, acquisition_year_mode, acquisition_cost) VALUES (?,?,'','',NULL,?,NULL,NULL)");
+                $stmt->bind_param("isd", $eid, $real_desc, $real_mval_f);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // Personal Properties
+            $pers_desc = $getV('Personal Property 1 Description', 80);
+            $pers_cost = $getV('Personal Property 1 Cost', 81);
+            $conn->query("DELETE FROM employee_personal_properties WHERE employee_id = $eid");
+            if (!empty($pers_desc)) {
+                $pers_cost_f = !empty($pers_cost) ? (float)$pers_cost : null;
+                $stmt = $conn->prepare("INSERT INTO employee_personal_properties (employee_id, description, year_acquired, acquisition_cost) VALUES (?,?,'',?)");
+                $stmt->bind_param("isd", $eid, $pers_desc, $pers_cost_f);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // Liabilities
+            $liab_nat = $getV('Liability 1 Nature', 82);
+            $liab_bal = $getV('Liability 1 Outstanding Balance', 83);
+            $conn->query("DELETE FROM employee_liabilities WHERE employee_id = $eid");
+            if (!empty($liab_nat)) {
+                $liab_bal_f = !empty($liab_bal) ? (float)$liab_bal : null;
+                $stmt = $conn->prepare("INSERT INTO employee_liabilities (employee_id, nature_of_liability, creditor_name, outstanding_balance) VALUES (?,?,'',?)");
+                $stmt->bind_param("isd", $eid, $liab_nat, $liab_bal_f);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // References
+            $ref1_name = $getV('Reference 1 Name', 84);
+            $ref1_addr = $getV('Reference 1 Address', 85);
+            $ref1_tel  = $getV('Reference 1 Contact Number', 86);
+            $ref2_name = $getV('Reference 2 Name', 87);
+            $ref2_addr = $getV('Reference 2 Address', 88);
+            $ref2_tel  = $getV('Reference 2 Contact Number', 89);
+            $conn->query("DELETE FROM employee_references WHERE employee_id = $eid");
+            if (!empty($ref1_name)) {
+                $stmt = $conn->prepare("INSERT INTO employee_references (employee_id, reference_name, reference_address, reference_telephone) VALUES (?,?,?,?)");
+                $stmt->bind_param("isss", $eid, $ref1_name, $ref1_addr, $ref1_tel);
+                $stmt->execute(); $stmt->close();
+            }
+            if (!empty($ref2_name)) {
+                $stmt = $conn->prepare("INSERT INTO employee_references (employee_id, reference_name, reference_address, reference_telephone) VALUES (?,?,?,?)");
+                $stmt->bind_param("isss", $eid, $ref2_name, $ref2_addr, $ref2_tel);
+                $stmt->execute(); $stmt->close();
+            }
+            // ─────────────────────────────────────────────────────────────────
+
             logAudit($conn, $_SESSION['user_id'], ($existing_id ? 'UPDATE' : 'CREATE'), 'Employee', $eid, "Imported/Updated via CSV: $first_name $last_name");
         } catch (Exception $e) {
             $conn->rollback();
