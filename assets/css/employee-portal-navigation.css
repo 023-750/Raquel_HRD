@@ -226,3 +226,32 @@
   color: var(--color-text-secondary);
   font-weight: 500;
 }
+
+/* ===== BACK TO TOP BUTTON (MOBILE) ===== */
+.hr-back-to-top-wrapper {
+  margin-top: 15px;
+  margin-bottom: 25px;
+  padding-bottom: 90px;
+  text-align: center;
+}
+
+.hr-back-to-top-btn {
+  background: #ffffff !important;
+  color: #1b4d2e !important;
+  border: 1px solid #c8e6c9 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  padding: 8px 20px !important;
+  border-radius: 25px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  cursor: pointer !important;
+}
+
+.hr-back-to-top-btn:active {
+  transform: scale(0.96) !important;
+}
+
