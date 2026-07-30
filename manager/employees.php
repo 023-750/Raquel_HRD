@@ -446,6 +446,9 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                                     data-job-title-id="<?php echo $jt['job_title_id']; ?>" 
                                     data-department="<?php echo e($jt['department_name'] ?? ''); ?>">
                                 <?php echo e($jt['job_title']); ?>
+                                <?php if (!empty($jt['rank_name'])): ?>
+                                    — [<?php echo e($jt['rank_name']); ?>]
+                                <?php endif; ?>
                                 <?php if ($jt['employee_count'] > 0): ?>
                                     (<?php echo $jt['employee_count']; ?>)
                                 <?php endif; ?>
@@ -789,7 +792,17 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                 <?php foreach ($job_titles_by_dept as $dept_name => $titles): ?>
                     <optgroup label="<?php echo e($dept_name); ?>">
                         <?php foreach ($titles as $jt): ?>
-                            <option value="<?php echo e($jt['job_title']); ?>"><?php echo e($jt['job_title']); ?></option>
+                            <option value="<?php echo e($jt['job_title']); ?>"
+                                    data-job-title-id="<?php echo $jt['job_title_id']; ?>" 
+                                    data-department="<?php echo e($jt['department_name'] ?? ''); ?>">
+                                <?php echo e($jt['job_title']); ?>
+                                <?php if (!empty($jt['rank_name'])): ?>
+                                    — [<?php echo e($jt['rank_name']); ?>]
+                                <?php endif; ?>
+                                <?php if ($jt['employee_count'] > 0): ?>
+                                    (<?php echo $jt['employee_count']; ?>)
+                                <?php endif; ?>
+                            </option>
                         <?php endforeach; ?>
                     </optgroup>
                 <?php endforeach; ?>
