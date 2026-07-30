@@ -21,26 +21,6 @@ powershell command under (Cloudflared) - [C:\Windows\System32\WindowsPowerShell\
 .\cloudflared.exe tunnel --url http://localhost/Raquel_HRD_System/ 
 
 
-===========================================================================================================
-                                      _____                   .___
-                                    _/ ____\______   ____   __| _/
-                                    \   __\\_  __ \_/ __ \ / __ | 
-                                     |  |   |  | \/\  ___// /_/ | 
-                                     |__|   |__|    \___  >____ | 
-                                                        \/     \/ 
-                                            __                    
-                                    _____  |  | _______           
-                                    \__  \ |  |/ /\__  \          
-                                     / __ \|    <  / __ \_        
-                                    (____  /__|_ \(____  /        
-                                         \/     \/     \/         
-                                         __       .__             
-                                        |__| ____ |  |__   ____   
-                                        |  |/  _ \|  |  \ /    \  
-                                        |  (  <_> )   Y  \   |  \ 
-                                    /\__|  |\____/|___|  /___|  / 
-                                    \______|           \/     \/  
-===========================================================================================================
 
 Note for fred:
 > first things first, your should delete the current raquel pawnshop system (files who already into your device) because it is outdated.
@@ -85,4 +65,3 @@ Resolving deltas: 100% (980/980), done.
 > Now that you already imported all of the neccessarry databses, go to files and navigate to folder named "config" under that folder you should be able to see the database.php, look for the "define('DB_PASS', 'admin');" then change it into "define('DB_PASS', '');" - don't include the quotation u dummy.
 
 > Final step, open your browser and type this url: http://localhost/FINAL_RAQUEL_PAWNSHOP_HRD/ you'll be able to access the system completely without having any errors.
-===========================================================================================================
