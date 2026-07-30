@@ -58,8 +58,8 @@ Resolving deltas: 100% (980/980), done.
 13. OP_seed.sql
 14. Operations_seed.sql
 15. Purchasing_seed.sql
-16. Portal_accounts.sql
-17. LAST_performance_indexes.sql
+16. xPortal_accounts.sql
+17. zLAST_performance_indexes.sql
 18. demo_seed.sql - optional this is for me by the way.
 
 > Now that you already imported all of the neccessarry databses, go to files and navigate to folder named "config" under that folder you should be able to see the database.php, look for the "define('DB_PASS', 'admin');" then change it into "define('DB_PASS', '');" - don't include the quotation u dummy.
