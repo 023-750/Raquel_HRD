@@ -91,6 +91,10 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
             </div>
             <span class="nav-label">Status</span>
         </a>
+        <a href="<?php echo BASE_URL; ?>/employee/my-performance.php" class="nav-item <?php echo ($curr_p === 'my-performance.php') ? 'active' : ''; ?>">
+            <i class="fas fa-chart-line nav-icon"></i>
+            <span class="nav-label">Performance</span>
+        </a>
         <?php
         // "Confirm Rating" shortcut — only for immediate heads outside Human Resources department
         $m_confirm_dept_name = '';
@@ -408,6 +412,42 @@ if (in_array($_ft_role, ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin'])):
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Sidebar tooltip activation (collapsed sidebar icon labels for elderly users) ──
+(function initSidebarTooltips() {
+    function activateTooltips() {
+        // Activate all elements with title="" in the sidebar nav (works even on collapsed mode)
+        const sidebarLinks = document.querySelectorAll('.sidebar-nav a[title], .sidebar-nav [data-bs-toggle="tooltip"]');
+        sidebarLinks.forEach(function(el) {
+            // Only show tooltip when sidebar is collapsed (icon-only mode)
+            var tooltip = new bootstrap.Tooltip(el, {
+                placement: 'right',
+                trigger: 'hover',
+                container: 'body',
+                customClass: 'sidebar-tooltip'
+            });
+            // Destroy tooltip when sidebar is expanded (label already visible)
+            var observer = new MutationObserver(function() {
+                var collapsed = document.documentElement.classList.contains('sidebar-collapsed');
+                if (collapsed) {
+                    tooltip.enable();
+                } else {
+                    tooltip.disable();
+                }
+            });
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            // Set initial state
+            var collapsed = document.documentElement.classList.contains('sidebar-collapsed');
+            if (!collapsed) { tooltip.disable(); }
+        });
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', activateTooltips);
+    } else {
+        activateTooltips();
+    }
+})();
+</script>
 <script src="<?php echo BASE_URL; ?>/assets/js/zebra-stripe.js?v=<?php echo time(); ?>"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/main.js?v=<?php echo time(); ?>"></script>
 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'): ?>

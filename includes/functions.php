@@ -469,6 +469,42 @@ function getRecentNotifications($conn, $user_id, $limit = 5, $context = null)
 
 }
 
+/**
+ * Get category icon and CSS class for a notification title
+ */
+function getNotifIconInfo($title)
+{
+    $t = strtolower($title ?? '');
+    if (str_contains($t, 'approved') || str_contains($t, 'approval') || str_contains($t, 'confirmed') || str_contains($t, 'endorsed')) {
+        return ['icon' => 'fas fa-check-circle', 'class' => 'approve'];
+    }
+    if (str_contains($t, 'rejected') || str_contains($t, 'reject')) {
+        return ['icon' => 'fas fa-times-circle', 'class' => 'reject'];
+    }
+    if (str_contains($t, 'returned') || str_contains($t, 'revision')) {
+        return ['icon' => 'fas fa-undo-alt', 'class' => 'return'];
+    }
+    if (str_contains($t, 'evaluation') || str_contains($t, 'validation') || str_contains($t, 'rating') || str_contains($t, 'pending')) {
+        return ['icon' => 'fas fa-clipboard-check', 'class' => 'eval'];
+    }
+    return ['icon' => 'fas fa-bell', 'class' => 'system'];
+}
+
+/**
+ * Format relative time ago for notifications
+ */
+function timeAgoFormat($datetime)
+{
+    if (empty($datetime)) return '';
+    $time = strtotime($datetime);
+    $diff = time() - $time;
+    if ($diff < 60) return 'Just now';
+    if ($diff < 3600) return floor($diff / 60) . 'm ago';
+    if ($diff < 86400) return floor($diff / 3600) . 'h ago';
+    if ($diff < 604800) return floor($diff / 86400) . 'd ago';
+    return date('M d, Y', $time);
+}
+
 
 
 /**

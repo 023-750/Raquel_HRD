@@ -7,6 +7,11 @@
 
 require_once __DIR__ . '/functions.php';
 
+// Auto-backup scheduler: silently check & trigger if Admin session
+if (isset($_SESSION['role']) && $_SESSION['role'] === 'Admin') {
+    require_once __DIR__ . '/auto-backup-check.php';
+}
+
 // Get dynamic branding settings
 $sys_pawnshop_name = getSetting($conn, 'company_name', 'Raquel Pawnshop');
 $sys_logo = getSetting($conn, 'system_logo', 'assets/img/logo/logo.png');
@@ -282,6 +287,7 @@ switch ($effective_role) {
             ['icon' => 'fas fa-briefcase', 'label' => 'My Employment', 'url' => BASE_URL . '/employee/my-employment.php', 'page' => 'my-employment.php'],
             ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php', 'badge' => $m_pending_template_count],
             ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php', 'badge' => $m_eval_status_count],
+            ['icon' => 'fas fa-chart-line', 'label' => 'My Performance', 'url' => BASE_URL . '/employee/my-performance.php', 'page' => 'my-performance.php'],
         ];
 
         // Add department manager links
@@ -440,53 +446,70 @@ switch ($effective_role) {
                     <?php endif; ?>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end notification-dropdown">
-                    <div class="dropdown-header">
-                        Notifications
-                        <?php if ($notif_count > 0): ?>
-                            <a href="#" onclick="markAllRead(); return false;"
-                                style="font-size:0.75rem;font-weight:400;">Mark all read</a>
+                    <div class="dropdown-header-bar">
+                        <div class="dropdown-header-title">
+                            <i class="fas fa-bell me-1" style="color:#CBA135;"></i> Notifications
+                            <span class="notif-unread-pill" style="<?php echo $notif_count > 0 ? '' : 'display:none;'; ?>">
+                                <?php echo $notif_count > 9 ? '9+ unread' : $notif_count . ' unread'; ?>
+                            </span>
+                        </div>
+                        <a href="#" class="mark-all-btn" onclick="markAllRead(); return false;" title="Mark all as read">
+                            <i class="fas fa-check-double me-1"></i>Mark all read
+                        </a>
+                    </div>
+                    
+                    <div class="notif-list-body">
+                        <?php if (empty($notifications)): ?>
+                            <div class="p-4 text-center text-muted" style="font-size:0.9rem;">
+                                <i class="fas fa-bell-slash d-block mb-2" style="font-size:2rem;opacity:0.3;color:var(--primary-blue);"></i>
+                                <div class="fw-semibold">You're all caught up!</div>
+                                <div class="small opacity-75 mt-1">No notifications at the moment</div>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach ($notifications as $notif): 
+                                $icon_info = getNotifIconInfo($notif['title']);
+                            ?>
+                                <a href="<?php echo e($notif['link'] ?? '#'); ?>"
+                                    class="notification-item <?php echo $notif['is_read'] ? '' : 'unread'; ?>">
+                                    <div class="notif-avatar <?php echo $icon_info['class']; ?>">
+                                        <i class="<?php echo $icon_info['icon']; ?>"></i>
+                                    </div>
+                                    <div class="notif-content-area">
+                                        <div class="notif-title"><?php echo e($notif['title']); ?></div>
+                                        <div class="notif-message"><?php echo e($notif['message']); ?></div>
+                                        <div class="notif-time"><i class="far fa-clock me-1"></i><?php echo timeAgoFormat($notif['created_at']); ?></div>
+                                    </div>
+                                    <?php if (!$notif['is_read']): ?>
+                                        <div class="unread-dot" title="Unread"></div>
+                                    <?php endif; ?>
+                                </a>
+                            <?php endforeach; ?>
                         <?php endif; ?>
                     </div>
-                    <?php if (empty($notifications)): ?>
-                        <div class="p-3 text-center text-muted" style="font-size:0.85rem;">
-                            <i class="fas fa-bell-slash d-block mb-2" style="font-size:1.5rem;opacity:0.3;"></i>
-                            No notifications
-                        </div>
-                    <?php else: ?>
-                        <?php foreach ($notifications as $notif): ?>
-                            <a href="<?php echo e($notif['link'] ?? '#'); ?>"
-                                class="notification-item <?php echo $notif['is_read'] ? '' : 'unread'; ?>">
-                                <div class="notif-title"><?php echo e($notif['title']); ?></div>
-                                <div class="notif-message"><?php echo e($notif['message']); ?></div>
-                                <div class="notif-time"><?php echo formatDateTime($notif['created_at']); ?></div>
-                            </a>
-                        <?php endforeach; ?>
 
-                        <?php
-                        $current_portal = basename(dirname($_SERVER['SCRIPT_NAME']));
-                        // Use portal name as URL part, fallback to session role for others
-                        if (in_array($current_portal, ['employee', 'staff', 'manager', 'supervisor', 'admin'])) {
-                            $notif_url = BASE_URL . '/' . $current_portal . '/notifications.php';
-                        } else {
-                            $role_map = [
-                                'Admin' => 'admin',
-                                'HR Manager' => 'manager',
-                                'HR Supervisor' => 'supervisor',
-                                'HR Staff' => 'staff',
-                                'Employee' => 'employee'
-                            ];
-                            $portal_name = $role_map[$_SESSION['role'] ?? 'Employee'] ?? 'employee';
-                            $notif_url = BASE_URL . '/' . $portal_name . '/notifications.php';
-                        }
-                        ?>
-                        <div class="dropdown-footer text-center p-2 border-top mt-1" style="background: var(--bg-gray);">
-                            <a href="<?php echo $notif_url; ?>" class="text-decoration-none"
-                                style="font-size: 0.85rem; font-weight: 600; color: var(--primary-blue);">
-                                View All Notifications
-                            </a>
-                        </div>
-                    <?php endif; ?>
+                    <?php
+                    $current_portal = basename(dirname($_SERVER['SCRIPT_NAME']));
+                    if (in_array($current_portal, ['employee', 'staff', 'manager', 'supervisor', 'admin'])) {
+                        $notif_url = BASE_URL . '/' . $current_portal . '/notifications.php';
+                    } else {
+                        $role_map = [
+                            'Admin' => 'admin',
+                            'HR Manager' => 'manager',
+                            'HR Supervisor' => 'supervisor',
+                            'HR Staff' => 'staff',
+                            'Employee' => 'employee'
+                        ];
+                        $portal_name = $role_map[$_SESSION['role'] ?? 'Employee'] ?? 'employee';
+                        $notif_url = BASE_URL . '/' . $portal_name . '/notifications.php';
+                    }
+                    ?>
+                    <div class="dropdown-footer-bar">
+                        <a href="<?php echo $notif_url; ?>">
+                            View All Notifications <i class="fas fa-arrow-right ms-1" style="font-size:0.75rem;"></i>
+                        </a>
+                    </div>
                 </div>
+
             </div>
 
             <!-- User Dropdown -->
@@ -602,5 +625,18 @@ switch ($effective_role) {
             } else {
                 unset($_SESSION['flash_type'], $_SESSION['flash_message']); // clear only
             }
+        }
+
+        // Auto-backup result toast
+        if (!empty($_SESSION['auto_backup_toast'])) {
+            $ab_toast = $_SESSION['auto_backup_toast'];
+            unset($_SESSION['auto_backup_toast']);
+            $ab_class = $ab_toast['type'] === 'success' ? 'success' : 'danger';
+            $ab_icon  = $ab_toast['type'] === 'success' ? 'fas fa-check-circle' : 'fas fa-times-circle';
+            echo "<div class='alert alert-{$ab_class} alert-dismissible fade show d-flex align-items-center gap-2 shadow-sm' role='alert' style='border-radius:12px;margin-bottom:1rem;'>"
+               . "<i class='{$ab_icon} fa-lg'></i>"
+               . "<div><strong>Auto Backup:</strong> {$ab_toast['msg']}</div>"
+               . "<button type='button' class='btn-close ms-auto' data-bs-dismiss='alert'></button>"
+               . "</div>";
         }
         ?>
