@@ -258,26 +258,32 @@ $base_url = strtok($_SERVER['REQUEST_URI'], '?');
 <?php else: ?>
     <div class="notif-list" id="notifList">
         <?php foreach ($notifications as $i => $notif):
-            $icon_cls = getNotifIconClass($notif['title']);
-            $icon_fa  = getNotifFA($icon_cls);
+            $icon_info = getNotifIconInfo($notif['title']);
             $is_unread = !$notif['is_read'];
         ?>
         <div class="notif-card <?php echo $is_unread ? 'unread' : ''; ?>"
              id="notif-<?php echo $notif['notification_id']; ?>" style="--i: <?php echo $i; ?>;"
              data-id="<?php echo $notif['notification_id']; ?>" data-read="<?php echo $notif['is_read']; ?>">
-            <div class="notif-card-icon <?php echo $icon_cls; ?>"><i class="<?php echo $icon_fa; ?>"></i></div>
+            <div class="notif-card-icon <?php echo $icon_info['class']; ?>">
+                <i class="<?php echo $icon_info['icon']; ?>"></i>
+            </div>
             <div class="notif-card-body" onclick="navigateNotif(<?php echo $notif['notification_id']; ?>, '<?php echo e($notif['link'] ?? ''); ?>', <?php echo $is_unread ? 'true' : 'false'; ?>)">
-                <div class="notif-card-title"><?php echo e($notif['title']); ?></div>
+                <div class="notif-card-header-row">
+                    <h5 class="notif-card-title"><?php echo e($notif['title']); ?></h5>
+                    <?php if ($is_unread): ?>
+                        <span class="badge rounded-pill bg-warning text-dark fw-bold px-2 py-1" style="font-size:0.7rem;">Unread</span>
+                    <?php else: ?>
+                        <span class="badge rounded-pill bg-secondary bg-opacity-25 text-secondary fw-medium px-2 py-1" style="font-size:0.7rem;">Read</span>
+                    <?php endif; ?>
+                </div>
                 <div class="notif-card-message"><?php echo e($notif['message']); ?></div>
-                <div class="notif-card-time">
-                    <i class="far fa-clock"></i> <?php echo timeAgo($notif['created_at']); ?>
+                <div class="notif-card-meta-row">
+                    <div class="notif-card-time"><i class="far fa-clock me-1"></i><?php echo timeAgoFormat($notif['created_at']); ?></div>
                     <?php if ($notif['link']): ?>
-                        <span style="margin-left:4px;opacity:0.6;">•</span>
-                        <span style="color:var(--primary-blue);font-weight:600;">View Details <i class="fas fa-arrow-right" style="font-size:0.65rem;"></i></span>
+                        <span class="notif-action-link">View Details <i class="fas fa-arrow-right" style="font-size:0.7rem;"></i></span>
                     <?php endif; ?>
                 </div>
             </div>
-            <?php if ($is_unread): ?><div class="notif-unread-dot" title="Unread"></div><?php endif; ?>
             <div class="notif-card-actions">
                 <?php if ($is_unread): ?>
                     <button onclick="notifAction(<?php echo $notif['notification_id']; ?>, 'mark_read')" title="Mark as read"><i class="fas fa-envelope-open"></i></button>
@@ -288,6 +294,7 @@ $base_url = strtok($_SERVER['REQUEST_URI'], '?');
             </div>
         </div>
         <?php endforeach; ?>
+
     </div>
     <?php if ($total_pages > 1): ?>
     <div class="notif-pagination">

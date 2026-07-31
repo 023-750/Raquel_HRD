@@ -50,7 +50,6 @@ $files = is_array($files) ? array_diff($files, array('.', '..', '.htaccess')) : 
 $backups = [];
 foreach ($files as $file) {
     if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {
-        // Detect backup type from filename
         if (strpos($file, '_schema_') !== false) {
             $btype = 'schema';
         } elseif (strpos($file, '_data_') !== false) {
@@ -66,9 +65,20 @@ foreach ($files as $file) {
         ];
     }
 }
-
-// Sort by date desc
 usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
+
+// Load auto-backup schedule settings
+$ab_enabled  = (int)getSetting($conn, 'auto_backup_enabled',   '0');
+$ab_freq     = getSetting($conn, 'auto_backup_frequency', 'daily');
+$ab_weekday  = (int)getSetting($conn, 'auto_backup_weekday',  '1');
+$ab_monthday = (int)getSetting($conn, 'auto_backup_monthday', '1');
+$ab_hour     = (int)getSetting($conn, 'auto_backup_hour',     '2');
+$ab_type     = getSetting($conn, 'auto_backup_type',   'full');
+$ab_keep     = (int)getSetting($conn, 'auto_backup_keep',     '7');
+$ab_last_run = getSetting($conn, 'auto_backup_last_run', '');
+$ab_next_run = getSetting($conn, 'auto_backup_next_run', '');
+
+$days_of_week = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 ?>
 
 <div class="backup-module">
@@ -116,10 +126,117 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
         </div>
         <div class="col-md-4">
             <div class="stat-card">
-                <div class="stat-icon green"><i class="fas fa-shield-alt"></i></div>
+                <div class="stat-icon <?php echo $ab_enabled ? 'green' : 'red'; ?>">
+                    <i class="fas fa-<?php echo $ab_enabled ? 'robot' : 'clock'; ?>"></i>
+                </div>
                 <div class="stat-info">
-                    <h3>Encrypted</h3>
-                    <p>Storage Security</p>
+                    <h3><?php echo $ab_enabled ? ucfirst($ab_freq) : 'Off'; ?></h3>
+                    <p>Auto-Backup Schedule</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Auto-Backup Scheduler Card ─────────────────────────────────────── -->
+    <div class="content-card fadeup-1 mb-4" id="autoBackupCard">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5><i class="fas fa-robot me-2" style="color:var(--primary-dark);"></i>Automatic Backup Scheduler</h5>
+            <div class="d-flex align-items-center gap-3">
+                <span class="badge <?php echo $ab_enabled ? 'bg-success' : 'bg-secondary'; ?>" id="ab-status-badge">
+                    <?php echo $ab_enabled ? 'Enabled' : 'Disabled'; ?>
+                </span>
+                <div class="form-check form-switch mb-0" title="Enable / disable automatic backups">
+                    <input class="form-check-input" type="checkbox" role="switch"
+                           id="abEnabledToggle" <?php echo $ab_enabled ? 'checked' : ''; ?>>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">
+                <i class="fas fa-info-circle me-1"></i>
+                Schedule automatic database backups. The backup runs automatically whenever an admin opens any page after the scheduled time.
+            </p>
+
+            <div class="row g-3" id="abScheduleForm">
+                <!-- Frequency -->
+                <div class="col-sm-6 col-md-3">
+                    <label class="form-label fw-semibold" for="abFrequency"><i class="fas fa-calendar-alt me-1"></i>Frequency</label>
+                    <select class="form-select" id="abFrequency">
+                        <option value="daily"   <?php echo $ab_freq==='daily'  ?'selected':''; ?>>Daily</option>
+                        <option value="weekly"  <?php echo $ab_freq==='weekly' ?'selected':''; ?>>Weekly</option>
+                        <option value="monthly" <?php echo $ab_freq==='monthly'?'selected':''; ?>>Monthly</option>
+                    </select>
+                </div>
+
+                <!-- Weekday (weekly only) -->
+                <div class="col-sm-6 col-md-2" id="abWeekdayGroup" <?php echo $ab_freq!=='weekly'?'style="display:none"':''; ?>>
+                    <label class="form-label fw-semibold" for="abWeekday"><i class="fas fa-calendar-week me-1"></i>On Day</label>
+                    <select class="form-select" id="abWeekday">
+                        <?php foreach ($days_of_week as $i => $d): ?>
+                            <option value="<?php echo $i; ?>" <?php echo $ab_weekday===$i?'selected':''; ?>><?php echo $d; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <!-- Month day (monthly only) -->
+                <div class="col-sm-6 col-md-2" id="abMonthdayGroup" <?php echo $ab_freq!=='monthly'?'style="display:none"':''; ?>>
+                    <label class="form-label fw-semibold" for="abMonthday"><i class="fas fa-calendar-day me-1"></i>Day of Month</label>
+                    <select class="form-select" id="abMonthday">
+                        <?php for ($d=1; $d<=28; $d++): ?>
+                            <option value="<?php echo $d; ?>" <?php echo $ab_monthday===$d?'selected':''; ?>><?php echo $d; ?></option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+
+                <!-- Hour -->
+                <div class="col-sm-6 col-md-2">
+                    <label class="form-label fw-semibold" for="abHour"><i class="fas fa-clock me-1"></i>Time</label>
+                    <select class="form-select" id="abHour">
+                        <?php for ($h=0; $h<=23; $h++): ?>
+                            <option value="<?php echo $h; ?>" <?php echo $ab_hour===$h?'selected':''; ?>>
+                                <?php echo date('g:i A', mktime($h,0,0)); ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+                </div>
+
+                <!-- Backup type -->
+                <div class="col-sm-6 col-md-2">
+                    <label class="form-label fw-semibold" for="abType"><i class="fas fa-database me-1"></i>Backup Type</label>
+                    <select class="form-select" id="abType">
+                        <option value="full"   <?php echo $ab_type==='full'  ?'selected':''; ?>>Full Backup</option>
+                        <option value="schema" <?php echo $ab_type==='schema'?'selected':''; ?>>Schema Only</option>
+                        <option value="data"   <?php echo $ab_type==='data'  ?'selected':''; ?>>Data Only</option>
+                    </select>
+                </div>
+
+                <!-- Keep last N -->
+                <div class="col-sm-6 col-md-2">
+                    <label class="form-label fw-semibold" for="abKeep"><i class="fas fa-archive me-1"></i>Keep Last</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="abKeep" min="1" max="90" value="<?php echo $ab_keep; ?>">
+                        <span class="input-group-text">files</span>
+                    </div>
+                </div>
+
+                <!-- Info row + Save button -->
+                <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2 mt-1">
+                    <div class="small text-muted">
+                        <?php if ($ab_last_run): ?>
+                            <i class="fas fa-history me-1"></i>Last run: <strong><?php echo formatDateTime($ab_last_run); ?></strong>
+                        <?php else: ?>
+                            <i class="fas fa-history me-1"></i>No automatic backup has run yet.
+                        <?php endif; ?>
+                        &nbsp;|&nbsp;
+                        <?php if ($ab_next_run && $ab_enabled): ?>
+                            <i class="fas fa-forward me-1 text-success"></i>Next: <strong class="text-success"><?php echo formatDateTime($ab_next_run); ?></strong>
+                        <?php else: ?>
+                            <i class="fas fa-forward me-1 text-muted"></i>Next: <strong class="text-muted">Not scheduled</strong>
+                        <?php endif; ?>
+                    </div>
+                    <button class="btn btn-primary fw-semibold px-4" id="btnSaveSchedule">
+                        <i class="fas fa-save me-2"></i>Save Schedule
+                    </button>
                 </div>
             </div>
         </div>
@@ -129,7 +246,10 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
     <div class="content-card fadeup-2">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h5><i class="fas fa-history me-2"></i>Backup History</h5>
-            <span class="badge bg-info">Auto-cleanup: Not Active</span>
+            <span class="badge <?php echo $ab_enabled ? 'bg-success' : 'bg-secondary'; ?>">
+                <i class="fas fa-<?php echo $ab_enabled ? 'robot' : 'times-circle'; ?> me-1"></i>
+                Auto-cleanup: <?php echo $ab_enabled ? "Keep last {$ab_keep}" : 'Not Active'; ?>
+            </span>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -207,33 +327,27 @@ usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
 </div>
 
 <script>
-const AJAX_URL = '<?php echo BASE_URL; ?>/includes/ajax/system-backup.php';
+const AJAX_URL     = '<?php echo BASE_URL; ?>/includes/ajax/system-backup.php';
+const SCHEDULE_URL = '<?php echo BASE_URL; ?>/includes/ajax/save-backup-schedule.php';
+const CSRF_TOKEN   = '<?php echo generateCsrfToken(); ?>';
 
+// ── Manual backup ────────────────────────────────────────────────────────────
 function runBackup(type, labelText) {
     document.getElementById('backupProgressLabel').textContent = 'Generating ' + labelText + '...';
     document.getElementById('backupProgressSub').textContent  = 'Please wait while the system exports the database. This may take a few seconds.';
-
     const modal = new bootstrap.Modal(document.getElementById('backupProgressModal'));
     modal.show();
-
     const body = new FormData();
     body.append('type', type);
-
+    body.append('csrf_token', CSRF_TOKEN);
     fetch(AJAX_URL, { method: 'POST', body })
         .then(r => r.json())
         .then(data => {
             modal.hide();
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Backup Error: ' + (data.error || 'Unknown error occurred.'));
-            }
+            if (data.success) { location.reload(); }
+            else { alert('Backup Error: ' + (data.error || 'Unknown error occurred.')); }
         })
-        .catch(err => {
-            modal.hide();
-            alert('A system error occurred while generating the backup.');
-            console.error(err);
-        });
+        .catch(err => { modal.hide(); alert('A system error occurred while generating the backup.'); console.error(err); });
 }
 
 document.getElementById('btnFullBackup').addEventListener('click',   () => runBackup('full',   'Full Backup'));
@@ -245,6 +359,70 @@ function confirmDeleteBackup(filename) {
         window.location.href = `?delete=${encodeURIComponent(filename)}`;
     }
 }
+
+// ── Schedule UI ──────────────────────────────────────────────────────────────
+const freqSel     = document.getElementById('abFrequency');
+const weekdayGrp  = document.getElementById('abWeekdayGroup');
+const monthdayGrp = document.getElementById('abMonthdayGroup');
+const toggle      = document.getElementById('abEnabledToggle');
+const statusBadge = document.getElementById('ab-status-badge');
+
+function updateFreqVisibility() {
+    const f = freqSel.value;
+    weekdayGrp.style.display  = f === 'weekly'  ? '' : 'none';
+    monthdayGrp.style.display = f === 'monthly' ? '' : 'none';
+}
+freqSel.addEventListener('change', updateFreqVisibility);
+
+toggle.addEventListener('change', function() {
+    statusBadge.textContent = this.checked ? 'Enabled' : 'Disabled';
+    statusBadge.className   = 'badge ' + (this.checked ? 'bg-success' : 'bg-secondary');
+});
+
+// ── Save schedule ────────────────────────────────────────────────────────────
+document.getElementById('btnSaveSchedule').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+
+    const body = new FormData();
+    body.append('csrf_token', CSRF_TOKEN);
+    body.append('enabled',  toggle.checked ? '1' : '0');
+    body.append('frequency', freqSel.value);
+    body.append('weekday',   document.getElementById('abWeekday').value);
+    body.append('monthday',  document.getElementById('abMonthday').value);
+    body.append('hour',      document.getElementById('abHour').value);
+    body.append('btype',     document.getElementById('abType').value);
+    body.append('keep',      document.getElementById('abKeep').value);
+
+    fetch(SCHEDULE_URL, { method: 'POST', body })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save me-2"></i>Save Schedule';
+            if (data.success) {
+                const toast = document.createElement('div');
+                toast.className = 'alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 shadow-sm';
+                toast.style.cssText = 'position:fixed;top:80px;right:20px;z-index:9999;max-width:420px;border-radius:12px;';
+                toast.innerHTML = `<i class="fas fa-check-circle fa-lg"></i>
+                    <div><strong>Schedule Saved!</strong><br>
+                    ${data.enabled ? 'Auto-backup <strong>enabled</strong>. Next run: <strong>' + (data.next_run || 'N/A') + '</strong>' : 'Auto-backup is <strong>disabled</strong>.'}
+                    </div>
+                    <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 7000);
+                setTimeout(() => location.reload(), 1400);
+            } else {
+                alert('Error saving schedule: ' + (data.error || 'Unknown error.'));
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save me-2"></i>Save Schedule';
+            alert('A system error occurred while saving the schedule.');
+            console.error(err);
+        });
+});
 </script>
 
 <?php
