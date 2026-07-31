@@ -293,6 +293,23 @@ function showLiveToast(title, message, link) {
     }, 8000);
 }
 
+function getNotifIconInfoJS(title) {
+    const t = (title || '').toLowerCase();
+    if (t.includes('approved') || t.includes('approval') || t.includes('confirmed') || t.includes('endorsed')) {
+        return { icon: 'fas fa-check-circle', class: 'approve' };
+    }
+    if (t.includes('rejected') || t.includes('reject')) {
+        return { icon: 'fas fa-times-circle', class: 'reject' };
+    }
+    if (t.includes('returned') || t.includes('revision')) {
+        return { icon: 'fas fa-undo-alt', class: 'return' };
+    }
+    if (t.includes('evaluation') || t.includes('validation') || t.includes('rating') || t.includes('pending')) {
+        return { icon: 'fas fa-clipboard-check', class: 'eval' };
+    }
+    return { icon: 'fas fa-bell', class: 'system' };
+}
+
 function updateNotificationDOM(unreadCount, recentNotifications) {
     const notifBtn = document.getElementById('notificationBtn');
     if (notifBtn) {
@@ -313,66 +330,60 @@ function updateNotificationDOM(unreadCount, recentNotifications) {
     
     const dropdown = document.querySelector('.notification-dropdown');
     if (dropdown && recentNotifications) {
-        const headerEl = dropdown.querySelector('.dropdown-header');
-        let headerText = 'Notifications';
-        if (unreadCount > 0) {
-            headerText += ` <a href="#" onclick="markAllRead(); return false;" style="font-size:0.75rem;font-weight:400;">Mark all read</a>`;
-        }
-        if (headerEl) {
-            headerEl.innerHTML = headerText;
+        // Update header bar pill count
+        const pillEl = dropdown.querySelector('.notif-unread-pill');
+        if (pillEl) {
+            if (unreadCount > 0) {
+                pillEl.textContent = unreadCount > 9 ? '9+ unread' : unreadCount + ' unread';
+                pillEl.style.display = 'inline-block';
+            } else {
+                pillEl.style.display = 'none';
+            }
         }
         
-        dropdown.querySelectorAll('.notification-item, .p-3.text-center, .dropdown-footer').forEach(el => el.remove());
+        let listBody = dropdown.querySelector('.notif-list-body');
+        if (!listBody) {
+            // Fallback if full HTML shell isn't rendered yet
+            listBody = dropdown;
+        }
+        
+        listBody.innerHTML = '';
         
         if (recentNotifications.length === 0) {
             const emptyEl = document.createElement('div');
-            emptyEl.className = 'p-3 text-center text-muted';
-            emptyEl.style.fontSize = '0.85rem';
+            emptyEl.className = 'p-4 text-center text-muted';
+            emptyEl.style.fontSize = '0.9rem';
             emptyEl.innerHTML = `
-                <i class="fas fa-bell-slash d-block mb-2" style="font-size:1.5rem;opacity:0.3;"></i>
-                No notifications
+                <i class="fas fa-bell-slash d-block mb-2" style="font-size:2rem;opacity:0.3;color:var(--primary-blue);"></i>
+                <div class="fw-semibold">You're all caught up!</div>
+                <div class="small opacity-75 mt-1">No notifications at the moment</div>
             `;
-            dropdown.appendChild(emptyEl);
+            listBody.appendChild(emptyEl);
         } else {
             recentNotifications.forEach(notif => {
                 const itemEl = document.createElement('a');
                 itemEl.href = notif.link || '#';
                 itemEl.className = `notification-item ${notif.is_read ? '' : 'unread'}`;
                 
+                const iconInfo = getNotifIconInfoJS(notif.title);
                 const timeStr = formatDateTimeString(notif.created_at);
                 
                 itemEl.innerHTML = `
-                    <div class="notif-title">${escapeHtml(notif.title)}</div>
-                    <div class="notif-message">${escapeHtml(notif.message)}</div>
-                    <div class="notif-time">${timeStr}</div>
+                    <div class="notif-avatar ${iconInfo.class}">
+                        <i class="${iconInfo.icon}"></i>
+                    </div>
+                    <div class="notif-content-area">
+                        <div class="notif-title">${escapeHtml(notif.title)}</div>
+                        <div class="notif-message">${escapeHtml(notif.message)}</div>
+                        <div class="notif-time"><i class="far fa-clock me-1"></i>${timeStr}</div>
+                    </div>
+                    ${notif.is_read ? '' : '<div class="unread-dot" title="Unread"></div>'}
                 `;
-                dropdown.appendChild(itemEl);
+                listBody.appendChild(itemEl);
             });
-            
-            const context = window.NOTIF_CONTEXT || 'hr';
-            const portalUrl = (context === 'employee') ? '/employee/notifications.php' : '/supervisor/notifications.php';
-            const footerEl = document.createElement('div');
-            footerEl.className = 'dropdown-footer text-center p-2 border-top mt-1';
-            footerEl.style.backgroundColor = 'var(--bg-gray)';
-            
-            const baseUrl = window.APP_BASE_URL || '';
-            let finalNotifUrl = baseUrl + portalUrl;
-            
-            const pathParts = window.location.pathname.split('/');
-            const currentPortal = pathParts[pathParts.length - 2];
-            if (['employee', 'staff', 'manager', 'supervisor', 'admin'].includes(currentPortal)) {
-                finalNotifUrl = `${baseUrl}/${currentPortal}/notifications.php`;
-            }
-            
-            footerEl.innerHTML = `
-                <a href="${finalNotifUrl}" class="text-decoration-none"
-                    style="font-size: 0.85rem; font-weight: 600; color: var(--primary-blue);">
-                    View All Notifications
-                </a>
-            `;
-            dropdown.appendChild(footerEl);
         }
     }
+
     
     if (window.location.pathname.includes('notifications.php')) {
         const totalEl = document.getElementById('statTotal');

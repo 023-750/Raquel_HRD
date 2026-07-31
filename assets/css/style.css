@@ -11,7 +11,7 @@
     --bg-gray: #F4F6F2;
     --bg-white: #ffffff;
     --text-dark: #1c271b;
-    --text-muted: #5e6b5c;
+    --text-muted: #3d4f3c; /* darkened for WCAG AA compliance — #5e6b5c was borderline at 4.2:1 */
     --success: #16a34a;
     --warning: #CBA135;
     --danger: #dc2626;
@@ -58,6 +58,8 @@ body {
     margin: 0;
     padding: 0;
     color: var(--text-dark);
+    font-size: 16px; /* Elderly-friendly: up from browser default 14–15px */
+    line-height: 1.65;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -352,10 +354,10 @@ a {
 */
 
 .sidebar-nav .nav-label {
-    font-size: 0.7rem;
+    font-size: 0.78rem; /* slightly larger for readability */
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: rgba(255, 255, 255, 0.32);
+    color: rgba(255, 255, 255, 0.38);
     padding: 10px 20px 5px;
     margin-top: 10px;
 }
@@ -365,13 +367,14 @@ a {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 11px 16px;
-    margin: 4px 14px;
+    padding: 13px 16px; /* taller for 48px+ touch target */
+    margin: 3px 14px;
     border-radius: var(--radius-md);
     transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
     border-left: 0;
-    font-size: 0.9rem;
+    font-size: 0.95rem; /* slightly bigger for elderly readability */
     font-weight: 500;
+    min-height: 48px; /* WCAG 2.5.5 minimum touch target */
 }
 
 .sidebar-nav a:hover {
@@ -443,7 +446,7 @@ a {
 
 .stat-label {
     margin: 4px 0 0;
-    font-size: 0.75rem;
+    font-size: 0.82rem; /* up from 0.75rem for elderly readability */
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -519,7 +522,7 @@ a {
 
 .stat-card .stat-info p {
     margin: 4px 0 0;
-    font-size: 0.8rem;
+    font-size: 0.82rem; /* up from 0.8rem for elderly readability */
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -1494,59 +1497,184 @@ select option.position-group-label {
     color: #074B02;
 }
 
-/* ---------- Notification Dropdown ---------- */
+/* ---------- Notification Dropdown (Modern Revamp) ---------- */
 .notification-dropdown {
-    width: 350px;
-    max-height: 400px;
-    overflow-y: auto;
+    width: 380px;
+    max-height: 480px;
     padding: 0;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    border-radius: 16px;
+    border: 1px solid rgba(8, 46, 6, 0.1);
+    box-shadow: 0 16px 48px rgba(8, 46, 6, 0.18);
+    overflow: hidden;
+    background: #ffffff;
 }
 
-.notification-dropdown .dropdown-header {
-    padding: 12px 16px;
-    font-weight: 700;
-    background: var(--bg-gray);
-    border-bottom: 1px solid #eee;
-    font-size: 0.9rem;
+.notification-dropdown .dropdown-header-bar {
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #082E06 0%, #12400f 100%);
+    color: #ffffff;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
+.notification-dropdown .dropdown-header-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffffff;
+}
+
+.notification-dropdown .dropdown-header-title .notif-unread-pill {
+    background: #CBA135;
+    color: #041D03;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.notification-dropdown .mark-all-btn {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.notification-dropdown .mark-all-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.notification-dropdown .notif-list-body {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
 .notification-dropdown .notification-item {
     padding: 12px 16px;
-    border-bottom: 1px solid #f5f5f5;
-    display: block;
+    border-bottom: 1px solid #f1f4f0;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
     color: var(--text-dark);
-    transition: background 0.2s;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.15s ease;
+    position: relative;
 }
 
 .notification-dropdown .notification-item:hover {
-    background: #f8fbff;
+    background: #f7faf6;
 }
 
 .notification-dropdown .notification-item.unread {
-    background: #f0f8ff;
+    background: #f0f7ef;
+}
+
+.notification-dropdown .notification-item .notif-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.notification-dropdown .notification-item .notif-avatar.approve {
+    background: rgba(22, 163, 74, 0.12);
+    color: #16a34a;
+}
+
+.notification-dropdown .notification-item .notif-avatar.eval {
+    background: rgba(203, 161, 53, 0.14);
+    color: #a07a1a;
+}
+
+.notification-dropdown .notification-item .notif-avatar.reject {
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
+}
+
+.notification-dropdown .notification-item .notif-avatar.return {
+    background: rgba(225, 35, 42, 0.12);
+    color: #E1232A;
+}
+
+.notification-dropdown .notification-item .notif-avatar.system {
+    background: rgba(8, 145, 178, 0.12);
+    color: #0891b2;
+}
+
+.notification-dropdown .notification-item .notif-content-area {
+    flex: 1;
+    min-width: 0;
 }
 
 .notification-dropdown .notification-item .notif-title {
-    font-weight: 600;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: var(--text-dark);
     margin-bottom: 2px;
+    line-height: 1.3;
 }
 
 .notification-dropdown .notification-item .notif-message {
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     color: var(--text-muted);
-    margin-bottom: 2px;
+    line-height: 1.35;
+    margin-bottom: 4px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .notification-dropdown .notification-item .notif-time {
-    font-size: 0.7rem;
-    color: #adb5bd;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: #8a9688;
 }
+
+.notification-dropdown .notification-item .unread-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #CBA135;
+    box-shadow: 0 0 0 3px rgba(203, 161, 53, 0.25);
+    flex-shrink: 0;
+    margin-top: 6px;
+}
+
+.notification-dropdown .dropdown-footer-bar {
+    padding: 10px 16px;
+    background: #f4f6f2;
+    border-top: 1px solid #e5ebe3;
+    text-align: center;
+}
+
+.notification-dropdown .dropdown-footer-bar a {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s;
+}
+
+.notification-dropdown .dropdown-footer-bar a:hover {
+    color: #CBA135;
+}
+
 
 /* ---------- Branch Insights Explorer (Premium) ---------- */
 .branch-insights-section {
@@ -2679,41 +2807,90 @@ body.mobile-sidebar-active .sidebar {
     flex-shrink: 0;
 }
 
+/* ============================================================
+   NOTIFICATION CENTER PAGE (MODERN REVAMP)
+   ============================================================ */
+
+/* Stats Header Widgets */
+.notif-stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.notif-stat-card {
+    background: var(--bg-white);
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid rgba(8, 46, 6, 0.08);
+    box-shadow: 0 4px 16px rgba(8, 46, 6, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.notif-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(8, 46, 6, 0.08);
+}
+
+.notif-stat-card .nsc-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
 .notif-stat-card .nsc-icon.total {
-    background: rgba(41, 67, 6, 0.1);
-    color: #294306;
+    background: rgba(8, 46, 6, 0.1);
+    color: var(--primary-blue);
 }
 
 .notif-stat-card .nsc-icon.unread {
-    background: rgba(220, 53, 69, 0.1);
-    color: #dc3545;
+    background: rgba(203, 161, 53, 0.15);
+    color: #a07a1a;
 }
 
 .notif-stat-card .nsc-icon.read {
-    background: rgba(40, 167, 69, 0.1);
-    color: #28a745;
+    background: rgba(22, 163, 74, 0.1);
+    color: #16a34a;
 }
 
 .notif-stat-card .nsc-info h4 {
     margin: 0;
-    font-size: 1.4rem;
-    font-weight: 700;
+    font-size: 1.5rem;
+    font-weight: 800;
     color: var(--text-dark);
+    line-height: 1.1;
 }
 
 .notif-stat-card .nsc-info p {
-    margin: 0;
-    font-size: 0.78rem;
+    margin: 3px 0 0;
+    font-size: 0.8rem;
+    font-weight: 600;
     color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-/* Toolbar: filters + actions */
+/* Toolbar: Filters, Search, Actions */
 .notif-toolbar {
+    background: var(--bg-white);
+    padding: 16px 20px;
+    border-radius: 16px;
+    border: 1px solid rgba(8, 46, 6, 0.08);
+    box-shadow: 0 4px 16px rgba(8, 46, 6, 0.04);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 14px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
 }
 
@@ -2725,191 +2902,163 @@ body.mobile-sidebar-active .sidebar {
 }
 
 .notif-filter-btn {
-    padding: 7px 16px;
+    padding: 8px 18px;
     border-radius: 20px;
-    border: 1.5px solid #dee2e6;
+    border: 1.5px solid #e0e6de;
     background: var(--bg-white);
-    font-size: 0.82rem;
-    font-weight: 500;
+    font-size: 0.86rem;
+    font-weight: 600;
     color: var(--text-muted);
     cursor: pointer;
+    text-decoration: none;
     transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .notif-filter-btn:hover {
-    border-color: #BD9414;
-    color: #294306;
+    border-color: #CBA135;
+    color: var(--primary-blue);
+    background: #f8faf6;
 }
 
 .notif-filter-btn.active {
-    background: #294306;
-    border-color: #294306;
-    color: white;
+    background: linear-gradient(135deg, #082E06 0%, #12400f 100%);
+    border-color: #082E06;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(8, 46, 6, 0.2);
 }
 
 .notif-search-box {
     position: relative;
-    min-width: 200px;
+    min-width: 220px;
 }
 
 .notif-search-box input {
-    padding: 7px 14px 7px 36px;
+    padding: 8px 14px 8px 38px;
     border-radius: 20px;
-    border: 1.5px solid #dee2e6;
-    font-size: 0.82rem;
+    border: 1.5px solid #e0e6de;
+    font-size: 0.88rem;
     width: 100%;
     transition: border-color 0.3s, box-shadow 0.3s;
     background: var(--bg-white);
 }
 
 .notif-search-box input:focus {
-    border-color: var(--primary-light);
-    box-shadow: 0 0 0 3px rgba(189, 148, 20, 0.15);
+    border-color: #CBA135;
+    box-shadow: 0 0 0 3px rgba(203, 161, 53, 0.2);
     outline: none;
 }
 
 .notif-search-box .search-icon {
     position: absolute;
-    left: 12px;
+    left: 14px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-muted);
-    font-size: 0.82rem;
+    font-size: 0.88rem;
 }
 
 .notif-toolbar .notif-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .notif-action-btn {
-    padding: 7px 14px;
-    border-radius: 8px;
-    border: 1.5px solid #dee2e6;
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1.5px solid #e0e6de;
     background: var(--bg-white);
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-dark);
     cursor: pointer;
     transition: all 0.25s ease;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
 }
 
 .notif-action-btn:hover {
-    border-color: #294306;
-    color: #294306;
-    background: rgba(41, 67, 6, 0.03);
+    border-color: #082E06;
+    color: #082E06;
+    background: rgba(8, 46, 6, 0.04);
 }
 
 .notif-action-btn.danger:hover {
-    border-color: #dc3545;
-    color: #dc3545;
-    background: rgba(220, 53, 69, 0.03);
+    border-color: #dc2626;
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.04);
 }
 
-/* Notification Cards */
+/* Standalone Notification Cards */
 .notif-list {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 12px;
 }
 
 .notif-card {
     background: var(--bg-white);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    border-bottom: 1px solid #f0f0f0;
-    padding: 16px 20px;
+    border: 1px solid #e2e8e0;
+    border-radius: 14px !important;
+    padding: 18px 22px;
     display: flex;
     align-items: flex-start;
-    gap: 14px;
-    transition: all 0.3s ease;
-    cursor: pointer;
+    gap: 16px;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
-    animation: notifSlideIn 0.3s ease forwards;
-    animation-delay: calc(var(--i, 0) * 0.04s);
-    opacity: 0;
-}
-
-@keyframes notifSlideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-12px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-.notif-card:first-child {
-    border-radius: 12px 12px 0 0;
-}
-
-.notif-card:last-child {
-    border-radius: 0 0 12px 12px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.notif-card:only-child {
-    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(8, 46, 6, 0.03);
 }
 
 .notif-card:hover {
-    background: #f8fbff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(8, 46, 6, 0.08);
+    border-color: rgba(8, 46, 6, 0.15);
 }
 
 .notif-card.unread {
-    background: linear-gradient(90deg, rgba(41, 67, 6, 0.04), transparent);
-    border-left: 3px solid #294306;
-}
-
-.notif-card.unread .notif-card-title {
-    font-weight: 700;
+    background: #f2f8f1;
+    border-left: 4px solid #CBA135;
+    box-shadow: 0 4px 14px rgba(8, 46, 6, 0.06);
 }
 
 .notif-card .notif-card-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
+    font-size: 1.15rem;
     flex-shrink: 0;
 }
 
-.notif-card .notif-card-icon.eval {
-    background: rgba(23, 162, 184, 0.12);
-    color: #17a2b8;
+.notif-card .notif-card-icon.approve {
+    background: rgba(22, 163, 74, 0.12);
+    color: #16a34a;
 }
 
-.notif-card .notif-card-icon.approve {
-    background: rgba(40, 167, 69, 0.12);
-    color: #28a745;
+.notif-card .notif-card-icon.eval {
+    background: rgba(203, 161, 53, 0.14);
+    color: #a07a1a;
 }
 
 .notif-card .notif-card-icon.reject {
-    background: rgba(220, 53, 69, 0.12);
-    color: #dc3545;
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
 }
 
 .notif-card .notif-card-icon.return {
-    background: rgba(111, 66, 193, 0.12);
-    color: #6f42c1;
-}
-
-.notif-card .notif-card-icon.career {
-    background: rgba(189, 148, 20, 0.12);
-    color: #BD9414;
+    background: rgba(225, 35, 42, 0.12);
+    color: #E1232A;
 }
 
 .notif-card .notif-card-icon.system {
-    background: rgba(41, 67, 6, 0.1);
-    color: #294306;
+    background: rgba(8, 145, 178, 0.12);
+    color: #0891b2;
 }
 
 .notif-card .notif-card-body {
@@ -2917,34 +3066,69 @@ body.mobile-sidebar-active .sidebar {
     min-width: 0;
 }
 
+.notif-card .notif-card-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
 .notif-card .notif-card-title {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.98rem;
+    font-weight: 700;
     color: var(--text-dark);
-    margin-bottom: 3px;
+    margin: 0;
 }
 
 .notif-card .notif-card-message {
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     color: var(--text-muted);
-    margin-bottom: 4px;
-    line-height: 1.45;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.notif-card .notif-card-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
 .notif-card .notif-card-time {
-    font-size: 0.72rem;
-    color: #adb5bd;
-    display: flex;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #7a8778;
+    display: inline-flex;
     align-items: center;
     gap: 5px;
+}
+
+.notif-card .notif-action-link {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(8, 46, 6, 0.06);
+    padding: 3px 10px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.notif-card .notif-action-link:hover {
+    background: var(--primary-blue);
+    color: #ffffff;
 }
 
 .notif-card .notif-card-actions {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     flex-shrink: 0;
-    opacity: 0;
+    opacity: 0.85;
     transition: opacity 0.2s;
 }
 
@@ -2953,40 +3137,69 @@ body.mobile-sidebar-active .sidebar {
 }
 
 .notif-card .notif-card-actions button {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: var(--bg-gray);
-    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #e0e6de;
+    background: var(--bg-white);
+    border-radius: 10px;
     color: var(--text-muted);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.8rem;
-    transition: all 0.2s;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
 }
 
 .notif-card .notif-card-actions button:hover {
-    background: #294306;
+    background: var(--primary-blue);
+    border-color: var(--primary-blue);
     color: white;
 }
 
 .notif-card .notif-card-actions button.btn-delete:hover {
-    background: #dc3545;
+    background: #dc2626;
+    border-color: #dc2626;
     color: white;
 }
 
-/* Unread dot */
-.notif-unread-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #294306;
-    flex-shrink: 0;
-    margin-top: 6px;
-    animation: dotPulse 2s ease-in-out infinite;
+/* Empty State Styling */
+.notif-empty-state {
+    background: var(--bg-white);
+    border-radius: 16px;
+    padding: 48px 24px;
+    text-align: center;
+    border: 1px solid rgba(8, 46, 6, 0.08);
+    box-shadow: 0 4px 16px rgba(8, 46, 6, 0.04);
 }
+
+.notif-empty-state .notif-empty-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(8, 46, 6, 0.08);
+    color: var(--primary-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    margin: 0 auto 16px;
+}
+
+.notif-empty-state h5 {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--text-dark);
+    margin-bottom: 6px;
+}
+
+.notif-empty-state p {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    max-width: 420px;
+    margin: 0 auto;
+}
+
 
 @keyframes dotPulse {
 
@@ -5750,3 +5963,362 @@ body.has-wizard-footer {
     transform: scale(0.96) !important;
 }
 
+/* ==========================================================================
+   UNIVERSAL MULTI-RESOLUTION RESPONSIVE SYSTEM
+   Provides pixel-perfect layout adaptation across all device viewports:
+   - Extra Small Phones: < 360px (e.g. 320px, 340px, 350px)
+   - Mobile Phones: 360px – 479px (e.g. iPhone SE, 12/13/14 Mini, Galaxy S series)
+   - Phablets & Large Phones: 480px – 575px
+   - Small Tablets & Folded: 576px – 767px
+   - Tablets & Medium Displays: 768px – 991px
+   - Desktop & Wide Displays: 992px+
+   ========================================================================== */
+
+/* ── 1. ULTRA SMALL PHONES (< 360px) ─────────────────────────────────── */
+@media (max-width: 359.98px) {
+    .main-content {
+        padding: 0.75rem 0.5rem calc(76px + env(safe-area-inset-bottom, 0px)) 0.5rem !important;
+    }
+
+    body.role-employee .page-hero,
+    .page-hero {
+        padding: 12px 10px !important;
+        margin-bottom: 12px !important;
+        border-radius: 10px !important;
+    }
+
+    .page-hero h4, .page-hero h5, .page-hero .hero-title {
+        font-size: 1.05rem !important;
+    }
+
+    .page-hero p, .page-hero .hero-subtitle {
+        font-size: 0.68rem !important;
+    }
+
+    .page-hero img, .page-hero .rounded-circle {
+        width: 48px !important;
+        height: 48px !important;
+        font-size: 1rem !important;
+    }
+
+    .stat-pill {
+        padding: 0.45rem 0.4rem !important;
+        border-radius: 0.5rem !important;
+    }
+    .stat-pill .fw-bold {
+        font-size: 0.95rem !important;
+    }
+    .stat-pill div {
+        font-size: 0.6rem !important;
+    }
+
+    .employee-bottom-nav,
+    .hr-bottom-nav {
+        padding: 4px 2px calc(4px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .employee-bottom-nav .nav-item,
+    .hr-bottom-nav .hr-nav-item {
+        min-width: 46px !important;
+        max-width: 65px !important;
+        padding: 2px 2px !important;
+        gap: 1px !important;
+    }
+
+    .employee-bottom-nav .nav-icon,
+    .hr-bottom-nav .hr-nav-icon {
+        font-size: 1.05rem !important;
+    }
+
+    .employee-bottom-nav .nav-label,
+    .hr-bottom-nav .hr-nav-label {
+        font-size: 0.58rem !important;
+        letter-spacing: -0.2px !important;
+    }
+
+    .card-body, .section-card .card-body, .pds-card {
+        padding: 0.85rem 0.75rem !important;
+    }
+
+    .table-responsive {
+        margin-bottom: 0.75rem;
+        -webkit-overflow-scrolling: touch;
+    }
+    .table-responsive table {
+        font-size: 0.78rem !important;
+    }
+    .table-responsive th, .table-responsive td {
+        padding: 6px 8px !important;
+        white-space: nowrap;
+    }
+}
+
+/* ── 2. STANDARD MOBILE PHONES (360px – 479px) ────────────────────────── */
+@media (min-width: 360px) and (max-width: 479.98px) {
+    .main-content {
+        padding: 1rem 0.75rem calc(76px + env(safe-area-inset-bottom, 0px)) 0.75rem !important;
+    }
+
+    body.role-employee .page-hero,
+    .page-hero {
+        padding: 14px 12px !important;
+        margin-bottom: 14px !important;
+        border-radius: 12px !important;
+    }
+
+    .employee-bottom-nav .nav-item {
+        min-width: 52px !important;
+        max-width: 78px !important;
+        padding: 3px 4px !important;
+    }
+
+    .employee-bottom-nav .nav-icon {
+        font-size: 1.18rem !important;
+    }
+
+    .employee-bottom-nav .nav-label {
+        font-size: 0.65rem !important;
+    }
+
+    .stat-pill {
+        padding: 0.55rem 0.6rem !important;
+    }
+}
+
+/* ── 3. PHABLETS & LARGE PHONES (480px – 575px) ───────────────────────── */
+@media (min-width: 480px) and (max-width: 575.98px) {
+    .main-content {
+        padding: 1.15rem 1rem calc(76px + env(safe-area-inset-bottom, 0px)) 1rem !important;
+    }
+
+    .employee-bottom-nav .nav-item {
+        min-width: 60px !important;
+        max-width: 85px !important;
+    }
+}
+
+/* ── 4. SMALL TABLETS & FOLDABLES (576px – 767px) ─────────────────────── */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    .main-content {
+        padding: 1.25rem 1.25rem calc(76px + env(safe-area-inset-bottom, 0px)) 1.25rem !important;
+    }
+
+    .employee-bottom-nav .nav-item {
+        min-width: 68px !important;
+        max-width: 95px !important;
+    }
+}
+
+/* ── 5. TABLETS & RESIZED WINDOWS (< 992px) ──────────────────────────── */
+@media (max-width: 991.98px) {
+    html .main-content,
+    .main-content,
+    body.role-employee .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 1rem 0.85rem calc(76px + env(safe-area-inset-bottom, 0px)) 0.85rem !important;
+    }
+
+    html .top-navbar,
+    .top-navbar {
+        left: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Prevent stat cards from squishing letter-by-letter */
+    .stat-card {
+        padding: 14px 12px !important;
+        gap: 10px !important;
+    }
+    .stat-value {
+        font-size: 1.35rem !important;
+        white-space: nowrap !important;
+    }
+    .stat-label {
+        font-size: 0.68rem !important;
+        white-space: nowrap !important;
+    }
+}
+
+/* ── 6. GENERAL TOUCH & FORM ACCESSIBILITY ───────────────────────────── */
+@media (max-width: 767.98px) {
+    .form-control, .form-select, .btn {
+        min-height: 42px;
+    }
+
+    body, html {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    .modal-content {
+        border-radius: 14px;
+    }
+
+    .badge {
+        white-space: nowrap;
+    }
+}
+
+/* ── 7. COLLAPSED SIDEBAR DESKTOP SUPPORT (70px Width) ──────────────── */
+@media (min-width: 992px) {
+    html.sidebar-collapsed .top-navbar,
+    .sidebar-collapsed .top-navbar,
+    body.sidebar-collapsed .top-navbar {
+        left: var(--sidebar-collapsed-width, 70px) !important;
+        width: calc(100% - var(--sidebar-collapsed-width, 70px)) !important;
+    }
+
+    html.sidebar-collapsed .main-content,
+    .sidebar-collapsed .main-content,
+    body.sidebar-collapsed .main-content,
+    body.role-employee.sidebar-collapsed .main-content {
+        margin-left: var(--sidebar-collapsed-width, 70px) !important;
+        width: calc(100% - var(--sidebar-collapsed-width, 70px)) !important;
+    }
+
+    html:not(.sidebar-collapsed) .top-navbar {
+        left: 260px !important;
+        width: calc(100% - 260px) !important;
+    }
+
+    html:not(.sidebar-collapsed) .main-content {
+        margin-left: 260px !important;
+        width: calc(100% - 260px) !important;
+    }
+}
+
+/* ── 8. LAPTOPS & STANDARD DESKTOPS (992px – 1199.98px) ──────────────── */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .page-hero {
+        padding: 1.75rem 1.5rem !important;
+        border-radius: 14px !important;
+    }
+
+    .page-hero h4 {
+        font-size: 1.3rem !important;
+    }
+
+    .stat-pill {
+        padding: 0.6rem 0.8rem !important;
+    }
+
+    .employee-bottom-nav,
+    .hr-bottom-nav {
+        display: none !important;
+    }
+}
+
+/* ── 9. LARGE DESKTOPS & WIDESCREEN MONITORS (1200px – 1599.98px) ────── */
+@media (min-width: 1200px) and (max-width: 1599.98px) {
+    .page-hero {
+        padding: 2rem !important;
+        border-radius: 16px !important;
+    }
+
+    .employee-bottom-nav,
+    .hr-bottom-nav {
+        display: none !important;
+    }
+}
+
+/* ── 10. ULTRA-WIDE MONITORS & 2K/4K DISPLAYS (1600px+) ───────────────── */
+@media (min-width: 1600px) {
+    .main-content > div,
+    .main-content > .container-fluid {
+        max-width: 1650px;
+        margin-left: 0;
+        margin-right: auto;
+    }
+
+    .page-hero {
+        padding: 2.25rem 2.5rem !important;
+        border-radius: 18px !important;
+    }
+
+    .page-hero h4 {
+        font-size: 1.6rem !important;
+    }
+
+    .employee-bottom-nav,
+    .hr-bottom-nav {
+        display: none !important;
+    }
+}
+
+/* ============================================================
+   ELDERLY-FRIENDLY ACCESSIBILITY ADDITIONS (applied globally)
+   ============================================================ */
+
+/* ── 1. Visible focus rings — gold brand color on all interactive elements ── */
+:focus-visible {
+    outline: 3px solid var(--primary-light) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 4px rgba(203, 161, 53, 0.22) !important;
+    border-radius: 4px;
+}
+
+/* Remove the ugly default focus ring but only when :focus-visible is supported */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ── 2. Minimum 48px touch targets on all buttons and interactive controls ── */
+.btn,
+button,
+[type="button"],
+[type="submit"],
+[type="reset"],
+.nav-link,
+.dropdown-item,
+select.form-select,
+.form-check-input,
+.sidebar-toggle {
+    min-height: 44px; /* WCAG 2.5.5: 44×44px accessible target */
+}
+
+/* Table action buttons can be slightly smaller since they're in dense grids */
+.btn-sm,
+.table .btn {
+    min-height: 34px; /* table rows are compact by design */
+}
+
+/* ── 3. Improved button padding for easier tapping ── */
+.btn:not(.btn-sm):not(.btn-xs) {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+/* ── 4. Slightly larger form input text for readability ── */
+.form-control,
+.form-select {
+    font-size: 1rem !important; /* ensures readable input text at 16px base */
+}
+
+/* ── 5. Improved line-height for form labels and help text ── */
+.form-label,
+label {
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+/* ── 6. Branded sidebar tooltips (shown when sidebar is collapsed) ── */
+.sidebar-tooltip .tooltip-inner {
+    background-color: var(--primary-dark);
+    color: var(--primary-light);
+    font-family: 'Outfit', 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+}
+
+.sidebar-tooltip .tooltip-arrow::before {
+    border-right-color: var(--primary-dark);
+}
