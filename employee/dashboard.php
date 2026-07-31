@@ -558,16 +558,16 @@ function movementIcon(string $type): string {
                             $text_col  = ($done || $current) ? 'var(--text-dark)' : 'var(--text-muted)';
                         ?>
                         <div class="text-center" style="flex:1;min-width:0;">
-                            <div style="width:28px;height:28px;border-radius:50%;background:<?php echo $dot_bg; ?>;border:2px solid <?php echo $dot_color; ?>;display:flex;align-items:center;justify-content:center;margin:0 auto 4px;">
+                            <div style="width:32px;height:32px;border-radius:50%;background:<?php echo $dot_bg; ?>;border:2px solid <?php echo $dot_color; ?>;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;">
                                 <?php if ($done): ?>
-                                    <i class="fas fa-check" style="font-size:.55rem;color:<?php echo $dot_color; ?>;"></i>
+                                    <i class="fas fa-check" style="font-size:.6rem;color:<?php echo $dot_color; ?>;"></i>
                                 <?php elseif ($current && $is_rejected): ?>
-                                    <i class="fas fa-times" style="font-size:.55rem;color:#dc3545;"></i>
+                                    <i class="fas fa-times" style="font-size:.6rem;color:#dc3545;"></i>
                                 <?php else: ?>
-                                    <span style="font-size:.6rem;font-weight:700;color:<?php echo $dot_color; ?>;"><?php echo $i + 1; ?></span>
+                                    <span style="font-size:.65rem;font-weight:700;color:<?php echo $dot_color; ?>;"><?php echo $i + 1; ?></span>
                                 <?php endif; ?>
                             </div>
-                            <div style="font-size:.58rem;font-weight:<?php echo $text_w; ?>;color:<?php echo $text_col; ?>;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"><?php echo e($label); ?></div>
+                            <div style="font-size:.72rem;font-weight:<?php echo $text_w; ?>;color:<?php echo $text_col; ?>;line-height:1.3;word-break:break-word;hyphens:auto;"><?php echo e($label); ?></div>
                         </div>
                         <?php if ($i < count($workflow_labels) - 1): ?>
                         <div style="flex:1;height:2px;background:<?php echo $done ? 'var(--primary-blue)' : '#dee2e6'; ?>;margin-bottom:20px;transition:background .4s;"></div>
