@@ -87,7 +87,7 @@ switch ($effective_role) {
 
             'CAREER' => [
                 ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/manager/career-movements.php', 'page' => 'career-movements.php'],
-                // ['icon' => 'fas fa-chart-line', 'label' => 'Career Progression', 'url' => BASE_URL . '/manager/career-progression.php', 'page' => 'career-progression.php'],
+                ['icon' => 'fas fa-user-tie', 'label' => 'Succession Planning', 'url' => BASE_URL . '/manager/succession-planning.php', 'page' => 'succession-planning.php'],
             ],
             'ANALYTICS' => [
                 ['icon' => 'fas fa-chart-bar', 'label' => 'Analytics', 'url' => BASE_URL . '/manager/analytics.php', 'page' => 'analytics.php'],

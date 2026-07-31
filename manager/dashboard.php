@@ -582,6 +582,79 @@ while ($row = $age_dist_q->fetch_assoc()) {
     </div>
 </div>
 
+<!-- CENTRALIZED HR SYSTEM COMMAND CENTER HUB -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden" style="background: linear-gradient(135deg, #1b2e04 0%, #294306 100%);">
+            <div class="card-body p-4 text-white">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+                    <div>
+                        <div class="badge bg-warning text-dark px-3 py-1 mb-2 fw-bold text-uppercase" style="letter-spacing: 0.08em; font-size: 0.72rem;">Centralized HR Management Hub</div>
+                        <h5 class="fw-bold text-white mb-1"><i class="fas fa-sitemap me-2" style="color:#BD9414;"></i>Raquel Pawnshop HR Integrated System</h5>
+                        <p class="text-white-50 small mb-0">Access all core employee records, analytics dashboards, succession planning, and digital evaluation forms in one central platform.</p>
+                    </div>
+                </div>
+                <div class="row g-3 pt-2">
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="employees.php" class="text-decoration-none">
+                            <div class="p-3 rounded-3 text-center bg-white bg-opacity-10 border border-white border-opacity-10 text-white hover-zoom" style="transition: all 0.2s;">
+                                <i class="fas fa-users fa-2x mb-2 text-warning"></i>
+                                <div class="fw-bold small">Employees</div>
+                                <div class="text-white-50" style="font-size:0.68rem;">Directory & PDS</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="succession-planning.php" class="text-decoration-none">
+                            <div class="p-3 rounded-3 text-center bg-white bg-opacity-10 border border-white border-opacity-10 text-white hover-zoom" style="transition: all 0.2s;">
+                                <i class="fas fa-user-tie fa-2x mb-2" style="color:#9de0ec;"></i>
+                                <div class="fw-bold small">Succession</div>
+                                <div class="text-white-50" style="font-size:0.68rem;">Top 10 Candidates</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="career-movements.php" class="text-decoration-none">
+                            <div class="p-3 rounded-3 text-center bg-white bg-opacity-10 border border-white border-opacity-10 text-white hover-zoom" style="transition: all 0.2s;">
+                                <i class="fas fa-route fa-2x mb-2 text-info"></i>
+                                <div class="fw-bold small">Movements</div>
+                                <div class="text-white-50" style="font-size:0.68rem;">Promotions & Transfers</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="analytics.php" class="text-decoration-none">
+                            <div class="p-3 rounded-3 text-center bg-white bg-opacity-10 border border-white border-opacity-10 text-white hover-zoom" style="transition: all 0.2s;">
+                                <i class="fas fa-chart-bar fa-2x mb-2 text-success"></i>
+                                <div class="fw-bold small">Analytics</div>
+                                <div class="text-white-50" style="font-size:0.68rem;">Performance & Trends</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="templates.php" class="text-decoration-none">
+                            <div class="p-3 rounded-3 text-center bg-white bg-opacity-10 border border-white border-opacity-10 text-white hover-zoom" style="transition: all 0.2s;">
+                                <i class="fas fa-file-alt fa-2x mb-2 text-light"></i>
+                                <div class="fw-bold small">Evaluations</div>
+                                <div class="text-white-50" style="font-size:0.68rem;">Templates & History</div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg-2">
+                        <a href="reports.php" class="text-decoration-none">
+                            <div class="p-3 rounded-3 text-center bg-white bg-opacity-10 border border-white border-opacity-10 text-white hover-zoom" style="transition: all 0.2s;">
+                                <i class="fas fa-file-pdf fa-2x mb-2" style="color:#f5a3ab;"></i>
+                                <div class="fw-bold small">Reports</div>
+                                <div class="text-white-50" style="font-size:0.68rem;">PDF & CSV Export</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row manager-dashboard-queue" id="approvalQueueSection">
     <div class="col-12">
         <div class="chart-card">

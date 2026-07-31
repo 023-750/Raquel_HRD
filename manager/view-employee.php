@@ -599,6 +599,148 @@ $discList = [
     </div>
 
     <div class="col-lg-8 col-xl-9">
+        <?php
+        // Query approved evaluations for 5-Year performance trend
+        $perf_history_q = $conn->prepare("
+            SELECT evaluation_id, total_score, performance_level, approved_date, YEAR(approved_date) as eval_year, evaluation_type
+            FROM evaluations
+            WHERE employee_id = ? AND status = 'Approved' AND approved_date IS NOT NULL
+            ORDER BY approved_date ASC
+        ");
+        $perf_history_q->bind_param("i", $eid);
+        $perf_history_q->execute();
+        $perf_history_res = $perf_history_q->get_result();
+        $perf_history_data = [];
+        $chart_labels = [];
+        $chart_scores = [];
+        while ($ph = $perf_history_res->fetch_assoc()) {
+            $perf_history_data[] = $ph;
+            $chart_labels[] = date('M Y', strtotime($ph['approved_date'])) . ' (' . ($ph['evaluation_type'] ?? 'Eval') . ')';
+            $chart_scores[] = (float)$ph['total_score'];
+        }
+        $perf_history_q->close();
+
+        $avg_5yr_score = 0;
+        $classification = 'No Evaluation Record';
+        $class_badge = 'bg-secondary';
+        if (!empty($perf_history_data)) {
+            $sum_scores = array_sum(array_column($perf_history_data, 'total_score'));
+            $avg_5yr_score = round($sum_scores / count($perf_history_data), 2);
+            
+            $n = count($perf_history_data);
+            $first = (float)$perf_history_data[0]['total_score'];
+            $last = (float)$perf_history_data[$n - 1]['total_score'];
+            $diff = $last - $first;
+            
+            if ($avg_5yr_score >= 3.60) {
+                $classification = 'Consistently Outstanding';
+                $class_badge = 'bg-success';
+            } elseif ($diff >= 0.30) {
+                $classification = 'Improving Performance';
+                $class_badge = 'bg-info text-dark';
+            } elseif ($diff <= -0.30) {
+                $classification = 'Declining / Needing Intervention';
+                $class_badge = 'bg-danger';
+            } else {
+                $classification = 'Stable Performance';
+                $class_badge = 'bg-primary';
+            }
+        }
+        ?>
+
+        <!-- 5-YEAR PERFORMANCE TREND CARD -->
+        <div class="content-card employee-section-card mb-4">
+            <div class="employee-section-header">
+                <div>
+                    <div class="employee-section-kicker"><i class="fas fa-chart-line text-warning"></i>Performance Analytics</div>
+                    <h5 class="mb-0">5-Year Historical Performance Trend</h5>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge <?php echo $class_badge; ?> px-3 py-2" style="font-size:0.82rem;">
+                        <i class="fas fa-robot me-1"></i><?php echo $classification; ?>
+                    </span>
+                    <span class="badge bg-dark text-warning px-3 py-2" style="font-size:0.85rem;">
+                        Avg Score: <?php echo number_format($avg_5yr_score, 2); ?> / 4.00
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <?php if (empty($perf_history_data)): ?>
+                    <div class="empty-state py-4">
+                        <i class="fas fa-chart-line"></i>
+                        <p>No approved performance evaluation history recorded for this employee yet.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="row align-items-center g-3 mb-3">
+                        <div class="col-lg-8">
+                            <div style="height: 220px; position: relative;">
+                                <canvas id="empPerformanceTrendChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 border-start">
+                            <h6 class="fw-bold small text-muted uppercase mb-3">Evaluation History Summary</h6>
+                            <div class="d-grid gap-2">
+                                <?php foreach (array_reverse($perf_history_data) as $phItem):
+                                    $scoreVal = (float)$phItem['total_score'];
+                                    $lvl = $phItem['performance_level'] ?? getPerformanceLevel($scoreVal);
+                                    $lvlBadge = ($scoreVal >= 3.6) ? 'bg-success' : (($scoreVal >= 2.6) ? 'bg-info text-dark' : (($scoreVal >= 2.0) ? 'bg-warning text-dark' : 'bg-danger'));
+                                ?>
+                                    <div class="p-2 bg-light rounded-3 d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="fw-bold small"><?php echo date('F d, Y', strtotime($phItem['approved_date'])); ?></div>
+                                            <div class="text-muted" style="font-size:0.72rem;"><?php echo e($phItem['evaluation_type'] ?? 'Annual'); ?> Evaluation</div>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge <?php echo $lvlBadge; ?>"><?php echo number_format($scoreVal, 2); ?></span>
+                                            <div class="text-muted" style="font-size:0.68rem;"><?php echo e($lvl); ?></div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                    <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const ctx = document.getElementById('empPerformanceTrendChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: <?php echo json_encode($chart_labels); ?>,
+                                datasets: [{
+                                    label: 'Evaluation Score (1.00 - 4.00)',
+                                    data: <?php echo json_encode($chart_scores); ?>,
+                                    borderColor: '#BD9414',
+                                    backgroundColor: 'rgba(189, 148, 20, 0.15)',
+                                    borderWidth: 3,
+                                    fill: true,
+                                    tension: 0.35,
+                                    pointBackgroundColor: '#294306',
+                                    pointRadius: 5,
+                                    pointHoverRadius: 7
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        min: 1.0,
+                                        max: 4.0,
+                                        ticks: { stepSize: 0.5 }
+                                    }
+                                },
+                                plugins: {
+                                    legend: { display: false }
+                                }
+                            }
+                        });
+                    });
+                    </script>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <div class="row g-4">
             <div class="col-xl-6">
                 <div class="content-card employee-section-card h-100">

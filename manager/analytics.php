@@ -132,16 +132,18 @@ $dq->execute();
 $dept_data = $dq->get_result()->fetch_all(MYSQLI_ASSOC);
 $dq->close();
 
-/* ── Top Performers ──────────────────────────────────────────────────────── */
+/* ── Top Performers (Ranked by Average Score across all evaluations) ──────── */
 $tq = $conn->prepare(
     "SELECT CONCAT(e.first_name,' ',e.last_name) AS name, e.job_title,
-            b.branch_name, ev.total_score, ev.performance_level
+            b.branch_name, ROUND(AVG(ev.total_score), 2) AS total_score,
+            COUNT(ev.evaluation_id) AS eval_count
      FROM evaluations ev
      LEFT JOIN employees e ON ev.employee_id = e.employee_id
      LEFT JOIN branches  b ON e.branch_id    = b.branch_id
      $where 
      AND ev.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
-     ORDER BY ev.total_score DESC LIMIT 10");
+     GROUP BY e.employee_id, name, e.job_title, b.branch_name
+     ORDER BY total_score DESC LIMIT 10");
 if (!empty($params)) $tq->bind_param($types, ...$params);
 $tq->execute();
 $top_performers = $tq->get_result()->fetch_all(MYSQLI_ASSOC);
