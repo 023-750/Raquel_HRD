@@ -65,3 +65,5 @@ Resolving deltas: 100% (980/980), done.
 > Now that you already imported all of the neccessarry databses, go to files and navigate to folder named "config" under that folder you should be able to see the database.php, look for the "define('DB_PASS', 'admin');" then change it into "define('DB_PASS', '');" - don't include the quotation u dummy.
 
 > Final step, open your browser and type this url: http://localhost/FINAL_RAQUEL_PAWNSHOP_HRD/ you'll be able to access the system completely without having any errors.
+
+hi
