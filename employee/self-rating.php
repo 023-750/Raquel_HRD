@@ -1176,36 +1176,6 @@ require_once '../includes/header.php';
                         </div>
                     <?php endif; ?>
 
-                    <!-- Developmental Plan -->
-                    <div class="section-premium-label mb-3 mt-4">
-                        <i class="fas fa-seedling"></i>IV. Developmental Plan
-                    </div>
-                    <div class="table-responsive mb-4">
-                        <table class="table table-hover align-middle">
-                            <thead class="small text-muted bg-light">
-                                <tr>
-                                    <th class="ps-3">Area of Improvement</th>
-                                    <th>Support Needed</th>
-                                    <th>Time Frame</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                $dev_q = $conn->query("SELECT * FROM evaluation_dev_plans WHERE evaluation_id = " . (int)$view_eval['evaluation_id'] . " ORDER BY sort_order");
-                                if ($dev_q && $dev_q->num_rows > 0):
-                                    while ($dp = $dev_q->fetch_assoc()): ?>
-                                    <tr>
-                                        <td class="ps-3 fw-semibold"><?php echo e($dp['improvement_area']); ?></td>
-                                        <td><?php echo e($dp['support_needed']); ?></td>
-                                        <td><?php echo e($dp['time_frame']); ?></td>
-                                    </tr>
-                                <?php endwhile; else: ?>
-                                    <tr><td colspan="3" class="text-center text-muted small py-3">No developmental plan recorded.</td></tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
                     <?php if (!empty($view_eval['supervisor_comments']) || !empty($view_eval['dept_manager_comments']) || !empty($view_eval['evaluator_comments']) || !empty($view_eval['manager_comments'])): ?>
                         <div class="section-premium-label mb-3 mt-4">
                             <i class="fas fa-comments"></i>Management Remarks & Justifications

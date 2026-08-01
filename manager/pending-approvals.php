@@ -872,28 +872,45 @@ if ($ecr_pending) { while ($r = $ecr_pending->fetch_assoc()) $ecr_all_pending[] 
                     <table class="table modern-table align-middle mb-0" id="evalTable">
                         <thead>
                             <tr>
-                                <th>Employee & Template</th>
+                                <th class="ps-3">Employee</th>
+                                <th>Department</th>
                                 <th>Submitted By</th>
-                                <th>Date</th>
-                                <th>Performance Score</th>
+                                <th>Submitted</th>
+                                <th>Type & Progress</th>
+                                <th>Score & Alerts</th>
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($all_pending)): ?>
                                 <tr>
-                                    <td colspan="5" class="text-center py-5">
+                                    <td colspan="7" class="text-center py-5">
                                         <i class="fas fa-check-circle fa-3x text-light mb-3"></i>
                                         <p class="text-muted">No pending evaluations for review.</p>
                                     </td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($all_pending as $row): 
-                                    $initials = strtoupper(substr($row['employee_name'], 0, 1) . substr(explode(' ', $row['employee_name'])[1] ?? '', 0, 1));
                                     $avatar_url = getEmployeeAvatar($row['profile_picture'] ?? '');
+                                    $score = (float)$row['total_score'];
+                                    $has_score = $score > 0;
+                                    $score_width = max(0, min(100, ($score / 4) * 100));
+                                    $perf_level = $row['performance_level'] ?? '';
+                                    if ($has_score && (empty($perf_level) || $perf_level === '0')) {
+                                        $perf_level = getPerformanceLevel($score);
+                                    }
+                                    $badge_class = getPerformanceBadgeClass($perf_level);
+                                    $days_pending = (int)(isset($row['submitted_date']) && $row['submitted_date']
+                                        ? max(0, floor((time() - strtotime($row['submitted_date'])) / 86400))
+                                        : 0);
+                                    $is_overdue = $days_pending >= 7;
+                                    $is_low_score = $has_score && $score < 2.0;
+                                    $age_label = $days_pending === 0 ? 'Today' : $days_pending . ' day' . ($days_pending === 1 ? '' : 's');
+                                    $age_class = $is_overdue ? 'bg-warning-subtle text-warning border border-warning-subtle' : 'bg-primary-subtle text-primary border border-primary-subtle';
+                                    $score_label = $has_score ? number_format($score, 2) . ' / 4' : 'No score';
                                 ?>
                                     <tr>
-                                        <td>
+                                        <td class="ps-3">
                                             <div class="d-flex align-items-center gap-3">
                                                 <div class="emp-avatar">
                                                     <img src="<?php echo e($avatar_url); ?>?v=<?php echo time(); ?>" alt="<?php echo e($row['employee_name']); ?> profile picture">
@@ -901,34 +918,53 @@ if ($ecr_pending) { while ($r = $ecr_pending->fetch_assoc()) $ecr_all_pending[] 
                                                 <div>
                                                     <div class="fw-bold text-dark"><?php echo e($row['employee_name']); ?></div>
                                                     <small class="text-muted"><?php echo e($row['template_name']); ?></small>
+                                                    <?php if ($is_overdue || $is_low_score): ?>
+                                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                                            <?php if ($is_overdue): ?><span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:.68rem;">Overdue</span><?php endif; ?>
+                                                            <?php if ($is_low_score): ?><span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.68rem;">Low Score</span><?php endif; ?>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td><span class="small text-muted"><?php echo e($row['submitted_by_name']); ?></span></td>
-                                        <td><span class="small text-muted"><?php echo formatDate($row['submitted_date']); ?></span></td>
                                         <td>
-                                            <?php
-                                            $score = (float)$row['total_score'];
-                                            $score_width = max(0, min(100, ($score / 4) * 100));
-                                            $perf_level = $row['performance_level'] ?? '';
-                                            if ($score > 0 && (empty($perf_level) || $perf_level === '0')) {
-                                                $perf_level = getPerformanceLevel($score);
-                                            }
-                                            $badge_class = getPerformanceBadgeClass($perf_level);
-                                            ?>
-                                            <div class="d-flex align-items-center gap-3">
-                                                <div class="fw-bold" style="min-width: 55px; white-space: nowrap;"><?php echo number_format($score, 2); ?> / 4</div>
-                                                <div class="progress flex-grow-1" style="height: 6px; max-width: 100px;">
-                                                    <div class="progress-bar <?php echo $badge_class; ?>" 
-                                                         style="width: <?php echo $score_width; ?>%"></div>
-                                                </div>
-                                                <span class="badge <?php echo $badge_class; ?> rounded-pill"><?php echo e($perf_level ?: 'Unscored'); ?></span>
+                                            <div class="fw-semibold"><?php echo e($row['job_title'] ?? 'N/A'); ?></div>
+                                            <small class="text-muted"><?php echo e($row['department_name'] ?? 'Unassigned'); ?></small>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($row['evaluator_comments']) || !empty($row['endorsed_by'])): ?>
+                                                <div class="small fw-semibold text-success"><i class="fas fa-check-circle me-1"></i><?php echo e($row['submitted_by_name']); ?></div>
+                                                <div class="small text-muted">HR Supervisor Endorsed</div>
+                                            <?php else: ?>
+                                                <div class="small fw-semibold"><?php echo e($row['submitted_by_name']); ?></div>
+                                                <div class="small text-muted">Via HR Consolidation</div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <span class="badge <?php echo $age_class; ?>" style="font-size:.75rem;"><i class="fas fa-clock me-1"></i><?php echo e($age_label); ?></span>
+                                            <div><small class="text-muted"><?php echo formatDate($row['submitted_date']); ?></small></div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle"><?php echo e($row['evaluation_type'] ?? 'Annual'); ?></span>
+                                            <div class="small text-success mt-1"><i class="fas fa-check me-1"></i>HR Supervisor endorsed &rarr; <strong>Pending Approval</strong></div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex justify-content-between align-items-center gap-2">
+                                                <span class="fw-bold"><?php echo e($score_label); ?></span>
+                                                <span class="badge <?php echo $badge_class; ?> rounded-pill px-2" style="font-size:.68rem;"><?php echo e($perf_level ?: ($has_score ? 'Unrated' : 'Unscored')); ?></span>
                                             </div>
+                                            <?php if ($has_score): ?>
+                                                <div class="progress mt-2" style="height: 5px;">
+                                                    <div class="progress-bar <?php echo $is_low_score ? 'bg-danger' : 'bg-primary'; ?>" style="width: <?php echo $score_width; ?>%;"></div>
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="small text-muted mt-1">Score not calculated yet.</div>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="text-end">
                                             <button class="btn btn-sm btn-primary px-3 rounded-pill shadow-sm" 
                                                     data-bs-toggle="modal" data-bs-target="#reviewModal<?php echo $row['evaluation_id']; ?>">
-                                                Review Details
+                                                <i class="fas fa-clipboard-check me-1"></i>Review
                                             </button>
                                         </td>
                                     </tr>
@@ -993,6 +1029,59 @@ foreach ($all_pending as $row):
                             </div>
                         </div>
                         <?php echo getEvaluationScoreCirclesHtml($conn, $row['evaluation_id'], $row['total_score']); ?>
+                    </div>
+
+                    <!-- Audit Trail Collapsible Panel -->
+                    <?php
+                    $modal_audit_stmt = $conn->prepare("
+                        SELECT al.*, u.full_name, u.role, e.job_title
+                        FROM audit_logs al
+                        LEFT JOIN users u ON al.user_id = u.user_id
+                        LEFT JOIN employees e ON u.employee_id = e.employee_id
+                        WHERE al.entity_type = 'Evaluation' AND al.entity_id = ?
+                        ORDER BY al.timestamp ASC, al.log_id ASC
+                    ");
+                    $modal_audit_eval_id = (int)$row['evaluation_id'];
+                    $modal_audit_stmt->bind_param("i", $modal_audit_eval_id);
+                    $modal_audit_stmt->execute();
+                    $modal_audit_logs = $modal_audit_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $modal_audit_stmt->close();
+                    ?>
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold mb-2"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#auditTrail<?php echo (int)$row['evaluation_id']; ?>"
+                            aria-expanded="false">
+                        <i class="fas fa-history me-1"></i>Audit Trail
+                    </button>
+                    <div class="collapse mb-3" id="auditTrail<?php echo (int)$row['evaluation_id']; ?>">
+                        <div class="border rounded p-3 mt-2" style="background:#f8fafc;">
+                            <div class="fw-semibold text-secondary mb-3" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;">
+                                <i class="fas fa-history me-1"></i>Evaluation Audit Trail
+                            </div>
+                            <?php if (empty($modal_audit_logs)): ?>
+                                <p class="text-muted small mb-0">No audit logs found for this evaluation.</p>
+                            <?php else: ?>
+                                <div style="border-left:2px solid #e2e8f0;padding-left:18px;position:relative;">
+                                    <?php foreach ($modal_audit_logs as $log): ?>
+                                        <div style="position:relative;margin-bottom:12px;">
+                                            <div style="width:10px;height:10px;border-radius:50%;background:#3b82f6;position:absolute;left:-25px;top:4px;"></div>
+                                            <div class="d-flex justify-content-between align-items-start flex-wrap gap-1 mb-1">
+                                                <span class="fw-bold text-dark" style="font-size:.8rem;word-break:break-word;">
+                                                    <?php echo e($log['full_name'] ?? 'System'); ?>
+                                                    <span class="text-muted fw-normal">(<?php echo e(!empty($log['job_title']) ? $log['job_title'] : ($log['role'] ?? 'System')); ?>)</span>
+                                                </span>
+                                                <span class="text-muted ms-auto" style="font-size:.72rem;white-space:nowrap;"><?php echo formatDateTime($log['timestamp']); ?></span>
+                                            </div>
+                                            <div class="text-secondary fw-semibold" style="font-size:.78rem;"><?php echo e($log['action_type']); ?> — <?php echo e(explode('.', $log['details'])[0]); ?></div>
+                                            <?php if (strpos($log['details'], 'Score adjustments:') !== false): ?>
+                                                <div class="mt-1 p-2 bg-white rounded border text-muted" style="white-space:pre-wrap;font-family:monospace;font-size:.72rem;"><?php echo e(substr($log['details'], strpos($log['details'], 'Score adjustments:'))); ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
 
                     <!-- KRA Section -->
