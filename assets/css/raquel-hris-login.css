@@ -1,6 +1,7 @@
-/* =============================================
+﻿/* =============================================
    raquel-hris-login.css
    Raquel Pawnshop HRIS — Login Page Styles
+   Design Language: Claymorphism
    =============================================
    Sections:
    1. Variables
@@ -14,6 +15,7 @@
    9. Animations
    10. Mobile (max 640px)
    11. Tablet (641px – 900px)
+   12. Small Phone (max 480px)
 ============================================= */
 
 
@@ -22,51 +24,82 @@
 ============================================= */
 
 :root {
-  /* ── Brand greens ─────────────────────────────────────────────────
-     ★ CHANGE ONLY THESE 5 to retheme the entire login page.
-       Everything below auto-computes from these values.            */
-  --green-dark:    #031b02;   /* deepest background dark             */
-  --green-forest:  #045202;   /* HRIS panel & form accent (main)     */
-  
-  --green-mid:     #1a2b04;   /* ESS panel mid tone                  */
-  --green-primary: #294306;   /* ESS panel primary / darker accent   */
-  --green-bright:  #28a745;   /* ESS sign-in button highlight        */
+  /* Brand greens */
+  --green-dark:    #021a01;
+  --green-forest:  #045202;
+  --green-mid:     #1a2b04;
+  --green-primary: #294306;
+  --green-bright:  #28a745;
 
-  /* ── Derived aliases — auto-computed from the brand greens above ─
-     DO NOT edit these manually; change the 5 variables above only. */
-  --login-brand-top:       color-mix(in srgb, var(--green-forest) 60%, #000);
-  --login-hris-btn-from:   color-mix(in srgb, var(--green-forest) 60%, #fff 40%);
-  --login-form-shadow:     color-mix(in srgb, var(--green-forest)  7%, transparent);
-  --login-form-shadow2:    color-mix(in srgb, var(--green-forest) 14%, transparent);
-  --login-form-shadow3:    color-mix(in srgb, var(--green-forest) 22%, transparent);
-  --login-border-line:     color-mix(in srgb, var(--green-forest)  7%, transparent);
-  --login-footer-line:     color-mix(in srgb, var(--green-forest) 15%, transparent);
-  --login-focus-ring:      color-mix(in srgb, var(--green-forest) 12%, transparent);
-  --login-ess-ring:        color-mix(in srgb, var(--green-primary) 12%, transparent);
-  --login-btn-shadow:      color-mix(in srgb, var(--green-forest) 35%, transparent);
-  --login-btn-shadow2:     color-mix(in srgb, var(--green-forest) 50%, transparent);
-  --login-ess-shadow:      color-mix(in srgb, var(--green-primary) 30%, transparent);
-  --login-ess-shadow2:     color-mix(in srgb, var(--green-primary) 45%, transparent);
-  --login-mob-card-shadow: color-mix(in srgb, var(--green-forest) 22%, transparent);
+  /* Clay panel backgrounds */
+  --clay-bg:         #eaf4eb;
+  --clay-input-bg:   #f2faf3;
+  --clay-input-border: #c5dfc8;
 
-  /* ── Brand gold (used on brand panels only) ───────────────────── */
-  --gold:          #bd9414;
-  --gold-light:    #ffd754;
+  /* Clay shadow tokens */
+  --clay-shadow-card:
+    6px 10px 28px rgba(4,82,2,0.18),
+    inset -3px -4px 10px rgba(4,82,2,0.10),
+    inset  3px  4px 10px rgba(255,255,255,0.80);
 
-  /* ── Text & UI ────────────────────────────────────────────────── */
-  --text-dark:     #1a1a2e;
-  --text-muted:    #6c757d;
-  --text-light:    #9db0a3;
+  --clay-shadow-card-hover:
+    10px 16px 38px rgba(4,82,2,0.22),
+    inset -4px -5px 12px rgba(4,82,2,0.12),
+    inset  4px  5px 12px rgba(255,255,255,0.85);
 
-  /* ── Form surface ──────────────────────────────────────────────── */
-  --input-bg:      #f8faf8;
-  --input-border:  #e2ebe4;
-  --input-hover:   #c8d8cb;
+  --clay-shadow-btn-gold:
+    4px 6px 18px rgba(4,82,2,0.30),
+    inset -2px -3px 8px rgba(2,50,1,0.25),
+    inset  2px  3px 8px rgba(255,255,255,0.22);
 
-  /* ── Transition speed ──────────────────────────────────────────── */
-  --speed-fast:    0.2s;
-  --speed-normal:  0.35s;
-  --speed-slow:    0.58s;
+  --clay-shadow-btn-gold-hover:
+    6px 10px 24px rgba(4,82,2,0.40),
+    inset -2px -3px 8px rgba(2,50,1,0.30),
+    inset  2px  3px 8px rgba(255,255,255,0.25);
+
+  --clay-shadow-btn-green:
+    4px 6px 18px rgba(41,67,6,0.30),
+    inset -2px -3px 8px rgba(20,35,2,0.25),
+    inset  2px  3px 8px rgba(255,255,255,0.18);
+
+  --clay-shadow-btn-sec:
+    3px 5px 14px rgba(4,82,2,0.14),
+    inset -2px -3px 7px rgba(4,82,2,0.08),
+    inset  2px  3px 7px rgba(255,255,255,0.75);
+
+  --clay-shadow-input:
+    3px 4px 12px rgba(4,82,2,0.10),
+    inset -2px -2px 6px rgba(4,82,2,0.07),
+    inset  2px  2px 6px rgba(255,255,255,0.80);
+
+  --clay-shadow-logo:
+    6px 8px 22px rgba(0,0,0,0.18),
+    inset -3px -3px 9px rgba(0,0,0,0.08),
+    inset  3px  3px 9px rgba(255,255,255,0.90);
+
+  --clay-shadow-logo-hover:
+    8px 12px 28px rgba(4,82,2,0.22),
+    inset -3px -4px 10px rgba(0,0,0,0.10),
+    inset  3px  4px 10px rgba(255,255,255,0.92);
+
+  --clay-shadow-error:
+    3px 4px 14px rgba(220,53,69,0.14),
+    inset -2px -2px 6px rgba(180,30,40,0.08),
+    inset  2px  2px 6px rgba(255,255,255,0.80);
+
+  /* Brand gold */
+  --gold:       #bd9414;
+  --gold-light: #ffd754;
+
+  /* Text */
+  --text-dark:  #1a2b1c;
+  --text-muted: #607868;
+  --text-light: #9db0a3;
+
+  /* Speed */
+  --speed-fast:   0.2s;
+  --speed-normal: 0.35s;
+  --speed-slow:   0.58s;
 }
 
 
@@ -83,7 +116,7 @@
 html, body {
   height: 100%;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: var(--green-forest);
+  background: var(--clay-bg);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -96,15 +129,18 @@ input, button, select, textarea {
    3. PAGE LAYOUT
 ============================================= */
 
-/* Outer wrapper — fills the full viewport */
 .root {
   width: 100%;
   height: 100vh;
   overflow: hidden;
   position: relative;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(4,82,2,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(189,148,20,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 80%, rgba(4,82,2,0.05) 0%, transparent 50%),
+    var(--clay-bg);
 }
 
-/* Sliding track that holds all screens */
 .track {
   display: flex;
   width: 100%;
@@ -112,7 +148,6 @@ input, button, select, textarea {
   position: relative;
 }
 
-/* A single screen (HRIS or ESS view) */
 .screen {
   display: flex;
   width: 100%;
@@ -126,52 +161,59 @@ input, button, select, textarea {
 
 
 /* =============================================
-   4. HRIS BRAND PANEL (left side, dark green)
+   4. HRIS BRAND PANEL (left)
 ============================================= */
 
 .brand {
   width: 50%;
   position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  top: 0; left: 0; bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 48px 32px;
-  background: linear-gradient(160deg, var(--login-brand-top) 0%, var(--green-forest) 60%, var(--green-dark) 100%);
+  background: linear-gradient(160deg,
+    #5c9c5a 0%,
+    #3a7a38 40%,
+    #1e5c1c 100%);
   overflow: hidden;
   z-index: 1;
   opacity: 1;
   transition: opacity 0.17s ease 0.23s;
+  box-shadow: 8px 0 32px rgba(0,0,0,0.12), inset -4px 0 16px rgba(255,255,255,0.18);
 }
 
-/* Fade out HRIS brand when ESS is active */
-.show-ess .brand {
-  opacity: 0;
+.brand::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, transparent 100%);
+  pointer-events: none;
 }
 
-/* Subtle diagonal grid texture on the brand panel */
+.show-ess .brand { opacity: 0; }
+
 .brand::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
 }
 
-/* Corner bracket decorations */
+/* Corner brackets */
 .cr {
   position: absolute;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
 }
 
-.tl { top: 18px;    left: 18px;  border-top:    1px solid rgba(189,148,20,.3); border-left:  1px solid rgba(189,148,20,.3); }
-.tr { top: 18px;    right: 18px; border-top:    1px solid rgba(189,148,20,.3); border-right: 1px solid rgba(189,148,20,.3); }
-.bl { bottom: 18px; left: 18px;  border-bottom: 1px solid rgba(189,148,20,.3); border-left:  1px solid rgba(189,148,20,.3); }
-.br { bottom: 18px; right: 18px; border-bottom: 1px solid rgba(189,148,20,.3); border-right: 1px solid rgba(189,148,20,.3); }
+.tl { top: 20px;    left: 20px;  border-top:    2px solid rgba(255,255,255,0.40); border-left:  2px solid rgba(255,255,255,0.40); }
+.tr { top: 20px;    right: 20px; border-top:    2px solid rgba(255,255,255,0.40); border-right: 2px solid rgba(255,255,255,0.40); }
+.bl { bottom: 20px; left: 20px;  border-bottom: 2px solid rgba(255,255,255,0.40); border-left:  2px solid rgba(255,255,255,0.40); }
+.br { bottom: 20px; right: 20px; border-bottom: 2px solid rgba(255,255,255,0.40); border-right: 2px solid rgba(255,255,255,0.40); }
 
-/* Content block inside the brand panel */
 .bcon {
   position: relative;
   z-index: 1;
@@ -185,43 +227,40 @@ input, button, select, textarea {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* Show brand content when HRIS is active */
 body:not(.show-ess) .bcon {
   opacity: 1;
   transform: translateY(0);
 }
 
-/* Logo badge */
+/* Clay logo badge */
 .logo-ring {
-  width: 100px;
-  height: 100px;
-  border-radius: 24px;
+  width: 110px;
+  height: 110px;
+  border-radius: 28px;
   background: #fff;
-  border: 1.5px solid rgba(189,148,20,0.35);
+  border: 3px solid rgba(255,255,255,0.92);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-  transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+  box-shadow: var(--clay-shadow-logo);
+  transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), box-shadow 0.4s ease;
   cursor: default;
 }
 
 .logo-ring:hover {
-  transform: translateY(-4px) scale(1.03);
-  border-color: var(--gold);
-  box-shadow: 0 15px 35px rgba(189,148,20,0.2);
+  transform: translateY(-6px) scale(1.05);
+  box-shadow: var(--clay-shadow-logo-hover);
 }
 
-/* Glow ring behind the logo badge */
 .logo-ring::before {
   content: '';
   position: absolute;
-  top: -12px; left: -12px; right: -12px; bottom: -12px;
-  border-radius: 30px;
-  background: radial-gradient(circle, rgba(189,148,20,0.28) 0%, transparent 70%);
+  top: -14px; left: -14px; right: -14px; bottom: -14px;
+  border-radius: 36px;
+  background: radial-gradient(circle, rgba(255,255,255,0.30) 0%, transparent 70%);
   z-index: -1;
-  animation: pulseGlow 3s ease-in-out infinite;
+  animation: pulseGlow 3.5s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -229,112 +268,113 @@ body:not(.show-ess) .bcon {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 22px;
+  border-radius: 24px;
   padding: 8px;
 }
 
-/* Fallback letter if logo image fails to load */
 .mono {
-  font-size: 46px;
-  font-weight: 600;
-  color: var(--gold);
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--green-forest);
   line-height: 1;
   user-select: none;
 }
 
-/* "Human Resource Department" pill label */
 .b-label {
   display: inline-block;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: var(--gold-light);
-  background: rgba(189,148,20,0.1);
-  border: 1px solid rgba(189,148,20,0.28);
-  padding: 4px 12px;
+  color: #fff;
+  background: rgba(255,255,255,0.20);
+  border: 2px solid rgba(255,255,255,0.45);
+  padding: 5px 14px;
   border-radius: 100px;
   margin-bottom: 8px;
+  box-shadow: 2px 3px 8px rgba(0,0,0,0.12), inset 0 2px 5px rgba(255,255,255,0.30);
 }
 
-/* Thin gold divider line */
 .g-line {
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  width: 64px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.80), transparent);
   margin: 12px auto;
+  border-radius: 100px;
 }
 
-/* Company name heading */
 .b-name {
   font-size: 34px;
   font-weight: 800;
   color: #fff;
   line-height: 1.1;
   letter-spacing: -0.5px;
-  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  text-shadow: 2px 3px 10px rgba(0,0,0,0.20), 0 1px 0 rgba(255,255,255,0.12);
 }
 
-/* Tagline pill */
 .b-tag {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   color: #fff;
-  letter-spacing: 0.5px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
+  letter-spacing: 0.3px;
+  background: rgba(255,255,255,0.18);
+  border: 2px solid rgba(255,255,255,0.40);
   padding: 10px 22px;
-  border-radius: 12px;
-  max-width: 220px;
+  border-radius: 16px;
+  max-width: 230px;
   margin-top: 5px;
+  box-shadow: 3px 4px 12px rgba(0,0,0,0.12), inset 0 2px 6px rgba(255,255,255,0.25);
 }
 
-.b-tag b {
-  color: var(--gold-light);
-}
+.b-tag b { color: var(--gold-light); }
 
 
 /* =============================================
-   5. ESS BRAND PANEL (right side, darker green)
+   5. ESS BRAND PANEL (right)
 ============================================= */
 
 .ess-brand {
   width: 50%;
   position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; right: 0; bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 48px 28px;
-  background: linear-gradient(160deg, var(--green-primary) 0%, var(--green-mid) 100%);
+  background: linear-gradient(160deg,
+    #3d6e3b 0%,
+    #274d25 50%,
+    #122e10 100%);
   overflow: hidden;
   z-index: 1;
   opacity: 0;
   transition: opacity 0.17s ease 0.23s;
+  box-shadow: 8px 0 32px rgba(0,0,0,0.12), inset -4px 0 16px rgba(255,255,255,0.12);
 }
 
-/* Show ESS brand when ESS is active */
-.show-ess .ess-brand {
-  opacity: 1;
+.ess-brand::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, transparent 100%);
+  pointer-events: none;
 }
 
-/* Subtle diagonal grid texture */
 .ess-brand::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
 }
 
-/* ESS corner brackets (white instead of gold) */
-.ess-brand .tl { border-top:    1px solid rgba(255,255,255,.2); border-left:  1px solid rgba(255,255,255,.2); }
-.ess-brand .tr { border-top:    1px solid rgba(255,255,255,.2); border-right: 1px solid rgba(255,255,255,.2); }
-.ess-brand .bl { border-bottom: 1px solid rgba(255,255,255,.2); border-left:  1px solid rgba(255,255,255,.2); }
-.ess-brand .br { border-bottom: 1px solid rgba(255,255,255,.2); border-right: 1px solid rgba(255,255,255,.2); }
+.show-ess .ess-brand { opacity: 1; }
 
-/* Content block inside ESS brand panel */
+.ess-brand .tl { border-top:    2px solid rgba(255,255,255,0.40); border-left:  2px solid rgba(255,255,255,0.40); }
+.ess-brand .tr { border-top:    2px solid rgba(255,255,255,0.40); border-right: 2px solid rgba(255,255,255,0.40); }
+.ess-brand .bl { border-bottom: 2px solid rgba(255,255,255,0.40); border-left:  2px solid rgba(255,255,255,0.40); }
+.ess-brand .br { border-bottom: 2px solid rgba(255,255,255,0.40); border-right: 2px solid rgba(255,255,255,0.40); }
+
 .ess-bcon {
   position: relative;
   z-index: 1;
@@ -348,42 +388,39 @@ body:not(.show-ess) .bcon {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* Show ESS content when ESS is active */
 .show-ess .ess-bcon {
   opacity: 1;
   transform: translateY(0);
 }
 
-/* ESS logo badge */
 .ess-ring {
-  width: 100px;
-  height: 100px;
-  border-radius: 24px;
+  width: 110px;
+  height: 110px;
+  border-radius: 28px;
   background: #fff;
-  border: 1.5px solid rgba(255,255,255,0.25);
+  border: 3px solid rgba(255,255,255,0.92);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-  transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+  box-shadow: var(--clay-shadow-logo);
+  transition: transform 0.4s cubic-bezier(.34,1.56,.64,1), box-shadow 0.4s ease;
   cursor: default;
 }
 
 .ess-ring:hover {
-  transform: translateY(-4px) scale(1.03);
-  border-color: rgba(255,255,255,0.6);
-  box-shadow: 0 15px 35px rgba(255,255,255,0.1);
+  transform: translateY(-6px) scale(1.05);
+  box-shadow: var(--clay-shadow-logo-hover);
 }
 
 .ess-ring::before {
   content: '';
   position: absolute;
-  top: -12px; left: -12px; right: -12px; bottom: -12px;
-  border-radius: 30px;
-  background: radial-gradient(circle, rgba(255,255,255,0.18) 0%, transparent 70%);
+  top: -14px; left: -14px; right: -14px; bottom: -14px;
+  border-radius: 36px;
+  background: radial-gradient(circle, rgba(255,255,255,0.28) 0%, transparent 70%);
   z-index: -1;
-  animation: pulseGlow 3s ease-in-out infinite;
+  animation: pulseGlow 3.5s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -391,11 +428,10 @@ body:not(.show-ess) .bcon {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 22px;
+  border-radius: 24px;
   padding: 8px;
 }
 
-/* "Employee Portal" pill label */
 .e-label {
   display: inline-block;
   font-size: 10px;
@@ -403,55 +439,53 @@ body:not(.show-ess) .bcon {
   letter-spacing: 2px;
   text-transform: uppercase;
   color: #fff;
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.22);
-  padding: 4px 12px;
+  background: rgba(255,255,255,0.18);
+  border: 2px solid rgba(255,255,255,0.40);
+  padding: 5px 14px;
   border-radius: 100px;
   margin-bottom: 8px;
+  box-shadow: 2px 3px 8px rgba(0,0,0,0.12), inset 0 2px 5px rgba(255,255,255,0.25);
 }
 
-/* Thin white divider line */
 .e-line {
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+  width: 64px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.80), transparent);
   margin: 12px auto;
+  border-radius: 100px;
 }
 
-/* Company name */
 .e-name {
   font-size: 34px;
   font-weight: 800;
   color: #fff;
   line-height: 1.1;
   letter-spacing: -0.5px;
-  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  text-shadow: 2px 3px 10px rgba(0,0,0,0.20), 0 1px 0 rgba(255,255,255,0.12);
 }
 
-/* Tagline pill */
 .e-tag {
-  font-size: 13.5px;
-  color: rgba(255,255,255,0.9);
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.92);
   line-height: 1.5;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.15);
+  border: 2px solid rgba(255,255,255,0.35);
   padding: 10px 22px;
-  border-radius: 12px;
-  max-width: 220px;
+  border-radius: 16px;
+  max-width: 230px;
   margin-top: 5px;
+  box-shadow: 3px 4px 12px rgba(0,0,0,0.12), inset 0 2px 6px rgba(255,255,255,0.20);
 }
+
 
 /* =============================================
    6. FORM PANEL & CARDS
 ============================================= */
 
-/* Container that holds the login card — sits on the right half */
 .form-panel {
   position: absolute;
-  top: 0;
-  left: 50%;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 50%; right: 0; bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -459,88 +493,83 @@ body:not(.show-ess) .bcon {
   transition: transform var(--speed-slow) ease;
 }
 
-/* Slide the form panel left when ESS is active */
 .show-ess .form-panel {
   transform: translateX(-100%);
 }
 
-/* The white login card */
+/* Clay login card */
 .form-inner {
-  width: min(360px, calc(100% - 32px));
-  max-width: 360px;
+  width: min(380px, calc(100% - 32px));
+  max-width: 380px;
   background: #fff;
-  border-radius: 20px;
+  border-radius: 28px;
   padding: 36px 32px 28px;
-  border: 1px solid rgba(210,221,213,0.4);
-  box-shadow:
-    0 0 0 1px var(--login-form-shadow),
-    0 8px 24px var(--login-form-shadow2),
-    0 32px 72px var(--login-form-shadow3);
+  border: 3px solid rgba(255,255,255,0.92);
+  box-shadow: var(--clay-shadow-card);
   position: relative;
   z-index: 1;
-  transition: opacity var(--speed-normal) ease;
+  transition: box-shadow var(--speed-normal) ease, opacity var(--speed-normal) ease;
 }
 
-/* Thin colored line at the top of each card */
+.form-inner:hover {
+  box-shadow: var(--clay-shadow-card-hover);
+}
+
+/* Clay top stripe */
 .hris::before,
 .essf::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  border-radius: 20px 20px 0 0;
+  top: 0; left: 16px; right: 16px;
+  height: 4px;
+  border-radius: 0 0 6px 6px;
 }
 
 .hris::before {
-  background: linear-gradient(90deg, transparent, var(--green-forest), #1a5c18, var(--green-forest), transparent);
+  background: linear-gradient(90deg, rgba(4,82,2,0.3), var(--green-forest), rgba(4,82,2,0.3));
+  box-shadow: 0 2px 8px rgba(4,82,2,0.30);
 }
 
 .essf::before {
-  background: linear-gradient(90deg, transparent, var(--green-bright), #34c059, var(--green-bright), transparent);
+  background: linear-gradient(90deg, rgba(40,167,69,0.3), var(--green-bright), rgba(40,167,69,0.3));
+  box-shadow: 0 2px 8px rgba(40,167,69,0.30);
 }
 
-/* HRIS card — visible by default */
-.hris {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.show-ess .hris {
-  opacity: 0;
+/* Top inner highlight — the key clay effect */
+.form-inner::after {
+  content: '';
+  position: absolute;
+  top: 4px; left: 12px; right: 12px;
+  height: 36%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, transparent 100%);
+  border-radius: 24px 24px 0 0;
   pointer-events: none;
 }
 
-/* ESS card — hidden by default, shown when ESS is active */
+.hris { opacity: 1; pointer-events: auto; }
+.show-ess .hris { opacity: 0; pointer-events: none; }
+
 .essf {
   opacity: 0;
   pointer-events: none;
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   margin: auto;
-  width: min(360px, calc(100% - 32px));
-  max-width: 360px;
+  width: min(380px, calc(100% - 32px));
+  max-width: 380px;
   height: fit-content;
   transition: opacity var(--speed-normal) ease;
 }
 
-.show-ess .essf {
-  opacity: 1;
-  pointer-events: auto;
-}
+.show-ess .essf { opacity: 1; pointer-events: auto; }
 
-/* Mobile-only elements are hidden on desktop */
-.mob-tabs {
-  display: none;
-}
+.mob-tabs { display: none; }
 
 
 /* =============================================
    7. FORM ELEMENTS
 ============================================= */
 
-/* Small badge above the form title e.g. "HRIS Portal" */
 .eyebrow {
   display: inline-flex;
   align-items: center;
@@ -549,60 +578,64 @@ body:not(.show-ess) .bcon {
   font-weight: 700;
   letter-spacing: 2.5px;
   text-transform: uppercase;
-  padding: 4px 10px;
-  border-radius: 6px;
-  margin-bottom: 12px;
-  color: var(--green-primary);
-  background: rgba(41,67,6,0.1);
-  border: 1px solid rgba(41,67,6,0.25);
+  padding: 5px 12px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+  border: 2px solid transparent;
 }
 
-/* Form heading */
+.ey-gold {
+  color: var(--green-forest);
+  background: rgba(4,82,2,0.07);
+  border-color: rgba(4,82,2,0.16);
+  box-shadow: 2px 3px 8px rgba(4,82,2,0.10), inset 0 2px 4px rgba(255,255,255,0.75);
+}
+
+.ey-green {
+  color: var(--green-primary);
+  background: rgba(41,67,6,0.07);
+  border-color: rgba(41,67,6,0.16);
+  box-shadow: 2px 3px 8px rgba(41,67,6,0.10), inset 0 2px 4px rgba(255,255,255,0.75);
+}
+
 .form-title {
-  font-size: 34px;
-  font-weight: 600;
+  font-size: 32px;
+  font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.5px;
   margin-bottom: 6px;
   color: #141f17;
+  text-shadow: 1px 2px 4px rgba(4,82,2,0.06);
 }
 
-/* Subtitle below the heading */
 .form-sub {
   font-size: 12.5px;
-  color: #8a9e90;
+  color: #7a9880;
   line-height: 1.5;
   margin-bottom: 18px;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--login-border-line);
+  border-bottom: 2px solid rgba(4,82,2,0.06);
 }
 
-/* Error message box */
+/* Error box */
 .login-error {
   display: flex;
   align-items: flex-start;
   gap: 10px;
   background: rgba(220,53,69,0.06);
-  border: 1px solid rgba(220,53,69,0.22);
-  border-left: 3px solid #dc3545;
-  border-radius: 10px;
+  border: 2.5px solid rgba(220,53,69,0.20);
+  border-radius: 16px;
   padding: 12px 14px;
   margin-bottom: 18px;
   font-size: 13px;
   color: #b91c1c;
   line-height: 1.45;
+  box-shadow: var(--clay-shadow-error);
 }
 
-.login-error i {
-  font-size: 16px;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
+.login-error i { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
 
-/* Field wrapper */
-.field {
-  margin-bottom: 12px;
-}
+.field { margin-bottom: 12px; }
 
 .field label {
   display: block;
@@ -614,69 +647,62 @@ body:not(.show-ess) .bcon {
   margin-bottom: 6px;
 }
 
-/* Input wrapper — holds icon + input + eye button */
-.iwrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
+.iwrap { position: relative; display: flex; align-items: center; }
 
-/* Left icon inside the input */
 .iico {
   position: absolute;
-  left: 13px;
+  left: 14px;
   font-size: 15px;
-  color: #b8ccbe;
+  color: #a8c0ae;
   pointer-events: none;
   transition: color var(--speed-fast);
 }
 
-/* Text input */
+/* Clay input */
 .iwrap input {
   width: 100%;
-  padding: 12px 14px 12px 40px;
-  background: var(--input-bg);
-  border: 1.5px solid var(--input-border);
-  border-radius: 10px;
+  padding: 12px 14px 12px 42px;
+  background: var(--clay-input-bg);
+  border: 2.5px solid var(--clay-input-border);
+  border-radius: 14px;
   font-size: 13.5px;
   color: var(--text-dark);
   outline: none;
+  box-shadow: var(--clay-shadow-input);
   transition: background var(--speed-fast), border-color var(--speed-fast), box-shadow var(--speed-fast);
 }
 
 .iwrap input:hover {
-  background: #f3f7f4;
-  border-color: var(--input-hover);
+  background: #edf7ef;
+  border-color: #a8cead;
 }
 
-.iwrap input::placeholder {
-  color: #bfcfc4;
-  font-weight: 300;
-}
+.iwrap input::placeholder { color: #b0c8b6; font-weight: 300; }
 
-/* Focus styles — HRIS card (green) */
 .hris .iwrap input:focus {
   background: #fff;
   border-color: var(--green-forest);
-  box-shadow: 0 0 0 4px var(--login-focus-ring);
+  box-shadow:
+    4px 5px 14px rgba(4,82,2,0.14),
+    inset -2px -2px 6px rgba(4,82,2,0.06),
+    inset  2px  2px 6px rgba(255,255,255,0.85),
+    0 0 0 4px rgba(4,82,2,0.08);
 }
 
-.hris .iwrap:focus-within .iico {
-  color: var(--green-forest);
-}
+.hris .iwrap:focus-within .iico { color: var(--green-forest); }
 
-/* Focus styles — ESS card (darker green) */
 .essf .iwrap input:focus {
   background: #fff;
   border-color: var(--green-primary);
-  box-shadow: 0 0 0 4px var(--login-ess-ring);
+  box-shadow:
+    4px 5px 14px rgba(41,67,6,0.14),
+    inset -2px -2px 6px rgba(41,67,6,0.06),
+    inset  2px  2px 6px rgba(255,255,255,0.85),
+    0 0 0 4px rgba(41,67,6,0.08);
 }
 
-.essf .iwrap:focus-within .iico {
-  color: var(--green-primary);
-}
+.essf .iwrap:focus-within .iico { color: var(--green-primary); }
 
-/* Show/hide password button */
 .eyebtn {
   position: absolute;
   right: 12px;
@@ -688,15 +714,14 @@ body:not(.show-ess) .bcon {
   padding: 4px;
   display: flex;
   align-items: center;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: color var(--speed-fast), background var(--speed-fast);
 }
 
-.eyebtn:hover               { background: rgba(0,0,0,0.04); }
+.eyebtn:hover               { background: rgba(4,82,2,0.06); }
 .hris .eyebtn:hover         { color: var(--green-forest); }
 .essf .eyebtn:hover         { color: var(--green-bright); }
 
-/* Row with "Remember me" and "Forgot password" */
 .optrow {
   display: flex;
   align-items: center;
@@ -714,19 +739,13 @@ body:not(.show-ess) .bcon {
   user-select: none;
 }
 
-.rmb input {
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-}
-
+.rmb input { width: 15px; height: 15px; cursor: pointer; border-radius: 5px; }
 .hris .rmb input { accent-color: var(--green-forest); }
 .essf .rmb input { accent-color: var(--green-primary); }
 
-/* Forgot password link */
 .fgt {
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
   transition: opacity var(--speed-fast);
 }
@@ -735,27 +754,27 @@ body:not(.show-ess) .bcon {
 .essf .fgt { color: var(--green-primary); }
 .fgt:hover { opacity: 0.65; }
 
-/* Footer copyright line */
 .ffoot {
   text-align: center !important;
   font-size: 11px !important;
-  color: #3d4d42 !important;
+  color: #5a7060 !important;
   letter-spacing: 0.3px;
   padding-top: 16px !important;
-  border-top: 1px solid var(--login-footer-line) !important;
+  border-top: 2px solid rgba(4,82,2,0.06) !important;
   font-weight: 500 !important;
 }
+
 
 /* =============================================
    8. BUTTONS
 ============================================= */
 
-/* Primary "Sign In" button */
+/* Primary clay Sign In button */
 .btn-p {
   width: 100%;
-  padding: 12px 20px;
+  padding: 13px 20px;
   border: none;
-  border-radius: 11px;
+  border-radius: 16px;
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: 1.8px;
@@ -769,74 +788,99 @@ body:not(.show-ess) .bcon {
   position: relative;
   overflow: hidden;
   transition: transform var(--speed-fast), box-shadow var(--speed-fast);
+  border: 3px solid rgba(255,255,255,0.25);
 }
 
-/* Subtle shine overlay on the button */
+/* Inner top highlight */
 .btn-p::after {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, transparent 60%);
+  top: 0; left: 0; right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.28) 0%, transparent 100%);
   pointer-events: none;
+  border-radius: 14px 14px 0 0;
 }
 
-.btn-p:hover  { transform: translateY(-2px); }
-.btn-p:active { transform: translateY(0); }
+.btn-p:hover  { transform: translateY(-3px) scale(1.01); }
+.btn-p:active { transform: translateY(1px) scale(0.99); }
 
-/* HRIS Sign In — forest green */
+/* HRIS green clay */
 .btn-gold {
-  background: linear-gradient(135deg, var(--login-hris-btn-from) 0%, var(--green-forest) 50%, var(--green-dark) 100%);
+  background: linear-gradient(145deg, #3a8a38 0%, #045202 50%, #021a01 100%);
   color: #fff;
-  box-shadow: 0 4px 14px var(--login-btn-shadow);
+  box-shadow: var(--clay-shadow-btn-gold);
 }
 
-.btn-gold:hover {
-  box-shadow: 0 8px 24px var(--login-btn-shadow2);
-}
+.btn-gold:hover { box-shadow: var(--clay-shadow-btn-gold-hover); }
 
-/* ESS Sign In — darker green */
+/* ESS darker green clay */
 .btn-green {
-  background: linear-gradient(135deg, var(--green-primary) 0%, var(--green-mid) 100%);
+  background: linear-gradient(145deg, #3a5e10 0%, #294306 50%, #1a2b04 100%);
   color: #fff;
-  box-shadow: 0 4px 14px var(--login-ess-shadow);
+  box-shadow: var(--clay-shadow-btn-green);
 }
 
 .btn-green:hover {
-  box-shadow: 0 8px 24px var(--login-ess-shadow2);
+  box-shadow:
+    6px 10px 24px rgba(41,67,6,0.38),
+    inset -2px -3px 8px rgba(20,35,2,0.30),
+    inset  2px  3px 8px rgba(255,255,255,0.20);
 }
 
-/* Secondary "Switch portal" button */
+/* Secondary clay switch button */
 .btn-s {
   width: 100%;
-  padding: 10px 20px;
-  background: transparent;
-  border: 1.5px solid #dde8df;
-  border-radius: 11px;
+  padding: 11px 20px;
+  background: rgba(242,250,243,0.80);
+  border: 2.5px solid rgba(4,82,2,0.14);
+  border-radius: 16px;
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 600;
   font-style: normal;
-  color: #607868;
+  color: #4a6e52;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 9px;
   margin-bottom: 18px;
+  box-shadow: var(--clay-shadow-btn-sec);
   transition: all var(--speed-fast);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-s::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, transparent 100%);
+  pointer-events: none;
+  border-radius: 14px 14px 0 0;
 }
 
 .hris .btn-s:hover {
   border-color: var(--green-forest);
   color: var(--green-forest);
-  background: rgba(4,82,2,0.05);
-  transform: translateY(-1px);
+  background: rgba(255,255,255,0.90);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    4px 6px 18px rgba(4,82,2,0.20),
+    inset -2px -3px 8px rgba(4,82,2,0.08),
+    inset  2px  3px 8px rgba(255,255,255,0.80);
 }
 
 .essf .btn-s:hover {
   border-color: var(--green-primary);
   color: var(--green-primary);
-  background: rgba(41,67,6,0.05);
-  transform: translateY(-1px);
+  background: rgba(255,255,255,0.90);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    4px 6px 18px rgba(41,67,6,0.20),
+    inset -2px -3px 8px rgba(41,67,6,0.08),
+    inset  2px  3px 8px rgba(255,255,255,0.80);
 }
 
 
@@ -844,44 +888,40 @@ body:not(.show-ess) .bcon {
    9. ANIMATIONS
 ============================================= */
 
-/* Pulsing glow behind logo badges */
 @keyframes pulseGlow {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50%       { opacity: 1;    transform: scale(1.08); }
+  0%, 100% { opacity: 0.50; transform: scale(1); }
+  50%       { opacity: 0.90; transform: scale(1.10); }
 }
 
-/* Mobile fade in for brand header */
 @keyframes mobileFadeUp {
-  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
   to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
-/* Mobile fade in for login card */
 @keyframes mobileCardIn {
-  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  from { opacity: 0; transform: translate3d(0, 16px, 0); }
   to   { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
 
 /* =============================================
    10. MOBILE  (max-width: 640px)
-   Layout: scrollable page with tall brand header.
 ============================================= */
 
 @media (max-width: 640px) {
 
-  /* Scrollable page */
   html, body {
     height: auto;
     min-height: 100vh;
     overflow-y: auto;
-    background: linear-gradient(160deg, var(--login-brand-top) 0%, var(--green-forest) 60%, var(--green-dark) 100%);
+    background: linear-gradient(160deg, #5c9c5a 0%, #3a7a38 50%, #1e5c1c 100%);
   }
 
   .root {
     height: auto;
     min-height: 100vh;
     overflow: visible;
+    background: none;
   }
 
   .track {
@@ -900,7 +940,6 @@ body:not(.show-ess) .bcon {
     min-height: 100vh;
   }
 
-  /* Brand header — tall centered column (same as before) */
   .brand,
   .ess-brand {
     position: static;
@@ -912,16 +951,18 @@ body:not(.show-ess) .bcon {
     justify-content: center;
     transition: none;
     opacity: 1;
-    animation: mobileFadeUp 0.35s ease both;
+    animation: mobileFadeUp 0.4s ease both;
+    box-shadow: none;
   }
 
-  /* Show/hide brand panels by toggling display */
+  .brand::after,
+  .ess-brand::after { display: none; }
+
   .brand                { display: flex; }
   .ess-brand            { display: none; }
   .show-ess .brand      { display: none; }
   .show-ess .ess-brand  { display: flex; }
 
-  /* Brand content */
   .bcon,
   .ess-bcon {
     gap: 12px;
@@ -930,92 +971,80 @@ body:not(.show-ess) .bcon {
     transition: none;
   }
 
-  /* Logo sizes */
   .logo-ring,
   .ess-ring {
-    width: 72px;
-    height: 72px;
-  }
-
-  .logo-ring,
-  .ess-ring {
-    border-radius: 14px;
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
   }
 
   .logo-ring img,
   .ess-ring img {
-    border-radius: 10px;
+    border-radius: 16px;
     padding: 6px;
   }
 
-  /* Company name sizes */
   .b-name,
-  .e-name {
-    font-size: 24px;
-  }
-
-  .e-name span {
-    font-size: 18px;
-  }
+  .e-name { font-size: 24px; }
 
   .b-tag,
-  .e-tag {
-    font-size: 12px;
-  }
+  .e-tag { font-size: 12.5px; }
 
-  /* Form panel */
   .form-panel,
   .show-ess .form-panel {
     position: static;
-    left: auto;
-    right: auto;
-    top: auto;
-    bottom: auto;
+    left: auto; right: auto; top: auto; bottom: auto;
     width: 100%;
     height: auto;
     padding: 0;
     background: transparent;
     box-shadow: none;
     display: block;
-    border-radius: 28px 28px 0 0;
+    border-radius: 32px 32px 0 0;
     margin-top: 0;
     transform: none;
     transition: none;
     z-index: 10;
   }
 
-  /* Login cards */
   .form-inner.hris,
   .form-inner.essf {
     position: static;
     width: 100%;
     max-width: 100%;
-    border-radius: 28px 28px 0 0;
+    border-radius: 32px 32px 0 0;
     padding: 32px 20px 40px;
-    box-shadow: 0 -8px 40px var(--login-mob-card-shadow);
     min-height: calc(100vh - 220px);
     opacity: 1;
     pointer-events: auto;
     transform: none;
-    animation: mobileCardIn 0.35s ease both;
+    animation: mobileCardIn 0.4s ease both;
     inset: auto;
     margin: 0;
     height: auto;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    border-top: 3px solid rgba(255,255,255,0.80);
+    box-shadow:
+      0 -8px 40px rgba(4,82,2,0.18),
+      inset 0  4px 14px rgba(255,255,255,0.70),
+      inset 0 -2px  8px rgba(4,82,2,0.06);
   }
+
+  .form-inner.hris::after,
+  .form-inner.essf::after { border-radius: 30px 30px 0 0; }
 
   @supports (height: 100svh) {
     .form-inner.hris,
-    .form-inner.essf {
-      min-height: calc(100svh - 220px);
-    }
+    .form-inner.essf { min-height: calc(100svh - 220px); }
   }
 
-  /* Show/hide cards */
   .form-inner.essf               { display: none; }
   .show-ess .form-inner.hris     { display: none; }
   .show-ess .form-inner.essf     { display: block; }
 
-  /* Mobile tab switcher */
+  /* Clay mobile tab switcher */
   .mob-tabs {
     display: flex;
     gap: 8px;
@@ -1024,57 +1053,47 @@ body:not(.show-ess) .bcon {
 
   .mob-tab {
     flex: 1;
-    padding: 10px 8px;
-    border-radius: 10px;
-    border: 1.5px solid #e4ebe6;
-    background: transparent;
+    padding: 11px 8px;
+    border-radius: 14px;
+    border: 2.5px solid rgba(4,82,2,0.12);
+    background: rgba(242,250,243,0.65);
     font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
     color: #7a8a7f;
     cursor: pointer;
     transition: all var(--speed-fast);
+    box-shadow:
+      2px 3px 8px rgba(4,82,2,0.10),
+      inset 0 2px 5px rgba(255,255,255,0.75);
   }
 
   .mob-tab.active-gold {
-    background: rgba(4,82,2,0.08);
+    background: rgba(4,82,2,0.09);
     border-color: var(--green-forest);
     color: var(--green-forest);
+    box-shadow:
+      3px 4px 12px rgba(4,82,2,0.18),
+      inset 0 2px 6px rgba(255,255,255,0.80);
   }
 
   .mob-tab.active-green {
-    background: rgba(41,67,6,0.08);
+    background: rgba(41,67,6,0.09);
     border-color: var(--green-primary);
     color: var(--green-primary);
+    box-shadow:
+      3px 4px 12px rgba(41,67,6,0.18),
+      inset 0 2px 6px rgba(255,255,255,0.80);
   }
 
-  /* Hide desktop switch button on mobile */
-  .btn-s {
-    display: none;
-  }
+  .btn-s { display: none; }
 
-  /* Tighter spacing */
-  .form-title {
-    font-size: 32px;
-  }
-
-  .form-sub {
-    margin-bottom: 16px;
-    padding-bottom: 14px;
-  }
-
-  .field {
-    margin-bottom: 11px;
-  }
-
-  .optrow {
-    margin-bottom: 14px;
-  }
-
-  .btn-p {
-    padding: 14px 20px;
-  }
+  .form-title { font-size: 30px; }
+  .form-sub   { margin-bottom: 16px; padding-bottom: 14px; }
+  .field      { margin-bottom: 11px; }
+  .optrow     { margin-bottom: 14px; }
+  .btn-p      { padding: 14px 20px; }
 }
 
 
@@ -1085,17 +1104,11 @@ body:not(.show-ess) .bcon {
 @media (min-width: 641px) and (max-width: 900px) {
 
   .brand,
-  .ess-brand {
-    width: 42%;
-  }
+  .ess-brand { width: 42%; }
 
-  .form-panel {
-    left: 42%;
-  }
+  .form-panel { left: 42%; }
 
-  .show-ess .form-panel {
-    transform: translateX(-100%);
-  }
+  .show-ess .form-panel { transform: translateX(-100%); }
 
   .form-inner {
     padding: 28px 24px 22px;
@@ -1108,48 +1121,32 @@ body:not(.show-ess) .bcon {
     max-width: 340px;
   }
 
-  .form-title {
-    font-size: 28px;
-  }
+  .form-title { font-size: 28px; }
 
   .b-name,
-  .e-name {
-    font-size: 28px;
-  }
+  .e-name { font-size: 28px; }
 }
 
 
 /* =============================================
    12. SMALL PHONE  (max-width: 480px)
-   Extra tight spacing for very narrow screens.
 ============================================= */
 
 @media (max-width: 480px) {
 
   .brand,
-  .ess-brand {
-    padding: 32px 16px 24px;
-  }
+  .ess-brand { padding: 32px 16px 24px; }
 
   .form-inner.hris,
-  .form-inner.essf {
-    padding: 24px 16px 32px;
-  }
+  .form-inner.essf { padding: 24px 16px 32px; }
 
-  .form-title {
-    font-size: 26px;
-  }
+  .form-title { font-size: 26px; }
 
   .b-name,
-  .e-name {
-    font-size: 20px;
-  }
+  .e-name { font-size: 20px; }
 
   .b-tag,
-  .e-tag {
-    font-size: 11.5px;
-    padding: 8px 14px;
-  }
+  .e-tag { font-size: 11.5px; padding: 8px 14px; }
 
   .iwrap input {
     font-size: 13px;
@@ -1158,7 +1155,8 @@ body:not(.show-ess) .bcon {
 
   .logo-ring,
   .ess-ring {
-    width: 62px;
-    height: 62px;
+    width: 66px;
+    height: 66px;
+    border-radius: 16px;
   }
 }

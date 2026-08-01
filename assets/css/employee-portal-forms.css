@@ -25,7 +25,7 @@
   margin-left: var(--space-xs);
 }
 
-/* ===== TEXT INPUTS ===== */
+/* ===== TEXT INPUTS & SELECTS (CLAYMORPHISM) ===== */
 
 .form-control,
 .form-select {
@@ -35,25 +35,29 @@
   font-size: var(--font-size-base);
   line-height: var(--line-height-base);
   color: var(--color-text-primary);
-  background: var(--color-bg-primary);
+  background: var(--color-bg-secondary);
   border: 2px solid var(--color-border-medium);
   border-radius: var(--radius-md);
+  box-shadow: var(--clay-shadow-input);
   transition: all var(--transition-fast);
 }
 
-.form-control:hover {
-  border-color: var(--color-border-dark);
+.form-control:hover,
+.form-select:hover {
+  background: var(--color-bg-primary);
+  border-color: var(--color-primary);
 }
 
 .form-control:focus,
 .form-select:focus {
   outline: none;
+  background: #ffffff;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(8, 46, 6, 0.15);
-}
-
-.form-select:hover {
-  border-color: var(--color-border-dark);
+  box-shadow:
+    4px 5px 14px rgba(8, 46, 6, 0.12),
+    inset -2px -2px 6px rgba(8, 46, 6, 0.05),
+    inset 2px 2px 6px rgba(255, 255, 255, 0.85),
+    0 0 0 4px rgba(8, 46, 6, 0.12);
 }
 
 .form-control::placeholder {

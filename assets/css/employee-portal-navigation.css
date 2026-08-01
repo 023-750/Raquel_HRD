@@ -255,3 +255,80 @@
   transform: scale(0.96) !important;
 }
 
+/* ===== MOBILE HEADER GEAR ICON CLICK ANIMATION ===== */
+#mobileGearBtn {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
+}
+
+#mobileGearBtn .fa-cog,
+#mobileGearBtn .fa-gear {
+  display: inline-block;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease;
+  transform-origin: center;
+}
+
+#mobileGearBtn:hover .fa-cog,
+#mobileGearBtn:hover .fa-gear {
+  transform: rotate(60deg) scale(1.1);
+}
+
+#mobileGearBtn:active .fa-cog,
+#mobileGearBtn:active .fa-gear {
+  animation: gearSpinClick 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#mobileGearBtn[aria-expanded="true"] .fa-cog,
+#mobileGearBtn[aria-expanded="true"] .fa-gear,
+.dropdown.show #mobileGearBtn .fa-cog,
+.dropdown.show #mobileGearBtn .fa-gear {
+  transform: rotate(180deg) scale(1.15);
+  color: #BD9414 !important;
+}
+
+@keyframes gearSpinClick {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.3); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+/* ===== HEADER BELL ICON RING ANIMATION ===== */
+#notificationBtn,
+.notification-btn {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease;
+}
+
+#notificationBtn .fa-bell,
+.notification-btn .fa-bell {
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease;
+  transform-origin: top center;
+}
+
+#notificationBtn:hover .fa-bell,
+.notification-btn:hover .fa-bell {
+  transform: rotate(18deg) scale(1.1);
+}
+
+#notificationBtn:active .fa-bell,
+#notificationBtn:focus .fa-bell,
+.notification-btn:active .fa-bell {
+  animation: bellRingClick 0.6s ease-in-out;
+}
+
+#notificationBtn[aria-expanded="true"] .fa-bell,
+.dropdown.show #notificationBtn .fa-bell,
+.dropdown.show .notification-btn .fa-bell {
+  transform: rotate(-12deg) scale(1.15);
+  color: #BD9414 !important;
+}
+
+@keyframes bellRingClick {
+  0% { transform: rotate(0deg) scale(1); }
+  15% { transform: rotate(25deg) scale(1.25); }
+  30% { transform: rotate(-22deg) scale(1.2); }
+  45% { transform: rotate(18deg) scale(1.15); }
+  60% { transform: rotate(-12deg) scale(1.1); }
+  75% { transform: rotate(6deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
