@@ -466,7 +466,8 @@ body:not(.show-ess) .bcon {
 
 /* The white login card */
 .form-inner {
-  width: 360px;
+  width: min(360px, calc(100% - 32px));
+  max-width: 360px;
   background: #fff;
   border-radius: 20px;
   padding: 36px 32px 28px;
@@ -518,7 +519,8 @@ body:not(.show-ess) .bcon {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   margin: auto;
-  width: 360px;
+  width: min(360px, calc(100% - 32px));
+  max-width: 360px;
   height: fit-content;
   transition: opacity var(--speed-normal) ease;
 }
@@ -1084,11 +1086,11 @@ body:not(.show-ess) .bcon {
 
   .brand,
   .ess-brand {
-    width: 50%;
+    width: 42%;
   }
 
   .form-panel {
-    left: 50%;
+    left: 42%;
   }
 
   .show-ess .form-panel {
@@ -1097,14 +1099,66 @@ body:not(.show-ess) .bcon {
 
   .form-inner {
     padding: 28px 24px 22px;
-    max-width: 360px;
+    width: min(340px, calc(100% - 24px));
+    max-width: 340px;
   }
 
   .essf {
-    max-width: 360px;
+    width: min(340px, calc(100% - 24px));
+    max-width: 340px;
   }
 
   .form-title {
-    font-size: 30px;
+    font-size: 28px;
+  }
+
+  .b-name,
+  .e-name {
+    font-size: 28px;
+  }
+}
+
+
+/* =============================================
+   12. SMALL PHONE  (max-width: 480px)
+   Extra tight spacing for very narrow screens.
+============================================= */
+
+@media (max-width: 480px) {
+
+  .brand,
+  .ess-brand {
+    padding: 32px 16px 24px;
+  }
+
+  .form-inner.hris,
+  .form-inner.essf {
+    padding: 24px 16px 32px;
+  }
+
+  .form-title {
+    font-size: 26px;
+  }
+
+  .b-name,
+  .e-name {
+    font-size: 20px;
+  }
+
+  .b-tag,
+  .e-tag {
+    font-size: 11.5px;
+    padding: 8px 14px;
+  }
+
+  .iwrap input {
+    font-size: 13px;
+    padding: 11px 12px 11px 38px;
+  }
+
+  .logo-ring,
+  .ess-ring {
+    width: 62px;
+    height: 62px;
   }
 }
