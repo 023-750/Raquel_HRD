@@ -733,7 +733,7 @@ require_once '../includes/header.php';
 
     <!-- List of pending confirmations -->
     <div class="content-card fadeup-1">
-        <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
             <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Pending Confirmations</h5>
             <div class="d-flex align-items-center gap-2">
                 <?php if (!empty($pending_confirmations)): ?>
@@ -1502,8 +1502,8 @@ require_once '../includes/header.php';
                                 <?php foreach ($audit_history as $log): ?>
                                     <div class="timeline-item mb-3" style="position: relative;">
                                         <div class="timeline-marker" style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; position: absolute; left: -27px; top: 5px;"></div>
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <span class="fw-bold text-dark small">
+                                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-1 mb-1">
+                                            <span class="fw-bold text-dark small" style="word-break: break-word; overflow-wrap: anywhere;">
                                                 <?php echo e($log['full_name'] ?? 'System'); ?>
                                                 <span class="text-muted fw-normal">
                                                     <?php
@@ -1514,7 +1514,7 @@ require_once '../includes/header.php';
                                                     ?>
                                                 </span>
                                             </span>
-                                            <span class="text-muted x-small"><?php echo formatDateTime($log['timestamp']); ?></span>
+                                            <span class="text-muted x-small ms-auto"><?php echo formatDateTime($log['timestamp']); ?></span>
                                         </div>
                                         <div class="small text-secondary fw-semibold"><?php echo e($log['action_type']); ?> - <?php echo e(explode('.', $log['details'])[0]); ?></div>
                                         <?php if (strpos($log['details'], 'Score adjustments:') !== false): ?>

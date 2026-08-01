@@ -627,6 +627,23 @@ a {
     align-items: center;
     justify-content: space-between;
     background: transparent;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+@media (max-width: 767.98px) {
+    .content-card .card-header,
+    .card-header,
+    .content-card-header {
+        padding: 12px 16px;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+
+    .fw-bold.text-dark.small {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
 }
 
 .content-card .card-header h5 {
@@ -4403,8 +4420,8 @@ video {
 
     body.role-employee .main-content {
         margin-left: 0 !important;
-        /* Extra padding at bottom to prevent footer/sticky nav overlap */
-        padding-bottom: calc(85px + env(safe-area-inset-bottom, 0px)) !important;
+        /* Clean padding at bottom to prevent footer/sticky nav overlap */
+        padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
     }
 
     /* Adjust page hero padding on mobile for cleaner look */
@@ -6016,7 +6033,7 @@ body.has-wizard-footer {
 .hr-back-to-top-wrapper {
     margin-top: 15px;
     margin-bottom: 25px;
-    padding-bottom: 90px;
+    padding-bottom: 15px;
     text-align: center;
 }
 

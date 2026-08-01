@@ -59,7 +59,7 @@
     /* Push main content down from top-navbar and up from bottom-nav */
     body.hr-mobile-active .main-content {
         margin-left: 0 !important;
-        padding-bottom: 120px !important;
+        padding-bottom: 75px !important;
     }
 
     /* Prevent container wrappers from clipping cards or dropdown menus on mobile */
@@ -1319,7 +1319,7 @@ body.hr-mobile-active {
 .hr-back-to-top-wrapper {
     margin-top: 15px;
     margin-bottom: 25px;
-    padding-bottom: 90px;
+    padding-bottom: 15px;
     text-align: center;
 }
 
