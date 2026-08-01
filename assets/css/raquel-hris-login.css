@@ -1,4 +1,4 @@
-﻿/* =============================================
+/* =============================================
    raquel-hris-login.css
    Raquel Pawnshop HRIS — Login Page Styles
    Design Language: Claymorphism
@@ -32,20 +32,18 @@
   --green-bright:  #28a745;
 
   /* Clay panel backgrounds */
-  --clay-bg:         #eaf4eb;
-  --clay-input-bg:   #f2faf3;
-  --clay-input-border: #c5dfc8;
+  --clay-bg:         #0e2412;
+  --clay-input-bg:   #ffffff;
+  --clay-input-border: #c8dfcb;
 
   /* Clay shadow tokens */
   --clay-shadow-card:
-    6px 10px 28px rgba(4,82,2,0.18),
-    inset -3px -4px 10px rgba(4,82,2,0.10),
-    inset  3px  4px 10px rgba(255,255,255,0.80);
+    0 24px 48px rgba(0,0,0,0.32),
+    0 4px 16px rgba(4,82,2,0.18);
 
   --clay-shadow-card-hover:
-    10px 16px 38px rgba(4,82,2,0.22),
-    inset -4px -5px 12px rgba(4,82,2,0.12),
-    inset  4px  5px 12px rgba(255,255,255,0.85);
+    0 28px 56px rgba(0,0,0,0.38),
+    0 6px 20px rgba(4,82,2,0.22);
 
   --clay-shadow-btn-gold:
     4px 6px 18px rgba(4,82,2,0.30),
@@ -63,14 +61,10 @@
     inset  2px  3px 8px rgba(255,255,255,0.18);
 
   --clay-shadow-btn-sec:
-    3px 5px 14px rgba(4,82,2,0.14),
-    inset -2px -3px 7px rgba(4,82,2,0.08),
-    inset  2px  3px 7px rgba(255,255,255,0.75);
+    0 4px 12px rgba(4,82,2,0.08);
 
   --clay-shadow-input:
-    3px 4px 12px rgba(4,82,2,0.10),
-    inset -2px -2px 6px rgba(4,82,2,0.07),
-    inset  2px  2px 6px rgba(255,255,255,0.80);
+    0 2px 6px rgba(4,82,2,0.04);
 
   --clay-shadow-logo:
     6px 8px 22px rgba(0,0,0,0.18),
@@ -135,10 +129,10 @@ input, button, select, textarea {
   overflow: hidden;
   position: relative;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(4,82,2,0.08) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(189,148,20,0.06) 0%, transparent 55%),
-    radial-gradient(ellipse at 60% 80%, rgba(4,82,2,0.05) 0%, transparent 50%),
-    var(--clay-bg);
+    radial-gradient(ellipse at 75% 30%, rgba(44,102,42,0.28) 0%, transparent 60%),
+    radial-gradient(ellipse at 85% 85%, rgba(4,82,2,0.40) 0%, transparent 55%),
+    radial-gradient(ellipse at 30% 80%, rgba(189,148,20,0.10) 0%, transparent 50%),
+    linear-gradient(135deg, #102613 0%, #07170a 100%);
 }
 
 .track {
@@ -501,10 +495,10 @@ body:not(.show-ess) .bcon {
 .form-inner {
   width: min(380px, calc(100% - 32px));
   max-width: 380px;
-  background: #fff;
+  background: #ffffff;
   border-radius: 28px;
   padding: 36px 32px 28px;
-  border: 3px solid rgba(255,255,255,0.92);
+  border: 1px solid rgba(255,255,255,0.22);
   box-shadow: var(--clay-shadow-card);
   position: relative;
   z-index: 1;
@@ -520,30 +514,24 @@ body:not(.show-ess) .bcon {
 .essf::before {
   content: '';
   position: absolute;
-  top: 0; left: 16px; right: 16px;
-  height: 4px;
-  border-radius: 0 0 6px 6px;
+  top: 0; left: 0; right: 0;
+  height: 5px;
+  border-radius: 28px 28px 0 0;
 }
 
 .hris::before {
-  background: linear-gradient(90deg, rgba(4,82,2,0.3), var(--green-forest), rgba(4,82,2,0.3));
+  background: linear-gradient(90deg, #3a8a38 0%, var(--green-forest) 50%, #3a8a38 100%);
   box-shadow: 0 2px 8px rgba(4,82,2,0.30);
 }
 
 .essf::before {
-  background: linear-gradient(90deg, rgba(40,167,69,0.3), var(--green-bright), rgba(40,167,69,0.3));
+  background: linear-gradient(90deg, rgba(40,167,69,0.8), var(--green-bright), rgba(40,167,69,0.8));
   box-shadow: 0 2px 8px rgba(40,167,69,0.30);
 }
 
-/* Top inner highlight — the key clay effect */
+/* Remove bright white glossy glare across card */
 .form-inner::after {
-  content: '';
-  position: absolute;
-  top: 4px; left: 12px; right: 12px;
-  height: 36%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, transparent 100%);
-  border-radius: 24px 24px 0 0;
-  pointer-events: none;
+  display: none;
 }
 
 .hris { opacity: 1; pointer-events: auto; }
@@ -832,13 +820,13 @@ body:not(.show-ess) .bcon {
 .btn-s {
   width: 100%;
   padding: 11px 20px;
-  background: rgba(242,250,243,0.80);
-  border: 2.5px solid rgba(4,82,2,0.14);
+  background: #f4faf5;
+  border: 2px solid rgba(4,82,2,0.16);
   border-radius: 16px;
   font-size: 12.5px;
   font-weight: 600;
   font-style: normal;
-  color: #4a6e52;
+  color: var(--green-forest);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -852,13 +840,7 @@ body:not(.show-ess) .bcon {
 }
 
 .btn-s::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 50%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, transparent 100%);
-  pointer-events: none;
-  border-radius: 14px 14px 0 0;
+  display: none;
 }
 
 .hris .btn-s:hover {
