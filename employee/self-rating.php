@@ -611,8 +611,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirectWith(BASE_URL . '/employee/self-rating.php', 'success', 'Your self-rating was submitted successfully. Awaiting supervisor confirmation.');
     }
 
-    logAudit($conn, $user_id, 'CREATE', 'Evaluation', $eval_id, 'Saved employee self-rating draft');
-    if (isset($_POST['auto_save']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest')) {
+    // Only log manual saves — auto-saves would spam the audit trail with dozens of identical entries
+    $is_auto_save = isset($_POST['auto_save']) || (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
+    if (!$is_auto_save) {
+        logAudit($conn, $user_id, 'CREATE', 'Evaluation', $eval_id, 'Saved employee self-rating draft');
+    }
+    if ($is_auto_save) {
         header('Content-Type: application/json');
         echo json_encode(['success' => true, 'message' => 'Your self-rating draft was saved.', 'evaluation_id' => $eval_id]);
         exit;
@@ -1720,7 +1724,7 @@ require_once '../includes/header.php';
                             </div>
                             <div>
                                 <h6 class="mb-1 fw-bold">1. Select Template</h6>
-                                <p class="text-muted small mb-0">Choose an active template from the dropdown list to load evaluation criteria.</p>
+                                <p class="text-muted small mb-0">Choose an active evaluation template. If one was assigned to you by HRD, it will appear here automatically.</p>
                             </div>
                         </div>
                         <div class="help-step d-flex gap-3 mb-4">
@@ -1728,8 +1732,8 @@ require_once '../includes/header.php';
                                 <i class="fas fa-edit"></i>
                             </div>
                             <div>
-                                <h6 class="mb-1 fw-bold">2. Encode Ratings</h6>
-                                <p class="text-muted small mb-0">Rate yourself from 1-4 on Key Result Areas (KRAs) and Behavior traits. Save drafts as needed.</p>
+                                <h6 class="mb-1 fw-bold">2. Rate Yourself</h6>
+                                <p class="text-muted small mb-0">Score each KRA and Behavior criterion from 1–4. You can save a draft anytime and return to finish later.</p>
                             </div>
                         </div>
                         <div class="help-step d-flex gap-3 mb-4">
@@ -1737,8 +1741,8 @@ require_once '../includes/header.php';
                                 <i class="fas fa-paper-plane"></i>
                             </div>
                             <div>
-                                <h6 class="mb-1 fw-bold">3. Submit to Head</h6>
-                                <p class="text-muted small mb-0">Submit to your Immediate Head. Once submitted, your self-ratings are locked and read-only.</p>
+                                <h6 class="mb-1 fw-bold">3. Submit to Immediate Head</h6>
+                                <p class="text-muted small mb-0">Once submitted, your ratings are locked. Your Immediate Head (Branch Supervisor or Branch Manager) will be notified to review.</p>
                             </div>
                         </div>
                         <div class="help-step d-flex gap-3 mb-4">
@@ -1746,17 +1750,35 @@ require_once '../includes/header.php';
                                 <i class="fas fa-user-check"></i>
                             </div>
                             <div>
-                                <h6 class="mb-1 fw-bold">4. Supervisor Review</h6>
-                                <p class="text-muted small mb-0">Your supervisor reviews, provides feedback, confirms ratings, and sends it to HRD.</p>
+                                <h6 class="mb-1 fw-bold">4. Immediate Head Confirms</h6>
+                                <p class="text-muted small mb-0">Your Immediate Head reviews and may adjust your scores. They can confirm and forward it, or return it to you for revision.</p>
+                            </div>
+                        </div>
+                        <div class="help-step d-flex gap-3 mb-4">
+                            <div class="help-step-icon bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; flex-shrink:0;">
+                                <i class="fas fa-user-shield"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1 fw-bold">5. Department Manager Endorses <span class="badge bg-secondary" style="font-size:.65rem;">if applicable</span></h6>
+                                <p class="text-muted small mb-0">If your branch has a Department Manager, they will receive the evaluation for endorsement before it goes to HRD.</p>
+                            </div>
+                        </div>
+                        <div class="help-step d-flex gap-3 mb-4">
+                            <div class="help-step-icon bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; flex-shrink:0;">
+                                <i class="fas fa-layer-group"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-1 fw-bold">6. HR Consolidation</h6>
+                                <p class="text-muted small mb-0">The HR Supervisor consolidates all submitted ratings for the period before forwarding to the HR Manager for final approval.</p>
                             </div>
                         </div>
                         <div class="help-step d-flex gap-3">
-                            <div class="help-step-icon bg-danger bg-opacity-10 text-danger rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; flex-shrink:0;">
+                            <div class="help-step-icon bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center" style="width:36px; height:36px; flex-shrink:0;">
                                 <i class="fas fa-check-double"></i>
                             </div>
                             <div>
-                                <h6 class="mb-1 fw-bold">5. HRD Consolidation</h6>
-                                <p class="text-muted small mb-0">HRD conducts final review and consolidates the metrics to finalize your performance record.</p>
+                                <h6 class="mb-1 fw-bold">7. HR Manager Approves</h6>
+                                <p class="text-muted small mb-0">The HR Manager gives final approval. You will be notified once your evaluation is officially approved and recorded.</p>
                             </div>
                         </div>
                     </div>

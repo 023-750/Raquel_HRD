@@ -1567,6 +1567,49 @@ foreach ($all_pending as $row):
                         </div>
                     </div>
 
+                    <!-- Audit History Timeline -->
+                    <?php
+                    $modal_audit_stmt = $conn->prepare("
+                        SELECT al.*, u.full_name, u.role, e.job_title
+                        FROM audit_logs al
+                        LEFT JOIN users u ON al.user_id = u.user_id
+                        LEFT JOIN employees e ON u.employee_id = e.employee_id
+                        WHERE al.entity_type = 'Evaluation' AND al.entity_id = ?
+                        ORDER BY al.timestamp ASC, al.log_id ASC
+                    ");
+                    $modal_audit_stmt->bind_param("i", $modal_eval_id);
+                    $modal_audit_stmt->execute();
+                    $modal_audit_logs = $modal_audit_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                    $modal_audit_stmt->close();
+                    ?>
+                    <div class="section-premium-label mb-3 mt-5">
+                        <i class="fas fa-history"></i> Evaluation Audit Trail
+                    </div>
+                    <?php if (empty($modal_audit_logs)): ?>
+                        <p class="text-muted small mb-4">No audit logs found for this evaluation.</p>
+                    <?php else: ?>
+                        <div class="mb-4" style="border-left: 2px solid #e2e8f0; padding-left: 20px; position: relative;">
+                            <?php foreach ($modal_audit_logs as $log): ?>
+                                <div style="position: relative; margin-bottom: 14px;">
+                                    <div style="width:11px;height:11px;border-radius:50%;background:#3b82f6;position:absolute;left:-27px;top:4px;"></div>
+                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-1 mb-1">
+                                        <span class="fw-bold text-dark" style="font-size:.82rem;word-break:break-word;">
+                                            <?php echo e($log['full_name'] ?? 'System'); ?>
+                                            <span class="text-muted fw-normal">
+                                                (<?php echo e(!empty($log['job_title']) ? $log['job_title'] : ($log['role'] ?? 'System')); ?>)
+                                            </span>
+                                        </span>
+                                        <span class="text-muted ms-auto" style="font-size:.75rem;white-space:nowrap;"><?php echo formatDateTime($log['timestamp']); ?></span>
+                                    </div>
+                                    <div class="text-secondary fw-semibold" style="font-size:.8rem;"><?php echo e($log['action_type']); ?> — <?php echo e(explode('.', $log['details'])[0]); ?></div>
+                                    <?php if (strpos($log['details'], 'Score adjustments:') !== false): ?>
+                                        <div class="mt-1 p-2 bg-light rounded border text-muted" style="white-space:pre-wrap;font-family:monospace;font-size:.75rem;"><?php echo e(substr($log['details'], strpos($log['details'], 'Score adjustments:'))); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+
                     <!-- Action Section -->
                     <div class="section-premium-label mb-3 mt-5">
                         <i class="fas fa-comments"></i> V. Remarks & Decisions

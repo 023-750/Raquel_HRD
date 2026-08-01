@@ -1462,7 +1462,7 @@ require_once '../includes/header.php';
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                        <div class="d-flex flex-wrap justify-content-between gap-2 mt-3">
                             <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-2"></i>Back to List
                             </a>
@@ -1471,13 +1471,13 @@ require_once '../includes/header.php';
                                     <i class="fas fa-eye me-1"></i>View-only
                                 </span>
                             <?php else: ?>
-                                <div class="d-flex gap-2">
-                                    <button type="submit" name="confirm_action" value="reject" class="btn btn-warning text-dark"
+                                <div class="d-flex flex-wrap gap-2 w-100 w-sm-auto justify-content-end">
+                                    <button type="submit" name="confirm_action" value="reject" class="btn btn-warning text-dark flex-fill flex-sm-grow-0"
                                             onclick="return confirm('Are you sure you want to reject this self-rating? It goes back to employee for revision. Comments/justification are required.');">
-                                        <i class="fas fa-times-circle me-1"></i>Reject
+                                        <i class="fas fa-times-circle me-1"></i>Return for Revision
                                     </button>
                                     <button type="submit" name="confirm_action" value="confirm_and_send" 
-                                            class="btn btn-primary" id="submitBtn"
+                                            class="btn btn-primary flex-fill flex-sm-grow-0" id="submitBtn"
                                             onclick="return confirm('Confirm this self-rating and send to branch manager?');">
                                         <i class="fas fa-check-circle me-2"></i>Confirm &amp; Send
                                     </button>

@@ -77,6 +77,20 @@ if ($evaluation_id > 0) {
             }
         }
         $scores_stmt->close();
+
+        // Fetch audit history for this evaluation
+        $audit_stmt = $conn->prepare("
+            SELECT al.*, u.full_name, u.role, e.job_title
+            FROM audit_logs al
+            LEFT JOIN users u ON al.user_id = u.user_id
+            LEFT JOIN employees e ON u.employee_id = e.employee_id
+            WHERE al.entity_type = 'Evaluation' AND al.entity_id = ?
+            ORDER BY al.timestamp DESC, al.log_id DESC
+        ");
+        $audit_stmt->bind_param("i", $evaluation_id);
+        $audit_stmt->execute();
+        $audit_history = $audit_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $audit_stmt->close();
     }
 }
 
@@ -1188,7 +1202,7 @@ require_once '../includes/header.php';
                         </div>
 
                         <!-- Form Actions -->
-                        <div class="d-flex justify-content-between gap-3 mt-4">
+                        <div class="d-flex flex-wrap justify-content-between gap-2 mt-4">
                             <a href="dept-manager-review.php" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-1"></i>Back to List
                             </a>
@@ -1197,12 +1211,12 @@ require_once '../includes/header.php';
                                     <i class="fas fa-eye me-1"></i>View-only
                                 </span>
                             <?php else: ?>
-                                <div class="d-flex gap-2">
-                                    <button type="submit" name="confirm_action" value="return" class="btn btn-warning text-dark"
+                                <div class="d-flex flex-wrap gap-2 w-100 w-sm-auto justify-content-end">
+                                    <button type="submit" name="confirm_action" value="return" class="btn btn-warning text-dark flex-fill flex-sm-grow-0"
                                             onclick="return confirm('Are you sure you want to return this evaluation for revision? Comments are required.');">
                                         <i class="fas fa-undo me-1"></i>Return for Revision
                                     </button>
-                                    <button type="submit" name="confirm_action" value="endorse" class="btn btn-success"
+                                    <button type="submit" name="confirm_action" value="endorse" class="btn btn-success flex-fill flex-sm-grow-0"
                                             onclick="return confirm('Endorse this evaluation and send to HRD?');">
                                         <i class="fas fa-check-circle me-1"></i>Endorse &amp; Send to HRD
                                     </button>
@@ -1212,6 +1226,46 @@ require_once '../includes/header.php';
                     </form>
                 </div>
             </div>
+
+            <!-- Audit History Timeline -->
+            <?php if ($evaluation_id > 0): ?>
+                <div class="content-card mt-4 fadeup-2">
+                    <div class="card-header">
+                        <h5><i class="fas fa-history me-2"></i>Evaluation Audit History</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($audit_history)): ?>
+                            <p class="text-muted small mb-0">No audit logs found for this evaluation.</p>
+                        <?php else: ?>
+                            <div class="timeline" style="border-left: 2px solid #e2e8f0; padding-left: 20px; position: relative;">
+                                <?php foreach ($audit_history as $log): ?>
+                                    <div class="timeline-item mb-3" style="position: relative;">
+                                        <div class="timeline-marker" style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; position: absolute; left: -27px; top: 5px;"></div>
+                                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-1 mb-1">
+                                            <span class="fw-bold text-dark small" style="word-break: break-word; overflow-wrap: anywhere;">
+                                                <?php echo e($log['full_name'] ?? 'System'); ?>
+                                                <span class="text-muted fw-normal">
+                                                    <?php
+                                                        $audit_label = !empty($log['job_title'])
+                                                            ? $log['job_title']
+                                                            : ($log['role'] ?? 'System');
+                                                        echo '(' . e($audit_label) . ')';
+                                                    ?>
+                                                </span>
+                                            </span>
+                                            <span class="text-muted x-small ms-auto"><?php echo formatDateTime($log['timestamp']); ?></span>
+                                        </div>
+                                        <div class="small text-secondary fw-semibold"><?php echo e($log['action_type']); ?> - <?php echo e(explode('.', $log['details'])[0]); ?></div>
+                                        <?php if (strpos($log['details'], 'Score adjustments:') !== false): ?>
+                                            <div class="mt-2 p-2 bg-light rounded border x-small text-muted" style="white-space: pre-wrap; font-family: monospace; font-size: 0.78rem;"><?php echo e(substr($log['details'], strpos($log['details'], 'Score adjustments:'))); ?></div>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
 
         <div class="col-lg-4">
