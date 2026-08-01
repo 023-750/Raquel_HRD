@@ -488,8 +488,14 @@ a {
     margin-left: var(--sidebar-width);
     margin-top: var(--header-height);
     padding: 25px;
-    min-height: calc(100vh - var(--header-height));
     transition: margin-left 0.3s ease;
+}
+
+/* Only enforce full-height on desktop — on mobile this causes empty pages to scroll endlessly */
+@media (min-width: 769px) {
+    .main-content {
+        min-height: calc(100vh - var(--header-height));
+    }
 }
 
 /* ---------- Stat Cards ---------- */
@@ -4422,6 +4428,8 @@ video {
         margin-left: 0 !important;
         /* Clean padding at bottom to prevent footer/sticky nav overlap */
         padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
+        /* Prevent empty pages from stretching to full viewport height on mobile */
+        min-height: auto !important;
     }
 
     /* Adjust page hero padding on mobile for cleaner look */

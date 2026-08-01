@@ -344,7 +344,7 @@ switch ($effective_role) {
     .skip-navigation{position:absolute;top:-100px;left:0;background:#082E06;color:#fff;padding:.75rem 1.5rem;text-decoration:none;font-weight:600;z-index:10000;border-radius:0 0 8px 0;}
     .skip-navigation:focus{top:0;}
     @media(min-width:768px){.main-content{margin-left:260px;padding:1.5rem;}.top-navbar{left:260px;}}
-    @media(max-width:767px){.main-content{padding:1rem;}body{padding-bottom:64px;}}
+    @media(max-width:767px){.main-content{padding:1rem;}}
     </style>
     <link rel="preload" href="<?php echo BASE_URL; ?>/assets/css/employee-portal-variables.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-variables.css" rel="stylesheet"></noscript>

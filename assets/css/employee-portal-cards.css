@@ -111,6 +111,13 @@
   transition: all var(--transition-base);
 }
 
+/* Mobile: let cards size to their content instead of stretching to fill column height */
+@media (max-width: 991.98px) {
+  .content-card {
+    height: auto;
+  }
+}
+
 .content-card:hover {
   box-shadow: 8px 14px 30px rgba(8, 46, 6, 0.15), inset -3px -3px 8px rgba(8, 46, 6, 0.06), inset 3px 3px 8px rgba(255, 255, 255, 0.9);
 }
