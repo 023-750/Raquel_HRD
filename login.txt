@@ -137,6 +137,9 @@ input, button, select, textarea {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    repeating-linear-gradient(45deg,  transparent, transparent 28px, rgba(189,148,20,.04) 28px, rgba(189,148,20,.04) 29px),
+    repeating-linear-gradient(-45deg, transparent, transparent 28px, rgba(189,148,20,.04) 28px, rgba(189,148,20,.04) 29px);
 }
 
 /* Corner bracket decorations */
@@ -306,6 +309,9 @@ body:not(.show-ess) .bcon {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    repeating-linear-gradient(45deg,  transparent, transparent 26px, rgba(255,255,255,.03) 26px, rgba(255,255,255,.03) 27px),
+    repeating-linear-gradient(-45deg, transparent, transparent 26px, rgba(255,255,255,.03) 26px, rgba(255,255,255,.03) 27px);
 }
 
 /* ESS corner brackets (white instead of gold) */
