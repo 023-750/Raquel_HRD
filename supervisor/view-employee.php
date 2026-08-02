@@ -628,10 +628,13 @@ $rankBadgeClass = $rankBadgeClassMap[$emp['rank_name'] ?? ''] ?? 'rank-badge-def
         <?php
         // Query approved evaluations for 5-Year performance trend
         $perf_history_q = $conn->prepare("
-            SELECT evaluation_id, total_score, performance_level, approved_date, YEAR(approved_date) as eval_year, evaluation_type
+            SELECT evaluation_id, total_score, performance_level, approved_date,
+                   COALESCE(approved_date, evaluation_period_end) AS display_date,
+                   YEAR(COALESCE(approved_date, evaluation_period_end)) as eval_year,
+                   evaluation_type
             FROM evaluations
-            WHERE employee_id = ? AND status = 'Approved' AND approved_date IS NOT NULL
-            ORDER BY approved_date ASC
+            WHERE employee_id = ? AND status = 'Approved'
+            ORDER BY COALESCE(approved_date, evaluation_period_end) ASC
         ");
         $perf_history_q->bind_param("i", $eid);
         $perf_history_q->execute();
@@ -641,7 +644,7 @@ $rankBadgeClass = $rankBadgeClassMap[$emp['rank_name'] ?? ''] ?? 'rank-badge-def
         $chart_scores = [];
         while ($ph = $perf_history_res->fetch_assoc()) {
             $perf_history_data[] = $ph;
-            $chart_labels[] = date('M Y', strtotime($ph['approved_date'])) . ' (' . ($ph['evaluation_type'] ?? 'Eval') . ')';
+            $chart_labels[] = date('M Y', strtotime($ph['display_date'])) . ' (' . ($ph['evaluation_type'] ?? 'Eval') . ')';
             $chart_scores[] = (float)$ph['total_score'];
         }
         $perf_history_q->close();
@@ -713,7 +716,7 @@ $rankBadgeClass = $rankBadgeClassMap[$emp['rank_name'] ?? ''] ?? 'rank-badge-def
                                 ?>
                                     <div class="p-2 bg-light rounded-3 d-flex justify-content-between align-items-center">
                                         <div>
-                                            <div class="fw-bold small"><?php echo date('F d, Y', strtotime($phItem['approved_date'])); ?></div>
+                                            <div class="fw-bold small"><?php echo date('F d, Y', strtotime($phItem['display_date'])); ?></div>
                                             <div class="text-muted" style="font-size:0.72rem;"><?php echo e($phItem['evaluation_type'] ?? 'Annual'); ?> Evaluation</div>
                                         </div>
                                         <div class="text-end">
