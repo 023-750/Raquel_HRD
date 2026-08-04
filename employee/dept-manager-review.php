@@ -972,9 +972,80 @@ require_once '../includes/header.php';
         padding: 2px 7px;
         margin-left: 6px;
     }
+    .dept-review-sidebar .content-card {
+        border-radius: 8px;
+        height: auto !important;
+        min-height: 0 !important;
+    }
+    .dept-review-layout > [class*="col-"] {
+        align-self: flex-start;
+    }
+    .dept-review-layout .content-card {
+        height: auto !important;
+        min-height: 0 !important;
+    }
+    .dept-review-sidebar .card-header {
+        padding: .75rem 1rem;
+    }
+    .dept-review-sidebar .card-header h5,
+    .dept-review-audit .card-header h5 {
+        align-items: center;
+        display: flex;
+        font-size: .95rem;
+        gap: .4rem;
+        line-height: 1.2;
+        margin: 0;
+    }
+    .dept-review-sidebar .card-body {
+        padding: 1rem;
+    }
+    .dept-review-score {
+        color: var(--primary-blue);
+        font-size: 2.65rem;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: .35rem;
+    }
+    .dept-review-summary-meta {
+        row-gap: .35rem;
+    }
+    .dept-review-summary-meta hr {
+        margin: .35rem 0;
+    }
+    .rating-scale-list {
+        display: grid;
+        gap: .45rem;
+    }
+    .rating-scale-row {
+        align-items: center;
+        display: flex;
+        gap: .6rem;
+        justify-content: space-between;
+    }
+    .rating-scale-row .badge {
+        font-size: .68rem;
+        max-width: 62%;
+        text-align: right;
+        white-space: normal;
+    }
+    @media (min-width: 992px) {
+        .dept-review-sidebar {
+            position: sticky;
+            top: 1rem;
+        }
+        .dept-review-sidebar .content-card + .content-card {
+            margin-top: 1rem !important;
+        }
+        .dept-review-audit .card-body {
+            padding-top: 1rem;
+        }
+        .dept-review-audit .timeline-item {
+            margin-bottom: .85rem !important;
+        }
+    }
     </style>
 
-    <div class="row g-4">
+    <div class="row g-4 dept-review-layout">
         <div class="col-lg-8">
             <div class="content-card fadeup-1">
                 <div class="card-header">
@@ -1246,9 +1317,9 @@ require_once '../includes/header.php';
 
             <!-- Audit History Timeline -->
             <?php if ($evaluation_id > 0): ?>
-                <div class="content-card mt-4 fadeup-2">
+                <div class="content-card mt-4 fadeup-2 dept-review-audit">
                     <div class="card-header">
-                        <h5><i class="fas fa-history me-2"></i>Evaluation Audit History</h5>
+                        <h5><i class="fas fa-history"></i>Audit History</h5>
                     </div>
                     <div class="card-body">
                         <?php if (empty($audit_history)): ?>
@@ -1285,18 +1356,18 @@ require_once '../includes/header.php';
             <?php endif; ?>
         </div>
 
-        <div class="col-lg-4">
+        <div class="col-lg-4 dept-review-sidebar">
             <div class="content-card fadeup-2">
                 <div class="card-header">
-                    <h5><i class="fas fa-chart-pie me-2"></i>Summary</h5>
+                    <h5><i class="fas fa-chart-pie"></i>Summary</h5>
                 </div>
-                <div class="card-body text-center py-4">
-                    <div style="font-size:3.5rem;font-weight:800;color:var(--primary-blue);line-height:1;margin-bottom:.5rem;" id="sideFinalGrade">
+                <div class="card-body text-center">
+                    <div class="dept-review-score" id="sideFinalGrade">
                         <?php echo number_format((float)$evaluation['total_score'], 2); ?>
                     </div>
-                    <div class="fw-bold mb-3" id="sidePerfLevel"><?php echo e($evaluation['performance_level'] ?? '—'); ?></div>
+                    <div class="fw-bold small mb-2" id="sidePerfLevel"><?php echo e($evaluation['performance_level'] ?? '—'); ?></div>
                     <hr>
-                    <div class="row g-2 text-start mt-2">
+                    <div class="row g-2 text-start mt-2 dept-review-summary-meta">
                         <div class="col-6 text-muted small">KRA Weight:</div>
                         <div class="col-6 text-end fw-semibold small"><?php echo e($evaluation['kra_weight']); ?>%</div>
                         <div class="col-6 text-muted small">KRA Score:</div>
@@ -1315,23 +1386,23 @@ require_once '../includes/header.php';
             <!-- Rating Scale -->
             <div class="content-card fadeup-2 mt-4">
                 <div class="card-header">
-                    <h5><i class="fas fa-chart-bar me-2"></i>Rating Scale</h5>
+                    <h5><i class="fas fa-chart-bar"></i>Rating Scale</h5>
                 </div>
                 <div class="card-body">
-                    <div class="small">
-                        <div class="d-flex justify-content-between mb-1">
+                    <div class="small rating-scale-list">
+                        <div class="rating-scale-row">
                             <span>3.60 - 4.00</span>
                             <span class="badge bg-success">Outstanding</span>
                         </div>
-                        <div class="d-flex justify-content-between mb-1">
+                        <div class="rating-scale-row">
                             <span>2.60 - 3.59</span>
                             <span class="badge bg-info text-dark">Exceeds Expectations</span>
                         </div>
-                        <div class="d-flex justify-content-between mb-1">
+                        <div class="rating-scale-row">
                             <span>2.00 - 2.59</span>
                             <span class="badge bg-primary">Meets Expectations</span>
                         </div>
-                        <div class="d-flex justify-content-between">
+                        <div class="rating-scale-row">
                             <span>Below 2.00</span>
                             <span class="badge bg-warning text-dark">Needs Improvement</span>
                         </div>
