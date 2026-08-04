@@ -71,6 +71,7 @@ $edit_eval = null;
 $view_eval = null;
 $edit_scores = [];
 $view_scores = [];
+$view_dev_plans = [];
 $selected_template_id = isset($_GET['template']) ? (int) $_GET['template'] : 0;
 $view_mode = false;
 $assigned_evaluations = null;
@@ -99,6 +100,20 @@ if (isset($_GET['view']) && is_numeric($_GET['view'])) {
         while ($score = $score_rs->fetch_assoc()) {
             $view_scores[(int) $score['criterion_id']] = $score;
         }
+
+        $dev_stmt = $conn->prepare("
+            SELECT improvement_area, support_needed, time_frame
+            FROM evaluation_dev_plans
+            WHERE evaluation_id = ?
+            ORDER BY sort_order, plan_id
+        ");
+        $dev_stmt->bind_param("i", $view_eval['evaluation_id']);
+        $dev_stmt->execute();
+        $dev_rs = $dev_stmt->get_result();
+        while ($plan = $dev_rs->fetch_assoc()) {
+            $view_dev_plans[] = $plan;
+        }
+        $dev_stmt->close();
     }
 }
 
@@ -1223,6 +1238,36 @@ require_once '../includes/header.php';
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
+
+                    <div class="section-premium-label mb-3 mt-4">
+                        <i class="fas fa-seedling"></i>Developmental Plan
+                    </div>
+                    <div class="table-responsive mb-4">
+                        <table class="table table-sm table-hover align-middle border-start">
+                            <thead class="small text-muted bg-light">
+                                <tr>
+                                    <th class="ps-3">Area of Improvement</th>
+                                    <th>Support Needed</th>
+                                    <th>Time Frame</th>
+                                </tr>
+                            </thead>
+                            <tbody class="small">
+                                <?php if (!empty($view_dev_plans)): ?>
+                                    <?php foreach ($view_dev_plans as $plan): ?>
+                                        <tr>
+                                            <td class="ps-3"><?php echo e($plan['improvement_area']); ?></td>
+                                            <td><?php echo e($plan['support_needed']); ?></td>
+                                            <td><?php echo e($plan['time_frame']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted small py-3">No developmental plan recorded.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
 
                     <div class="alert alert-info mb-4">
                         <div class="d-flex justify-content-between align-items-center">
