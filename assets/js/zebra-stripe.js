@@ -2,6 +2,7 @@ function applyZebraStriping(tableSelector) {
     let visibleIndex = 0;
     const table = document.querySelector(tableSelector);
     if (!table) return;
+    if (table.dataset.noStripe === 'true') return;
     table.querySelectorAll('tbody tr').forEach(row => {
         if (row.style.display === 'none') return;
         row.classList.remove('odd-row', 'even-row');
@@ -13,6 +14,7 @@ function applyZebraStriping(tableSelector) {
 // Auto-apply to all .table elements on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.table').forEach(table => {
+        if (table.dataset.noStripe === 'true') return;
         if (table.id) {
             applyZebraStriping('#' + table.id);
         } else {

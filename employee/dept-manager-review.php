@@ -820,18 +820,33 @@ require_once '../includes/header.php';
         transform: none !important;
     }
 
-    .final-grade-card .col-md-8:hover,
-    .final-grade-card .table-hover tbody tr:hover,
-    .final-grade-card .table-hover tbody tr:hover > *,
-    .final-grade-card .grade-table tbody tr:hover,
-    .final-grade-card .grade-table tbody tr:hover td {
-        background: transparent !important;
+    /* ── Override global table zebra-stripe & hover rules inside the dark card ── */
+    /* These defeat: .table tbody tr:nth-of-type(odd) td { background-color:#fff !important }
+       and any Bootstrap --bs-table-* variable that bleeds through                          */
+    .final-grade-card .table tbody tr:nth-of-type(odd) td,
+    .final-grade-card .table tbody tr:nth-of-type(even) td,
+    .final-grade-card .table tbody tr.odd-row td,
+    .final-grade-card .table tbody tr.even-row td,
+    .final-grade-card .grade-table tbody tr:nth-of-type(odd) td,
+    .final-grade-card .grade-table tbody tr:nth-of-type(even) td,
+    .final-grade-card .grade-table tbody tr td,
+    .final-grade-card .grade-table thead tr th,
+    .final-grade-card .grade-table tbody tr:hover td,
+    .final-grade-card .grade-table tbody tr:hover th,
+    .final-grade-card .table tbody tr:hover td,
+    .final-grade-card .table tbody tr:hover th {
         background-color: transparent !important;
+        background: transparent !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
         --bs-table-bg: transparent !important;
+        --bs-table-color: #ffffff !important;
         --bs-table-accent-bg: transparent !important;
+        --bs-table-striped-bg: transparent !important;
+        --bs-table-active-bg: transparent !important;
         --bs-table-hover-bg: transparent !important;
         --bs-table-hover-color: #ffffff !important;
-        color: #ffffff !important;
+        box-shadow: none !important;
     }
 
     .final-grade-card,
@@ -855,57 +870,17 @@ require_once '../includes/header.php';
         margin-bottom: 0 !important;
         border-color: rgba(203,161,53,.22) !important;
     }
-    .final-grade-card .table > :not(caption) > * > *,
-    .final-grade-card .grade-table > :not(caption) > * > * {
-        background: transparent !important;
-        background-color: transparent !important;
-        box-shadow: none !important;
-        --bs-table-bg: transparent !important;
-        --bs-table-accent-bg: transparent !important;
-        --bs-table-striped-bg: transparent !important;
-        --bs-table-active-bg: transparent !important;
-        --bs-table-hover-bg: transparent !important;
-        color: #ffffff !important;
-    }
-    .final-grade-card .grade-table th,
-    .final-grade-card .grade-table td {
-        color: rgba(255,255,255,.9) !important;
-        border-color: rgba(203,161,53,.22) !important;
-        font-size: .88rem !important;
-        background: transparent !important;
-        background-color: transparent !important;
-        --bs-table-bg: transparent !important;
-        --bs-table-color: #ffffff !important;
-    }
     .final-grade-card .grade-table th {
         font-weight: 600 !important;
         color: rgba(248,243,223,.72) !important;
         font-size: .75rem !important;
         text-transform: uppercase !important;
         letter-spacing: .5px !important;
+        border-color: rgba(203,161,53,.22) !important;
     }
-    .final-grade-card .col-md-8,
-    .final-grade-card .col-md-8:hover,
-    .final-grade-card .col-md-8:hover *,
-    .final-grade-card .grade-table,
-    .final-grade-card .grade-table tbody,
-    .final-grade-card .grade-table tbody tr,
-    .final-grade-card .grade-table tbody tr:hover,
-    .final-grade-card .grade-table tbody tr:hover > *,
-    .final-grade-card .grade-table th,
-    .final-grade-card .grade-table td,
-    .final-grade-card .grade-table th:hover,
-    .final-grade-card .grade-table td:hover {
-        background: transparent !important;
-        background-color: transparent !important;
-        box-shadow: none !important;
-        --bs-table-bg: transparent !important;
-        --bs-table-accent-bg: transparent !important;
-        --bs-table-striped-bg: transparent !important;
-        --bs-table-active-bg: transparent !important;
-        --bs-table-hover-bg: transparent !important;
-        --bs-table-hover-color: #ffffff !important;
-        color: #ffffff !important;
+    .final-grade-card .grade-table td {
+        font-size: .88rem !important;
+        border-color: rgba(203,161,53,.22) !important;
     }
     .final-grade-value {
         font-size: 3.5rem !important;
@@ -1151,7 +1126,7 @@ require_once '../includes/header.php';
                             </div>
                             <div class="row align-items-center">
                                 <div class="col-md-8" style="background:transparent !important;">
-                                    <table class="table grade-table mb-0" style="background:transparent !important;--bs-table-bg:transparent;--bs-table-accent-bg:transparent;--bs-table-striped-bg:transparent;--bs-table-active-bg:transparent;--bs-table-hover-bg:transparent;--bs-table-color:#ffffff;">
+                                    <table class="table grade-table mb-0" data-no-stripe="true" style="background:transparent !important;--bs-table-bg:transparent;--bs-table-accent-bg:transparent;--bs-table-striped-bg:transparent;--bs-table-active-bg:transparent;--bs-table-hover-bg:transparent;--bs-table-color:#ffffff;">
                                         <thead>
                                             <tr>
                                                 <th>Section</th>
