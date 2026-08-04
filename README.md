@@ -64,6 +64,6 @@ database/data/seed_templates.sql (populates 60 evaluation templates & criteria)
 database/testing_seed.sql (NEW - imported at the end to inject evaluation flow, career movements, and analytics test data)
 
 
-> Now that you already imported all of the neccessarry databses, go to files and navigate to folder named "config" under that folder you should be able to see the database.php, look for the "define('DB_PASS', 'admin');" then change it into "define('DB_PASS', '');" - don't include the quotation u dummy.
+> Now that you already imported all of the neccessarry databses chronologicaly, go to files and navigate to folder named "config" under that folder you should be able to see the database.php, look for the "define('DB_PASS', 'admin');" then change it into "define('DB_PASS', '');" - don't include the quotation u dummy.
 
 > Final step, open your browser and type this url: http://localhost/FINAL_RAQUEL_PAWNSHOP_HRD/ you'll be able to access the system completely without having any errors.
