@@ -43,27 +43,27 @@ Resolving deltas: 100% (980/980), done.
 > Once the cloning process has been completed successfully, you should go to https://localhost/phpmyadmin/ on your selected browser.
 
 > Import all database in order:
-1. 1st_schema_tables.sql
-2. 2nd_seed_organization.sql
-3. 3rd_seed_HR_accounts_.sql
-4. AP_seed.sql
-5. Audit_seed.sql
-6. BD_seed.sql
-7. Compliance_seed.sql
-8. Finance_seed.sql
-9. GS_seed.sql
-10. HR_seed.sql
-11. IT_seed.sql
-12. Marketing_seed.sql
-13. OP_seed.sql
-14. Operations_seed.sql
-15. Purchasing_seed.sql
-16. xPortal_accounts.sql
-17. zLAST_performance_indexes.sql
-18. demo_seed.sql - optional this is for me by the way.
+database/1st_schema_tables.sql
+database/2nd_seed_organization.sql
+database/3rd_seed_HR_accounts_.sql
+database/AP_seed.sql
+database/Audit_seed.sql
+database/BD_seed.sql
+database/Compliance_seed.sql
+database/Finance_seed.sql
+database/GS_seed.sql
+database/HR_seed.sql
+database/IT_seed.sql
+database/Marketing_seed.sql
+database/OP_seed.sql
+database/Operations_seed.sql
+database/Purchasing_seed.sql
+database/xPortal_accounts.sql
+database/zLAST_performance_indexes.sql
+database/data/seed_templates.sql (populates 60 evaluation templates & criteria)
+database/testing_seed.sql (NEW - imported at the end to inject evaluation flow, career movements, and analytics test data)
+
 
 > Now that you already imported all of the neccessarry databses, go to files and navigate to folder named "config" under that folder you should be able to see the database.php, look for the "define('DB_PASS', 'admin');" then change it into "define('DB_PASS', '');" - don't include the quotation u dummy.
 
 > Final step, open your browser and type this url: http://localhost/FINAL_RAQUEL_PAWNSHOP_HRD/ you'll be able to access the system completely without having any errors.
-
-hi
