@@ -21,10 +21,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (100, 'Human Resources Annual Performance Evaluation', 'Comprehensive year-end review of people operations, recruitment, employee relations, learning, compensation, records, and policy support.', 'Human Resources', 'Annual', 80.00, 20.00, 'HR-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (101, 'Human Resources Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for people operations, recruitment, employee relations, learning, compensation, records, and policy support.', 'Human Resources', 'Quarterly', 80.00, 20.00, 'HR-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (102, 'Human Resources Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in people operations, recruitment, employee relations, learning, compensation, records, and policy support.', 'Human Resources', 'Initial', 80.00, 20.00, 'HR-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (103, 'Human Resources Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for people operations, recruitment, employee relations, learning, compensation, records, and policy support.', 'Human Resources', 'Final', 80.00, 20.00, 'HR-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (100, 'Human Resources Annual Performance Evaluation', 'Comprehensive year-end review of people operations, recruitment, employee relations, learning, compensation, records, and policy support.', 'Human Resources', 'Annual', 80.00, 20.00, 'HR-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (101, 'Human Resources Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for people operations, recruitment, employee relations, learning, compensation, records, and policy support.', 'Human Resources', 'Quarterly', 80.00, 20.00, 'HR-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (102, 'Human Resources Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in people operations, recruitment, employee relations, learning, compensation, records, and policy support.', 'Human Resources', 'Initial', 80.00, 20.00, 'HR-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (103, 'Human Resources Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for people operations, recruitment, employee relations, learning, compensation, records, and policy support.', 'Human Resources', 'Final', 80.00, 20.00, 'HR-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 100 (Human Resources Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -98,10 +98,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (104, 'Acquired Properties Annual Performance Evaluation', 'Comprehensive year-end review of acquired asset disposition, appraisal, documentation, inventory, custody, and preservation.', 'Acquired Properties', 'Annual', 80.00, 20.00, 'AP-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (105, 'Acquired Properties Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for acquired asset disposition, appraisal, documentation, inventory, custody, and preservation.', 'Acquired Properties', 'Quarterly', 80.00, 20.00, 'AP-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (106, 'Acquired Properties Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in acquired asset disposition, appraisal, documentation, inventory, custody, and preservation.', 'Acquired Properties', 'Initial', 80.00, 20.00, 'AP-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (107, 'Acquired Properties Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for acquired asset disposition, appraisal, documentation, inventory, custody, and preservation.', 'Acquired Properties', 'Final', 80.00, 20.00, 'AP-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (104, 'Acquired Properties Annual Performance Evaluation', 'Comprehensive year-end review of acquired asset disposition, appraisal, documentation, inventory, custody, and preservation.', 'Acquired Properties', 'Annual', 80.00, 20.00, 'AP-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (105, 'Acquired Properties Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for acquired asset disposition, appraisal, documentation, inventory, custody, and preservation.', 'Acquired Properties', 'Quarterly', 80.00, 20.00, 'AP-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (106, 'Acquired Properties Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in acquired asset disposition, appraisal, documentation, inventory, custody, and preservation.', 'Acquired Properties', 'Initial', 80.00, 20.00, 'AP-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (107, 'Acquired Properties Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for acquired asset disposition, appraisal, documentation, inventory, custody, and preservation.', 'Acquired Properties', 'Final', 80.00, 20.00, 'AP-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 104 (Acquired Properties Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -175,10 +175,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (108, 'Audit Annual Performance Evaluation', 'Comprehensive year-end review of risk-based audits, findings validation, corrective action follow-up, cash checks, and compliance assurance.', 'Audit', 'Annual', 80.00, 20.00, 'AUD-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (109, 'Audit Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for risk-based audits, findings validation, corrective action follow-up, cash checks, and compliance assurance.', 'Audit', 'Quarterly', 80.00, 20.00, 'AUD-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (110, 'Audit Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in risk-based audits, findings validation, corrective action follow-up, cash checks, and compliance assurance.', 'Audit', 'Initial', 80.00, 20.00, 'AUD-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (111, 'Audit Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for risk-based audits, findings validation, corrective action follow-up, cash checks, and compliance assurance.', 'Audit', 'Final', 80.00, 20.00, 'AUD-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (108, 'Audit Annual Performance Evaluation', 'Comprehensive year-end review of risk-based audits, findings validation, corrective action follow-up, cash checks, and compliance assurance.', 'Audit', 'Annual', 80.00, 20.00, 'AUD-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (109, 'Audit Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for risk-based audits, findings validation, corrective action follow-up, cash checks, and compliance assurance.', 'Audit', 'Quarterly', 80.00, 20.00, 'AUD-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (110, 'Audit Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in risk-based audits, findings validation, corrective action follow-up, cash checks, and compliance assurance.', 'Audit', 'Initial', 80.00, 20.00, 'AUD-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (111, 'Audit Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for risk-based audits, findings validation, corrective action follow-up, cash checks, and compliance assurance.', 'Audit', 'Final', 80.00, 20.00, 'AUD-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 108 (Audit Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -252,10 +252,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (112, 'Business Development Annual Performance Evaluation', 'Comprehensive year-end review of site expansion, strategic partnerships, feasibility research, competitor intelligence, and product development.', 'Business Development', 'Annual', 80.00, 20.00, 'BD-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (113, 'Business Development Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for site expansion, strategic partnerships, feasibility research, competitor intelligence, and product development.', 'Business Development', 'Quarterly', 80.00, 20.00, 'BD-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (114, 'Business Development Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in site expansion, strategic partnerships, feasibility research, competitor intelligence, and product development.', 'Business Development', 'Initial', 80.00, 20.00, 'BD-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (115, 'Business Development Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for site expansion, strategic partnerships, feasibility research, competitor intelligence, and product development.', 'Business Development', 'Final', 80.00, 20.00, 'BD-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (112, 'Business Development Annual Performance Evaluation', 'Comprehensive year-end review of site expansion, strategic partnerships, feasibility research, competitor intelligence, and product development.', 'Business Development', 'Annual', 80.00, 20.00, 'BD-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (113, 'Business Development Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for site expansion, strategic partnerships, feasibility research, competitor intelligence, and product development.', 'Business Development', 'Quarterly', 80.00, 20.00, 'BD-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (114, 'Business Development Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in site expansion, strategic partnerships, feasibility research, competitor intelligence, and product development.', 'Business Development', 'Initial', 80.00, 20.00, 'BD-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (115, 'Business Development Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for site expansion, strategic partnerships, feasibility research, competitor intelligence, and product development.', 'Business Development', 'Final', 80.00, 20.00, 'BD-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 112 (Business Development Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -329,10 +329,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (116, 'Compliance Annual Performance Evaluation', 'Comprehensive year-end review of regulatory monitoring, AMLA and KYC controls, policy compliance, permits, licensing, and staff awareness.', 'Compliance', 'Annual', 80.00, 20.00, 'COM-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (117, 'Compliance Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for regulatory monitoring, AMLA and KYC controls, policy compliance, permits, licensing, and staff awareness.', 'Compliance', 'Quarterly', 80.00, 20.00, 'COM-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (118, 'Compliance Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in regulatory monitoring, AMLA and KYC controls, policy compliance, permits, licensing, and staff awareness.', 'Compliance', 'Initial', 80.00, 20.00, 'COM-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (119, 'Compliance Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for regulatory monitoring, AMLA and KYC controls, policy compliance, permits, licensing, and staff awareness.', 'Compliance', 'Final', 80.00, 20.00, 'COM-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (116, 'Compliance Annual Performance Evaluation', 'Comprehensive year-end review of regulatory monitoring, AMLA and KYC controls, policy compliance, permits, licensing, and staff awareness.', 'Compliance', 'Annual', 80.00, 20.00, 'COM-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (117, 'Compliance Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for regulatory monitoring, AMLA and KYC controls, policy compliance, permits, licensing, and staff awareness.', 'Compliance', 'Quarterly', 80.00, 20.00, 'COM-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (118, 'Compliance Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in regulatory monitoring, AMLA and KYC controls, policy compliance, permits, licensing, and staff awareness.', 'Compliance', 'Initial', 80.00, 20.00, 'COM-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (119, 'Compliance Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for regulatory monitoring, AMLA and KYC controls, policy compliance, permits, licensing, and staff awareness.', 'Compliance', 'Final', 80.00, 20.00, 'COM-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 116 (Compliance Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -406,10 +406,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (120, 'Finance Annual Performance Evaluation', 'Comprehensive year-end review of financial reporting, budget monitoring, treasury, disbursements, tax filing, and statutory controls.', 'Finance', 'Annual', 80.00, 20.00, 'FIN-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (121, 'Finance Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for financial reporting, budget monitoring, treasury, disbursements, tax filing, and statutory controls.', 'Finance', 'Quarterly', 80.00, 20.00, 'FIN-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (122, 'Finance Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in financial reporting, budget monitoring, treasury, disbursements, tax filing, and statutory controls.', 'Finance', 'Initial', 80.00, 20.00, 'FIN-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (123, 'Finance Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for financial reporting, budget monitoring, treasury, disbursements, tax filing, and statutory controls.', 'Finance', 'Final', 80.00, 20.00, 'FIN-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (120, 'Finance Annual Performance Evaluation', 'Comprehensive year-end review of financial reporting, budget monitoring, treasury, disbursements, tax filing, and statutory controls.', 'Finance', 'Annual', 80.00, 20.00, 'FIN-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (121, 'Finance Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for financial reporting, budget monitoring, treasury, disbursements, tax filing, and statutory controls.', 'Finance', 'Quarterly', 80.00, 20.00, 'FIN-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (122, 'Finance Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in financial reporting, budget monitoring, treasury, disbursements, tax filing, and statutory controls.', 'Finance', 'Initial', 80.00, 20.00, 'FIN-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (123, 'Finance Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for financial reporting, budget monitoring, treasury, disbursements, tax filing, and statutory controls.', 'Finance', 'Final', 80.00, 20.00, 'FIN-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 120 (Finance Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -483,10 +483,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (124, 'General Services Annual Performance Evaluation', 'Comprehensive year-end review of facilities, supplies, fleet, procurement support, safety, security, and administrative services.', 'General Services', 'Annual', 80.00, 20.00, 'GS-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (125, 'General Services Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for facilities, supplies, fleet, procurement support, safety, security, and administrative services.', 'General Services', 'Quarterly', 80.00, 20.00, 'GS-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (126, 'General Services Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in facilities, supplies, fleet, procurement support, safety, security, and administrative services.', 'General Services', 'Initial', 80.00, 20.00, 'GS-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (127, 'General Services Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for facilities, supplies, fleet, procurement support, safety, security, and administrative services.', 'General Services', 'Final', 80.00, 20.00, 'GS-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (124, 'General Services Annual Performance Evaluation', 'Comprehensive year-end review of facilities, supplies, fleet, procurement support, safety, security, and administrative services.', 'General Services', 'Annual', 80.00, 20.00, 'GS-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (125, 'General Services Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for facilities, supplies, fleet, procurement support, safety, security, and administrative services.', 'General Services', 'Quarterly', 80.00, 20.00, 'GS-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (126, 'General Services Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in facilities, supplies, fleet, procurement support, safety, security, and administrative services.', 'General Services', 'Initial', 80.00, 20.00, 'GS-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (127, 'General Services Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for facilities, supplies, fleet, procurement support, safety, security, and administrative services.', 'General Services', 'Final', 80.00, 20.00, 'GS-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 124 (General Services Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -560,10 +560,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (128, 'Information Technology Annual Performance Evaluation', 'Comprehensive year-end review of infrastructure, technical support, cybersecurity, systems enhancement, data protection, and IT assets.', 'Information Technology', 'Annual', 80.00, 20.00, 'IT-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (129, 'Information Technology Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for infrastructure, technical support, cybersecurity, systems enhancement, data protection, and IT assets.', 'Information Technology', 'Quarterly', 80.00, 20.00, 'IT-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (130, 'Information Technology Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in infrastructure, technical support, cybersecurity, systems enhancement, data protection, and IT assets.', 'Information Technology', 'Initial', 80.00, 20.00, 'IT-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (131, 'Information Technology Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for infrastructure, technical support, cybersecurity, systems enhancement, data protection, and IT assets.', 'Information Technology', 'Final', 80.00, 20.00, 'IT-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (128, 'Information Technology Annual Performance Evaluation', 'Comprehensive year-end review of infrastructure, technical support, cybersecurity, systems enhancement, data protection, and IT assets.', 'Information Technology', 'Annual', 80.00, 20.00, 'IT-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (129, 'Information Technology Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for infrastructure, technical support, cybersecurity, systems enhancement, data protection, and IT assets.', 'Information Technology', 'Quarterly', 80.00, 20.00, 'IT-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (130, 'Information Technology Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in infrastructure, technical support, cybersecurity, systems enhancement, data protection, and IT assets.', 'Information Technology', 'Initial', 80.00, 20.00, 'IT-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (131, 'Information Technology Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for infrastructure, technical support, cybersecurity, systems enhancement, data protection, and IT assets.', 'Information Technology', 'Final', 80.00, 20.00, 'IT-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 128 (Information Technology Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -637,10 +637,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (132, 'Marketing Annual Performance Evaluation', 'Comprehensive year-end review of campaigns, brand standards, digital channels, customer acquisition, loyalty, and market insights.', 'Marketing', 'Annual', 80.00, 20.00, 'MKT-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (133, 'Marketing Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for campaigns, brand standards, digital channels, customer acquisition, loyalty, and market insights.', 'Marketing', 'Quarterly', 80.00, 20.00, 'MKT-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (134, 'Marketing Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in campaigns, brand standards, digital channels, customer acquisition, loyalty, and market insights.', 'Marketing', 'Initial', 80.00, 20.00, 'MKT-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (135, 'Marketing Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for campaigns, brand standards, digital channels, customer acquisition, loyalty, and market insights.', 'Marketing', 'Final', 80.00, 20.00, 'MKT-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (132, 'Marketing Annual Performance Evaluation', 'Comprehensive year-end review of campaigns, brand standards, digital channels, customer acquisition, loyalty, and market insights.', 'Marketing', 'Annual', 80.00, 20.00, 'MKT-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (133, 'Marketing Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for campaigns, brand standards, digital channels, customer acquisition, loyalty, and market insights.', 'Marketing', 'Quarterly', 80.00, 20.00, 'MKT-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (134, 'Marketing Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in campaigns, brand standards, digital channels, customer acquisition, loyalty, and market insights.', 'Marketing', 'Initial', 80.00, 20.00, 'MKT-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (135, 'Marketing Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for campaigns, brand standards, digital channels, customer acquisition, loyalty, and market insights.', 'Marketing', 'Final', 80.00, 20.00, 'MKT-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 132 (Marketing Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -714,10 +714,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (136, 'Office of the President Annual Performance Evaluation', 'Comprehensive year-end review of executive support, board coordination, confidential communication, protocol, and strategic projects.', 'Office of the President', 'Annual', 80.00, 20.00, 'OP-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (137, 'Office of the President Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for executive support, board coordination, confidential communication, protocol, and strategic projects.', 'Office of the President', 'Quarterly', 80.00, 20.00, 'OP-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (138, 'Office of the President Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in executive support, board coordination, confidential communication, protocol, and strategic projects.', 'Office of the President', 'Initial', 80.00, 20.00, 'OP-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (139, 'Office of the President Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for executive support, board coordination, confidential communication, protocol, and strategic projects.', 'Office of the President', 'Final', 80.00, 20.00, 'OP-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (136, 'Office of the President Annual Performance Evaluation', 'Comprehensive year-end review of executive support, board coordination, confidential communication, protocol, and strategic projects.', 'Office of the President', 'Annual', 80.00, 20.00, 'OP-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (137, 'Office of the President Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for executive support, board coordination, confidential communication, protocol, and strategic projects.', 'Office of the President', 'Quarterly', 80.00, 20.00, 'OP-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (138, 'Office of the President Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in executive support, board coordination, confidential communication, protocol, and strategic projects.', 'Office of the President', 'Initial', 80.00, 20.00, 'OP-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (139, 'Office of the President Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for executive support, board coordination, confidential communication, protocol, and strategic projects.', 'Office of the President', 'Final', 80.00, 20.00, 'OP-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 136 (Office of the President Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -791,10 +791,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (140, 'Operations Annual Performance Evaluation', 'Comprehensive year-end review of branch pawnshop transactions, vault controls, customer service, appraisal accuracy, and SOP compliance.', 'Operations', 'Annual', 80.00, 20.00, 'OPS-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (141, 'Operations Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for branch pawnshop transactions, vault controls, customer service, appraisal accuracy, and SOP compliance.', 'Operations', 'Quarterly', 80.00, 20.00, 'OPS-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (142, 'Operations Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in branch pawnshop transactions, vault controls, customer service, appraisal accuracy, and SOP compliance.', 'Operations', 'Initial', 80.00, 20.00, 'OPS-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (143, 'Operations Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for branch pawnshop transactions, vault controls, customer service, appraisal accuracy, and SOP compliance.', 'Operations', 'Final', 80.00, 20.00, 'OPS-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (140, 'Operations Annual Performance Evaluation', 'Comprehensive year-end review of branch pawnshop transactions, vault controls, customer service, appraisal accuracy, and SOP compliance.', 'Operations', 'Annual', 80.00, 20.00, 'OPS-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (141, 'Operations Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for branch pawnshop transactions, vault controls, customer service, appraisal accuracy, and SOP compliance.', 'Operations', 'Quarterly', 80.00, 20.00, 'OPS-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (142, 'Operations Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in branch pawnshop transactions, vault controls, customer service, appraisal accuracy, and SOP compliance.', 'Operations', 'Initial', 80.00, 20.00, 'OPS-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (143, 'Operations Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for branch pawnshop transactions, vault controls, customer service, appraisal accuracy, and SOP compliance.', 'Operations', 'Final', 80.00, 20.00, 'OPS-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 140 (Operations Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -868,10 +868,10 @@ REPLACE INTO evaluation_templates
    evaluation_type, kra_weight, behavior_weight,
    form_code, revision_date, effective_date_form, status, created_by)
 VALUES
-  (144, 'Purchasing Annual Performance Evaluation', 'Comprehensive year-end review of requisitions, vendor management, canvassing, procurement savings, delivery monitoring, and documentation.', 'Purchasing', 'Annual', 80.00, 20.00, 'PUR-ANN-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (145, 'Purchasing Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for requisitions, vendor management, canvassing, procurement savings, delivery monitoring, and documentation.', 'Purchasing', 'Quarterly', 80.00, 20.00, 'PUR-QTR-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (146, 'Purchasing Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in requisitions, vendor management, canvassing, procurement savings, delivery monitoring, and documentation.', 'Purchasing', 'Initial', 80.00, 20.00, 'PUR-INI-2026', '2026-01-15', '2026-02-01', 'Active', 1),
-  (147, 'Purchasing Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for requisitions, vendor management, canvassing, procurement savings, delivery monitoring, and documentation.', 'Purchasing', 'Final', 80.00, 20.00, 'PUR-FINL-2026', '2026-01-15', '2026-02-01', 'Active', 1);
+  (144, 'Purchasing Annual Performance Evaluation', 'Comprehensive year-end review of requisitions, vendor management, canvassing, procurement savings, delivery monitoring, and documentation.', 'Purchasing', 'Annual', 80.00, 20.00, 'PUR-ANN-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (145, 'Purchasing Quarterly Performance Check-In', 'Quarterly review of short-cycle deliverables, issue resolution, and progress for requisitions, vendor management, canvassing, procurement savings, delivery monitoring, and documentation.', 'Purchasing', 'Quarterly', 80.00, 20.00, 'PUR-QTR-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (146, 'Purchasing Initial Probationary Evaluation', 'Early employment review of role understanding, onboarding progress, and initial performance in requisitions, vendor management, canvassing, procurement savings, delivery monitoring, and documentation.', 'Purchasing', 'Initial', 80.00, 20.00, 'PUR-INI-2026', '2026-08-07', '2026-08-07', 'Active', 1),
+  (147, 'Purchasing Final Employment Evaluation', 'Final-period review of sustained performance, accountability, transition readiness, and clearance support for requisitions, vendor management, canvassing, procurement savings, delivery monitoring, and documentation.', 'Purchasing', 'Final', 80.00, 20.00, 'PUR-FINL-2026', '2026-08-07', '2026-08-07', 'Active', 1);
 
 -- Criteria for Template 144 (Purchasing Annual)
 REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_name, description, kpi_description, weight, scoring_method, sort_order) VALUES
@@ -936,6 +936,54 @@ REPLACE INTO evaluation_criteria (criterion_id, template_id, section, criterion_
   (1621, 147, 'Behavior', 'Integrity', 'Exhibits honesty and strong moral uprightness.', 'Exhibits honesty and strong moral uprightness.', 12.50, 'Scale_1_4', 11),
   (1622, 147, 'Behavior', 'Continuous Improvement', 'Provides diligent effort to continuously focus on getting better.', 'Provides diligent effort to continuously focus on getting better.', 12.50, 'Scale_1_4', 12),
   (1623, 147, 'Behavior', 'Excellent Client Experience', 'Delivers the service beyond the expectations of the internal and external clients.', 'Delivers the service beyond the expectations of the internal and external clients.', 12.50, 'Scale_1_4', 13);
+
+-- =====================================================
+-- DEMO YOY PERFORMANCE COVERAGE
+-- =====================================================
+-- These approved rows support Manager Analytics > Year-Over-Year Progression.
+-- AP template mapping: 104 Annual, 105 Quarterly, 106 Initial, 107 Final.
+REPLACE INTO evaluations
+  (evaluation_id, employee_id, template_id, evaluation_type,
+   evaluation_period_start, evaluation_period_end, assigned_by, assigned_at,
+   status, approved_by, approved_date, current_position, months_in_position,
+   kra_subtotal, behavior_average, total_score, performance_level)
+VALUES
+  (910151, 1015, 104, 'Annual', '2021-01-01', '2021-12-31', 1, '2021-12-15 10:00:00',
+   'Approved', 1, '2021-12-15 10:00:00', 'Sales Associate Trainee', 4,
+   3.18, 3.22, 3.20, 'Exceeds Expectations'),
+  (910152, 1015, 105, 'Quarterly', '2022-10-01', '2022-12-31', 1, '2022-12-15 10:00:00',
+   'Approved', 1, '2022-12-15 10:00:00', 'Sales Associate Trainee', 16,
+   3.29, 3.33, 3.31, 'Exceeds Expectations'),
+  (910153, 1015, 106, 'Initial', '2023-01-01', '2023-06-30', 1, '2023-06-30 10:00:00',
+   'Approved', 1, '2023-06-30 10:00:00', 'Sales Associate on Probation', 28,
+   3.42, 3.46, 3.44, 'Exceeds Expectations'),
+  (910154, 1015, 107, 'Final', '2024-07-01', '2024-12-31', 1, '2024-12-15 10:00:00',
+   'Approved', 1, '2024-12-15 10:00:00', 'Sales Associate on Probation', 40,
+   3.47, 3.51, 3.49, 'Exceeds Expectations'),
+  (910155, 1015, 104, 'Annual', '2025-01-01', '2025-12-31', 1, '2025-12-15 10:00:00',
+   'Approved', 1, '2025-12-15 10:00:00', 'Sales Associate I', 52,
+   3.80, 3.84, 3.82, 'Outstanding'),
+  (910156, 1015, 105, 'Quarterly', '2026-04-01', '2026-06-30', 1, '2026-08-07 10:00:00',
+   'Approved', 1, '2026-08-07 10:00:00', 'Sales Associate I', 60,
+   3.98, 4.00, 3.99, 'Outstanding'),
+  (910161, 1016, 104, 'Annual', '2021-01-01', '2021-12-31', 1, '2021-12-15 10:00:00',
+   'Approved', 1, '2021-12-15 10:00:00', 'Sales Associate I', 4,
+   3.94, 3.96, 3.95, 'Outstanding'),
+  (910162, 1016, 105, 'Quarterly', '2022-10-01', '2022-12-31', 1, '2022-12-15 10:00:00',
+   'Approved', 1, '2022-12-15 10:00:00', 'Sales Associate I', 16,
+   3.78, 3.80, 3.79, 'Outstanding'),
+  (910163, 1016, 106, 'Initial', '2023-01-01', '2023-06-30', 1, '2023-06-30 10:00:00',
+   'Approved', 1, '2023-06-30 10:00:00', 'Sales Associate I', 28,
+   3.84, 3.86, 3.85, 'Outstanding'),
+  (910164, 1016, 107, 'Final', '2024-07-01', '2024-12-31', 1, '2024-12-15 10:00:00',
+   'Approved', 1, '2024-12-15 10:00:00', 'Sales Associate II', 40,
+   3.87, 3.89, 3.88, 'Outstanding'),
+  (910165, 1016, 104, 'Annual', '2025-01-01', '2025-12-31', 1, '2025-12-15 10:00:00',
+   'Approved', 1, '2025-12-15 10:00:00', 'Sales Associate II', 52,
+   3.91, 3.93, 3.92, 'Outstanding'),
+  (910166, 1016, 105, 'Quarterly', '2026-04-01', '2026-06-30', 1, '2026-08-07 10:00:00',
+   'Approved', 1, '2026-08-07 10:00:00', 'Sales Associate II', 60,
+   3.97, 3.99, 3.98, 'Outstanding');
 
 SET FOREIGN_KEY_CHECKS = 1;
 
