@@ -65,6 +65,119 @@ require_once '../includes/header.php';
 .insight-card         { background: linear-gradient(135deg, #f7fdf4, #eefae8); border-radius:.75rem; border-left: 4px solid #CBA135; }
 .chart-wrapper        { position: relative; height: 280px; }
 .empty-perf           { padding: 3rem; text-align:center; color: #6c757d; }
+.min-width-0          { min-width: 0; }
+.eval-history-shell   { display: grid; gap: .85rem; }
+.eval-history-table   { display: block; }
+.eval-history-mobile  { display: none; }
+.eval-history-table .table {
+    border-collapse: separate;
+    border-spacing: 0 .45rem;
+}
+.eval-history-table thead th {
+    border: 0;
+    color: #5E6B5C;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+.eval-history-table tbody tr {
+    box-shadow: 0 4px 14px rgba(8,46,6,.06);
+}
+.eval-history-table tbody td {
+    background: #ffffff;
+    border-top: 1px solid #edf1e9;
+    border-bottom: 1px solid #edf1e9;
+    vertical-align: middle;
+}
+.eval-history-table tbody td:first-child {
+    border-left: 1px solid #edf1e9;
+    border-radius: .65rem 0 0 .65rem;
+}
+.eval-history-table tbody td:last-child {
+    border-right: 1px solid #edf1e9;
+    border-radius: 0 .65rem .65rem 0;
+}
+.eval-history-card {
+    background: #ffffff;
+    border: 1px solid #e5ebdf;
+    border-radius: .85rem;
+    box-shadow: 0 5px 16px rgba(8,46,6,.07);
+    padding: .95rem;
+}
+.eval-history-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-bottom: .8rem;
+}
+.eval-history-period {
+    color: #1C271B;
+    font-size: .95rem;
+    font-weight: 800;
+    line-height: 1.25;
+}
+.eval-history-date {
+    color: #6c757d;
+    font-size: .72rem;
+    margin-top: .18rem;
+}
+.eval-history-score {
+    flex: 0 0 auto;
+    min-width: 64px;
+    text-align: right;
+}
+.eval-history-score-value {
+    color: #082E06;
+    font-size: 1.45rem;
+    font-weight: 850;
+    line-height: 1;
+}
+.eval-history-score-label {
+    color: #6c757d;
+    font-size: .68rem;
+    font-weight: 700;
+    margin-top: .15rem;
+    text-transform: uppercase;
+}
+.eval-history-card .badge {
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+}
+.eval-history-notes {
+    background: #f7faf4;
+    border-radius: .65rem;
+    color: #5E6B5C;
+    font-size: .78rem;
+    line-height: 1.45;
+    margin-top: .75rem;
+    padding: .7rem .8rem;
+}
+.eval-history-notes-title {
+    color: #1C271B;
+    font-size: .68rem;
+    font-weight: 800;
+    margin-bottom: .25rem;
+    text-transform: uppercase;
+}
+
+@media (max-width: 575.98px) {
+    .section-card .card-body {
+        padding: 1rem !important;
+    }
+    .chart-wrapper {
+        height: 240px;
+    }
+    .eval-history-table {
+        display: none;
+    }
+    .eval-history-mobile {
+        display: grid;
+        gap: .85rem;
+    }
+}
 </style>
 
 <?php
@@ -413,17 +526,47 @@ $score_label = $latest_eval['performance_level'] ?? 'N/A';
         let rows = evals.map(ev => {
             const s = parseFloat(ev.total_score) || 0;
             const badgeHtml = scoreBadgeHtml(s, ev.performance_level || s.toFixed(2));
+            const shortComments = ev.supervisor_comments
+                ? escHtml(ev.supervisor_comments.substring(0, 60)) + (ev.supervisor_comments.length > 60 ? '...' : '')
+                : '<span class="opacity-50">—</span>';
             return `
                 <tr>
                     <td class="small">${escHtml(fmtPeriod(ev.evaluation_period_start, ev.evaluation_period_end))}</td>
                     <td class="fw-bold text-center">${s.toFixed(2)}</td>
                     <td class="text-center">${badgeHtml}</td>
-                    <td class="text-muted small" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(ev.supervisor_comments)}">${ev.supervisor_comments ? escHtml(ev.supervisor_comments.substring(0, 60)) + (ev.supervisor_comments.length > 60 ? '…' : '') : '<span class="opacity-50">—</span>'}</td>
+                    <td class="text-muted small" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(ev.supervisor_comments)}">${shortComments}</td>
                 </tr>`;
         }).join('');
 
+        let cards = evals.map(ev => {
+            const s = parseFloat(ev.total_score) || 0;
+            const badgeHtml = scoreBadgeHtml(s, ev.performance_level || s.toFixed(2));
+            const period = escHtml(fmtPeriod(ev.evaluation_period_start, ev.evaluation_period_end));
+            const approvedDate = ev.approved_date ? `<div class="eval-history-date"><i class="fas fa-check-circle me-1"></i>Approved ${escHtml(fmtDate(ev.approved_date))}</div>` : '';
+            const comments = ev.supervisor_comments ? escHtml(ev.supervisor_comments) : '<span class="opacity-50">No supervisor notes recorded.</span>';
+            return `
+                <article class="eval-history-card">
+                    <div class="eval-history-card-head">
+                        <div class="min-width-0">
+                            <div class="eval-history-period">${period}</div>
+                            ${approvedDate}
+                        </div>
+                        <div class="eval-history-score">
+                            <div class="eval-history-score-value">${s.toFixed(2)}</div>
+                            <div class="eval-history-score-label">Score</div>
+                        </div>
+                    </div>
+                    <div>${badgeHtml}</div>
+                    <div class="eval-history-notes">
+                        <div class="eval-history-notes-title">Supervisor Notes</div>
+                        <div>${comments}</div>
+                    </div>
+                </article>`;
+        }).join('');
+
         document.getElementById('evalHistoryContainer').innerHTML = `
-            <div class="table-responsive">
+            <div class="eval-history-shell">
+            <div class="eval-history-table table-responsive">
                 <table class="table table-hover align-middle mb-0" style="font-size:.85rem;">
                     <thead class="table-light">
                         <tr>
@@ -435,6 +578,8 @@ $score_label = $latest_eval['performance_level'] ?? 'N/A';
                     </thead>
                     <tbody>${rows}</tbody>
                 </table>
+            </div>
+            <div class="eval-history-mobile">${cards}</div>
             </div>`;
     }
 

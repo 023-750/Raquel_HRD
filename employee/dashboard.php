@@ -381,11 +381,11 @@ function movementIcon(string $type): string {
             </div>
             <div class="content-card-body">
                 <?php if ($active_eval): ?>
-                <div style="background:var(--bg-gray);border-radius:12px;padding:1.25rem;" class="mb-3">
-                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                        <div>
-                            <div class="fw-bold mb-1"><?php echo e($active_eval['template_title'] ?? 'Evaluation'); ?></div>
-                            <div class="text-muted small mb-2">
+                <div class="eval-status-summary mb-3">
+                    <div class="eval-status-summary-main">
+                        <div class="eval-status-copy">
+                            <div class="eval-status-title"><?php echo e($active_eval['template_title'] ?? 'Evaluation'); ?></div>
+                            <div class="eval-status-meta">
                                 <i class="fas fa-tag me-1"></i><?php echo e($active_eval['evaluation_type'] ?? '—'); ?>
                                 <?php if (!empty($active_eval['evaluation_period_start'])): ?>
                                 &nbsp;·&nbsp;
@@ -400,17 +400,17 @@ function movementIcon(string $type): string {
                             $ae_color = $ae_level ? getPerformanceLevelColor($ae_level) : 'var(--primary-blue)';
                             $ae_badge = $ae_level ? getPerformanceLevelBadgeClass($ae_level) : 'bg-secondary';
                         ?>
-                        <div class="text-end">
-                            <div style="font-size:2rem;font-weight:800;color:<?php echo $ae_color; ?>;line-height:1;"><?php echo number_format((float)$active_eval['total_score'], 2); ?></div>
+                        <div class="eval-status-score">
+                            <div class="eval-score-value" style="color:<?php echo $ae_color; ?>;"><?php echo number_format((float)$active_eval['total_score'], 2); ?></div>
                             <?php if ($ae_level): ?>
-                            <span class="badge <?php echo $ae_badge; ?>" style="font-size:.65rem;margin-top:2px;"><i class="fas fa-award me-1"></i><?php echo e($ae_level); ?></span>
+                            <span class="badge <?php echo $ae_badge; ?>"><i class="fas fa-award me-1"></i><?php echo e($ae_level); ?></span>
                             <?php endif; ?>
                         </div>
                         <?php endif; ?>
                     </div>
 
                     <?php if (in_array($active_eval['status'], ['Pending Self-Rating', 'Draft'])): ?>
-                    <div class="mt-3">
+                    <div class="eval-status-action">
                         <a href="<?php echo BASE_URL; ?>/employee/self-rating.php" class="btn btn-primary btn-sm">
                             <i class="fas fa-play me-1"></i>Continue Self Rating
                         </a>
@@ -544,39 +544,33 @@ function movementIcon(string $type): string {
                 $is_approved  = ($current_status === 'Approved');
                 $is_rejected  = ($current_status === 'Rejected');
                 ?>
-                <div class="mt-3">
-                    <!-- Step dots -->
-                    <div class="d-flex align-items-center justify-content-between mb-2" style="gap:4px;">
+                <div class="eval-workflow-wrap">
+                    <div class="eval-workflow-head">
+                        <span>Workflow Progress</span>
+                        <strong><?php echo $is_approved ? 'Complete' : ($is_rejected ? 'Action needed' : $progress_pct . '%'); ?></strong>
+                    </div>
+                    <div class="eval-workflow" style="--eval-progress: <?php echo $progress_pct; ?>%; --eval-progress-ratio: <?php echo $progress_pct / 100; ?>; --eval-step-count: <?php echo count($workflow_labels); ?>;">
                         <?php foreach ($workflow_labels as $i => $label):
                             $done    = ($i < $step_index);
                             $current = ($i === $step_index);
-                            $dot_color = $done    ? 'var(--primary-blue)'
-                                       : ($current ? ($is_rejected ? '#dc3545' : 'var(--primary-blue)') : '#dee2e6');
-                            $dot_bg    = $done    ? $dot_color
-                                       : ($current ? 'rgba(67,104,254,.12)' : '#f0f4eb');
-                            $text_w    = $current ? '700' : '500';
-                            $text_col  = ($done || $current) ? 'var(--text-dark)' : 'var(--text-muted)';
+                            $step_class = $done ? 'is-done' : ($current ? ($is_rejected ? 'is-current is-rejected' : 'is-current') : 'is-upcoming');
                         ?>
-                        <div class="text-center" style="flex:1;min-width:0;">
-                            <div style="width:32px;height:32px;border-radius:50%;background:<?php echo $dot_bg; ?>;border:2px solid <?php echo $dot_color; ?>;display:flex;align-items:center;justify-content:center;margin:0 auto 5px;">
+                        <div class="eval-step <?php echo $step_class; ?>">
+                            <div class="eval-step-marker">
                                 <?php if ($done): ?>
-                                    <i class="fas fa-check" style="font-size:.6rem;color:<?php echo $dot_color; ?>;"></i>
+                                    <i class="fas fa-check"></i>
                                 <?php elseif ($current && $is_rejected): ?>
-                                    <i class="fas fa-times" style="font-size:.6rem;color:#dc3545;"></i>
+                                    <i class="fas fa-times"></i>
                                 <?php else: ?>
-                                    <span style="font-size:.65rem;font-weight:700;color:<?php echo $dot_color; ?>;"><?php echo $i + 1; ?></span>
+                                    <span><?php echo $i + 1; ?></span>
                                 <?php endif; ?>
                             </div>
-                            <div style="font-size:.72rem;font-weight:<?php echo $text_w; ?>;color:<?php echo $text_col; ?>;line-height:1.3;word-break:break-word;hyphens:auto;"><?php echo e($label); ?></div>
+                            <div class="eval-step-label"><?php echo e($label); ?></div>
                         </div>
-                        <?php if ($i < count($workflow_labels) - 1): ?>
-                        <div style="flex:1;height:2px;background:<?php echo $done ? 'var(--primary-blue)' : '#dee2e6'; ?>;margin-bottom:20px;transition:background .4s;"></div>
-                        <?php endif; ?>
                         <?php endforeach; ?>
                     </div>
-                    <!-- Progress bar -->
-                    <div class="progress" style="height:5px;border-radius:10px;">
-                        <div class="progress-bar <?php echo $is_rejected ? 'bg-danger' : 'bg-primary'; ?>" style="width:<?php echo $progress_pct; ?>%;border-radius:10px;transition:width .6s;"></div>
+                    <div class="eval-workflow-bar <?php echo $is_rejected ? 'is-rejected' : ''; ?>" aria-hidden="true">
+                        <span style="width:<?php echo $progress_pct; ?>%;"></span>
                     </div>
                 </div>
 
@@ -896,6 +890,243 @@ function movementIcon(string $type): string {
 
 /* ── Cursor pointer ─────────────────────────────────────────────────────── */
 .cursor-pointer { cursor: pointer; }
+
+/* ── Evaluation status card ─────────────────────────────────────────────── */
+.eval-status-summary {
+    background: var(--bg-gray);
+    border: 1px solid var(--color-border-light, #D1D5CE);
+    border-radius: 12px;
+    padding: 1.15rem;
+}
+.eval-status-summary-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.eval-status-copy {
+    min-width: 0;
+}
+.eval-status-title {
+    color: var(--text-dark);
+    font-size: .98rem;
+    font-weight: 800;
+    line-height: 1.3;
+    margin-bottom: .35rem;
+}
+.eval-status-meta {
+    color: var(--text-muted);
+    font-size: .78rem;
+    line-height: 1.45;
+    margin-bottom: .65rem;
+}
+.eval-status-score {
+    flex: 0 0 auto;
+    min-width: 76px;
+    text-align: right;
+}
+.eval-score-value {
+    font-size: 2rem;
+    font-weight: 850;
+    line-height: 1;
+    margin-bottom: .25rem;
+}
+.eval-status-score .badge {
+    font-size: .65rem;
+}
+.eval-status-action {
+    margin-top: 1rem;
+}
+
+.eval-workflow-wrap {
+    margin-top: 1rem;
+}
+.eval-workflow-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    color: var(--text-muted);
+    font-size: .74rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    margin-bottom: .8rem;
+}
+.eval-workflow-head strong {
+    color: var(--primary-blue);
+    font-size: .8rem;
+}
+.eval-workflow {
+    display: grid;
+    grid-template-columns: repeat(var(--eval-step-count, 6), minmax(0, 1fr));
+    position: relative;
+    gap: .35rem;
+}
+.eval-workflow::before,
+.eval-workflow::after {
+    content: '';
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    top: 17px;
+    height: 3px;
+    border-radius: 99px;
+}
+.eval-workflow::before {
+    background: #dee2e6;
+}
+.eval-workflow::after {
+    background: var(--primary-blue);
+    width: var(--eval-progress, 0%);
+    max-width: calc(100% - 36px);
+    min-width: 0;
+    right: auto;
+    transition: width .4s ease;
+}
+.eval-step {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    text-align: center;
+}
+.eval-step-marker {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f4eb;
+    border: 2px solid #dee2e6;
+    color: var(--text-muted);
+    font-size: .72rem;
+    font-weight: 800;
+    margin-bottom: .45rem;
+}
+.eval-step.is-done .eval-step-marker {
+    background: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: #ffffff;
+}
+.eval-step.is-current .eval-step-marker {
+    background: #ffffff;
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+    box-shadow: 0 0 0 4px rgba(67,104,254,.12);
+}
+.eval-step.is-rejected .eval-step-marker {
+    border-color: #dc3545;
+    color: #dc3545;
+    box-shadow: 0 0 0 4px rgba(220,53,69,.12);
+}
+.eval-step-label {
+    color: var(--text-muted);
+    font-size: .7rem;
+    font-weight: 650;
+    line-height: 1.25;
+    max-width: 92px;
+    overflow-wrap: anywhere;
+}
+.eval-step.is-done .eval-step-label,
+.eval-step.is-current .eval-step-label {
+    color: var(--text-dark);
+}
+.eval-step.is-current .eval-step-label {
+    font-weight: 800;
+}
+.eval-workflow-bar {
+    height: 5px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #dee2e6;
+    margin-top: .85rem;
+}
+.eval-workflow-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--primary-blue);
+    transition: width .4s ease;
+}
+.eval-workflow-bar.is-rejected span {
+    background: #dc3545;
+}
+
+@media (max-width: 575.98px) {
+    .content-card-header .badge,
+    .content-card-header .btn {
+        min-height: 34px;
+    }
+    .eval-status-summary {
+        padding: 1rem;
+    }
+    .eval-status-summary-main {
+        flex-direction: column;
+        gap: .85rem;
+    }
+    .eval-status-score {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        text-align: left;
+        border-top: 1px solid var(--color-border-light, #D1D5CE);
+        padding-top: .85rem;
+    }
+    .eval-score-value {
+        font-size: 1.75rem;
+        margin-bottom: 0;
+    }
+    .eval-status-action .btn {
+        width: 100%;
+        min-height: 42px;
+    }
+    .eval-workflow-head {
+        margin-bottom: .9rem;
+    }
+    .eval-workflow {
+        display: flex;
+        flex-direction: column;
+        gap: .85rem;
+    }
+    .eval-workflow::before,
+    .eval-workflow::after {
+        left: 17px;
+        right: auto;
+        top: 18px;
+        width: 3px;
+        height: calc(100% - 36px);
+    }
+    .eval-workflow::after {
+        width: 3px;
+        max-width: none;
+        height: var(--eval-progress, 0%);
+        max-height: calc(100% - 36px);
+        transition: height .4s ease;
+    }
+    .eval-step {
+        display: grid;
+        grid-template-columns: 36px minmax(0, 1fr);
+        align-items: center;
+        column-gap: .75rem;
+        text-align: left;
+    }
+    .eval-step-marker {
+        margin-bottom: 0;
+    }
+    .eval-step-label {
+        max-width: none;
+        font-size: .82rem;
+        line-height: 1.3;
+    }
+    .eval-workflow-bar {
+        display: none;
+    }
+}
 </style>
 
 <script>

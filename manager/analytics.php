@@ -292,15 +292,20 @@ $level_meta = [
 ];
 
 /* ── [NEW] YoY Progression Data ────────────────────────────────────────── */
+$yoy_date_expr = "COALESCE(ev.approved_date, ev.evaluation_period_end, ev.submitted_date, ev.updated_at, ev.created_at)";
+
 // Fetch raw branch YoY data
 $yoy_branch_raw = [];
 $yoy_branch_q = $conn->query("
-    SELECT YEAR(ev.approved_date) as yr, b.branch_name as name, ROUND(AVG(ev.total_score), 2) as avg_score
+    SELECT YEAR($yoy_date_expr) as yr, b.branch_name as name, ROUND(AVG(ev.total_score), 2) as avg_score
     FROM evaluations ev
     INNER JOIN employees e ON ev.employee_id = e.employee_id
     INNER JOIN branches b ON e.branch_id = b.branch_id
-    WHERE ev.status = 'Approved' AND ev.approved_date IS NOT NULL
-    GROUP BY YEAR(ev.approved_date), b.branch_id, b.branch_name
+    WHERE ev.status = 'Approved'
+      AND ev.total_score IS NOT NULL
+      AND $yoy_date_expr IS NOT NULL
+      AND ev.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
+    GROUP BY YEAR($yoy_date_expr), b.branch_id, b.branch_name
     ORDER BY yr ASC, b.branch_name ASC
 ");
 if ($yoy_branch_q) {
@@ -310,12 +315,15 @@ if ($yoy_branch_q) {
 // Fetch raw department YoY data
 $yoy_dept_raw = [];
 $yoy_dept_q = $conn->query("
-    SELECT YEAR(ev.approved_date) as yr, d.department_name as name, ROUND(AVG(ev.total_score), 2) as avg_score
+    SELECT YEAR($yoy_date_expr) as yr, d.department_name as name, ROUND(AVG(ev.total_score), 2) as avg_score
     FROM evaluations ev
     INNER JOIN employees e ON ev.employee_id = e.employee_id
     INNER JOIN departments d ON e.department_id = d.department_id
-    WHERE ev.status = 'Approved' AND ev.approved_date IS NOT NULL
-    GROUP BY YEAR(ev.approved_date), d.department_id, d.department_name
+    WHERE ev.status = 'Approved'
+      AND ev.total_score IS NOT NULL
+      AND $yoy_date_expr IS NOT NULL
+      AND ev.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
+    GROUP BY YEAR($yoy_date_expr), d.department_id, d.department_name
     ORDER BY yr ASC, d.department_name ASC
 ");
 if ($yoy_dept_q) {
@@ -325,11 +333,16 @@ if ($yoy_dept_q) {
 // Fetch raw employee (manpower) YoY data
 $yoy_emp_raw = [];
 $yoy_emp_q = $conn->query("
-    SELECT YEAR(ev.approved_date) as yr, CONCAT(e.first_name, ' ', e.last_name) as name, ROUND(AVG(ev.total_score), 2) as avg_score
+    SELECT YEAR($yoy_date_expr) as yr,
+           CONCAT(e.first_name, ' ', e.last_name) as name,
+           ROUND(AVG(ev.total_score), 2) as avg_score
     FROM evaluations ev
     INNER JOIN employees e ON ev.employee_id = e.employee_id
-    WHERE ev.status = 'Approved' AND ev.approved_date IS NOT NULL
-    GROUP BY YEAR(ev.approved_date), e.employee_id, name
+    WHERE ev.status = 'Approved'
+      AND ev.total_score IS NOT NULL
+      AND $yoy_date_expr IS NOT NULL
+      AND ev.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
+    GROUP BY YEAR($yoy_date_expr), e.employee_id, name
     ORDER BY yr ASC, name ASC
 ");
 if ($yoy_emp_q) {

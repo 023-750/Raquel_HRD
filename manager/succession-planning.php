@@ -11,7 +11,8 @@ $branches_res = $conn->query("SELECT branch_id, branch_name FROM branches WHERE 
 $positions_res= $conn->query("SELECT DISTINCT job_title FROM employees WHERE job_title IS NOT NULL AND job_title != '' AND is_active = 1 ORDER BY job_title ASC");
 ?>
 
-<div class="page-hero fadeup mb-4">
+<div class="succession-page">
+<div class="page-hero succession-hero fadeup mb-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Career Movements</div>
@@ -41,8 +42,8 @@ $positions_res= $conn->query("SELECT DISTINCT job_title FROM employees WHERE job
 </div>
 
 <!-- Controls & Filters -->
-<div class="card border-0 shadow-sm rounded-4 mb-4">
-    <div class="card-body p-3">
+<div class="succession-filter-card mb-4">
+    <div class="card-body p-3 p-xl-4">
         <form id="successionFilterForm" class="row g-3 align-items-end">
             <!-- Scope Filter -->
             <div class="col-md-3">
@@ -88,7 +89,7 @@ $positions_res= $conn->query("SELECT DISTINCT job_title FROM employees WHERE job
             </div>
 
             <div class="col-md-2 text-end">
-                <button type="button" id="btnSearchCandidates" class="btn btn-primary btn-sm rounded-3 w-100 fw-bold">
+                <button type="button" id="btnSearchCandidates" class="btn btn-primary btn-sm rounded-3 w-100 fw-bold succession-analyze-btn">
                     <i class="fas fa-search me-1"></i> Analyze Candidates
                 </button>
             </div>
@@ -98,27 +99,286 @@ $positions_res= $conn->query("SELECT DISTINCT job_title FROM employees WHERE job
 
 <!-- Results Section -->
 <style>
+.succession-page {
+    --succession-ink: #1C271B;
+    --succession-muted: #5E6B5C;
+    --succession-line: #E3E9DD;
+    --succession-soft: #F7FAF4;
+    --succession-primary: #294306;
+    --succession-gold: #BD9414;
+}
+.succession-hero .badge {
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    padding: .4rem .7rem;
+}
+.succession-filter-card,
+.succession-panel {
+    background: #ffffff;
+    border: 1px solid var(--succession-line);
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgba(8, 46, 6, .07);
+}
+.succession-filter-card .form-label {
+    color: var(--succession-ink) !important;
+    font-size: .74rem;
+    letter-spacing: 0;
+}
+.succession-filter-card .form-select {
+    min-height: 40px;
+    border-color: #DCE5D6;
+    box-shadow: none;
+}
+.succession-filter-card .form-select:focus {
+    border-color: var(--succession-primary);
+    box-shadow: 0 0 0 .18rem rgba(41, 67, 6, .12);
+}
+.succession-analyze-btn {
+    min-height: 40px;
+}
+.succession-page .min-width-0 {
+    min-width: 0;
+}
+.succession-workspace {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    align-items: start;
+    margin-bottom: 1.5rem;
+}
+.succession-panel {
+    overflow: hidden;
+}
+.succession-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid var(--succession-line);
+    background: linear-gradient(180deg, #ffffff 0%, var(--succession-soft) 100%);
+}
+.succession-panel-title {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    color: var(--succession-ink);
+    font-size: .98rem;
+    font-weight: 800;
+    margin: 0;
+}
+.succession-panel-title i {
+    color: var(--succession-gold);
+}
+.succession-count-badge {
+    background: #F1F5EC !important;
+    border: 1px solid #D8E2D0 !important;
+    color: var(--succession-muted) !important;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+}
+.succession-table-wrap {
+    overflow-x: auto;
+}
+.succession-table {
+    min-width: 980px;
+    border-collapse: separate;
+    border-spacing: 0 .55rem;
+    margin: -.25rem 0 .35rem;
+    padding: 0 .65rem;
+}
+.succession-table thead th {
+    border: 0;
+    color: var(--succession-muted);
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    padding: .65rem .7rem .35rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.succession-table tbody td {
+    background: #ffffff;
+    border-top: 1px solid var(--succession-line);
+    border-bottom: 1px solid var(--succession-line);
+    padding: .9rem .7rem;
+    vertical-align: middle;
+}
+.succession-table tbody td:first-child {
+    border-left: 1px solid var(--succession-line);
+    border-radius: 12px 0 0 12px;
+}
+.succession-table tbody td:last-child {
+    border-right: 1px solid var(--succession-line);
+    border-radius: 0 12px 12px 0;
+}
 .candidate-row:hover {
-    background-color: rgba(41, 67, 6, 0.04) !important;
-    transition: background-color 0.2s ease;
+    transform: translateY(-1px);
+}
+.candidate-row {
+    transition: transform .16s ease;
 }
 .candidate-row.table-active {
-    background-color: rgba(41, 67, 6, 0.08) !important;
-    border-left: 4px solid #294306 !important;
+    outline: 2px solid rgba(41, 67, 6, .18);
+    outline-offset: -2px;
+}
+.candidate-row.table-active td {
+    background: #F6FAF1;
+}
+.succession-rank {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: #F1F5EC;
+    color: var(--succession-ink);
+    font-weight: 850;
+}
+.succession-candidate-name {
+    color: var(--succession-ink);
+    font-size: .9rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+.succession-subtext {
+    color: var(--succession-muted);
+    font-size: .74rem;
+    line-height: 1.35;
+}
+.succession-score-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 58px;
+    border-radius: 999px;
+    background: rgba(15, 107, 46, .12);
+    border: 1px solid rgba(15, 107, 46, .35);
+    color: #0F6B2E;
+    font-size: .9rem;
+    font-weight: 850;
+    padding: .28rem .65rem;
+}
+.succession-detail-panel {
+    position: relative;
+}
+.succession-detail-body {
+    padding: 1.1rem;
+}
+.succession-empty {
+    display: grid;
+    place-items: center;
+    min-height: 330px;
+    color: var(--succession-muted);
+    text-align: center;
+}
+.succession-detail-panel.is-empty .succession-detail-body {
+    padding: 1rem 1.1rem;
+}
+.succession-detail-panel.is-empty .succession-empty {
+    min-height: 110px;
+}
+.succession-detail-profile {
+    text-align: center;
+    padding: .5rem .5rem 1rem;
+    border-bottom: 1px solid var(--succession-line);
+}
+.succession-detail-name {
+    color: var(--succession-ink);
+    font-size: 1.05rem;
+    font-weight: 850;
+    margin: .65rem 0 .25rem;
+}
+.succession-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+    margin: 1rem 0;
+}
+.succession-metric {
+    background: var(--succession-soft);
+    border: 1px solid var(--succession-line);
+    border-radius: 12px;
+    padding: .8rem;
+}
+.succession-metric span {
+    color: var(--succession-muted);
+    display: block;
+    font-size: .68rem;
+    font-weight: 800;
+    margin-bottom: .25rem;
+    text-transform: uppercase;
+}
+.succession-metric strong {
+    color: var(--succession-ink);
+    display: block;
+    font-size: .86rem;
+    line-height: 1.25;
+}
+.succession-metric.score strong {
+    color: #0F6B2E;
+    font-size: 1.15rem;
+}
+.succession-detail-actions .btn {
+    min-height: 42px;
+}
+
+@media (min-width: 1200px) {
+    .succession-panel.leaderboard {
+        min-height: 560px;
+    }
+    .succession-detail-panel:not(.is-empty) .succession-detail-body {
+        display: grid;
+        grid-template-columns: minmax(240px, .65fr) minmax(420px, 1.35fr) minmax(240px, .55fr);
+        gap: 1rem;
+        align-items: stretch;
+    }
+    .succession-detail-panel:not(.is-empty) .succession-detail-profile {
+        border-bottom: 0;
+        border-right: 1px solid var(--succession-line);
+        padding: .4rem 1rem .4rem .25rem;
+    }
+    .succession-detail-panel:not(.is-empty) .succession-metric-grid {
+        margin: 0;
+    }
+    .succession-detail-panel:not(.is-empty) .succession-metric.mb-3 {
+        margin-bottom: 0 !important;
+    }
+    .succession-detail-panel:not(.is-empty) .succession-detail-actions {
+        align-content: center;
+    }
 }
 </style>
 
-<div class="row g-4 mb-4">
-    <!-- Candidates Leaderboard Table -->
-    <div class="col-lg-8">
-        <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-header bg-white border-0 pt-3 px-3 d-flex justify-content-between align-items-center">
-                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-award me-2" style="color:#BD9414;"></i>Top 10 Succession Candidates</h6>
-                <span class="badge bg-light text-secondary border px-2 py-1 small" id="resultCountBadge">10 Candidates Ranked</span>
+<div class="succession-workspace">
+    <!-- Candidate Breakdown & Recommendation Panel -->
+    <div class="succession-panel succession-detail-panel is-empty" id="candidateDetailPanel">
+            <div class="succession-panel-header">
+                <h6 class="succession-panel-title"><i class="fas fa-user-check"></i>Candidate Details</h6>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0" id="candidatesTable">
+            <div class="succession-detail-body" id="candidateDetailCard">
+                <div class="succession-empty">
+                    <div>
+                    <i class="fas fa-hand-pointer fa-2x mb-2 opacity-50"></i>
+                    <p class="small mb-0">Select any candidate from the table to inspect their evaluation summary and initiate career movement.</p>
+                    </div>
+                </div>
+            </div>
+    </div>
+
+    <!-- Candidates Leaderboard Table -->
+    <div class="succession-panel leaderboard">
+            <div class="succession-panel-header">
+                <h6 class="succession-panel-title"><i class="fas fa-award"></i>Top 10 Succession Candidates</h6>
+                <span class="badge succession-count-badge px-2 py-1 small" id="resultCountBadge">10 Candidates Ranked</span>
+            </div>
+            <div class="p-0">
+                <div class="succession-table-wrap">
+                    <table class="table table-hover align-middle mb-0 succession-table" id="candidatesTable">
                         <thead class="bg-light text-muted small uppercase">
                             <tr>
                                 <th class="ps-3" style="width: 50px;">Rank</th>
@@ -141,23 +401,8 @@ $positions_res= $conn->query("SELECT DISTINCT job_title FROM employees WHERE job
                     </table>
                 </div>
             </div>
-        </div>
     </div>
-
-    <!-- Candidate Breakdown & Recommendation Panel -->
-    <div class="col-lg-4">
-        <div class="card border-0 shadow-sm rounded-4 h-100">
-            <div class="card-header bg-white border-0 pt-3 px-3">
-                <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-user-check me-2 text-success"></i>Candidate Details</h6>
-            </div>
-            <div class="card-body" id="candidateDetailCard">
-                <div class="text-center py-5 text-muted">
-                    <i class="fas fa-hand-pointer fa-2x mb-2 opacity-50"></i>
-                    <p class="small mb-0">Select any candidate from the table to inspect their evaluation summary and initiate career movement.</p>
-                </div>
-            </div>
-        </div>
-    </div>
+</div>
 </div>
 
 <script>
@@ -168,6 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnSearch = document.getElementById('btnSearchCandidates');
     const tableBody = document.getElementById('candidatesTableBody');
     const detailCard = document.getElementById('candidateDetailCard');
+    const detailPanel = document.getElementById('candidateDetailPanel');
 
     function getInitials(name) {
         if (!name) return 'U';
@@ -221,6 +467,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(res => res.json())
             .then(data => {
                 if (!data.success || !data.candidates || data.candidates.length === 0) {
+                    document.getElementById('resultCountBadge').textContent = '0 Candidates Ranked';
                     tableBody.innerHTML = `
                         <tr>
                             <td colspan="7" class="text-center py-5 text-muted">
@@ -229,14 +476,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             </td>
                         </tr>`;
                     detailCard.innerHTML = `<div class="text-center py-5 text-muted"><p class="small">No candidates available.</p></div>`;
+                    if (detailPanel) detailPanel.classList.add('is-empty');
                     return;
                 }
 
                 window.candidatesList = data.candidates;
+                document.getElementById('resultCountBadge').textContent = `${data.candidates.length} Candidate${data.candidates.length === 1 ? '' : 's'} Ranked`;
                 let html = '';
                 data.candidates.forEach((c, idx) => {
                     const rank = idx + 1;
-                    let medalBadge = `<span class="fw-bold text-secondary">#${rank}</span>`;
+                    let medalBadge = `<span class="succession-rank">#${rank}</span>`;
                     if (rank === 1) medalBadge = `<i class="fas fa-crown text-warning fa-lg" title="Top 1 Candidate"></i>`;
                     else if (rank === 2) medalBadge = `<i class="fas fa-medal text-secondary fa-lg" title="Rank 2"></i>`;
                     else if (rank === 3) medalBadge = `<i class="fas fa-medal fa-lg" style="color:#cd7f32;" title="Rank 3"></i>`;
@@ -258,19 +507,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             <td>
                                 <div class="d-flex align-items-center gap-2">
                                     ${avatarHtml}
-                                    <div>
-                                        <div class="fw-bold text-dark mb-0 small">${escapeHtml(c.full_name)}</div>
-                                        <div class="text-muted" style="font-size:0.75rem;">${escapeHtml(c.branch_name || 'Main')}</div>
+                                    <div class="min-width-0">
+                                        <div class="succession-candidate-name">${escapeHtml(c.full_name)}</div>
+                                        <div class="succession-subtext">${escapeHtml(c.branch_name || 'Main')}</div>
                                     </div>
                                 </div>
                             </td>
                             <td>
-                                <div class="small fw-semibold text-dark">${escapeHtml(c.job_title || 'N/A')}</div>
-                                <div class="text-muted" style="font-size:0.75rem;">${escapeHtml(c.department_name || 'N/A')}</div>
+                                <div class="small fw-bold text-dark">${escapeHtml(c.job_title || 'N/A')}</div>
+                                <div class="succession-subtext">${escapeHtml(c.department_name || 'N/A')}</div>
                             </td>
                             <td class="text-center small">${c.years_of_service} yrs</td>
                             <td class="text-center">
-                                <span class="badge bg-success px-2 py-1" style="font-size:0.85rem;">${c.avg_score.toFixed(2)}</span>
+                                <span class="succession-score-pill">${c.avg_score.toFixed(2)}</span>
                                 <div class="text-muted" style="font-size:0.68rem;">(${c.eval_count} eval${c.eval_count > 1 ? 's' : ''})</div>
                             </td>
                             <td class="text-center">${trendIcon}</td>
@@ -302,6 +551,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(err => {
+                document.getElementById('resultCountBadge').textContent = 'Unable to Load';
                 tableBody.innerHTML = `
                     <tr>
                         <td colspan="7" class="text-center py-4 text-danger">
@@ -312,42 +562,44 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.renderCandidateDetails = function(c) {
+        if (detailPanel) detailPanel.classList.remove('is-empty');
         const detailAvatarHtml = getAvatarHtml(c, 65);
         detailCard.innerHTML = `
-            <div class="text-center mb-3">
+            <div class="succession-detail-profile">
                 <div class="d-flex justify-content-center mb-2">
                     ${detailAvatarHtml}
                 </div>
-                <h6 class="fw-bold mb-0">${escapeHtml(c.full_name)}</h6>
+                <h6 class="succession-detail-name">${escapeHtml(c.full_name)}</h6>
                 <span class="badge bg-light text-dark border small mt-1">${escapeHtml(c.job_title || 'N/A')}</span>
             </div>
 
-            <div class="p-3 bg-light rounded-3 mb-3">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small">Department:</span>
-                    <span class="fw-semibold small">${escapeHtml(c.department_name || 'N/A')}</span>
+            <div class="succession-metric-grid">
+                <div class="succession-metric">
+                    <span>Department</span>
+                    <strong>${escapeHtml(c.department_name || 'N/A')}</strong>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small">Branch:</span>
-                    <span class="fw-semibold small">${escapeHtml(c.branch_name || 'N/A')}</span>
+                <div class="succession-metric">
+                    <span>Branch</span>
+                    <strong>${escapeHtml(c.branch_name || 'N/A')}</strong>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small">Years of Service:</span>
-                    <span class="fw-semibold small">${c.years_of_service} Years</span>
+                <div class="succession-metric">
+                    <span>Service</span>
+                    <strong>${c.years_of_service} Years</strong>
                 </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted small">Average Rating Score:</span>
-                    <span class="fw-bold text-success small">${c.avg_score.toFixed(2)} / 4.00</span>
-                </div>
-                <div class="d-flex justify-content-between mb-0">
-                    <span class="text-muted small">Performance Classification:</span>
-                    <span class="fw-bold text-primary small">${c.performance_level}</span>
+                <div class="succession-metric score">
+                    <span>Average Rating</span>
+                    <strong>${c.avg_score.toFixed(2)} / 4.00</strong>
                 </div>
             </div>
 
-            <div class="d-grid gap-2">
+            <div class="succession-metric mb-3">
+                <span>Performance Classification</span>
+                <strong>${escapeHtml(c.performance_level || 'N/A')}</strong>
+            </div>
+
+            <div class="succession-detail-actions d-grid gap-2">
                 <a href="view-employee.php?id=${c.employee_id}" class="btn btn-outline-primary btn-sm rounded-3">
-                    <i class="fas fa-user me-1"></i> View Full Employee Profile & Trend
+                    <i class="fas fa-user me-1"></i> View Full Employee Profile
                 </a>
                 <a href="career-movements.php?action=create&emp_id=${c.employee_id}" class="btn btn-success btn-sm rounded-3 fw-bold">
                     <i class="fas fa-level-up-alt me-1"></i> Initiate Promotion / Transfer

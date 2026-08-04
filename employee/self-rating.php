@@ -833,6 +833,99 @@ require_once '../includes/header.php';
 }
 
 @media (max-width: 767.98px) {
+    .content-card .card-body {
+        padding-left: 0.85rem;
+        padding-right: 0.85rem;
+    }
+
+    .section-premium-label {
+        align-items: flex-start;
+        display: flex;
+        font-size: 0.92rem;
+        gap: 0.45rem;
+        line-height: 1.25;
+    }
+
+    .self-rating-view-meta {
+        row-gap: 0.85rem !important;
+    }
+
+    .self-rating-view-meta .form-label {
+        font-size: 0.74rem;
+        margin-bottom: 0.2rem;
+    }
+
+    .self-rating-view-meta .fw-semibold,
+    .self-rating-view-meta .badge {
+        font-size: 0.88rem;
+        line-height: 1.25;
+    }
+
+    .self-rating-result-table-wrap {
+        overflow: visible;
+    }
+
+    .self-rating-result-table {
+        border: 0 !important;
+        margin-bottom: 0;
+    }
+
+    .self-rating-result-table thead {
+        display: none;
+    }
+
+    .self-rating-result-table tbody,
+    .self-rating-result-table tr,
+    .self-rating-result-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .self-rating-result-table tr {
+        background: #fff;
+        border: 1px solid rgba(8, 46, 6, 0.12);
+        border-radius: 10px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+        margin-bottom: 0.85rem;
+        overflow: hidden;
+    }
+
+    .self-rating-result-table td {
+        border: 0;
+        padding: 0.72rem 0.85rem !important;
+    }
+
+    .self-rating-result-table td + td {
+        border-top: 1px solid rgba(8, 46, 6, 0.08);
+    }
+
+    .self-rating-result-table td[data-label]::before {
+        color: var(--color-text-muted);
+        content: attr(data-label);
+        display: block;
+        font-size: 0.68rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-bottom: 0.28rem;
+        text-transform: uppercase;
+    }
+
+    .self-rating-result-table .badge {
+        align-items: flex-start;
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    .self-rating-score-summary .d-flex {
+        align-items: stretch !important;
+        flex-direction: column;
+        gap: 0.85rem;
+    }
+
+    .self-rating-score-summary .text-end {
+        text-align: left !important;
+    }
+
     .self-rating-actions {
         align-items: stretch !important;
         flex-direction: column;
@@ -1028,7 +1121,7 @@ require_once '../includes/header.php';
                         </div>
                     <?php endif; ?>
 
-                    <div class="row g-3 mb-4">
+                    <div class="row g-3 mb-4 self-rating-view-meta">
                         <div class="col-md-6">
                             <label class="form-label text-muted">Employee</label>
                             <div class="fw-semibold">
@@ -1081,8 +1174,8 @@ require_once '../includes/header.php';
                         <div class="section-premium-label mb-3">
                             <i class="fas fa-bullseye"></i>KRA Ratings
                         </div>
-                        <div class="table-responsive mb-4">
-                            <table class="table table-hover align-middle">
+                        <div class="table-responsive mb-4 self-rating-result-table-wrap">
+                            <table class="table table-hover align-middle self-rating-result-table">
                                 <thead>
                                     <tr>
                                         <th>Criterion</th>
@@ -1121,8 +1214,8 @@ require_once '../includes/header.php';
                                                     <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
                                                 <?php endif; ?>
                                             </td>
-                                            <td><?php echo e($criterion['weight']); ?>%</td>
-                                            <td>
+                                            <td data-label="Weight"><?php echo e($criterion['weight']); ?>%</td>
+                                            <td data-label="Rating">
                                                 <span class="badge bg-light text-dark fs-6 fw-bold">
                                                     <?php echo e(number_format($effective_score, 2)); ?>
                                                 </span>
@@ -1139,8 +1232,8 @@ require_once '../includes/header.php';
                         <div class="section-premium-label mb-3">
                             <i class="fas fa-heart"></i>Behavior Ratings
                         </div>
-                        <div class="table-responsive mb-4">
-                            <table class="table table-hover align-middle">
+                        <div class="table-responsive mb-4 self-rating-result-table-wrap">
+                            <table class="table table-hover align-middle self-rating-result-table">
                                 <thead>
                                     <tr>
                                         <th>Criterion</th>
@@ -1178,7 +1271,7 @@ require_once '../includes/header.php';
                                                     <div class="small text-muted"><?php echo e($criterion['description']); ?></div>
                                                 <?php endif; ?>
                                             </td>
-                                            <td>
+                                            <td data-label="Rating">
                                                 <span class="badge bg-light text-dark fs-6 fw-bold">
                                                     <?php echo e(number_format($effective_score, 2)); ?>
                                                 </span>
@@ -1190,6 +1283,36 @@ require_once '../includes/header.php';
                             </table>
                         </div>
                     <?php endif; ?>
+
+                    <div class="section-premium-label mb-3 mt-4">
+                        <i class="fas fa-seedling"></i>Developmental Plan
+                    </div>
+                    <div class="table-responsive mb-4 self-rating-result-table-wrap">
+                        <table class="table table-sm table-hover align-middle border-start self-rating-result-table">
+                            <thead class="small text-muted bg-light">
+                                <tr>
+                                    <th class="ps-3">Area of Improvement</th>
+                                    <th>Support Needed</th>
+                                    <th>Time Frame</th>
+                                </tr>
+                            </thead>
+                            <tbody class="small">
+                                <?php if (!empty($view_dev_plans)): ?>
+                                    <?php foreach ($view_dev_plans as $plan): ?>
+                                        <tr>
+                                            <td class="ps-3"><?php echo e($plan['improvement_area']); ?></td>
+                                            <td data-label="Support Needed"><?php echo e($plan['support_needed']); ?></td>
+                                            <td data-label="Time Frame"><?php echo e($plan['time_frame']); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted small py-3">No developmental plan recorded.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
 
                     <?php if (!empty($view_eval['supervisor_comments']) || !empty($view_eval['dept_manager_comments']) || !empty($view_eval['evaluator_comments']) || !empty($view_eval['manager_comments'])): ?>
                         <div class="section-premium-label mb-3 mt-4">
@@ -1239,37 +1362,7 @@ require_once '../includes/header.php';
                         </div>
                     <?php endif; ?>
 
-                    <div class="section-premium-label mb-3 mt-4">
-                        <i class="fas fa-seedling"></i>Developmental Plan
-                    </div>
-                    <div class="table-responsive mb-4">
-                        <table class="table table-sm table-hover align-middle border-start">
-                            <thead class="small text-muted bg-light">
-                                <tr>
-                                    <th class="ps-3">Area of Improvement</th>
-                                    <th>Support Needed</th>
-                                    <th>Time Frame</th>
-                                </tr>
-                            </thead>
-                            <tbody class="small">
-                                <?php if (!empty($view_dev_plans)): ?>
-                                    <?php foreach ($view_dev_plans as $plan): ?>
-                                        <tr>
-                                            <td class="ps-3"><?php echo e($plan['improvement_area']); ?></td>
-                                            <td><?php echo e($plan['support_needed']); ?></td>
-                                            <td><?php echo e($plan['time_frame']); ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <tr>
-                                        <td colspan="3" class="text-center text-muted small py-3">No developmental plan recorded.</td>
-                                    </tr>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="alert alert-info mb-4">
+                    <div class="alert alert-info mb-4 self-rating-score-summary">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <div class="small text-muted">Total Score</div>
