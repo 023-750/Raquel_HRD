@@ -905,6 +905,9 @@ require_once '../includes/header.php';
     
     /* RESPONSIVE LAYOUT FOR MOBILE */
     @media (max-width: 767px) {
+        .final-grade-card {
+            padding: 1.2rem !important;
+        }
         .final-grade-card .row {
             flex-direction: column-reverse !important;
             gap: 1.5rem !important;
@@ -913,9 +916,48 @@ require_once '../includes/header.php';
             border-bottom: 1px dashed rgba(203, 161, 53, 0.35) !important;
             padding-bottom: 1.5rem !important;
             margin-bottom: 0.5rem !important;
+            text-align: center !important;
+        }
+        .final-grade-card .col-md-8 {
+            width: 100% !important;
+            overflow-x: visible !important;
         }
         .final-grade-value {
             font-size: 3.5rem !important;
+        }
+        /* Compact the grade table on mobile: hide Weight column, merge into Weighted Score label */
+        .final-grade-card .grade-table {
+            width: 100% !important;
+            table-layout: fixed !important;
+        }
+        .final-grade-card .grade-table thead th,
+        .final-grade-card .grade-table tbody td {
+            padding: 8px 4px !important;
+            font-size: .78rem !important;
+        }
+        /* Hide the Weight column on mobile — its value is shown in the Weighted Score column header */
+        .final-grade-card .grade-table th:nth-child(3),
+        .final-grade-card .grade-table td:nth-child(3) {
+            display: none !important;
+        }
+        /* Give the remaining 3 columns defined widths */
+        .final-grade-card .grade-table th:nth-child(1),
+        .final-grade-card .grade-table td:nth-child(1) {
+            width: 42% !important;
+        }
+        .final-grade-card .grade-table th:nth-child(2),
+        .final-grade-card .grade-table td:nth-child(2) {
+            width: 29% !important;
+            text-align: center !important;
+        }
+        .final-grade-card .grade-table th:nth-child(4),
+        .final-grade-card .grade-table td:nth-child(4) {
+            width: 29% !important;
+            text-align: right !important;
+        }
+        /* Update the Weighted Score header label to include weight hint */
+        .final-grade-card .grade-table thead th:nth-child(4)::after {
+            content: "" !important;
         }
     }
     .supervisor-altered-tag {
