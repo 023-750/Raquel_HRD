@@ -1,3 +1,19 @@
 1. HR Supervisors cannot edit the branch or department of other HR Supervisors because users with the same rank do not have authority over one another. Only higher-level administrators can perform these updates.
 2. inactive employees can still login to employee portal
-3. 
+3. Visual Error ng branch supervisor pag nag perform ng evaluation.
+> "Raquel HRIS
+Success!
+Your self-rating was submitted successfully. Awaiting supervisor confirmation."
+4. branch manager performing evaluation dapat ay awaiting branch supervisor confirmation.
+"Raquel HRIS
+Success!
+Your self-rating was submitted successfully. Awaiting supervisor confirmation."
+5. si hr manager nag send dapat ay awaiting for hr supervisor confirmation
+"Raquel HRIS
+Success!
+Your self-rating was submitted successfully. Awaiting supervisor confirmation."
+
+6. hr supervisor na nag perform ng evaluation dapat ay awaiting for hr manager confirmation
+"Raquel HRIS
+Success!
+Your self-rating was submitted successfully. Awaiting supervisor confirmation."
