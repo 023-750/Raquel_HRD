@@ -12,6 +12,7 @@ $emp_stmt = $conn->prepare("
     SELECT e.employee_id, e.employee_code, e.first_name, e.last_name,
            e.job_title, e.profile_picture, e.hire_date,
            e.employment_status, e.employment_type,
+           e.branch_id, e.department_id, e.rank_category_id,
            d.department_name, b.branch_name,
            rc.rank_name
     FROM employees e
@@ -130,6 +131,20 @@ $has_dept_manager = ($my_dept_manager !== null && !empty($my_dept_manager['user_
 // ── Pending subordinate ratings count ──────────────────────────────────────
 $pending_sub_count = 0;
 if ($is_supervisor) {
+    $sup_branch = (int)($emp['branch_id'] ?? 0);
+    $sup_dept   = (int)($emp['department_id'] ?? 0);
+    $sup_rank   = (int)($emp['rank_category_id'] ?? 0);
+
+    $where_supervisor = "e.reports_to = $employee_id";
+    if (in_array($sup_rank, [3, 4])) {
+        $where_supervisor = "(e.reports_to = $employee_id OR (
+            e.branch_id = $sup_branch AND e.department_id = $sup_dept AND e.employee_id != $employee_id AND (
+                (e.rank_category_id = 5 AND $sup_rank IN (3,4)) OR
+                (e.rank_category_id = 4 AND $sup_rank = 3)
+            )
+        ))";
+    }
+
     $ps = $conn->query("
         SELECT COUNT(*) AS total
         FROM evaluations ev

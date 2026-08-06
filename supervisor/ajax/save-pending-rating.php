@@ -69,13 +69,13 @@ try {
         if ($rating_val < 1.00) $rating_val = 1.00;
         if ($rating_val > 4.00) $rating_val = 4.00;
 
-        // Fetch original score_value to include in audit details
-        $score_info_q = $conn->query("SELECT es.score_value, ec.criterion_name FROM evaluation_scores es JOIN evaluation_criteria ec ON es.criterion_id = ec.criterion_id WHERE es.score_id = $score_id");
+        // Fetch original score_value and previous overrides to determine the effective previous score
+        $score_info_q = $conn->query("SELECT es.score_value, es.dept_manager_override_score, es.supervisor_override_score, ec.criterion_name FROM evaluation_scores es JOIN evaluation_criteria ec ON es.criterion_id = ec.criterion_id WHERE es.score_id = $score_id");
         if ($score_info_q && $score_info = $score_info_q->fetch_assoc()) {
-            $orig_val = (float)$score_info['score_value'];
+            $orig_val = (float)($score_info['supervisor_override_score'] ?? $score_info['dept_manager_override_score'] ?? $score_info['score_value']);
             if (abs($rating_val - $orig_val) > 0.01) {
                 $criterion_name = $score_info['criterion_name'];
-                $altered_details[] = "$criterion_name (Self-Rating: " . number_format($orig_val, 2) . " -> Adjusted: " . number_format($rating_val, 2) . ")";
+                $altered_details[] = "$criterion_name (Previous: " . number_format($orig_val, 2) . " -> Adjusted: " . number_format($rating_val, 2) . ")";
             }
         }
 

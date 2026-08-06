@@ -19,7 +19,7 @@ if (!hasSupervisorPrivileges($conn, $employee_id)) {
 // ── Current user's employee record ────────────────────────────────────────
 $me_stmt = $conn->prepare("
     SELECT e.employee_id, e.first_name, e.last_name, e.job_title,
-           e.branch_id, e.department_id,
+           e.branch_id, e.department_id, e.rank_category_id,
            b.branch_name, d.department_name
     FROM employees e
     LEFT JOIN branches   b ON e.branch_id     = b.branch_id
@@ -47,6 +47,17 @@ $filter  = trim($_GET['filter']  ?? 'all'); // all | direct
 $like = '%' . $search . '%';
 
 if ($filter === 'direct') {
+    $sup_rank = (int)($me['rank_category_id'] ?? 0);
+    $where_supervisor = "e.reports_to = ?";
+    if (in_array($sup_rank, [3, 4])) {
+        $where_supervisor = "(e.reports_to = ? OR (
+            e.branch_id = " . (int)$branch_id . " AND e.department_id = " . (int)$dept_id . " AND e.employee_id != ? AND (
+                (e.rank_category_id = 5 AND $sup_rank IN (3,4)) OR
+                (e.rank_category_id = 4 AND $sup_rank = 3)
+            )
+        ))";
+    }
+
     $team_stmt = $conn->prepare("
         SELECT e.employee_id, e.employee_code, e.first_name, e.last_name,
                e.job_title, e.hire_date, e.employment_status, e.employment_type,
@@ -81,7 +92,7 @@ if ($filter === 'direct') {
         LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
         LEFT JOIN users        u  ON u.employee_id        = e.employee_id
         LEFT JOIN employee_contacts ec ON ec.employee_id  = e.employee_id
-        WHERE e.reports_to = ?
+        WHERE $where_supervisor
           AND e.is_active  = 1
           AND e.deleted_at IS NULL
           AND e.employee_id != ?
@@ -93,7 +104,11 @@ if ($filter === 'direct') {
           )
         ORDER BY e.last_name, e.first_name
     ");
-    $team_stmt->bind_param("iissss", $employee_id, $employee_id, $like, $like, $like, $like);
+    if (in_array($sup_rank, [3, 4])) {
+        $team_stmt->bind_param("iisssss", $employee_id, $employee_id, $employee_id, $like, $like, $like, $like);
+    } else {
+        $team_stmt->bind_param("iissss", $employee_id, $employee_id, $like, $like, $like, $like);
+    }
 } else {
     // All department members (excluding self)
     $team_stmt = $conn->prepare("
