@@ -463,7 +463,7 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
           $weighted_score = round(($k['weight'] / 100) * $effective_score, 2);
           ?>
           <tr>
-            <td style="width:55px; border:1px solid #000; padding:3px 6px;">KRA <?php echo $kra_count; ?></td>
+            <td style="width:1%; white-space:nowrap; border:1px solid #000; padding:3px 6px;">KRA <?php echo $kra_count; ?></td>
             <td style="border:1px solid #000;"><?php echo e($k['criterion_name']); ?></td>
             <td style="border:1px solid #000; text-align:center;"><?php echo $k['weight']; ?>%</td>
             <td style="border:1px solid #000; text-align:center;"><?php echo number_format($effective_score, 2); ?></td>
