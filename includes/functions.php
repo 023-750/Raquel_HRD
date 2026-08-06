@@ -1155,10 +1155,16 @@ function executeCareerMovementApplication($conn, array $movement, int $movement_
     if ($linked_user) {
         $old_role      = $linked_user['role'];
         $linked_uid    = (int) $linked_user['user_id'];
-        $new_user_bid  = $new_bid ?? (int) $linked_user['branch_id'];
+        // Keep NULL as NULL — casting NULL to int gives 0 which violates the FK constraint on branch_id
+        $new_user_bid  = $new_bid ?? ($linked_user['branch_id'] !== null ? (int) $linked_user['branch_id'] : null);
 
-        $upd_user = $conn->prepare("UPDATE users SET role = ?, branch_id = ? WHERE user_id = ?");
-        $upd_user->bind_param("sii", $new_role, $new_user_bid, $linked_uid);
+        if ($new_user_bid !== null) {
+            $upd_user = $conn->prepare("UPDATE users SET role = ?, branch_id = ? WHERE user_id = ?");
+            $upd_user->bind_param("sii", $new_role, $new_user_bid, $linked_uid);
+        } else {
+            $upd_user = $conn->prepare("UPDATE users SET role = ?, branch_id = NULL WHERE user_id = ?");
+            $upd_user->bind_param("si", $new_role, $linked_uid);
+        }
         $upd_user->execute();
         $upd_user->close();
 
