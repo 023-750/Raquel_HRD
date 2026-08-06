@@ -1427,7 +1427,106 @@ $discList = [
                         <?php endif; ?>
                     </div>
                 </div>
+            <!-- Career Movement History Card -->
+            <?php
+            $cm_history = [];
+            $cm_check = $conn->query("SHOW TABLES LIKE 'career_movements'");
+            if ($cm_check && $cm_check->num_rows > 0) {
+                $cm_stmt = $conn->prepare("
+                    SELECT cm.*,
+                        pb.branch_name AS from_branch_name,
+                        nb.branch_name AS to_branch_name,
+                        u1.full_name   AS logged_by_name,
+                        u2.full_name   AS approved_by_name
+                    FROM career_movements cm
+                    LEFT JOIN branches pb ON cm.previous_branch_id = pb.branch_id
+                    LEFT JOIN branches nb ON cm.new_branch_id       = nb.branch_id
+                    LEFT JOIN users   u1 ON cm.logged_by            = u1.user_id
+                    LEFT JOIN users   u2 ON cm.approved_by          = u2.user_id
+                    WHERE cm.employee_id = ? AND cm.approval_status = 'Approved'
+                    ORDER BY cm.effective_date DESC, cm.created_at DESC
+                ");
+                $cm_stmt->bind_param("i", $eid);
+                $cm_stmt->execute();
+                $cm_history = $cm_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                $cm_stmt->close();
+            }
+            ?>
+            <div class="col-12 mt-4">
+                <div class="content-card employee-section-card">
+                    <div class="employee-section-header">
+                        <div>
+                            <div class="employee-section-kicker"><i class="fas fa-route text-warning me-1"></i>Career Progression</div>
+                            <h5 class="mb-0">Career Movement History</h5>
+                        </div>
+                        <span class="badge bg-secondary px-3 py-2"><?php echo count($cm_history); ?> Record<?php echo count($cm_history) !== 1 ? 's' : ''; ?></span>
+                    </div>
+                    <div class="card-body">
+                        <?php if (empty($cm_history)): ?>
+                            <div class="empty-state">
+                                <i class="fas fa-route d-block mb-2" style="font-size:1.8rem;opacity:.3;"></i>
+                                <p class="mb-0 text-muted">No approved career movements on record for this employee.</p>
+                            </div>
+                        <?php else: ?>
+                            <div class="employee-table-wrap">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Effective Date</th>
+                                            <th>Type</th>
+                                            <th>From Position</th>
+                                            <th>To Position</th>
+                                            <th>From Branch</th>
+                                            <th>To Branch</th>
+                                            <th>Processed By</th>
+                                            <th>Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($cm_history as $cm):
+                                            $typeBadge = match($cm['movement_type']) {
+                                                'Promotion'   => 'bg-success',
+                                                'Transfer'    => 'bg-info text-dark',
+                                                'Demotion'    => 'bg-danger',
+                                                'Role Change' => 'bg-primary',
+                                                default       => 'bg-secondary',
+                                            };
+                                        ?>
+                                        <tr>
+                                            <td data-label="Effective Date" class="fw-semibold">
+                                                <?php echo formatDate($cm['effective_date']); ?>
+                                            </td>
+                                            <td data-label="Type">
+                                                <span class="badge <?php echo $typeBadge; ?>"><?php echo e($cm['movement_type']); ?></span>
+                                            </td>
+                                            <td data-label="From Position" class="text-muted small">
+                                                <?php echo e($cm['previous_position'] ?: 'N/A'); ?>
+                                            </td>
+                                            <td data-label="To Position" class="fw-bold text-success">
+                                                <?php echo e($cm['new_position']); ?>
+                                            </td>
+                                            <td data-label="From Branch" class="text-muted small">
+                                                <?php echo e($cm['from_branch_name'] ?: 'N/A'); ?>
+                                            </td>
+                                            <td data-label="To Branch" class="fw-semibold">
+                                                <?php echo e($cm['to_branch_name'] ?: 'Same Branch'); ?>
+                                            </td>
+                                            <td data-label="Processed By" class="small">
+                                                <?php echo e($cm['approved_by_name'] ?: ($cm['logged_by_name'] ?: 'HR Manager')); ?>
+                                            </td>
+                                            <td data-label="Reason" class="small">
+                                                <?php echo e($cm['reason'] ?: 'N/A'); ?>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
+
         </div>
     </div>
 </div>

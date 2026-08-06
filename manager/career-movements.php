@@ -46,20 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movement_action'])) {
     $upd->bind_param("sisi", $status, $current_user_id, $comments, $movement_id);
     $upd->execute(); $upd->close();
 
-    // Apply immediately if effective date has passed
+    // Apply immediately if effective date has already passed / is today
     if ($status === 'Approved' && $movement['effective_date'] <= date('Y-m-d')) {
-        $eid = (int)$movement['employee_id'];
-        if (!empty($movement['new_branch_id'])) {
-            $nbid = (int)$movement['new_branch_id'];
-            $eu = $conn->prepare("UPDATE employees SET job_title=?, branch_id=? WHERE employee_id=?");
-            $eu->bind_param("sii", $movement['new_position'], $nbid, $eid);
-        } else {
-            $eu = $conn->prepare("UPDATE employees SET job_title=? WHERE employee_id=?");
-            $eu->bind_param("si", $movement['new_position'], $eid);
-        }
-        $eu->execute(); $eu->close();
-        $mk = $conn->prepare("UPDATE career_movements SET is_applied=1 WHERE movement_id=?");
-        $mk->bind_param("i", $movement_id); $mk->execute(); $mk->close();
+        executeCareerMovementApplication($conn, $movement, $movement_id);
     }
 
     // Notify the original requester

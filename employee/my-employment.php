@@ -275,6 +275,73 @@ require_once '../includes/header.php';
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
+    <!-- Career Movement History Card -->
+    <?php
+    $cm_history = [];
+    $cm_check = $conn->query("SHOW TABLES LIKE 'career_movements'");
+    if ($cm_check && $cm_check->num_rows > 0) {
+        $cm_stmt = $conn->prepare("
+            SELECT cm.*,
+                pb.branch_name AS from_branch_name,
+                nb.branch_name AS to_branch_name
+            FROM career_movements cm
+            LEFT JOIN branches pb ON cm.previous_branch_id = pb.branch_id
+            LEFT JOIN branches nb ON cm.new_branch_id       = nb.branch_id
+            WHERE cm.employee_id = ? AND cm.approval_status = 'Approved'
+            ORDER BY cm.effective_date DESC, cm.created_at DESC
+        ");
+        $cm_stmt->bind_param("i", $employee_id);
+        $cm_stmt->execute();
+        $cm_history = $cm_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $cm_stmt->close();
+    }
+    ?>
+    <div class="pds-card fadeup-7" style="grid-column: 1 / -1;">
+        <div class="pds-card-title"><i class="fas fa-route"></i>Career Movement History</div>
+        <?php if (empty($cm_history)): ?>
+            <div class="text-muted small text-center py-3"><i class="fas fa-route d-block mb-1" style="font-size:1.5rem;opacity:.3;"></i>No career movements recorded yet.</div>
+        <?php else: ?>
+            <div class="table-responsive">
+                <table class="table table-sm modern-table align-middle mb-0" style="font-size:.85rem;">
+                    <thead>
+                        <tr>
+                            <th>Effective Date</th>
+                            <th>Type</th>
+                            <th>Previous Position</th>
+                            <th>New Position</th>
+                            <th>Branch Change</th>
+                            <th>Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($cm_history as $cm):
+                            $typeBadge = match($cm['movement_type']) {
+                                'Promotion'   => 'bg-success',
+                                'Transfer'    => 'bg-info text-dark',
+                                'Demotion'    => 'bg-danger',
+                                'Role Change' => 'bg-primary',
+                                default       => 'bg-secondary',
+                            };
+                        ?>
+                        <tr>
+                            <td class="fw-semibold"><?php echo formatDate($cm['effective_date']); ?></td>
+                            <td><span class="badge <?php echo $typeBadge; ?>"><?php echo e($cm['movement_type']); ?></span></td>
+                            <td class="text-muted"><?php echo e($cm['previous_position'] ?: '—'); ?></td>
+                            <td class="fw-bold text-success"><?php echo e($cm['new_position']); ?></td>
+                            <td>
+                                <?php if (!empty($cm['new_branch_id'])): ?>
+                                    <?php echo e($cm['from_branch_name'] ?: '—'); ?> &rarr; <strong><?php echo e($cm['to_branch_name'] ?: '—'); ?></strong>
+                                <?php else: ?>
+                                    <span class="text-muted">Same Branch</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo e($cm['reason'] ?: '—'); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 

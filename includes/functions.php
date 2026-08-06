@@ -1067,83 +1067,152 @@ function applyEmployeeChangeRequest($conn, $request_id)
     return true;
 }
 
-function applyDueCareerProgressionMovements($conn)
+/**
+ * Resolve the HRIS system role (users.role) that corresponds to a given job title string.
+ * Maps HR job titles to HR Supervisor / HR Manager / HR Staff;
+ * everything else maps to 'Employee' for branch-level non-HR positions.
+ *
+ * @param string $job_title
+ * @return string  One of 'HR Manager', 'HR Supervisor', 'HR Staff', 'Employee'
+ */
+function resolveRoleFromJobTitle(string $job_title): string
 {
+    $t = strtolower(trim($job_title));
+    if (str_contains($t, 'hr manager') || str_contains($t, 'human resources manager')) {
+        return 'HR Manager';
+    }
+    if (str_contains($t, 'hr supervisor') || str_contains($t, 'human resources supervisor')) {
+        return 'HR Supervisor';
+    }
+    if (str_contains($t, 'hr staff') || str_contains($t, 'human resources staff') || str_contains($t, 'hr ')) {
+        // Catches 'HR Staff I', 'HR Staff on Probation', etc.
+        if (str_starts_with($t, 'hr ') || str_starts_with($t, 'human resources ')) {
+            return 'HR Staff';
+        }
+    }
+    return 'Employee';
+}
 
-    if (!ensureCareerProgressionMovements($conn)) {
+/**
+ * Execute the full application of a career movement:
+ * 1. Updates employees.job_title, job_title_id, department_id, rank_category_id, branch_id
+ * 2. Updates users.role and users.branch_id (RBAC)
+ * 3. Logs a ROLE_CHANGE audit log if role changed
+ * 4. Sends in-app notification to employee
+ * 5. Marks career_movements.is_applied = 1
+ */
+function executeCareerMovementApplication($conn, array $movement, int $movement_id): void
+{
+    $eid          = (int)$movement['employee_id'];
+    $new_position = $movement['new_position'];
+    $new_bid      = !empty($movement['new_branch_id']) ? (int)$movement['new_branch_id'] : null;
 
-        return;
+    // ── 1. Lookup job_titles metadata (job_title_id, department_id, rank_category_id) ──
+    $jt_stmt = $conn->prepare("SELECT job_title_id, department_id, rank_category_id FROM job_titles WHERE job_title = ? AND is_active = 1 LIMIT 1");
+    $jt_stmt->bind_param("s", $new_position);
+    $jt_stmt->execute();
+    $jt_info = $jt_stmt->get_result()->fetch_assoc();
+    $jt_stmt->close();
 
+    if ($jt_info) {
+        $j_id = (int)$jt_info['job_title_id'];
+        $d_id = (int)$jt_info['department_id'];
+        $r_id = (int)$jt_info['rank_category_id'];
+
+        if ($new_bid) {
+            $eu = $conn->prepare("UPDATE employees SET job_title=?, job_title_id=?, department_id=?, rank_category_id=?, branch_id=? WHERE employee_id=?");
+            $eu->bind_param("siiiii", $new_position, $j_id, $d_id, $r_id, $new_bid, $eid);
+        } else {
+            $eu = $conn->prepare("UPDATE employees SET job_title=?, job_title_id=?, department_id=?, rank_category_id=? WHERE employee_id=?");
+            $eu->bind_param("siiii", $new_position, $j_id, $d_id, $r_id, $eid);
+        }
+        $eu->execute(); $eu->close();
+    } else {
+        if ($new_bid) {
+            $eu = $conn->prepare("UPDATE employees SET job_title=?, branch_id=? WHERE employee_id=?");
+            $eu->bind_param("sii", $new_position, $new_bid, $eid);
+        } else {
+            $eu = $conn->prepare("UPDATE employees SET job_title=? WHERE employee_id=?");
+            $eu->bind_param("si", $new_position, $eid);
+        }
+        $eu->execute(); $eu->close();
     }
 
+    // ── 2. RBAC: Update users.role and users.branch_id ─────────────────────
+    $new_role = resolveRoleFromJobTitle($new_position);
 
+    $usr_stmt = $conn->prepare("
+        SELECT user_id, role, branch_id
+        FROM users
+        WHERE employee_id = ? AND is_active = 1
+        LIMIT 1
+    ");
+    $usr_stmt->bind_param("i", $eid);
+    $usr_stmt->execute();
+    $linked_user = $usr_stmt->get_result()->fetch_assoc();
+    $usr_stmt->close();
+
+    if ($linked_user) {
+        $old_role      = $linked_user['role'];
+        $linked_uid    = (int) $linked_user['user_id'];
+        $new_user_bid  = $new_bid ?? (int) $linked_user['branch_id'];
+
+        $upd_user = $conn->prepare("UPDATE users SET role = ?, branch_id = ? WHERE user_id = ?");
+        $upd_user->bind_param("sii", $new_role, $new_user_bid, $linked_uid);
+        $upd_user->execute();
+        $upd_user->close();
+
+        // ── 3. Audit log for role change ───────────────────────────────────
+        if ($old_role !== $new_role) {
+            $audit_detail = "Role changed from '{$old_role}' to '{$new_role}' via Career Movement (ID: {$movement_id}) — {$movement['movement_type']} to '{$new_position}'";
+            $al = $conn->prepare("INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details) VALUES (?, 'ROLE_CHANGE', 'User', ?, ?)");
+            $al->bind_param("iis", $linked_uid, $linked_uid, $audit_detail);
+            $al->execute(); $al->close();
+
+            // ── 4. In-app notification to the employee ─────────────────────
+            $notif_title = 'Your Position & System Access Has Been Updated';
+            $notif_msg   = "Congratulations! Your career movement ({$movement['movement_type']}) to '{$new_position}' has taken effect. Your system role has been updated to '{$new_role}'. Please re-login to apply your new access permissions.";
+            $notif_link  = BASE_URL . '/employee/my-employment.php';
+            createNotification($conn, $linked_uid, $notif_title, $notif_msg, $notif_link);
+        }
+    }
+
+    // ── 5. Mark movement as applied ────────────────────────────────────────
+    $mark = $conn->prepare("UPDATE career_movements SET is_applied = 1 WHERE movement_id = ?");
+    $mark->bind_param("i", $movement_id);
+    $mark->execute();
+    $mark->close();
+}
+
+/**
+ * Apply all due (Approved, is_applied=0, effective_date<=today) career movements.
+ */
+function applyDueCareerProgressionMovements($conn)
+{
+    if (!ensureCareerProgressionMovements($conn)) {
+        return;
+    }
 
     $today = date('Y-m-d');
 
     $stmt = $conn->prepare("
-
-        SELECT movement_id, employee_id, new_position, new_branch_id
-
-        FROM career_movements
-
-        WHERE approval_status = 'Approved' AND is_applied = 0 AND effective_date <= ?
-
+        SELECT cm.movement_id, cm.employee_id, cm.new_position, cm.new_branch_id,
+               cm.movement_type,
+               CONCAT(e.first_name,' ',e.last_name) AS employee_name
+        FROM career_movements cm
+        JOIN employees e ON cm.employee_id = e.employee_id
+        WHERE cm.approval_status = 'Approved' AND cm.is_applied = 0 AND cm.effective_date <= ?
     ");
-
     $stmt->bind_param("s", $today);
-
     $stmt->execute();
-
     $result = $stmt->get_result();
 
-
-
     while ($movement = $result->fetch_assoc()) {
-
-        $employee_id = (int) $movement['employee_id'];
-
-        $new_position = $movement['new_position'];
-
-
-
-        if (!empty($movement['new_branch_id'])) {
-
-            $new_branch_id = (int) $movement['new_branch_id'];
-
-            $update = $conn->prepare("UPDATE employees SET job_title = ?, branch_id = ? WHERE employee_id = ?");
-
-            $update->bind_param("sii", $new_position, $new_branch_id, $employee_id);
-
-        } else {
-
-            $update = $conn->prepare("UPDATE employees SET job_title = ? WHERE employee_id = ?");
-
-            $update->bind_param("si", $new_position, $employee_id);
-
-        }
-
-        $update->execute();
-
-        $update->close();
-
-
-
         $movement_id = (int) $movement['movement_id'];
-
-        $mark = $conn->prepare("UPDATE career_movements SET is_applied = 1 WHERE movement_id = ?");
-
-        $mark->bind_param("i", $movement_id);
-
-        $mark->execute();
-
-        $mark->close();
-
+        executeCareerMovementApplication($conn, $movement, $movement_id);
     }
 
-
-
     $stmt->close();
-
 }
 
 

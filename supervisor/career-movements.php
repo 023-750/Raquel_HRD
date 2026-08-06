@@ -10,8 +10,26 @@ if ($movement_ready) {
 }
 
 $current_user_id = (int) ($_SESSION['user_id'] ?? 0);
+$sup_branch_id   = (int) ($_SESSION['branch_id'] ?? 0);
 
-// ── POST: Create movement (HR Supervisor direct submission) ───────────────────
+// Resolve this supervisor's own employee_id so we can block self-movements
+$sup_emp_id = 0;
+$sup_emp_stmt = $conn->prepare("SELECT employee_id FROM users WHERE user_id = ? LIMIT 1");
+$sup_emp_stmt->bind_param("i", $current_user_id);
+$sup_emp_stmt->execute();
+$sup_emp_row = $sup_emp_stmt->get_result()->fetch_assoc();
+$sup_emp_stmt->close();
+if ($sup_emp_row) {
+    $sup_emp_id = (int)$sup_emp_row['employee_id'];
+}
+
+// ── Helper: apply movement immediately + RBAC ───────────────────────────────
+function applyMovementNow($conn, array $movement, int $movement_id): void
+{
+    executeCareerMovementApplication($conn, $movement, $movement_id);
+}
+
+// ── POST: Create movement (HR Supervisor direct submission) ─────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
 }
@@ -21,31 +39,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_movement'])) {
         redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Career Movements could not be initialized.');
     }
 
-    $employee_id    = (int) ($_POST['employee_id']    ?? 0);
-    $movement_type  = trim($_POST['movement_type']    ?? '');
-    $new_position   = trim($_POST['new_position']     ?? '');
+    $department_id  = (int)  ($_POST['department_id']   ?? 0);
+    $employee_id    = (int)  ($_POST['employee_id']      ?? 0);
+    $movement_type  = trim(  $_POST['movement_type']     ?? '');
+    $new_position   = trim(  $_POST['new_position']      ?? '');
     $new_branch_id  = ($_POST['new_branch_id'] ?? '') !== '' ? (int) $_POST['new_branch_id'] : null;
-    $effective_date = trim($_POST['effective_date']   ?? '');
-    $reason         = trim($_POST['reason']           ?? '');
+    $effective_date = trim(  $_POST['effective_date']    ?? '');
+    $reason         = trim(  $_POST['reason']            ?? '');
     $allowed_types  = ['Promotion', 'Transfer', 'Demotion', 'Role Change'];
 
-    if ($employee_id <= 0 || !in_array($movement_type, $allowed_types, true) || $new_position === '' || $effective_date === '' || $reason === '') {
+    // Basic validation
+    if ($department_id <= 0 || $employee_id <= 0 || !in_array($movement_type, $allowed_types, true) || $effective_date === '' || $reason === '') {
         redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Please complete all required Career Movement fields.');
     }
 
-    $emp_stmt = $conn->prepare("SELECT employee_id, employee_code, first_name, last_name, job_title, branch_id FROM employees WHERE employee_id = ? AND is_active = 1 LIMIT 1");
-    $emp_stmt->bind_param("i", $employee_id);
-    $emp_stmt->execute();
-    $employee = $emp_stmt->get_result()->fetch_assoc();
-    $emp_stmt->close();
-
-    if (!$employee) {
-        redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Selected employee not available.');
+    if ($movement_type === 'Transfer') {
+        if (empty($new_branch_id)) {
+            redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'New Branch is required for a Transfer.');
+        }
+    } else {
+        if ($new_position === '') {
+            redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'New Position is required for ' . $movement_type . '.');
+        }
     }
 
-    $previous_position  = $employee['job_title'] ?? '';
-    $previous_branch_id = !empty($employee['branch_id']) ? (int) $employee['branch_id'] : null;
+    // Safeguard: cannot file for themselves
+    if ($sup_emp_id > 0 && $employee_id === $sup_emp_id) {
+        redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'You cannot file a career movement for yourself.');
+    }
+
+    // Safeguard: cannot file for HR Managers
+    $mgr_check = $conn->prepare("SELECT user_id FROM users WHERE employee_id=? AND role='HR Manager' AND is_active=1 LIMIT 1");
+    $mgr_check->bind_param("i", $employee_id);
+    $mgr_check->execute();
+    if ($mgr_check->get_result()->num_rows > 0) {
+        $mgr_check->close();
+        redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'HR Managers\' career movements must be processed by an HR Manager or higher.');
+    }
+    $mgr_check->close();
+
+    // Validate employee belongs to selected department (and branch if supervisor is branch-scoped)
+    if ($sup_branch_id > 0) {
+        $emp_chk = $conn->prepare("SELECT employee_id, job_title, branch_id FROM employees WHERE employee_id=? AND department_id=? AND branch_id=? AND is_active=1 LIMIT 1");
+        $emp_chk->bind_param("iii", $employee_id, $department_id, $sup_branch_id);
+    } else {
+        $emp_chk = $conn->prepare("SELECT employee_id, job_title, branch_id FROM employees WHERE employee_id=? AND department_id=? AND is_active=1 LIMIT 1");
+        $emp_chk->bind_param("ii", $employee_id, $department_id);
+    }
+    $emp_chk->execute();
+    $employee = $emp_chk->get_result()->fetch_assoc();
+    $emp_chk->close();
+
+    if (!$employee) {
+        redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Selected employee is not valid or not within your authorized department/branch.');
+    }
+
+    $previous_branch_id = !empty($employee['branch_id']) ? (int)$employee['branch_id'] : null;
     if ($new_branch_id === $previous_branch_id) { $new_branch_id = null; }
+
+    // Fetch full employee name
+    $emp_name_stmt = $conn->prepare("SELECT first_name, last_name FROM employees WHERE employee_id=? LIMIT 1");
+    $emp_name_stmt->bind_param("i", $employee_id);
+    $emp_name_stmt->execute();
+    $emp_name_row = $emp_name_stmt->get_result()->fetch_assoc();
+    $emp_name_stmt->close();
+    $employee_name = trim(($emp_name_row['first_name'] ?? '') . ' ' . ($emp_name_row['last_name'] ?? ''));
 
     $insert = $conn->prepare("
         INSERT INTO career_movements
@@ -64,11 +122,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_movement'])) {
         $insert->close();
         redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Unable to create the career movement.');
     }
-    $movement_id   = $insert->insert_id;
+    $movement_id = $insert->insert_id;
     $insert->close();
-    $employee_name = trim(($employee['first_name'] ?? '') . ' ' . ($employee['last_name'] ?? ''));
 
-    $managers = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
+    $managers = $conn->query("SELECT user_id FROM users WHERE role='HR Manager' AND is_active=1");
     while ($mgr = $managers->fetch_assoc()) {
         createNotification($conn, (int)$mgr['user_id'],
             'Career Movement Submitted',
@@ -79,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_movement'])) {
     redirectWith(BASE_URL . '/supervisor/career-movements.php', 'success', 'Career movement submitted for HR Manager review.');
 }
 
-// ── POST: Approve / Reject ────────────────────────────────────────────────────
+// ── POST: Approve / Reject ───────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movement_action'])) {
     if (!$movement_ready) {
         redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Career Movements could not be initialized.');
@@ -118,20 +175,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movement_action'])) {
     $upd->bind_param("sisi", $status, $current_user_id, $comments, $movement_id);
     $upd->execute(); $upd->close();
 
-    // Apply immediately if effective date has passed
+    // Apply immediately if effective date has already passed / is today
     if ($status === 'Approved' && $movement['effective_date'] <= date('Y-m-d')) {
-        $eid = (int)$movement['employee_id'];
-        if (!empty($movement['new_branch_id'])) {
-            $nbid = (int)$movement['new_branch_id'];
-            $eu = $conn->prepare("UPDATE employees SET job_title=?, branch_id=? WHERE employee_id=?");
-            $eu->bind_param("sii", $movement['new_position'], $nbid, $eid);
-        } else {
-            $eu = $conn->prepare("UPDATE employees SET job_title=? WHERE employee_id=?");
-            $eu->bind_param("si", $movement['new_position'], $eid);
-        }
-        $eu->execute(); $eu->close();
-        $mk = $conn->prepare("UPDATE career_movements SET is_applied=1 WHERE movement_id=?");
-        $mk->bind_param("i", $movement_id); $mk->execute(); $mk->close();
+        applyMovementNow($conn, $movement, $movement_id);
     }
 
     if (!empty($movement['logged_by'])) {
@@ -155,24 +201,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movement_action'])) {
     redirectWith(BASE_URL . '/supervisor/career-movements.php', $status === 'Approved' ? 'success' : 'warning', $msg);
 }
 
-// ── Fetch display data ────────────────────────────────────────────────────────
+// ── Fetch display data ───────────────────────────────────────────────────────
 require_once '../includes/header.php';
 
-$branch_id   = (int)($_SESSION['branch_id'] ?? 0);
-$employees   = [];
 $branches    = [];
 $branch_names = [];
 $movements   = [];
 $counts      = ['Submitted'=>0,'Pending'=>0,'Approved'=>0,'Rejected'=>0,'Applied'=>0];
 
-$employee_result = $conn->query("
-    SELECT employee_id, employee_code, first_name, last_name, job_title, branch_id
-    FROM employees
-    WHERE is_active = 1
-      AND employee_id NOT IN (SELECT employee_id FROM users WHERE role='Admin' AND employee_id IS NOT NULL)
-    ORDER BY last_name, first_name
+// Departments
+$dept_result = $conn->query("SELECT department_id, department_name FROM departments WHERE is_active=1 ORDER BY department_name");
+$departments = [];
+while ($row = $dept_result->fetch_assoc()) $departments[] = $row;
+
+// Job titles grouped by department (for JS)
+$jt_result = $conn->query("SELECT job_title_id, job_title, department_id FROM job_titles WHERE is_active=1 ORDER BY department_id, job_title");
+$dept_positions = []; // dept_id => [positions]
+while ($row = $jt_result->fetch_assoc()) {
+    $dept_positions[$row['department_id']][] = ['id' => $row['job_title_id'], 'title' => $row['job_title']];
+}
+
+// Employees grouped by department (+ branch filter)
+// We send to JS so the cascade works client-side
+$emp_sql_params = "";
+$emp_sql_where  = "e.is_active = 1
+      AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role='Admin' AND employee_id IS NOT NULL)
+      AND e.employee_id NOT IN (SELECT employee_id FROM users WHERE role='HR Manager' AND is_active=1 AND employee_id IS NOT NULL)";
+if ($sup_branch_id > 0) {
+    $emp_sql_where .= " AND e.branch_id = {$sup_branch_id}";
+}
+$emp_result = $conn->query("
+    SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title,
+           e.branch_id, e.department_id,
+           b.branch_name, d.department_name,
+           rc.rank_name
+    FROM employees e
+    LEFT JOIN branches b ON e.branch_id = b.branch_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
+    WHERE {$emp_sql_where}
+    ORDER BY e.last_name, e.first_name
 ");
-while ($row = $employee_result->fetch_assoc()) $employees[] = $row;
+$dept_employees = []; // dept_id => [employees]
+$all_employees  = [];
+while ($row = $emp_result->fetch_assoc()) {
+    $did = (int)$row['department_id'];
+    $dept_employees[$did][] = $row;
+    $all_employees[$row['employee_id']] = $row;
+}
 
 $branch_result = $conn->query("SELECT branch_id, branch_name FROM branches ORDER BY branch_name");
 while ($row = $branch_result->fetch_assoc()) {
@@ -186,12 +262,14 @@ if ($movement_ready) {
             e.employee_code,
             e.job_title AS current_job_title,
             CONCAT(e.last_name, ', ', e.first_name) AS employee_name,
+            d.department_name,
             pb.branch_name AS previous_branch_name,
             nb.branch_name AS new_branch_name,
             u1.full_name   AS logged_by_name,
             u2.full_name   AS approved_by_name
         FROM career_movements cm
         JOIN employees  e  ON cm.employee_id       = e.employee_id
+        LEFT JOIN departments d ON e.department_id = d.department_id
         LEFT JOIN branches pb ON cm.previous_branch_id = pb.branch_id
         LEFT JOIN branches nb ON cm.new_branch_id       = nb.branch_id
         LEFT JOIN users   u1 ON cm.logged_by            = u1.user_id
@@ -241,7 +319,7 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#supCreateTab" type="button" role="tab">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#supCreateTab" type="button" role="tab" id="supCreateTabBtn">
                     <i class="fas fa-plus me-1"></i>Create Movement
                 </button>
             </li>
@@ -284,11 +362,14 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                                     <td>
                                         <div class="fw-bold"><?php echo e($mv['employee_name']); ?></div>
                                         <small class="text-muted"><?php echo e(getEmployeeDisplayId($mv)); ?> &middot; <?php echo e($mv['current_job_title']); ?></small>
+                                        <?php if (!empty($mv['department_name'])): ?>
+                                            <div><span class="badge bg-light text-dark border" style="font-size:.68rem;"><?php echo e($mv['department_name']); ?></span></div>
+                                        <?php endif; ?>
                                     </td>
                                     <td><span class="badge <?php echo supCmTypeClass($mv['movement_type']); ?>"><?php echo e($mv['movement_type']); ?></span></td>
                                     <td>
                                         <div class="small text-muted"><?php echo e($mv['previous_position']?:'N/A'); ?></div>
-                                        <div class="fw-semibold"><?php echo e($mv['new_position']); ?></div>
+                                        <div class="fw-semibold"><i class="fas fa-arrow-right text-success me-1" style="font-size:.75rem;"></i><?php echo e($mv['new_position']); ?></div>
                                     </td>
                                     <td>
                                         <?php if (!empty($mv['new_branch_id'])): ?>
@@ -360,33 +441,57 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
             <!-- CREATE TAB -->
             <div class="tab-pane fade" id="supCreateTab" role="tabpanel">
                 <div class="p-4">
-                    <form method="POST">
+                    <form method="POST" id="supCreateForm">
                         <?php echo csrfField(); ?>
                         <input type="hidden" name="create_movement" value="1">
                         <div class="row g-3">
+
+                            <!-- Department -->
                             <div class="col-lg-6">
-                                <label class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
-                                <select class="form-select" name="employee_id" id="supEmpSelect" required <?php echo !$movement_ready ? 'disabled' : ''; ?>>
-                                    <option value="">Select employee</option>
-                                    <?php foreach ($employees as $emp): ?>
-                                        <option value="<?php echo (int)$emp['employee_id']; ?>"
-                                            data-jobtitle="<?php echo e($emp['job_title']); ?>"
-                                            data-branch="<?php echo (int)$emp['branch_id']; ?>">
-                                            <?php echo e($emp['last_name'].', '.$emp['first_name'].' - '.getEmployeeDisplayId($emp)); ?>
+                                <label class="form-label fw-semibold">Department <span class="text-danger">*</span></label>
+                                <select class="form-select" name="department_id" id="supDeptSelect" required <?php echo !$movement_ready ? 'disabled' : ''; ?>>
+                                    <option value="">-- Select Department --</option>
+                                    <?php foreach ($departments as $dept): ?>
+                                        <option value="<?php echo (int)$dept['department_id']; ?>">
+                                            <?php echo e($dept['department_name']); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <div class="form-text text-muted"><i class="fas fa-info-circle me-1"></i>Select a department to load employees and valid positions.</div>
                             </div>
+
+                            <!-- Employee -->
                             <div class="col-lg-6">
-                                <div class="p-3 rounded border bg-light h-100" id="supEmpInfo" style="display:none;">
-                                    <div class="small text-muted">Current Assignment</div>
-                                    <div class="fw-bold" id="supCurrentPos"></div>
-                                    <div class="small text-muted" id="supCurrentBranch"></div>
+                                <label class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
+                                <select class="form-select" name="employee_id" id="supEmpSelect" required disabled <?php echo !$movement_ready ? 'disabled' : ''; ?>>
+                                    <option value="">-- Select Department First --</option>
+                                </select>
+                            </div>
+
+                            <!-- Current Assignment Preview -->
+                            <div class="col-12" id="supAssignmentPreview" style="display:none;">
+                                <div class="p-3 rounded-3 border" style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%); border-color:#bae6fd !important;">
+                                    <div class="d-flex flex-wrap gap-4">
+                                        <div>
+                                            <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Current Department</div>
+                                            <div class="fw-bold" id="supPreviewDept">—</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Current Position</div>
+                                            <div class="fw-bold" id="supPreviewPos">—</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Current Branch</div>
+                                            <div class="fw-bold" id="supPreviewBranch">—</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+
+                            <!-- Movement Type -->
                             <div class="col-md-4">
                                 <label class="form-label fw-semibold">Movement Type <span class="text-danger">*</span></label>
-                                <select class="form-select" name="movement_type" required <?php echo !$movement_ready ? 'disabled' : ''; ?>>
+                                <select class="form-select" name="movement_type" id="supMovTypeSelect" required <?php echo !$movement_ready ? 'disabled' : ''; ?>>
                                     <option value="">-- Select type --</option>
                                     <option value="Transfer">Transfer</option>
                                     <option value="Promotion">Promotion</option>
@@ -394,27 +499,40 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                                     <option value="Role Change">Role Change</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">New Position <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="new_position" placeholder="e.g. Branch Operations Supervisor" required <?php echo !$movement_ready ? 'disabled' : ''; ?>>
+
+                            <!-- New Position (dynamic dropdown) -->
+                            <div class="col-md-4" id="supPositionWrapper">
+                                <label class="form-label fw-semibold" id="supPositionLabel">New Position <span class="text-danger" id="supPositionAsterisk">*</span></label>
+                                <select class="form-select" name="new_position" id="supPositionSelect" required disabled <?php echo !$movement_ready ? 'disabled' : ''; ?>>
+                                    <option value="">-- Select Department First --</option>
+                                </select>
+                                <div class="form-text text-muted" id="supPositionHint">Only valid positions for the selected department are shown.</div>
                             </div>
+
+                            <!-- New Branch -->
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold">New Branch</label>
-                                <select class="form-select" name="new_branch_id" <?php echo !$movement_ready ? 'disabled' : ''; ?>>
+                                <label class="form-label fw-semibold" id="supBranchLabel">New Branch</label>
+                                <select class="form-select" name="new_branch_id" id="supBranchSelect" <?php echo !$movement_ready ? 'disabled' : ''; ?>>
                                     <option value="">No branch change</option>
                                     <?php foreach ($branches as $br): ?>
                                         <option value="<?php echo (int)$br['branch_id']; ?>"><?php echo e($br['branch_name']); ?></option>
                                     <?php endforeach; ?>
                                 </select>
+                                <div class="form-text text-muted" id="supBranchHint"></div>
                             </div>
+
+                            <!-- Effective Date -->
                             <div class="col-md-4">
                                 <label class="form-label fw-semibold">Effective Date <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control" name="effective_date" required <?php echo !$movement_ready ? 'disabled' : ''; ?>>
                             </div>
+
+                            <!-- Reason -->
                             <div class="col-md-8">
                                 <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
                                 <textarea class="form-control" name="reason" rows="3" placeholder="Enter the justification for this career movement." required <?php echo !$movement_ready ? 'disabled' : ''; ?>></textarea>
                             </div>
+
                         </div>
                         <div class="d-flex justify-content-end mt-4">
                             <button type="submit" class="btn btn-primary px-4" <?php echo !$movement_ready ? 'disabled' : ''; ?>>
@@ -457,22 +575,126 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const branchNames = <?php echo json_encode($branch_names, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_QUOT); ?>;
-    const empSel      = document.getElementById('supEmpSelect');
-    const empInfo     = document.getElementById('supEmpInfo');
-    const curPos      = document.getElementById('supCurrentPos');
-    const curBranch   = document.getElementById('supCurrentBranch');
+    // ── Data from PHP ─────────────────────────────────────────────────────────
+    const branchNames    = <?php echo json_encode($branch_names, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_QUOT); ?>;
+    const deptEmployees  = <?php echo json_encode($dept_employees, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_QUOT); ?>;
+    const deptPositions  = <?php echo json_encode($dept_positions, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_QUOT); ?>;
+    const allEmployees   = <?php echo json_encode($all_employees, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_QUOT); ?>;
 
-    if (empSel) {
-        empSel.addEventListener('change', function () {
-            const opt = this.options[this.selectedIndex];
-            if (!opt.value) { empInfo.style.display = 'none'; return; }
-            curPos.textContent    = opt.dataset.jobtitle || 'N/A';
-            curBranch.textContent = branchNames[opt.dataset.branch] || 'N/A';
-            empInfo.style.display = 'block';
-        });
+    // ── Elements ──────────────────────────────────────────────────────────────
+    const deptSel    = document.getElementById('supDeptSelect');
+    const empSel     = document.getElementById('supEmpSelect');
+    const posSel     = document.getElementById('supPositionSelect');
+    const preview    = document.getElementById('supAssignmentPreview');
+    const prevDept   = document.getElementById('supPreviewDept');
+    const prevPos    = document.getElementById('supPreviewPos');
+    const prevBranch = document.getElementById('supPreviewBranch');
+
+    // ── Department change → cascade employees & positions ────────────────────
+    deptSel.addEventListener('change', function () {
+        const did = this.value;
+
+        // Reset employee dropdown
+        empSel.innerHTML = '<option value="">-- Select Employee --</option>';
+        empSel.disabled  = !did;
+
+        // Reset position dropdown
+        posSel.innerHTML = '<option value="">-- Select New Position --</option>';
+        posSel.disabled  = !did;
+
+        // Hide preview
+        preview.style.display = 'none';
+
+        if (!did) return;
+
+        // Load employees
+        const emps = deptEmployees[did] || [];
+        if (emps.length === 0) {
+            empSel.innerHTML = '<option value="">No employees found in this department</option>';
+        } else {
+            emps.forEach(function (emp) {
+                const opt = document.createElement('option');
+                opt.value              = emp.employee_id;
+                const rank             = emp.rank_name ? ' [' + emp.rank_name + ']' : '';
+                opt.textContent        = emp.last_name + ', ' + emp.first_name + rank + ' – ' + (emp.employee_code || emp.employee_id);
+                opt.dataset.jobtitle   = emp.job_title || '';
+                opt.dataset.branch     = emp.branch_id || '';
+                opt.dataset.branchname = emp.branch_name || '';
+                opt.dataset.deptname   = emp.department_name || '';
+                empSel.appendChild(opt);
+            });
+        }
+
+        // Load positions
+        const positions = deptPositions[did] || [];
+        if (positions.length === 0) {
+            posSel.innerHTML = '<option value="">No positions defined for this department</option>';
+        } else {
+            positions.forEach(function (pos) {
+                const opt = document.createElement('option');
+                opt.value       = pos.title;
+                opt.textContent = pos.title;
+                posSel.appendChild(opt);
+            });
+            posSel.disabled = false;
+        }
+    });
+
+    // ── Employee change → preview card ────────────────────────────────────────
+    empSel.addEventListener('change', function () {
+        const opt = this.options[this.selectedIndex];
+        if (!opt.value) {
+            preview.style.display = 'none';
+            return;
+        }
+        prevDept.textContent   = opt.dataset.deptname   || '—';
+        prevPos.textContent    = opt.dataset.jobtitle   || '—';
+        prevBranch.textContent = opt.dataset.branchname || branchNames[opt.dataset.branch] || '—';
+        preview.style.display  = 'block';
+    });
+
+    // ── Movement Type change → toggle Position required / Branch required ──────
+    const movTypeSel     = document.getElementById('supMovTypeSelect');
+    const posAsterisk    = document.getElementById('supPositionAsterisk');
+    const posHint        = document.getElementById('supPositionHint');
+    const branchLabel    = document.getElementById('supBranchLabel');
+    const branchHint     = document.getElementById('supBranchHint');
+    const branchSel      = document.getElementById('supBranchSelect');
+
+    function applyMovTypeRules() {
+        const isTransfer = movTypeSel.value === 'Transfer';
+
+        // New Position: optional for Transfer, required for everything else
+        if (isTransfer) {
+            posSel.removeAttribute('required');
+            posAsterisk.style.display = 'none';
+            posHint.textContent = 'Optional for Transfer — leave blank to keep current position.';
+        } else {
+            // Only mark required if it isn't still disabled (i.e. dept was already picked)
+            if (!posSel.disabled || posSel.options.length > 1) {
+                posSel.setAttribute('required', 'required');
+            }
+            posAsterisk.style.display = '';
+            posHint.textContent = 'Only valid positions for the selected department are shown.';
+        }
+
+        // New Branch: required for Transfer
+        if (isTransfer) {
+            branchSel.setAttribute('required', 'required');
+            branchLabel.innerHTML = 'New Branch <span class="text-danger">*</span>';
+            branchHint.textContent = 'Branch is required for a Transfer.';
+        } else {
+            branchSel.removeAttribute('required');
+            branchLabel.innerHTML = 'New Branch';
+            branchHint.textContent = '';
+        }
     }
 
+    if (movTypeSel) {
+        movTypeSel.addEventListener('change', applyMovTypeRules);
+    }
+
+    // ── Search ────────────────────────────────────────────────────────────────
     const searchInput = document.getElementById('supMovSearch');
     const tableRows   = document.querySelectorAll('#supMovTable tbody tr');
     if (searchInput) {
@@ -483,6 +705,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ── Reject Modal ──────────────────────────────────────────────────────────
     const rejectModal = document.getElementById('supRejectModal');
     if (rejectModal) {
         rejectModal.addEventListener('show.bs.modal', function (e) {
