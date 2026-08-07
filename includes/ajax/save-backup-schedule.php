@@ -11,7 +11,7 @@ $enabled   = isset($_POST['enabled'])   ? (int)$_POST['enabled']   : 0;
 $frequency = $_POST['frequency']  ?? 'daily';
 $weekday   = (int)($_POST['weekday']   ?? 1); // 0=Sun..6=Sat
 $monthday  = (int)($_POST['monthday']  ?? 1); // 1..28
-$hour      = (int)($_POST['hour']      ?? 2); // 0..23
+$time      = trim($_POST['time'] ?? '02:00'); // HH:MM, 24-hour time
 $btype     = $_POST['btype']      ?? 'full';
 $keep      = (int)($_POST['keep']      ?? 7); // min 1
 
@@ -19,14 +19,16 @@ $frequency = in_array($frequency, ['daily','weekly','monthly']) ? $frequency : '
 $btype     = in_array($btype, ['full','schema','data']) ? $btype : 'full';
 $weekday   = max(0, min(6, $weekday));
 $monthday  = max(1, min(28, $monthday));
-$hour      = max(0, min(23, $hour));
+$time      = preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time) ? $time : '02:00';
+[$hour, $minute] = array_map('intval', explode(':', $time));
 $keep      = max(1, min(90, $keep));
 
 // ── Compute Next Run ─────────────────────────────────────────────────────────
-function compute_next_run($frequency, $weekday, $monthday, $hour) {
+function compute_next_run($frequency, $weekday, $monthday, $time) {
+    [$hour, $minute] = array_map('intval', explode(':', $time));
     $now = new DateTime('now');
     $next = new DateTime('now');
-    $next->setTime($hour, 0, 0);
+    $next->setTime($hour, $minute, 0);
 
     switch ($frequency) {
         case 'daily':
@@ -39,10 +41,10 @@ function compute_next_run($frequency, $weekday, $monthday, $hour) {
             $days_of_week = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
             $target_day   = $days_of_week[$weekday];
             $next->modify("next {$target_day}");
-            $next->setTime($hour, 0, 0);
+            $next->setTime($hour, $minute, 0);
             // If that next day is today and time hasn't passed yet, use today
             $today_run = new DateTime('now');
-            $today_run->setTime($hour, 0, 0);
+            $today_run->setTime($hour, $minute, 0);
             $today_dow = (int)date('w');
             if ($today_dow === $weekday && $today_run > $now) {
                 $next = $today_run;
@@ -50,18 +52,18 @@ function compute_next_run($frequency, $weekday, $monthday, $hour) {
             break;
         case 'monthly':
             $next->setDate((int)date('Y'), (int)date('n'), $monthday);
-            $next->setTime($hour, 0, 0);
+            $next->setTime($hour, $minute, 0);
             if ($next <= $now) {
                 $next->modify('+1 month');
                 $next->setDate((int)$next->format('Y'), (int)$next->format('n'), $monthday);
-                $next->setTime($hour, 0, 0);
+                $next->setTime($hour, $minute, 0);
             }
             break;
     }
     return $next->format('Y-m-d H:i:s');
 }
 
-$next_run = compute_next_run($frequency, $weekday, $monthday, $hour);
+$next_run = compute_next_run($frequency, $weekday, $monthday, $time);
 
 // ── Persist to system_settings ───────────────────────────────────────────────
 $settings = [
@@ -69,6 +71,7 @@ $settings = [
     'auto_backup_frequency' => $frequency,
     'auto_backup_weekday'   => $weekday,
     'auto_backup_monthday'  => $monthday,
+    'auto_backup_time'      => $time,
     'auto_backup_hour'      => $hour,
     'auto_backup_type'      => $btype,
     'auto_backup_keep'      => $keep,
@@ -86,7 +89,7 @@ foreach ($settings as $key => $value) {
 }
 
 logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'BackupSchedule', 0,
-    "Auto-backup schedule updated: {$frequency}, type={$btype}, hour={$hour}h, keep={$keep}, enabled={$enabled}");
+    "Auto-backup schedule updated: {$frequency}, time={$time}, type={$btype}, keep={$keep}, enabled={$enabled}");
 
 echo json_encode([
     'success'  => true,

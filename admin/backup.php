@@ -73,6 +73,8 @@ $ab_freq     = getSetting($conn, 'auto_backup_frequency', 'daily');
 $ab_weekday  = (int)getSetting($conn, 'auto_backup_weekday',  '1');
 $ab_monthday = (int)getSetting($conn, 'auto_backup_monthday', '1');
 $ab_hour     = (int)getSetting($conn, 'auto_backup_hour',     '2');
+$ab_time     = getSetting($conn, 'auto_backup_time', sprintf('%02d:00', $ab_hour));
+$ab_time     = preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $ab_time) ? $ab_time : sprintf('%02d:00', $ab_hour);
 $ab_type     = getSetting($conn, 'auto_backup_type',   'full');
 $ab_keep     = (int)getSetting($conn, 'auto_backup_keep',     '7');
 $ab_last_run = getSetting($conn, 'auto_backup_last_run', '');
@@ -188,16 +190,11 @@ $days_of_week = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Sa
                     </select>
                 </div>
 
-                <!-- Hour -->
+                <!-- Specific time -->
                 <div class="col-sm-6 col-md-2">
-                    <label class="form-label fw-semibold" for="abHour"><i class="fas fa-clock me-1"></i>Time</label>
-                    <select class="form-select" id="abHour">
-                        <?php for ($h=0; $h<=23; $h++): ?>
-                            <option value="<?php echo $h; ?>" <?php echo $ab_hour===$h?'selected':''; ?>>
-                                <?php echo date('g:i A', mktime($h,0,0)); ?>
-                            </option>
-                        <?php endfor; ?>
-                    </select>
+                    <label class="form-label fw-semibold" for="abTime"><i class="fas fa-clock me-1"></i>Time</label>
+                    <input type="time" class="form-control" id="abTime" value="<?php echo e($ab_time); ?>" step="60">
+                    <div class="form-text">Choose the exact daily time.</div>
                 </div>
 
                 <!-- Backup type -->
@@ -391,7 +388,7 @@ document.getElementById('btnSaveSchedule').addEventListener('click', function() 
     body.append('frequency', freqSel.value);
     body.append('weekday',   document.getElementById('abWeekday').value);
     body.append('monthday',  document.getElementById('abMonthday').value);
-    body.append('hour',      document.getElementById('abHour').value);
+    body.append('time',      document.getElementById('abTime').value);
     body.append('btype',     document.getElementById('abType').value);
     body.append('keep',      document.getElementById('abKeep').value);
 

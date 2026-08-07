@@ -60,6 +60,8 @@ $frequency  = ab_get_setting($conn, 'auto_backup_frequency', 'daily');
 $weekday    = (int)ab_get_setting($conn, 'auto_backup_weekday', '1');
 $monthday   = (int)ab_get_setting($conn, 'auto_backup_monthday', '1');
 $hour       = (int)ab_get_setting($conn, 'auto_backup_hour', '2');
+$time       = ab_get_setting($conn, 'auto_backup_time', sprintf('%02d:00', $hour));
+$time       = preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time) ? $time : sprintf('%02d:00', $hour);
 
 $backup_dir = dirname(__DIR__, 2) . '/backups/';
 if (!is_dir($backup_dir)) @mkdir($backup_dir, 0777, true);
@@ -140,24 +142,25 @@ if ($success && $keep > 0) {
 }
 
 // ── Compute next run time ────────────────────────────────────────────────────
-function ab_next_run($frequency, $weekday, $monthday, $hour) {
+function ab_next_run($frequency, $weekday, $monthday, $time) {
+    [$hour, $minute] = array_map('intval', explode(':', $time));
     $now  = new DateTime('now');
     $next = new DateTime('now');
-    $next->setTime($hour, 0, 0);
+    $next->setTime($hour, $minute, 0);
     if ($frequency === 'daily') {
         $next->modify('+1 day');
     } elseif ($frequency === 'weekly') {
         $days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        $next->modify("next {$days[$weekday]}")->setTime($hour, 0, 0);
+        $next->modify("next {$days[$weekday]}")->setTime($hour, $minute, 0);
     } elseif ($frequency === 'monthly') {
         $next->modify('+1 month');
         $next->setDate((int)$next->format('Y'), (int)$next->format('n'), $monthday);
-        $next->setTime($hour, 0, 0);
+        $next->setTime($hour, $minute, 0);
     }
     return $next->format('Y-m-d H:i:s');
 }
 
-$next_str = ab_next_run($frequency, $weekday, $monthday, $hour);
+$next_str = ab_next_run($frequency, $weekday, $monthday, $time);
 
 // ── Persist run timestamps ───────────────────────────────────────────────────
 ab_set_setting($conn, 'auto_backup_last_run', date('Y-m-d H:i:s'));
