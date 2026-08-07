@@ -128,6 +128,7 @@ CREATE TABLE users (
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
+    profile_picture VARCHAR(255) NULL,
     role ENUM('Admin', 'HR Manager', 'HR Supervisor', 'HR Staff', 'Employee') NOT NULL,
     branch_id INT NULL,
     is_active TINYINT(1) DEFAULT 1,
