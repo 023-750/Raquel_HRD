@@ -1,4 +1,4 @@
-Department
+Department (12)
 > Acquired Properties
 > Audit
 > Business Development
@@ -11,8 +11,6 @@ Department
 > Office of the President
 > Operations
 > Purchasing
-
-Each department must have all employee positions:
 
 -Acquired Properties- ✔ 17
 > AP Manager I (manager)
@@ -47,13 +45,13 @@ Each department must have all employee positions:
 > Auditor on Probation (R&F)
 > Auditor V (R&F)
 
--Business Development- (Manager Only ✔) 4
+-Business Development- 4
 > Business Development Officer I (Manager)
 > Business Development Staff I (R&F)
 > Business Development Staff II (R&F)
 > Business Development Staff on Training (R&F)
 
--Compliance- (Supervisor Only ✔) 6
+-Compliance- 6
 > Compliance Staff I (R&F)
 > Compliance Staff II (R&F)
 > Compliance Staff III (R&F)
@@ -61,7 +59,7 @@ Each department must have all employee positions:
 > Compliance Supervisor II (Supervisor)
 > Compliance Supervisor III (Supervisor)
 
--Finance- (Supervisor Only ✔) 18
+-Finance- 18
 > Accounting Staff I (R&F)
 > Accounting Staff II (R&F)
 > Accounting Staff III (R&F)
@@ -154,7 +152,7 @@ Each department must have all employee positions:
 > Marketing Supervisor I (Supervisor)
 > Marketing Supervisor II (Supervisor)
 
--Office of the President- (keep an eye of this ⚠) 4
+-Office of the President- 4
 > Executive Assistant I (R&F)
 > Executive Assistant II (R&F)
 > Executive Assistant III (R&F)
@@ -178,7 +176,7 @@ Each department must have all employee positions:
 > Regional Manager II (Manager)
 > VP for Operations (Executives)
 
--Purchasing- (Supervisor Only ✔) 3
+-Purchasing- 3
 > Purchasing Staff I (R&F)
 > Purchasing Supervisor I (Supervisor)
 > Purchasing Supervisor on Training (Supervisor)
