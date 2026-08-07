@@ -156,7 +156,7 @@ $days_of_week = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Sa
         <div class="card-body">
             <p class="text-muted small mb-3">
                 <i class="fas fa-info-circle me-1"></i>
-                Schedule automatic database backups. The backup runs automatically whenever an admin opens any page after the scheduled time.
+                Schedule automatic database backups. The backup runs when an admin page is opened after the scheduled time, and this page checks every minute while it stays open.
             </p>
 
             <div class="row g-3" id="abScheduleForm">
@@ -365,8 +365,7 @@ const monthdayGrp = document.getElementById('abMonthdayGroup');
 const toggle      = document.getElementById('abEnabledToggle');
 const statusBadge = document.getElementById('ab-status-badge');
 
-// Keep the scheduler awake while this Admin page remains open. A Windows task
-// handles the same check when no browser session is active.
+// Keep the scheduler awake while this Admin page remains open.
 function runScheduledBackupCheck() {
     const body = new FormData();
     body.append('csrf_token', CSRF_TOKEN);
@@ -374,6 +373,7 @@ function runScheduledBackupCheck() {
         // A later interval can retry; no user action is needed for this check.
     });
 }
+runScheduledBackupCheck();
 setInterval(runScheduledBackupCheck, 60000);
 
 function updateFreqVisibility() {

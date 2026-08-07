@@ -7,4 +7,7 @@ verifyCsrfToken();
 header('Content-Type: application/json');
 require_once '../../includes/auto-backup-check.php';
 
-echo json_encode(['success' => true]);
+echo json_encode([
+    'success' => true,
+    'result' => $GLOBALS['auto_backup_check_result'] ?? ['checked' => false],
+]);
