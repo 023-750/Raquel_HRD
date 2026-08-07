@@ -326,6 +326,7 @@ $days_of_week = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Sa
 <script>
 const AJAX_URL     = '<?php echo BASE_URL; ?>/includes/ajax/system-backup.php';
 const SCHEDULE_URL = '<?php echo BASE_URL; ?>/includes/ajax/save-backup-schedule.php';
+const SCHEDULE_RUNNER_URL = '<?php echo BASE_URL; ?>/includes/ajax/run-scheduled-backup.php';
 const CSRF_TOKEN   = '<?php echo generateCsrfToken(); ?>';
 
 // ── Manual backup ────────────────────────────────────────────────────────────
@@ -363,6 +364,17 @@ const weekdayGrp  = document.getElementById('abWeekdayGroup');
 const monthdayGrp = document.getElementById('abMonthdayGroup');
 const toggle      = document.getElementById('abEnabledToggle');
 const statusBadge = document.getElementById('ab-status-badge');
+
+// Keep the scheduler awake while this Admin page remains open. A Windows task
+// handles the same check when no browser session is active.
+function runScheduledBackupCheck() {
+    const body = new FormData();
+    body.append('csrf_token', CSRF_TOKEN);
+    fetch(SCHEDULE_RUNNER_URL, { method: 'POST', body }).catch(() => {
+        // A later interval can retry; no user action is needed for this check.
+    });
+}
+setInterval(runScheduledBackupCheck, 60000);
 
 function updateFreqVisibility() {
     const f = freqSel.value;

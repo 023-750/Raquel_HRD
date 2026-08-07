@@ -7,10 +7,14 @@
  * Sets $_SESSION['auto_backup_toast'] for the UI to display a flash notice.
  */
 
-if (!isset($conn) || !isset($_SESSION['user_id'])) return;
+if (!isset($conn)) return;
+
+// The same scheduler can run from an Admin page request or the Windows task runner.
+$is_auto_backup_cli = !empty($is_auto_backup_cli);
+if (!$is_auto_backup_cli && !isset($_SESSION['user_id'])) return;
 
 // Only run for Admin role
-if (($_SESSION['role'] ?? '') !== 'Admin') return;
+if (!$is_auto_backup_cli && ($_SESSION['role'] ?? '') !== 'Admin') return;
 
 // ── Helper: read a setting ───────────────────────────────────────────────────
 function ab_get_setting($conn, $key, $default = '') {
@@ -49,9 +53,11 @@ $next_run = new DateTime($next_run_str);
 if ($now < $next_run) return; // Not yet time
 
 // ── Prevent duplicate runs in the same minute (session flag) ─────────────────
-$lock_key = 'ab_lock_' . date('YmdHi');
-if (!empty($_SESSION[$lock_key])) return;
-$_SESSION[$lock_key] = true;
+if (!$is_auto_backup_cli) {
+    $lock_key = 'ab_lock_' . date('YmdHi');
+    if (!empty($_SESSION[$lock_key])) return;
+    $_SESSION[$lock_key] = true;
+}
 
 // ── Run the backup ───────────────────────────────────────────────────────────
 $btype      = ab_get_setting($conn, 'auto_backup_type', 'full');
@@ -167,13 +173,15 @@ ab_set_setting($conn, 'auto_backup_last_run', date('Y-m-d H:i:s'));
 ab_set_setting($conn, 'auto_backup_next_run', $next_str);
 
 // ── Log audit ────────────────────────────────────────────────────────────────
-if ($success) {
+if ($success && !$is_auto_backup_cli) {
     logAudit($conn, $_SESSION['user_id'], 'CREATE', 'AutoBackup', 0,
         "Scheduled auto-backup ({$label}): {$filename}");
 }
 
 // ── Set session toast for UI display ─────────────────────────────────────────
-$_SESSION['auto_backup_toast'] = $success
-    ? ['type' => 'success', 'msg' => "✅ Scheduled {$label} auto-backup completed: <strong>{$filename}</strong>"]
-    : ['type' => 'danger',  'msg' => "❌ Scheduled auto-backup failed. Check backups folder permissions."];
+if (!$is_auto_backup_cli) {
+    $_SESSION['auto_backup_toast'] = $success
+        ? ['type' => 'success', 'msg' => "Scheduled {$label} auto-backup completed: <strong>{$filename}</strong>"]
+        : ['type' => 'danger',  'msg' => "Scheduled auto-backup failed. Check backups folder permissions."];
+}
 ?>
