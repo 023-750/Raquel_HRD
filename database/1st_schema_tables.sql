@@ -1,10 +1,24 @@
+-- ============================================
 -- Raquel HRIS Database Schema
--- 1. Setup Database
+-- Includes:
+-- setup database, branches, rank categories, departments, job titles,
+-- employees, users, employee PDS submissions, employee details,
+-- government IDs, addresses, contacts, emergency contacts,
+-- disclosures, family, children, siblings, education, work experience,
+-- evaluation templates, evaluation criteria, evaluations,
+-- evaluation scores, evaluation development plans, career movements,
+-- notifications, audit logs, system settings, additional PDS records,
+-- login attempts, and performance indexes.
+-- ============================================
 
 SET FOREIGN_KEY_CHECKS = 0;
 DROP DATABASE IF EXISTS raquel_hris;
 CREATE DATABASE IF NOT EXISTS raquel_hris;
 USE raquel_hris;
+
+-- ============================================
+-- 1. Setup Database
+-- ============================================
 
 -- ============================================
 -- 2. Branches
@@ -22,7 +36,7 @@ CREATE TABLE branches (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 3. Rank Categories
+-- 2. Rank Categories
 -- ============================================
 DROP TABLE IF EXISTS rank_categories;
 CREATE TABLE rank_categories (
@@ -36,7 +50,7 @@ CREATE TABLE rank_categories (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 4. Departments
+-- 3. Departments
 -- ============================================
 DROP TABLE IF EXISTS departments;
 CREATE TABLE departments (
@@ -51,7 +65,7 @@ CREATE TABLE departments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 5. Job Titles
+-- 4. Job Titles
 -- ============================================
 DROP TABLE IF EXISTS job_titles;
 CREATE TABLE job_titles (
@@ -73,7 +87,7 @@ CREATE TABLE job_titles (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 6. Employees (Core Identity & Employment)
+-- 5. Employees (Core Identity & Employment)
 -- ============================================
 DROP TABLE IF EXISTS employees;
 CREATE TABLE employees (
@@ -118,7 +132,7 @@ CREATE TABLE employees (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 7. Users (System accounts)
+-- 6. Users (System accounts)
 -- ============================================
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
@@ -143,7 +157,7 @@ CREATE TABLE users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 5b. Employee PDS Submissions (Self-Service)
+-- 7. Employee PDS Submissions (Self-Service)
 -- ============================================
 DROP TABLE IF EXISTS employee_pds_submissions;
 CREATE TABLE employee_pds_submissions (
@@ -165,7 +179,7 @@ CREATE TABLE employee_pds_submissions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 5c. Employee Details (Physical & Citizenship)
+-- 8. Employee Details (Physical & Citizenship)
 -- ============================================
 DROP TABLE IF EXISTS employee_details;
 CREATE TABLE employee_details (
@@ -182,7 +196,7 @@ CREATE TABLE employee_details (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 6. Employee Government IDs
+-- 9. Employee Government IDs
 -- ============================================
 DROP TABLE IF EXISTS employee_government_ids;
 CREATE TABLE employee_government_ids (
@@ -199,7 +213,7 @@ CREATE TABLE employee_government_ids (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 7. Employee Addresses
+-- 10. Employee Addresses
 -- ============================================
 DROP TABLE IF EXISTS employee_addresses;
 CREATE TABLE employee_addresses (
@@ -220,7 +234,7 @@ CREATE TABLE employee_addresses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 8. Employee Contacts
+-- 11. Employee Contacts
 -- ============================================
 DROP TABLE IF EXISTS employee_contacts;
 CREATE TABLE employee_contacts (
@@ -236,7 +250,7 @@ CREATE TABLE employee_contacts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 9. Employee Emergency Contacts
+-- 12. Employee Emergency Contacts
 -- ============================================
 DROP TABLE IF EXISTS employee_emergency_contacts;
 CREATE TABLE employee_emergency_contacts (
@@ -253,7 +267,7 @@ CREATE TABLE employee_emergency_contacts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 10. Employee Disclosures (Section 10)
+-- 13. Employee Disclosures (Section 10)
 -- ============================================
 DROP TABLE IF EXISTS employee_disclosures;
 CREATE TABLE employee_disclosures (
@@ -284,7 +298,7 @@ CREATE TABLE employee_disclosures (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 11. Employee Family (Section 2)
+-- 14. Employee Family (Section 2)
 -- ============================================
 DROP TABLE IF EXISTS employee_family;
 CREATE TABLE employee_family (
@@ -303,7 +317,7 @@ CREATE TABLE employee_family (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 12. Employee Children
+-- 15. Employee Children
 -- ============================================
 DROP TABLE IF EXISTS employee_children;
 CREATE TABLE employee_children (
@@ -319,7 +333,7 @@ CREATE TABLE employee_children (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 13. Employee Siblings
+-- 16. Employee Siblings
 -- ============================================
 DROP TABLE IF EXISTS employee_siblings;
 CREATE TABLE employee_siblings (
@@ -335,7 +349,7 @@ CREATE TABLE employee_siblings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 14. Professional Background (Sub-tables)
+-- 17. Professional Background (Sub-tables)
 -- ============================================
 DROP TABLE IF EXISTS employee_education;
 CREATE TABLE employee_education (
@@ -354,6 +368,9 @@ CREATE TABLE employee_education (
     CONSTRAINT fk_edu_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 18. Employee Work Experience
+-- ============================================
 DROP TABLE IF EXISTS employee_work_experience;
 CREATE TABLE employee_work_experience (
     work_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -371,7 +388,7 @@ CREATE TABLE employee_work_experience (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 15. Evaluation Templates
+-- 19. Evaluation Templates
 -- ============================================
 DROP TABLE IF EXISTS evaluation_templates;
 CREATE TABLE evaluation_templates (
@@ -395,7 +412,7 @@ CREATE TABLE evaluation_templates (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 16. Evaluation Criteria
+-- 20. Evaluation Criteria
 -- ============================================
 DROP TABLE IF EXISTS evaluation_criteria;
 CREATE TABLE evaluation_criteria (
@@ -415,7 +432,7 @@ CREATE TABLE evaluation_criteria (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 17. Evaluations 
+-- 21. Evaluations 
 -- ============================================
 DROP TABLE IF EXISTS evaluations;
 CREATE TABLE evaluations (
@@ -471,7 +488,7 @@ CREATE TABLE evaluations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 18. Evaluation Scores
+-- 22. Evaluation Scores
 -- ============================================
 DROP TABLE IF EXISTS evaluation_scores;
 CREATE TABLE evaluation_scores (
@@ -492,7 +509,7 @@ CREATE TABLE evaluation_scores (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 19. Evaluation Dev Plans
+-- 23. Evaluation Dev Plans
 -- ============================================
 DROP TABLE IF EXISTS evaluation_dev_plans;
 CREATE TABLE evaluation_dev_plans (
@@ -507,7 +524,7 @@ CREATE TABLE evaluation_dev_plans (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 19. Career Progression Movements
+-- 24. Career Progression Movements
 -- ============================================
 DROP TABLE IF EXISTS career_movements;
 CREATE TABLE career_movements (
@@ -535,7 +552,7 @@ CREATE TABLE career_movements (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 20. Notifications
+-- 25. Notifications
 -- ============================================
 DROP TABLE IF EXISTS notifications;
 CREATE TABLE notifications (
@@ -550,7 +567,7 @@ CREATE TABLE notifications (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 21. Audit Logs
+-- 26. Audit Logs
 -- ============================================
 DROP TABLE IF EXISTS audit_logs;
 CREATE TABLE audit_logs (
@@ -566,7 +583,7 @@ CREATE TABLE audit_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 22. System Settings
+-- 27. System Settings
 -- ============================================
 DROP TABLE IF EXISTS system_settings;
 CREATE TABLE system_settings (
@@ -575,9 +592,9 @@ CREATE TABLE system_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 23. Additional PDS Tables (to keep employees table lean)
--- Note: Remaining Sections 5, 7, 8, 9 from previous schema are kept as separate tables below
-
+-- ============================================
+-- 28. Employee Trainings
+-- ============================================
 DROP TABLE IF EXISTS employee_trainings;
 CREATE TABLE employee_trainings (
     training_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -592,6 +609,9 @@ CREATE TABLE employee_trainings (
     CONSTRAINT fk_train_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 29. Employee Voluntary Work
+-- ============================================
 DROP TABLE IF EXISTS employee_voluntary_work;
 CREATE TABLE employee_voluntary_work (
     voluntary_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -606,6 +626,19 @@ CREATE TABLE employee_voluntary_work (
     CONSTRAINT fk_vol_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 30. System Settings
+-- ============================================
+DROP TABLE IF EXISTS system_settings;
+CREATE TABLE system_settings (
+    setting_key VARCHAR(100) PRIMARY KEY,
+    setting_value TEXT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================
+-- 31. Employee Eligibility
+-- ============================================
 DROP TABLE IF EXISTS employee_eligibility;
 CREATE TABLE employee_eligibility (
     eligibility_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -620,6 +653,9 @@ CREATE TABLE employee_eligibility (
     CONSTRAINT fk_elig_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 32. Employee Skills
+-- ============================================
 DROP TABLE IF EXISTS employee_skills;
 CREATE TABLE employee_skills (
     skill_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -629,6 +665,9 @@ CREATE TABLE employee_skills (
     CONSTRAINT fk_skill_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 33. Employee Recognitions
+-- ============================================
 DROP TABLE IF EXISTS employee_recognitions;
 CREATE TABLE employee_recognitions (
     recognition_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -638,6 +677,9 @@ CREATE TABLE employee_recognitions (
     CONSTRAINT fk_recog_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 34. Employee Memberships
+-- ============================================
 DROP TABLE IF EXISTS employee_memberships;
 CREATE TABLE employee_memberships (
     membership_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -647,6 +689,9 @@ CREATE TABLE employee_memberships (
     CONSTRAINT fk_member_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 35. Employee Real Properties
+-- ============================================
 DROP TABLE IF EXISTS employee_real_properties;
 CREATE TABLE employee_real_properties (
     property_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -662,6 +707,9 @@ CREATE TABLE employee_real_properties (
     CONSTRAINT fk_real_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 36. Employee Personal Properties
+-- ============================================
 DROP TABLE IF EXISTS employee_personal_properties;
 CREATE TABLE employee_personal_properties (
     property_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -673,6 +721,9 @@ CREATE TABLE employee_personal_properties (
     CONSTRAINT fk_pers_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 37. Employee Liabilities
+-- ============================================
 DROP TABLE IF EXISTS employee_liabilities;
 CREATE TABLE employee_liabilities (
     liability_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -684,6 +735,9 @@ CREATE TABLE employee_liabilities (
     CONSTRAINT fk_liab_employee FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ============================================
+-- 38. Employee References
+-- ============================================
 DROP TABLE IF EXISTS employee_references;
 CREATE TABLE employee_references (
     reference_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -696,7 +750,7 @@ CREATE TABLE employee_references (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 23. Login Attempts (Brute Force Protection)
+-- 39. Login Attempts (Brute Force Protection)
 -- ============================================
 DROP TABLE IF EXISTS login_attempts;
 CREATE TABLE login_attempts (
