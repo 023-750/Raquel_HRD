@@ -33,31 +33,7 @@ $recent_logs = $conn->query("SELECT COUNT(*) as c FROM audit_logs WHERE timestam
 $total_employees = $conn->query("SELECT COUNT(*) as c FROM employees WHERE is_active = 1")->fetch_assoc()['c'];
 $employees_with_accounts = $conn->query("SELECT COUNT(DISTINCT employee_id) as c FROM users WHERE employee_id IS NOT NULL")->fetch_assoc()['c'];
 $employees_no_accounts = max(0, $total_employees - $employees_with_accounts);
-
-// 2. Authorized Personnel (HR Staff, HR Supervisor, HR Manager) by Branch
-// Only counts valid HR system users, excludes orphaned accounts
-$auth_personnel_res = $conn->query("
-    SELECT 
-        b.branch_name,
-        SUM(CASE WHEN u.role = 'HR Staff' THEN 1 ELSE 0 END) as staff_count,
-        SUM(CASE WHEN u.role = 'HR Supervisor' THEN 1 ELSE 0 END) as supervisor_count,
-        SUM(CASE WHEN u.role = 'HR Manager' THEN 1 ELSE 0 END) as manager_count
-    FROM branches b
-    LEFT JOIN users u ON b.branch_id = u.branch_id AND u.is_active = 1
-    LEFT JOIN employees e ON u.employee_id = e.employee_id
-    LEFT JOIN departments d ON e.department_id = d.department_id
-    WHERE b.deleted_at IS NULL
-      AND (u.user_id IS NULL OR 
-           (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff') 
-            AND e.employee_id IS NOT NULL 
-            AND d.department_name = 'Human Resources'))
-    GROUP BY b.branch_id, b.branch_name
-    ORDER BY b.branch_name
-");
-$branch_auth_stats = [];
-while ($row = $auth_personnel_res->fetch_assoc()) {
-    $branch_auth_stats[] = $row;
-}
+$issued_pct = ($total_employees > 0) ? ($employees_with_accounts / $total_employees) * 100 : 0;
 
 // --- SYSTEM ANALYTICS ---
 
@@ -113,39 +89,97 @@ if ($activity_res) {
     }
 }
 
-// Branch data for table
-$branches_res = $conn->query("SELECT * FROM branches WHERE deleted_at IS NULL ORDER BY branch_name");
-$branches = [];
-while ($row = $branches_res->fetch_assoc()) {
-    $branches[] = $row;
-}
-$selected_branch_id = isset($_GET['branch_id']) ? (int) $_GET['branch_id'] : (count($branches) > 0 ? $branches[0]['branch_id'] : null);
-$branch_active_users = [];
-if ($selected_branch_id) {
-    $stmt = $conn->prepare("
-        SELECT u.*, b.branch_name 
-        FROM users u 
-        LEFT JOIN branches b ON u.branch_id = b.branch_id 
-        LEFT JOIN employees e ON u.employee_id = e.employee_id
-        LEFT JOIN departments d ON e.department_id = d.department_id
-        WHERE u.branch_id = ? 
-          AND u.is_active = 1
-          AND ((u.role = 'Admin' AND u.employee_id IS NULL)
-            OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff') 
-                AND e.employee_id IS NOT NULL 
-                AND d.department_name = 'Human Resources'))
-        ORDER BY u.full_name ASC
-    ");
-    $stmt->bind_param("i", $selected_branch_id);
-    $stmt->execute();
-    $branch_active_users = $stmt->get_result();
-    $stmt->close();
-}
+// Admin Action Center: surface account issues that need a decision, not just branch-level listings.
+$pending_account_setup_count = (int) ($conn->query("
+    SELECT COUNT(*) AS c
+    FROM employees e
+    INNER JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN users u ON e.employee_id = u.employee_id
+        AND u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff')
+    WHERE e.is_active = 1
+      AND e.deleted_at IS NULL
+      AND d.department_name = 'Human Resources'
+      AND u.user_id IS NULL
+")->fetch_assoc()['c'] ?? 0);
+$pending_account_setup = $conn->query("
+    SELECT e.employee_id, e.first_name, e.last_name, e.job_title, b.branch_name
+    FROM employees e
+    INNER JOIN departments d ON e.department_id = d.department_id
+    LEFT JOIN branches b ON e.branch_id = b.branch_id
+    LEFT JOIN users u ON e.employee_id = u.employee_id
+        AND u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff')
+    WHERE e.is_active = 1
+      AND e.deleted_at IS NULL
+      AND d.department_name = 'Human Resources'
+      AND u.user_id IS NULL
+    ORDER BY e.last_name, e.first_name
+    LIMIT 3
+");
+
+$first_signin_count = (int) ($conn->query("
+    SELECT COUNT(*) AS c
+    FROM users u
+    LEFT JOIN employees e ON u.employee_id = e.employee_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE u.is_active = 1
+      AND u.first_login_completed = 0
+      AND ((u.role = 'Admin' AND u.employee_id IS NULL)
+        OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff')
+          AND e.employee_id IS NOT NULL
+          AND e.is_active = 1
+          AND e.deleted_at IS NULL
+          AND d.department_name = 'Human Resources'))
+")->fetch_assoc()['c'] ?? 0);
+$first_signin_users = $conn->query("
+    SELECT u.user_id, u.full_name, u.role, u.created_at
+    FROM users u
+    LEFT JOIN employees e ON u.employee_id = e.employee_id
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE u.is_active = 1
+      AND u.first_login_completed = 0
+      AND ((u.role = 'Admin' AND u.employee_id IS NULL)
+        OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff')
+          AND e.employee_id IS NOT NULL
+          AND e.is_active = 1
+          AND e.deleted_at IS NULL
+          AND d.department_name = 'Human Resources'))
+    ORDER BY u.created_at ASC
+    LIMIT 3
+");
 
 $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOIN users u ON al.user_id = u.user_id ORDER BY al.timestamp DESC LIMIT 10");
 ?>
 
+<style>
+    .admin-dashboard .page-hero { position: relative; overflow: hidden; }
+    .admin-dashboard .page-hero::after { content: ''; position: absolute; width: 180px; height: 180px; right: -70px; top: -95px; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; box-shadow: 0 0 0 26px rgba(255,255,255,.035), 0 0 0 52px rgba(255,255,255,.025); pointer-events: none; }
+    .admin-dashboard .dashboard-hero-content { position: relative; z-index: 1; }
+    .admin-dashboard .hero-refresh { color: rgba(255,255,255,.7); font-size: .8rem; }
+    .admin-dashboard .hero-refresh i { color: #ffd97d; }
+    .admin-dashboard .dashboard-section-heading { margin-bottom: .75rem; }
+    .admin-dashboard .dashboard-section-heading h5 { color: var(--text-dark); font-weight: 750; margin: 0; }
+    .admin-dashboard .dashboard-section-heading p { margin: .2rem 0 0; color: var(--text-muted); font-size: .84rem; }
+    .admin-dashboard .chart-card .card-body { padding: 1rem 1.25rem 1.25rem; }
+    .admin-dashboard .chart-card canvas { height: 230px !important; max-height: 230px; }
+    .admin-dashboard .coverage-panel { background: linear-gradient(135deg, #f0f8f2 0%, #fbfdfb 100%); border: 1px solid #d9ecdf; border-radius: 14px; }
+    .admin-dashboard .coverage-number { color: #16703a; font-size: 2rem; font-weight: 800; letter-spacing: -.06em; line-height: 1; }
+    .admin-dashboard .coverage-label { color: #427453; font-size: .73rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .admin-dashboard .issuance-stat + .issuance-stat { border-left: 1px solid #dce9df; }
+    .admin-dashboard .audit-card .card-body { min-height: 288px; }
+    .admin-dashboard .audit-card .table thead th { font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+    .admin-dashboard .audit-card .table td { vertical-align: middle; }
+    .admin-dashboard .audit-card .table td:first-child { font-weight: 600; }
+    @media (max-width: 767.98px) {
+        .admin-dashboard .hero-actions { width: 100%; }
+        .admin-dashboard .hero-actions .btn { width: 100%; }
+        .admin-dashboard .chart-card canvas { height: 210px !important; }
+        .admin-dashboard .issuance-stat + .issuance-stat { border-left: 0; border-top: 1px solid #dce9df; margin-top: .85rem; padding-top: .85rem; }
+    }
+</style>
+
+<div class="admin-dashboard">
 <div class="page-hero fadeup">
+    <div class="dashboard-hero-content">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
         <div>
             <div class="mb-1" style="color:#FFD97D;font-size:.88rem;font-weight:600;letter-spacing:.3px;"><?php echo getGreeting($_SESSION['full_name'] ?? ''); ?></div>
@@ -154,12 +188,14 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-shield-alt me-2"
                     style="color:var(--primary-light);"></i>System Overview</h4>
         </div>
-        <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
-            <i class="fas fa-sync-alt me-1"></i>Last refresh: <?php echo date('H:i'); ?>
+        <div class="hero-actions d-flex align-items-center gap-3">
+            <div class="hero-refresh"><i class="fas fa-sync-alt me-1"></i>Updated <?php echo date('H:i'); ?></div>
+            <a href="<?php echo BASE_URL; ?>/admin/users.php" class="btn btn-sm btn-light fw-semibold text-primary"><i class="fas fa-users-cog me-1"></i>Manage users</a>
         </div>
     </div>
     <p class="text-white-50 small mb-0"><i class="fas fa-lock me-1"></i>Security oversight and user management control
         center for Raquel Pawnshop HRIS.</p>
+    </div>
 </div>
 
 <!-- Statistics Cards -->
@@ -178,7 +214,7 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
             <div class="stat-icon green"><i class="fas fa-user-check"></i></div>
             <div class="stat-info">
                 <h3><?php echo $active_users; ?></h3>
-                <p>Active Sessions</p>
+                <p>Active Accounts</p>
             </div>
         </div>
     </div>
@@ -196,95 +232,113 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
             <div class="stat-icon gold"><i class="fas fa-file-invoice"></i></div>
             <div class="stat-info">
                 <h3><?php echo $recent_logs; ?></h3>
-                <p>Logs (Last 24h)</p>
+                <p>Security Events (24h)</p>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Account Issuance and Auth Personnel Summary -->
+<!-- Admin Action Center -->
 <div class="row g-3 mb-4">
-    <div class="col-lg-6">
-        <div class="content-card h-100">
-            <div class="card-header">
-                <h5><i class="fas fa-id-badge me-2"></i>Employee Account Issuance</h5>
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-6 border-end">
-                        <div class="p-2">
-                            <h2 class="fw-bold text-success mb-0"><?php echo $employees_with_accounts; ?></h2>
-                            <p class="text-muted small mb-0">Issued Accounts</p>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="p-2">
-                            <h2 class="fw-bold text-warning mb-0"><?php echo $employees_no_accounts; ?></h2>
-                            <p class="text-muted small mb-0">No Accounts Yet</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <div class="progress" style="height: 10px;">
-                        <?php
-                        $issued_pct = ($total_employees > 0) ? ($employees_with_accounts / $total_employees) * 100 : 0;
-                        ?>
-                        <div class="progress-bar bg-success" role="progressbar"
-                            style="width: <?php echo $issued_pct; ?>%" aria-valuenow="<?php echo $issued_pct; ?>"
-                            aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                    <div class="d-flex justify-content-between mt-1">
-                        <small class="text-muted"><?php echo round($issued_pct, 1); ?>% Coverage</small>
-                        <small class="text-muted">Total: <?php echo $total_employees; ?> Employees</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-6">
+    <div class="col-lg-12">
         <div class="content-card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="fas fa-user-shield me-2"></i>Authorized Personnel per Branch</h5>
-                <small class="text-muted" id="authPersonnelInfo"></small>
+                <div>
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Admin Action Center</h5>
+                    <small class="text-muted">Account tasks that need an administrator's attention</small>
+                </div>
+                <a href="<?php echo BASE_URL; ?>/admin/users.php" class="btn btn-sm btn-outline-primary">View all accounts</a>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0" style="font-size: 0.85rem;">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Branch</th>
-                                <th class="text-center">Staff</th>
-                                <th class="text-center">Supervisor</th>
-                                <th class="text-center">Manager</th>
-                            </tr>
-                        </thead>
-                        <tbody id="authPersonnelBody">
-                            <?php foreach ($branch_auth_stats as $stat): ?>
-                                <tr>
-                                    <td><strong><?php echo e($stat['branch_name']); ?></strong></td>
-                                    <td class="text-center"><?php echo $stat['staff_count']; ?></td>
-                                    <td class="text-center"><?php echo $stat['supervisor_count']; ?></td>
-                                    <td class="text-center"><?php echo $stat['manager_count']; ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+            <div class="card-body">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="border rounded-3 p-3 h-100" style="background:linear-gradient(135deg, #eef5ff 0%, #f8fbff 100%); border-color:#cfe0ff !important;">
+                            <div class="d-flex align-items-start justify-content-between gap-3">
+                                <div>
+                                    <div class="text-primary small fw-semibold text-uppercase" style="letter-spacing:.05em;">Pending setup</div>
+                                    <div class="d-flex align-items-baseline mt-1">
+                                        <span class="display-6 fw-bold text-primary lh-1"><?php echo $pending_account_setup_count; ?></span>
+                                        <span class="text-muted small ms-2">employees</span>
+                                    </div>
+                                    <p class="small text-muted mb-0 mt-2">Active HR employees without system accounts.</p>
+                                </div>
+                                <span class="rounded-circle d-inline-flex align-items-center justify-content-center text-primary" style="width:42px;height:42px;background:#dbeafe;flex:0 0 42px;">
+                                    <i class="fas fa-user-plus"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="border rounded-3 p-3 h-100" style="background:linear-gradient(135deg, #fff8e8 0%, #fffdf8 100%); border-color:#f6dfac !important;">
+                            <div class="d-flex align-items-start justify-content-between gap-3">
+                                <div>
+                                    <div class="text-warning small fw-semibold text-uppercase" style="letter-spacing:.05em;">Awaiting first sign-in</div>
+                                    <div class="d-flex align-items-baseline mt-1">
+                                        <span class="display-6 fw-bold text-warning lh-1"><?php echo $first_signin_count; ?></span>
+                                        <span class="text-muted small ms-2">accounts</span>
+                                    </div>
+                                    <p class="small text-muted mb-0 mt-2">Issued accounts not yet activated by users.</p>
+                                </div>
+                                <span class="rounded-circle d-inline-flex align-items-center justify-content-center text-warning" style="width:42px;height:42px;background:#fff0c7;flex:0 0 42px;">
+                                    <i class="fas fa-key"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top" style="background:#fafbfc;">
-                    <small class="text-muted" id="authPageLabel">Page 1</small>
-                    <nav>
-                        <ul class="pagination pagination-sm mb-0 gap-1" id="authPersonnelPagination"></ul>
-                    </nav>
-                </div>
+
+                <?php if ($pending_account_setup_count === 0 && $first_signin_count === 0): ?>
+                    <div class="d-flex align-items-center justify-content-center gap-2 rounded-3 py-3 px-4" style="background:#edf9f1; color:#277a47;">
+                        <i class="fas fa-check-circle"></i>
+                        <span class="small fw-semibold">All HR employee accounts are set up and activated.</span>
+                    </div>
+                <?php else: ?>
+                    <?php if ($pending_account_setup_count > 0): ?>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <strong class="small text-primary"><i class="fas fa-user-plus me-1"></i>Employees needing an account</strong>
+                                <a href="<?php echo BASE_URL; ?>/admin/users.php" class="btn btn-sm btn-link text-decoration-none py-0">Create account <i class="fas fa-arrow-right ms-1"></i></a>
+                            </div>
+                            <?php while ($employee = $pending_account_setup->fetch_assoc()): ?>
+                                <div class="d-flex justify-content-between align-items-center rounded-3 px-3 py-2 mb-2 small" style="background:#f8fafc;">
+                                    <div class="pe-3">
+                                        <strong><?php echo e($employee['last_name'] . ', ' . $employee['first_name']); ?></strong>
+                                        <div class="text-muted mt-1"><?php echo e($employee['job_title'] ?: 'HR employee'); ?><?php echo $employee['branch_name'] ? ' · ' . e($employee['branch_name']) : ''; ?></div>
+                                    </div>
+                                    <a href="<?php echo BASE_URL; ?>/admin/users.php" class="btn btn-sm btn-outline-primary">Set up</a>
+                                </div>
+                            <?php endwhile; ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($first_signin_count > 0): ?>
+                        <div>
+                            <strong class="small text-warning d-block mb-2"><i class="fas fa-key me-1"></i>Accounts awaiting first sign-in</strong>
+                            <?php while ($user = $first_signin_users->fetch_assoc()): ?>
+                                <div class="d-flex justify-content-between align-items-center rounded-3 px-3 py-2 mb-2 small" style="background:#fffcf5;">
+                                    <div class="pe-3">
+                                        <strong><?php echo e($user['full_name']); ?></strong>
+                                        <div class="text-muted mt-1"><?php echo e($user['role']); ?> · created <?php echo date('M j, Y', strtotime($user['created_at'])); ?></div>
+                                    </div>
+                                    <a href="<?php echo BASE_URL; ?>/admin/edit-user.php?id=<?php echo $user['user_id']; ?>" class="btn btn-sm btn-outline-warning">Review</a>
+                                </div>
+                            <?php endwhile; ?>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>
 </div>
 
 <!-- System Analytics -->
+<div class="dashboard-section-heading">
+    <h5>System Analytics</h5>
+    <p>A quick view of account roles, availability, and recent administrator activity.</p>
+</div>
 <div class="row g-4 mb-4">
     <div class="col-lg-4">
-        <div class="content-card h-100">
+        <div class="content-card chart-card h-100">
             <div class="card-header">
                 <h5><i class="fas fa-user-tag me-2"></i>User Roles Distribution</h5>
             </div>
@@ -294,7 +348,7 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="content-card h-100">
+        <div class="content-card chart-card h-100">
             <div class="card-header">
                 <h5><i class="fas fa-toggle-on me-2"></i>Account Status</h5>
             </div>
@@ -304,7 +358,7 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="content-card h-100">
+        <div class="content-card chart-card h-100">
             <div class="card-header">
                 <h5><i class="fas fa-chart-line me-2"></i>Activity Trend (7 Days)</h5>
             </div>
@@ -316,56 +370,50 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
 </div>
 
 <div class="row g-4 mb-4">
-    <!-- Active Users by Branch -->
-    <div class="col-lg-6">
+    <!-- Employee Account Issuance -->
+    <div class="col-lg-4">
         <div class="content-card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5><i class="fas fa-shield-alt me-2"></i>User Access by Branch</h5>
-                <form method="GET" class="d-flex align-items-center" style="max-width: 200px;">
-                    <select name="branch_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <?php foreach ($branches as $b): ?>
-                            <option value="<?php echo $b['branch_id']; ?>" <?php echo $selected_branch_id == $b['branch_id'] ? 'selected' : ''; ?>>
-                                <?php echo e($b['branch_name']); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </form>
+            <div class="card-header">
+                <h5><i class="fas fa-id-badge me-2"></i>Employee Account Issuance</h5>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>System User</th>
-                                <th>Access Role</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!$branch_active_users || $branch_active_users->num_rows === 0): ?>
-                                <tr>
-                                    <td colspan="3" class="text-center text-muted py-4">No active users in selected branch.
-                                    </td>
-                                </tr>
-                            <?php else: ?>
-                                <?php while ($u = $branch_active_users->fetch_assoc()): ?>
-                                    <tr>
-                                        <td><strong><?php echo e($u['full_name']); ?></strong></td>
-                                        <td><span class="badge bg-primary"><?php echo e($u['role']); ?></span></td>
-                                        <td><span class="badge bg-success">Active</span></td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+            <div class="card-body">
+                <div class="coverage-panel p-3 mb-3">
+                    <div class="d-flex align-items-end justify-content-between gap-3">
+                        <div>
+                            <div class="coverage-label">Account coverage</div>
+                            <div class="coverage-number mt-1"><?php echo round($issued_pct, 1); ?>%</div>
+                        </div>
+                        <i class="fas fa-shield-alt fa-2x" style="color:#5ca973;"></i>
+                    </div>
+                    <div class="progress mt-3" style="height:8px; background:#dceee1;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: <?php echo $issued_pct; ?>%" aria-valuenow="<?php echo $issued_pct; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                <div class="row text-center">
+                    <div class="col-6 issuance-stat">
+                        <div class="p-1">
+                            <h2 class="fw-bold text-success mb-1"><?php echo $employees_with_accounts; ?></h2>
+                            <p class="text-muted small mb-0">Accounts issued</p>
+                        </div>
+                    </div>
+                    <div class="col-6 issuance-stat">
+                        <div class="p-1">
+                            <h2 class="fw-bold text-warning mb-1"><?php echo $employees_no_accounts; ?></h2>
+                            <p class="text-muted small mb-0">Not issued yet</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between border-top mt-3 pt-3">
+                    <small class="text-muted">Across all active employees</small>
+                    <small class="fw-semibold text-dark"><?php echo $total_employees; ?> total</small>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Recent Security Activity -->
-    <div class="col-lg-6">
-        <div class="content-card h-100">
+    <div class="col-lg-8">
+        <div class="content-card audit-card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5><i class="fas fa-history me-2"></i>Recent Security Activity</h5>
                 <a href="<?php echo BASE_URL; ?>/admin/audit-trail.php" class="btn btn-sm btn-outline-primary">View Full
@@ -389,9 +437,9 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
                             <?php else: ?>
                                 <?php while ($log = $audit_logs->fetch_assoc()): ?>
                                     <tr>
-                                        <td><?php echo e($log['full_name'] ?? 'System Process'); ?></td>
-                                        <td><span class="badge bg-secondary"><?php echo e($log['action_type']); ?></span></td>
-                                        <td><small><?php echo formatDateTime($log['timestamp']); ?></small></td>
+                                    <td data-label="User"><?php echo e($log['full_name'] ?? 'System Process'); ?></td>
+                                    <td data-label="Operation"><span class="badge bg-secondary"><?php echo e($log['action_type']); ?></span></td>
+                                    <td data-label="Timestamp"><small><?php echo formatDateTime($log['timestamp']); ?></small></td>
                                     </tr>
                                 <?php endwhile; ?>
                             <?php endif; ?>
@@ -401,6 +449,8 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
             </div>
         </div>
     </div>
+</div>
+
 </div>
 
 <script>
@@ -461,69 +511,6 @@ $audit_logs = $conn->query("SELECT al.*, u.full_name FROM audit_logs al LEFT JOI
             }
         });
 
-        // --- Authorized Personnel Pagination ---
-        (function() {
-            const tbody = document.getElementById('authPersonnelBody');
-            const pagination = document.getElementById('authPersonnelPagination');
-            const pageLabel = document.getElementById('authPageLabel');
-            const infoLabel = document.getElementById('authPersonnelInfo');
-            const rows = Array.from(tbody.querySelectorAll('tr'));
-            const perPage = 5;
-            const totalPages = Math.ceil(rows.length / perPage);
-            let currentPage = 1;
-
-            infoLabel.textContent = rows.length + ' branches';
-
-            function render(page) {
-                currentPage = page;
-                const start = (page - 1) * perPage;
-                const end = start + perPage;
-
-                rows.forEach((row, i) => {
-                    row.style.display = (i >= start && i < end) ? '' : 'none';
-                });
-
-                pageLabel.textContent = `Page ${page} of ${totalPages}`;
-
-                // Build pagination buttons
-                let html = '';
-                html += `<li class="page-item ${page === 1 ? 'disabled' : ''}">
-                            <a class="page-link" href="#" data-page="${page - 1}" style="border-radius:8px;">&lsaquo;</a>
-                         </li>`;
-
-                // Smart page range (show max 5 page buttons)
-                let rangeStart = Math.max(1, page - 2);
-                let rangeEnd = Math.min(totalPages, rangeStart + 4);
-                if (rangeEnd - rangeStart < 4) rangeStart = Math.max(1, rangeEnd - 4);
-
-                for (let i = rangeStart; i <= rangeEnd; i++) {
-                    html += `<li class="page-item ${i === page ? 'active' : ''}">
-                                <a class="page-link" href="#" data-page="${i}" style="border-radius:8px;">${i}</a>
-                             </li>`;
-                }
-
-                html += `<li class="page-item ${page === totalPages ? 'disabled' : ''}">
-                            <a class="page-link" href="#" data-page="${page + 1}" style="border-radius:8px;">&rsaquo;</a>
-                         </li>`;
-
-                pagination.innerHTML = html;
-
-                // Bind click events
-                pagination.querySelectorAll('a[data-page]').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const p = parseInt(this.dataset.page);
-                        if (p >= 1 && p <= totalPages) render(p);
-                    });
-                });
-            }
-
-            if (totalPages > 1) {
-                render(1);
-            } else {
-                pageLabel.textContent = `Page 1 of 1`;
-            }
-        })();
     });
 </script>
 

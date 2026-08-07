@@ -29,7 +29,7 @@ $notifications = getRecentNotifications($conn, (int) $_SESSION['user_id'], 5, $n
 
 // 1. Get profile picture from the linked EMPLOYEE account
 $stmt = $conn->prepare("
-    SELECT e.profile_picture 
+    SELECT u.profile_picture AS user_profile_picture, e.profile_picture AS employee_profile_picture
     FROM users u 
     LEFT JOIN employees e ON u.employee_id = e.employee_id 
     WHERE u.user_id = ? 
@@ -40,7 +40,7 @@ $stmt->execute();
 $res = $stmt->get_result();
 $display_avatar = getEmployeeAvatar(''); // Default
 if ($row = $res->fetch_assoc()) {
-    $display_avatar = getEmployeeAvatar($row['profile_picture']);
+    $display_avatar = getUserAvatar($row['user_profile_picture'], $row['employee_profile_picture']);
 }
 $stmt->close();
 

@@ -44,6 +44,9 @@ $total_users_result = $conn->query("
            AND e.department_id = (SELECT department_id FROM departments WHERE department_name = 'Human Resources' LIMIT 1))
 ");
 $total_users = (int) ($total_users_result->fetch_assoc()['total'] ?? 0);
+$active_users_result = $conn->query("\n    SELECT COUNT(*) AS total\n    FROM users u\n    LEFT JOIN employees e ON u.employee_id = e.employee_id\n    WHERE u.is_active = 1\n      AND ((u.role = 'Admin')\n       OR (u.role IN ('HR Manager', 'HR Supervisor', 'HR Staff')\n           AND e.employee_id IS NOT NULL\n           AND e.department_id = (SELECT department_id FROM departments WHERE department_name = 'Human Resources' LIMIT 1)))\n");
+$active_users_count = (int) ($active_users_result->fetch_assoc()['total'] ?? 0);
+$inactive_users_count = max(0, $total_users - $active_users_count);
 $total_pages = max(1, (int) ceil($total_users / $per_page));
 
 if ($current_page > $total_pages) {
@@ -53,7 +56,8 @@ if ($current_page > $total_pages) {
 
 // Fetch HR system users
 $users = $conn->query("
-    SELECT u.*, b.branch_name, e.profile_picture, e.job_title, rc.rank_name
+    SELECT u.*, u.profile_picture AS user_profile_picture, b.branch_name,
+           e.profile_picture AS employee_profile_picture, e.job_title, rc.rank_name
     FROM users u
     LEFT JOIN branches b ON u.branch_id = b.branch_id
     LEFT JOIN employees e ON u.employee_id = e.employee_id
@@ -154,13 +158,43 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
 <?php endif; ?>
 
 <!-- Page Header -->
+<style>
+    .user-management .page-hero { position: relative; overflow: hidden; }
+    .user-management .page-hero::after { content: ''; position: absolute; width: 190px; height: 190px; right: -78px; top: -100px; border: 1px solid rgba(255,255,255,.13); border-radius: 50%; box-shadow: 0 0 0 26px rgba(255,255,255,.035), 0 0 0 52px rgba(255,255,255,.02); pointer-events: none; }
+    .user-management .hero-content { position: relative; z-index: 1; }
+    .user-management .access-overview { background: linear-gradient(135deg, #f7faf8 0%, #fff 100%); border: 1px solid #e3ece5; border-radius: 14px; }
+    .user-management .overview-stat { padding: .15rem 1rem; }
+    .user-management .overview-stat + .overview-stat { border-left: 1px solid #dde8df; }
+    .user-management .overview-value { color: var(--text-dark); font-size: 1.55rem; font-weight: 800; line-height: 1.1; letter-spacing: -.04em; }
+    .user-management .overview-label { color: var(--text-muted); font-size: .7rem; font-weight: 700; letter-spacing: .055em; text-transform: uppercase; }
+    .user-management .user-toolbar { background: #fbfdfb; border-bottom: 1px solid var(--glass-border); padding: .8rem 1.25rem; }
+    .user-management .user-toolbar .search-box { width: min(100%, 300px); }
+    .user-management .user-toolbar .form-select { min-width: 140px; }
+    .user-management .users-table th { white-space: nowrap; }
+    .user-management .users-table td { vertical-align: middle; }
+    .user-management .users-table tbody tr { transition: background-color .18s ease; }
+    .user-management .user-count { color: var(--text-muted); font-size: .82rem; }
+    @media (max-width: 767.98px) {
+        .user-management .hero-actions { width: 100%; }
+        .user-management .hero-actions .btn { flex: 1; }
+        .user-management .access-overview { display: grid !important; grid-template-columns: repeat(3, 1fr); }
+        .user-management .overview-stat { padding: .15rem .6rem; text-align: center; }
+        .user-management .overview-stat + .overview-stat { border-left: 1px solid #dde8df; }
+        .user-management .overview-value { font-size: 1.35rem; }
+        .user-management .user-toolbar { padding: .75rem 1rem; }
+        .user-management .user-toolbar .search-box, .user-management .user-toolbar .form-select { width: 100%; }
+    }
+</style>
+
+<div class="user-management">
 <div class="page-hero fadeup">
+    <div class="hero-content">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">System Admin · Access Control</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-users-cog me-2" style="color:var(--primary-light);"></i>User Management</h4>
         </div>
-        <div class="d-flex gap-2 flex-wrap justify-content-end">
+        <div class="hero-actions d-flex gap-2 flex-wrap justify-content-end">
             <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#addAdminModal">
                 <i class="fas fa-user-shield me-2"></i>Add New Admin
             </button>
@@ -170,25 +204,54 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
         </div>
     </div>
     <p class="text-white-50 small mb-0"><i class="fas fa-lock me-1"></i>Manage system user accounts, roles, and HR access permissions.</p>
+    </div>
 </div>
 
-<div class="d-none d-md-flex justify-content-between align-items-center mb-4" data-flash-toast-anchor>
-    <p class="notification_placeholder text-muted mb-0">All USERS OF HRIS SYSTEM</p>
+<div class="access-overview d-flex align-items-center justify-content-between mb-4 py-3" data-flash-toast-anchor>
+    <div class="overview-stat flex-fill">
+        <div class="overview-value"><?php echo $total_users; ?></div>
+        <div class="overview-label">HRIS accounts</div>
+    </div>
+    <div class="overview-stat flex-fill">
+        <div class="overview-value text-success"><?php echo $active_users_count; ?></div>
+        <div class="overview-label">Active</div>
+    </div>
+    <div class="overview-stat flex-fill">
+        <div class="overview-value text-danger"><?php echo $inactive_users_count; ?></div>
+        <div class="overview-label">Inactive</div>
+    </div>
+    <div class="d-none d-md-block notification_placeholder text-muted small pe-3">System access overview</div>
 </div>
 
 <!-- Users Table -->
 <div class="content-card fadeup-1">
     <div class="card-header">
-        <h5><i class="fas fa-users me-2"></i>All Users</h5>
-        <div class="search-box">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" class="form-control form-control-sm" id="searchUsers" placeholder="Search users..."
-                onkeyup="filterTable('searchUsers', 'usersTable')">
+        <div>
+            <h5><i class="fas fa-users me-2"></i>All Users</h5>
+            <div class="user-count mt-1"><?php echo $total_users; ?> account<?php echo $total_users === 1 ? '' : 's'; ?> in the HRIS</div>
         </div>
+    </div>
+    <div class="user-toolbar d-flex flex-wrap align-items-center gap-2">
+        <div class="search-box flex-grow-1">
+            <i class="fas fa-search search-icon"></i>
+            <input type="search" class="form-control form-control-sm" id="searchUsers" placeholder="Search name, username, email...">
+        </div>
+        <select class="form-select form-select-sm" id="roleFilter" aria-label="Filter by role">
+            <option value="">All roles</option>
+            <option value="Admin">Admin</option>
+            <option value="HR Manager">HR Manager</option>
+            <option value="HR Supervisor">HR Supervisor</option>
+            <option value="HR Staff">HR Staff</option>
+        </select>
+        <select class="form-select form-select-sm" id="statusFilter" aria-label="Filter by account status">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+        </select>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive d-none d-md-block">
-            <table class="table table-hover" id="usersTable">
+            <table class="table table-hover users-table" id="usersTable">
                 <thead>
                     <tr>
                         <th>#</th>
@@ -206,10 +269,10 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                 <tbody>
                     <?php $row_number = $offset + 1; ?>
                     <?php while ($user = $users->fetch_assoc()): ?>
-                        <tr>
+                        <tr data-role="<?php echo e($user['role']); ?>" data-status="<?php echo $user['is_active'] ? 'active' : 'inactive'; ?>">
                             <td><strong><?php echo $row_number++; ?></strong></td>
                             <td>
-                                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>"
+                                <img src="<?php echo getUserAvatar($user['user_profile_picture'], $user['employee_profile_picture']); ?>"
                                     alt="Profile" class="rounded-circle"
                                     style="width: 32px; height: 32px; object-fit: cover;">
                             </td>
@@ -218,7 +281,9 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                             <td><?php echo e($user['email']); ?></td>
                             <td><span class="badge bg-primary"><?php echo e($user['role']); ?></span></td>
                             <td>
-                                <?php if (!empty($user['job_title'])): ?>
+                                <?php if ($user['role'] === 'Admin'): ?>
+                                    <span class="text-muted small">Standalone admin account</span>
+                                <?php elseif (!empty($user['job_title'])): ?>
                                     <div><?php echo e($user['job_title']); ?></div>
                                     <?php if (!empty($user['rank_name'])): ?>
                                         <small class="text-muted"><?php echo e($user['rank_name']); ?></small>
@@ -227,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                                     <span class="text-muted small">Standalone account</span>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo e($user['branch_name'] ?? 'N/A'); ?></td>
+                            <td><?php echo $user['role'] === 'Admin' ? '<span class="text-muted small">None</span>' : e($user['branch_name'] ?? 'N/A'); ?></td>
                             <td>
                                 <span class="badge <?php echo $user['is_active'] ? 'bg-success' : 'bg-danger'; ?>">
                                     <?php echo $user['is_active'] ? 'Active' : 'Inactive'; ?>
@@ -261,9 +326,9 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
             </table>
         </div>
 
-        <!-- Mobile view (Student Check-in Style) -->
+        <!-- Mobile user list -->
         <div class="mobile-list-view d-block d-md-none">
-            <div class="student-list">
+            <div class="student-list" id="mobileUsersList">
                 <?php $row_number_mob = $offset + 1; ?>
                 <?php if ($users->num_rows === 0): ?>
                     <div class="text-center py-4 text-muted">No users found.</div>
@@ -283,9 +348,9 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                         }
                         if (empty($initials)) $initials = 'US';
                     ?>
-                        <div class="student-item">
+                        <div class="student-item" data-role="<?php echo e($user['role']); ?>" data-status="<?php echo $user['is_active'] ? 'active' : 'inactive'; ?>">
                             <div class="student-avatar">
-                                <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>" alt="Profile" class="avatar-img">
+                                <img src="<?php echo getUserAvatar($user['user_profile_picture'], $user['employee_profile_picture']); ?>" alt="Profile" class="avatar-img">
                             </div>
                             <div class="student-info">
                                 <div class="student-name">
@@ -295,7 +360,9 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                                     Username: <code><?php echo e($user['username']); ?></code> &bull; <span class="badge bg-primary"><?php echo e($user['role']); ?></span>
                                 </div>
                                 <div class="student-meta" style="margin-top: 2px;">
-                                    <?php if (!empty($user['job_title'])): ?>
+                                    <?php if ($user['role'] === 'Admin'): ?>
+                                        <span class="text-muted small">Standalone admin account</span>
+                                    <?php elseif (!empty($user['job_title'])): ?>
                                         <span><?php echo e($user['job_title']); ?></span>
                                         <?php if (!empty($user['rank_name'])): ?>
                                             <span class="text-muted small">(<?php echo e($user['rank_name']); ?>)</span>
@@ -305,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                                     <?php endif; ?>
                                 </div>
                                 <div class="student-meta" style="margin-top: 2px;">
-                                    <span>Branch: <?php echo e($user['branch_name'] ?? 'N/A'); ?></span> &bull; <span><?php echo e($user['email']); ?></span>
+                                    <span>Branch: <?php echo $user['role'] === 'Admin' ? 'None' : e($user['branch_name'] ?? 'N/A'); ?></span> &bull; <span><?php echo e($user['email']); ?></span>
                                 </div>
                                 <div class="student-meta" style="margin-top: 4px;">
                                     Status: 
@@ -400,6 +467,8 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
     <?php endif; ?>
 </div>
 
+</div>
+
 <!-- Add User Modal -->
 <div class="modal fade" id="addUserModal" tabindex="-1">
     <div class="modal-dialog">
@@ -455,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Profile Picture</label>
+                        <label class="form-label">Account Profile Picture</label>
                         <input type="file" class="form-control" name="profile_picture" accept="image/*">
                         <div class="form-text">Optional. Max 2MB (JPG, PNG, WebP).</div>
                     </div>
@@ -583,6 +652,27 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
                 }
             });
         }
+
+        const searchUsers = document.getElementById('searchUsers');
+        const roleFilter = document.getElementById('roleFilter');
+        const statusFilter = document.getElementById('statusFilter');
+
+        function filterUsers() {
+            const searchTerm = (searchUsers?.value || '').trim().toLowerCase();
+            const selectedRole = roleFilter?.value || '';
+            const selectedStatus = statusFilter?.value || '';
+
+            document.querySelectorAll('#usersTable tbody tr, #mobileUsersList .student-item').forEach(function (item) {
+                const matchesSearch = !searchTerm || item.textContent.toLowerCase().includes(searchTerm);
+                const matchesRole = !selectedRole || item.dataset.role === selectedRole;
+                const matchesStatus = !selectedStatus || item.dataset.status === selectedStatus;
+                item.style.display = matchesSearch && matchesRole && matchesStatus ? '' : 'none';
+            });
+        }
+
+        searchUsers?.addEventListener('input', filterUsers);
+        roleFilter?.addEventListener('change', filterUsers);
+        statusFilter?.addEventListener('change', filterUsers);
     });
 </script>
 

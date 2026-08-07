@@ -12,7 +12,9 @@ if ($uid <= 0) {
 
 // Fetch the user to edit with employee info and profile picture
 $stmt = $conn->prepare("
-    SELECT u.*, e.first_name, e.last_name, e.profile_picture, e.employee_code, e.job_title, rc.rank_name
+    SELECT u.*, u.profile_picture AS user_profile_picture,
+           e.first_name, e.last_name, e.profile_picture AS employee_profile_picture,
+           e.employee_code, e.job_title, rc.rank_name
     FROM users u 
     LEFT JOIN employees e ON u.employee_id = e.employee_id 
     LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
@@ -27,7 +29,7 @@ if (!$user) {
     redirectWith(BASE_URL . '/admin/users.php', 'danger', 'User not found.');
 }
 
-$is_standalone_admin = ($user['role'] === 'Admin' && empty($user['employee_id']));
+$is_standalone_admin = ($user['role'] === 'Admin');
 
 // ── Handle form submission ────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -66,7 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $dup->close();
 
-    // ── Handle Profile Picture Upload ───────────────────────────────────────────
+    // ── Handle Account Profile Picture Upload ───────────────────────────────────
+    $new_profile_picture = $user['user_profile_picture'];
+    $uploaded_profile_picture_path = null;
     if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
         $file_tmp = $_FILES['profile_picture']['tmp_name'];
         $file_name = $_FILES['profile_picture']['name'];
@@ -74,44 +78,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
         
         $allowed_exts = ['jpg', 'jpeg', 'png', 'webp'];
-        if (in_array($file_ext, $allowed_exts) && $file_size <= 2 * 1024 * 1024 && $user['employee_id']) {
-            $new_file_name = 'emp_' . $user['employee_id'] . '_' . time() . '.' . $file_ext;
-            $upload_path = '../assets/img/employees/' . $new_file_name;
+        if (in_array($file_ext, $allowed_exts) && $file_size <= 2 * 1024 * 1024) {
+            $upload_dir = '../assets/img/users/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            $new_file_name = 'usr_' . bin2hex(random_bytes(8)) . '.' . $file_ext;
+            $upload_path = $upload_dir . $new_file_name;
             
             if (move_uploaded_file($file_tmp, $upload_path)) {
-                // Delete old file if exists
-                if ($user['profile_picture'] && file_exists('../assets/img/employees/' . $user['profile_picture'])) {
-                    unlink('../assets/img/employees/' . $user['profile_picture']);
-                }
-                // Update employee table
-                $upd_emp = $conn->prepare("UPDATE employees SET profile_picture = ? WHERE employee_id = ?");
-                $upd_emp->bind_param("si", $new_file_name, $user['employee_id']);
-                $upd_emp->execute();
-                $upd_emp->close();
-                $user['profile_picture'] = $new_file_name; // For consistency in current script
+                $new_profile_picture = $new_file_name;
+                $uploaded_profile_picture_path = $upload_path;
             }
         }
     }
 
-    if (!empty($new_pass)) {
-        if (strlen($new_pass) < 6) {
-            redirectWith(BASE_URL . "/admin/edit-user.php?id=$uid", 'danger', 'Password must be at least 6 characters.');
-        }
+    if (!empty($new_pass) && strlen($new_pass) < 6) {
+        redirectWith(BASE_URL . "/admin/edit-user.php?id=$uid", 'danger', 'Password must be at least 6 characters.');
+    }
+
+    if ($is_standalone_admin && !empty($new_pass)) {
         $hash = password_hash($new_pass, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("UPDATE users SET username=?, email=?, full_name=?, role=?, branch_id=?, password_hash=? WHERE user_id=?");
-        $stmt->bind_param("ssssisi", $username, $email, $full_name, $role, $branch_id, $hash, $uid);
+        $stmt = $conn->prepare("UPDATE users SET employee_id=NULL, username=?, email=?, full_name=?, profile_picture=?, role=?, branch_id=NULL, password_hash=? WHERE user_id=?");
+        $stmt->bind_param("ssssssi", $username, $email, $full_name, $new_profile_picture, $role, $hash, $uid);
+    } elseif ($is_standalone_admin) {
+        $stmt = $conn->prepare("UPDATE users SET employee_id=NULL, username=?, email=?, full_name=?, profile_picture=?, role=?, branch_id=NULL WHERE user_id=?");
+        $stmt->bind_param("sssssi", $username, $email, $full_name, $new_profile_picture, $role, $uid);
+    } elseif (!empty($new_pass)) {
+        $hash = password_hash($new_pass, PASSWORD_DEFAULT);
+        $stmt = $conn->prepare("UPDATE users SET username=?, email=?, full_name=?, role=?, branch_id=?, profile_picture=?, password_hash=? WHERE user_id=?");
+        $stmt->bind_param("ssssissi", $username, $email, $full_name, $role, $branch_id, $new_profile_picture, $hash, $uid);
     } else {
-        $stmt = $conn->prepare("UPDATE users SET username=?, email=?, full_name=?, role=?, branch_id=? WHERE user_id=?");
-        $stmt->bind_param("ssssii", $username, $email, $full_name, $role, $branch_id, $uid);
+        $stmt = $conn->prepare("UPDATE users SET username=?, email=?, full_name=?, role=?, branch_id=?, profile_picture=? WHERE user_id=?");
+        $stmt->bind_param("ssssisi", $username, $email, $full_name, $role, $branch_id, $new_profile_picture, $uid);
     }
 
     if ($stmt->execute()) {
+        if ($uploaded_profile_picture_path && !empty($user['user_profile_picture'])) {
+            $old_profile_picture_path = '../assets/img/users/' . $user['user_profile_picture'];
+            if (file_exists($old_profile_picture_path)) {
+                unlink($old_profile_picture_path);
+            }
+        }
         logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'User', $uid, "Updated user: $username ($role)");
         redirectWith(BASE_URL . '/admin/users.php', 'success', "User '$username' updated successfully.");
     } else {
         // Cleanup newly uploaded file if DB fails
-        if ($profile_picture !== $user['profile_picture'] && file_exists('../' . $profile_picture)) {
-            unlink('../' . $profile_picture);
+        if ($uploaded_profile_picture_path && file_exists($uploaded_profile_picture_path)) {
+            unlink($uploaded_profile_picture_path);
         }
         redirectWith(BASE_URL . "/admin/edit-user.php?id=$uid", 'danger', 'Database error: ' . $conn->error);
     }
@@ -142,7 +156,7 @@ $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
             <div class="row mb-4 text-center">
                 <div class="col-12">
                     <div class="position-relative d-inline-block">
-                        <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>" 
+                        <img src="<?php echo getUserAvatar($user['user_profile_picture'], $user['employee_profile_picture']); ?>" 
                              alt="Profile" class="rounded-circle img-thumbnail" style="width: 120px; height: 120px; object-fit: cover;">
                     </div>
                 </div>
@@ -222,7 +236,7 @@ $branches = $conn->query("SELECT * FROM branches ORDER BY branch_name");
                            minlength="6" placeholder="Min. 6 characters">
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label class="form-label">Change Profile Picture</label>
+                    <label class="form-label">Account Profile Picture</label>
                     <input type="file" class="form-control" name="profile_picture" accept="image/*">
                     <div class="form-text">Max 2MB (JPG, PNG, WebP).</div>
                 </div>

@@ -207,6 +207,21 @@ function getEmployeeAvatar($profile_picture)
 
 }
 
+/**
+ * Get a system account avatar, falling back to the linked employee avatar.
+ */
+function getUserAvatar($user_profile_picture, $employee_profile_picture = null)
+{
+    if (!empty($user_profile_picture)) {
+        $path = __DIR__ . '/../assets/img/users/' . $user_profile_picture;
+        if (file_exists($path)) {
+            return BASE_URL . '/assets/img/users/' . $user_profile_picture;
+        }
+    }
+
+    return getEmployeeAvatar($employee_profile_picture);
+}
+
 
 
 /**

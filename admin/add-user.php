@@ -14,8 +14,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $employee_id = !empty($_POST['employee_id']) ? (int)$_POST['employee_id'] : null;
     $password = $_POST['password'] ?? '';
     $redirect = $_POST['redirect'] ?? 'users.php';
+
+    // Admin accounts are standalone security accounts and never inherit employee or branch access.
+    if ($role === 'Admin') {
+        $employee_id = null;
+        $branch_id = null;
+    }
+
     $employee_username = '';
-    $is_standalone_admin = ($role === 'Admin' && $employee_id === null);
+    $is_standalone_admin = ($role === 'Admin');
 
     if ($employee_id !== null) {
         $employee_lookup = $conn->prepare("SELECT employee_code FROM employees WHERE employee_id = ? LIMIT 1");
@@ -81,26 +88,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Hash password and insert
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
     
-    // Handle Profile Picture Upload
+    // Account avatars belong to the user record so standalone Admin accounts can use them too.
     $profile_picture = null;
-    if ($employee_id !== null && isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+    $profile_picture_path = null;
+    if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
         $file_tmp = $_FILES['profile_picture']['tmp_name'];
         $file_name = $_FILES['profile_picture']['name'];
         $file_size = $_FILES['profile_picture']['size'];
         $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-        
+
         $allowed_exts = ['jpg', 'jpeg', 'png', 'webp'];
         if (in_array($file_ext, $allowed_exts) && $file_size <= 2 * 1024 * 1024) {
-            $new_file_name = 'emp_' . $employee_id . '_' . time() . '.' . $file_ext;
-            $upload_path = '../assets/img/employees/' . $new_file_name;
-            
+            $upload_dir = '../assets/img/users/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+            $new_file_name = 'usr_' . bin2hex(random_bytes(8)) . '.' . $file_ext;
+            $upload_path = $upload_dir . $new_file_name;
+
             if (move_uploaded_file($file_tmp, $upload_path)) {
                 $profile_picture = $new_file_name;
-                // Update employee table with the picture
-                $upd_emp = $conn->prepare("UPDATE employees SET profile_picture = ? WHERE employee_id = ?");
-                $upd_emp->bind_param("si", $profile_picture, $employee_id);
-                $upd_emp->execute();
-                $upd_emp->close();
+                $profile_picture_path = $upload_path;
             }
         }
     }
@@ -111,8 +119,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'password'  => $password,
         'full_name' => $full_name,
     ];
-    $stmt = $conn->prepare("INSERT INTO users (employee_id, username, email, password_hash, full_name, role, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("isssssi", $employee_id, $username, $email, $password_hash, $full_name, $role, $branch_id);
+    $stmt = $conn->prepare("INSERT INTO users (employee_id, username, email, password_hash, full_name, profile_picture, role, branch_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("issssssi", $employee_id, $username, $email, $password_hash, $full_name, $profile_picture, $role, $branch_id);
 
     if ($stmt->execute()) {
         $new_id = $stmt->insert_id;
@@ -120,8 +128,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirectWith(BASE_URL . '/admin/' . $redirect, 'success', "User '$username' created successfully.");
     } else {
         // Cleanup uploaded file if DB fails
-        if ($profile_picture && file_exists('../' . $profile_picture)) {
-            unlink('../' . $profile_picture);
+        if ($profile_picture_path && file_exists($profile_picture_path)) {
+            unlink($profile_picture_path);
         }
         redirectWith(BASE_URL . '/admin/' . $redirect, 'danger', 'Failed to create user. Please try again.');
     }
