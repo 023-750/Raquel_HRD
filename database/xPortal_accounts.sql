@@ -2,6 +2,10 @@
 USE raquel_hris;
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- =============================================
+--              Employee Accounts
+-- =============================================
+
 REPLACE INTO users (
     employee_id,
     username,
