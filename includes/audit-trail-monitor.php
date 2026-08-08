@@ -78,7 +78,7 @@ $branches = $conn->query('SELECT branch_id, branch_name FROM branches ORDER BY b
 $departments = $conn->query('SELECT department_id, department_name FROM departments ORDER BY department_name');
 ?>
 <style>
-.audit-hero { background:linear-gradient(115deg,#113c4a,#17666d 55%,#d3973e); border-radius:20px; padding:28px; color:#fff; position:relative; overflow:hidden; }
+.audit-hero { background:linear-gradient(115deg,var(--primary-blue),#3d6b08 55%,var(--primary-light)); border-radius:20px; padding:28px; color:#fff; position:relative; overflow:hidden; }
 .audit-hero:after { content:''; position:absolute; width:280px; height:280px; right:-90px; top:-150px; border:45px solid rgba(255,255,255,.1); border-radius:50%; }
 .audit-stat { background:#fff; border:1px solid #e8eceb; border-radius:16px; padding:16px; height:100%; box-shadow:0 8px 24px rgba(17,60,74,.06); }
 .audit-stat .value { color:#123f4e; font-size:1.45rem; font-weight:800; }.audit-stat .label { color:#667a80; font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; }
@@ -88,7 +88,7 @@ $departments = $conn->query('SELECT department_id, department_name FROM departme
 @media(max-width:575px){.audit-hero{padding:22px}.audit-event summary{grid-template-columns:40px 1fr}.audit-event summary > .audit-pill{grid-column:2}.audit-details{padding-left:17px}}
 </style>
 <div class="audit-hero fadeup mb-4">
-    <div class="position-relative" style="z-index:1"><div class="small text-uppercase" style="letter-spacing:.12em;color:#c7e6df"><?php echo e($scope_label); ?></div><h2 class="fw-bold mb-1">System Activity Monitor</h2><p class="mb-0 text-white-50">Immutable records of meaningful HRIS and Employee Portal changes. Login and logout events are intentionally excluded.</p></div>
+    <div class="position-relative" style="z-index:1"><div class="small text-uppercase" style="letter-spacing:.12em;color:#f4dc9d"><?php echo e($scope_label); ?></div><h2 class="fw-bold mb-1">System Activity Monitor</h2><p class="mb-0 text-white-50">Immutable records of meaningful HRIS and Employee Portal changes. Login and logout events are intentionally excluded.</p></div>
 </div>
 <div class="row g-3 mb-4 fadeup-1">
 <?php foreach ([['Total Activities',$total,'fa-wave-square'],["Today's Activities",$today,'fa-calendar-day'],['Employee Changes',$employee_changes,'fa-id-card'],['Performance Activities',$evaluations,'fa-clipboard-check'],['Career Movements',$movements,'fa-route'],['Administrative Changes',$admin_changes,'fa-shield-alt']] as $stat): ?>
