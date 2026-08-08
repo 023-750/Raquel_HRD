@@ -741,7 +741,7 @@ a {
 
 /* ---------- Custom Employee, Department & Position Table Zebra Striping & Button Alignment ---------- */
 .table tbody tr.odd-row td {
-    background-color: #f4f5f8 !important; /* Subtle professional gray */
+    background-color: #eaf0e8 !important; /* Visible soft green tint */
 }
 
 .table tbody tr.even-row td {
@@ -750,20 +750,20 @@ a {
 
 .table tbody tr.odd-row:hover td,
 .table tbody tr.even-row:hover td {
-    background-color: #eef1f6 !important; /* Hover effect */
+    background-color: #d6e8d3 !important; /* Hover effect */
 }
 
-/* Fallback zebra striping for raw CSS — white first, then gray */
+/* Fallback zebra striping for raw CSS — white first, then green tint */
 .table tbody tr:nth-of-type(odd) td {
     background-color: #ffffff !important;
 }
 
 .table tbody tr:nth-of-type(even) td {
-    background-color: #f4f5f8 !important;
+    background-color: #eaf0e8 !important;
 }
 
 .table tbody tr:hover td {
-    background-color: #eef1f6 !important;
+    background-color: #d6e8d3 !important;
 }
 
 /* Ensure actions column doesn't wrap and remains in a straight line */
