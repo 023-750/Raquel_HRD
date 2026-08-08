@@ -1,8 +1,11 @@
 <?php
 $page_title = 'Add Employee';
 require_once '../includes/session-check.php';
-checkRole(['HR Manager']);
+checkRole(['HR Manager', 'HR Supervisor']);
 require_once '../includes/functions.php';
+
+// The same protected creation workflow is available from each authorized portal.
+$employee_portal_base = BASE_URL . '/' . (($_SESSION['role'] ?? '') === 'HR Supervisor' ? 'supervisor' : 'manager');
 
 // Check for saved form draft from previous failed attempt (Persistence)
 $emp = $_SESSION['form_draft'] ?? [];
@@ -15,18 +18,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
     require_once '../includes/functions.php';
     if (!isset($_FILES['employee_csv']) || $_FILES['employee_csv']['error'] !== UPLOAD_ERR_OK) {
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Please upload a valid CSV file.');
+        redirectWith($employee_portal_base . '/add-employee.php', 'danger', 'Please upload a valid CSV file.');
     }
 
     $file = fopen($_FILES['employee_csv']['tmp_name'], 'r');
     if (!$file)
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Could not read the uploaded file.');
+        redirectWith($employee_portal_base . '/add-employee.php', 'danger', 'Could not read the uploaded file.');
 
     // Get headers
     $headers = fgetcsv($file);
     if (!$headers) {
         fclose($file);
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'CSV file is empty.');
+        redirectWith($employee_portal_base . '/add-employee.php', 'danger', 'CSV file is empty.');
     }
 
     // Map headers to indices
@@ -479,10 +482,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
         $msg = "Success! Created: $created, Updated: $updated.";
         if ($skipped > 0)
             $msg .= " Skipped $skipped rows.";
-        redirectWith(BASE_URL . '/manager/employees.php', 'success', $msg);
+        redirectWith($employee_portal_base . '/employees.php', 'success', $msg);
     } else {
         $err = "No records were imported. ($skipped rows skipped) Latest error: " . end($errors);
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', $err);
+        redirectWith($employee_portal_base . '/add-employee.php', 'danger', $err);
     }
 }
 
@@ -610,7 +613,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
     }
 
     if ($upload_error) {
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', "Image Upload Error: " . $upload_error);
+        redirectWith($employee_portal_base . '/add-employee.php', 'danger', "Image Upload Error: " . $upload_error);
     }
 
     if ($job_title_id !== null) {
@@ -621,11 +624,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
         $jtStmt->close();
 
         if (!$jtRow || (int) $jtRow['is_active'] !== 1) {
-            redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Selected job title is invalid or inactive.');
+            redirectWith($employee_portal_base . '/add-employee.php', 'danger', 'Selected job title is invalid or inactive.');
         }
 
         if ($department_id !== null && (int) ($jtRow['department_id'] ?? 0) !== (int) $department_id) {
-            redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Selected job title does not belong to the selected department.');
+            redirectWith($employee_portal_base . '/add-employee.php', 'danger', 'Selected job title does not belong to the selected department.');
         }
 
         $job_title = (string) $jtRow['job_title'];
@@ -633,7 +636,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
 
     // Validate required
     if (empty($first_name) || empty($last_name) || empty($hire_date) || empty($department_id) || ($job_title_id === null && $job_title === '')) {
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', 'Please fill in all required fields (Name, Hire Date, Job Title, Department).');
+        redirectWith($employee_portal_base . '/add-employee.php', 'danger', 'Please fill in all required fields (Name, Hire Date, Job Title, Department).');
     }
 
     // Strictly no duplicate employee
@@ -642,7 +645,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
     $dupCheck->execute();
     if ($dupCheck->get_result()->num_rows > 0) {
         $dupCheck->close();
-        redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', "An employee named '$first_name $last_name' already exists in the system.");
+        redirectWith($employee_portal_base . '/add-employee.php', 'danger', "An employee named '$first_name $last_name' already exists in the system.");
     }
     $dupCheck->close();
 
@@ -652,7 +655,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
         $codeCheck->execute();
         if ($codeCheck->get_result()->num_rows > 0) {
             $codeCheck->close();
-            redirectWith(BASE_URL . '/manager/add-employee.php', 'danger', "Employee ID '$employee_code' already exists in the system.");
+            redirectWith($employee_portal_base . '/add-employee.php', 'danger', "Employee ID '$employee_code' already exists in the system.");
         }
         $codeCheck->close();
     }
@@ -1040,13 +1043,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
         }
 
         logAudit($conn, $_SESSION['user_id'], 'CREATE', 'Employee', $new_id, "Added employee: $first_name $last_name");
-        redirectWith(BASE_URL . '/manager/employees.php', 'success', "Employee '$first_name $last_name' added successfully.");
+        redirectWith($employee_portal_base . '/employees.php', 'success', "Employee '$first_name $last_name' added successfully.");
 
     } catch (Exception $e) {
         $conn->rollback();
         // Save information to session to prevent starting over after redirect
         $_SESSION['form_draft'] = $_POST;
-        redirectWith(BASE_URL . "/manager/add-employee.php", 'danger', "Failed to add employee: " . $e->getMessage());
+        redirectWith($employee_portal_base . '/add-employee.php', 'danger', "Failed to add employee: " . $e->getMessage());
     }
 }
 

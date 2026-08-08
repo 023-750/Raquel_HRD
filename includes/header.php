@@ -109,6 +109,7 @@ switch ($effective_role) {
             ],
             'EMPLOYEES' => [
                 ['icon' => 'fas fa-address-book', 'label' => 'Employee Info', 'url' => BASE_URL . '/supervisor/employees.php', 'page' => 'employees.php'],
+                ['icon' => 'fas fa-user-plus', 'label' => 'Add Employee', 'url' => BASE_URL . '/supervisor/add-employee.php', 'page' => 'add-employee.php'],
             ],
             'EVALUATIONS' => [
                 ['icon' => 'fas fa-clipboard-check', 'label' => 'Pending Validations', 'url' => BASE_URL . '/supervisor/pending-endorsements.php', 'page' => 'pending-endorsements.php'],

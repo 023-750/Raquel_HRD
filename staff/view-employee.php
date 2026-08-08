@@ -52,6 +52,51 @@ $work = $conn->query("SELECT * FROM employee_work_experience WHERE employee_id=$
 $skills = $conn->query("SELECT * FROM employee_skills WHERE employee_id=$eid")->fetch_all(MYSQLI_ASSOC);
 $trainings = $conn->query("SELECT * FROM employee_trainings WHERE employee_id=$eid ORDER BY training_id")->fetch_all(MYSQLI_ASSOC);
 
+// Read-only approved records for the Performance & Career tabs.
+$perf_history_q = $conn->prepare("
+    SELECT evaluation_id, total_score, performance_level, approved_date,
+           COALESCE(approved_date, evaluation_period_end) AS display_date, evaluation_type
+    FROM evaluations
+    WHERE employee_id = ? AND status = 'Approved'
+    ORDER BY COALESCE(approved_date, evaluation_period_end) ASC
+");
+$perf_history_q->bind_param("i", $eid);
+$perf_history_q->execute();
+$perf_history_data = $perf_history_q->get_result()->fetch_all(MYSQLI_ASSOC);
+$perf_history_q->close();
+$chart_labels = array_map(fn($row) => date('M Y', strtotime($row['display_date'])) . ' (' . ($row['evaluation_type'] ?? 'Eval') . ')', $perf_history_data);
+$chart_scores = array_map(fn($row) => (float)$row['total_score'], $perf_history_data);
+$avg_5yr_score = $perf_history_data ? round(array_sum($chart_scores) / count($chart_scores), 2) : 0;
+$classification = 'No Evaluation Record';
+$class_badge = 'bg-secondary';
+if ($perf_history_data) {
+    $difference = end($chart_scores) - reset($chart_scores);
+    if ($avg_5yr_score >= 3.60) { $classification = 'Consistently Outstanding'; $class_badge = 'bg-success'; }
+    elseif ($difference >= 0.30) { $classification = 'Improving Performance'; $class_badge = 'bg-info text-dark'; }
+    elseif ($difference <= -0.30) { $classification = 'Declining / Needing Intervention'; $class_badge = 'bg-danger'; }
+    else { $classification = 'Stable Performance'; $class_badge = 'bg-primary'; }
+}
+
+$cm_history = [];
+$cm_check = $conn->query("SHOW TABLES LIKE 'career_movements'");
+if ($cm_check && $cm_check->num_rows > 0) {
+    $cm_stmt = $conn->prepare("
+        SELECT cm.*, pb.branch_name AS from_branch_name, nb.branch_name AS to_branch_name,
+               u1.full_name AS logged_by_name, u2.full_name AS approved_by_name
+        FROM career_movements cm
+        LEFT JOIN branches pb ON cm.previous_branch_id = pb.branch_id
+        LEFT JOIN branches nb ON cm.new_branch_id = nb.branch_id
+        LEFT JOIN users u1 ON cm.logged_by = u1.user_id
+        LEFT JOIN users u2 ON cm.approved_by = u2.user_id
+        WHERE cm.employee_id = ? AND cm.approval_status = 'Approved'
+        ORDER BY cm.effective_date DESC, cm.created_at DESC
+    ");
+    $cm_stmt->bind_param("i", $eid);
+    $cm_stmt->execute();
+    $cm_history = $cm_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $cm_stmt->close();
+}
+
 require_once '../includes/header.php';
 
 // Helper for UI
@@ -127,6 +172,14 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
 .employee-profile-card .card-body {
     padding: 1.5rem;
 }
+
+.performance-career-tabs { display: flex; gap: 0.35rem; overflow-x: auto; border-bottom: 1px solid #e2e8f0; padding: 0 1.5rem; scrollbar-width: thin; }
+.performance-career-tab { appearance: none; flex: 0 0 auto; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--text-muted); font-size: 0.9rem; font-weight: 700; padding: 0.95rem 1rem 0.8rem; transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; }
+.performance-career-tab:hover, .performance-career-tab:focus-visible { background: #f8fafc; color: var(--primary-blue); outline: none; }
+.performance-career-tab[aria-selected="true"] { border-bottom-color: #bd9414; color: var(--text-dark); }
+.performance-career-panel { animation: performance-career-panel-in 0.2s ease-out; }
+.performance-career-panel[hidden] { display: none !important; }
+@keyframes performance-career-panel-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 .employee-subsection {
     border: 1px solid #edf2f7;
@@ -382,6 +435,51 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
     </div>
 
     <div class="col-lg-8 col-xl-9">
+        <div class="content-card employee-section-card mb-4">
+            <div class="employee-section-header">
+                <div><div class="employee-section-kicker"><i class="fas fa-chart-line text-warning"></i>Employee Insights</div><h5 class="mb-0">Performance &amp; Career</h5></div>
+            </div>
+            <div class="performance-career-tabs" role="tablist" aria-label="Performance and career information">
+                <button class="performance-career-tab" id="performance-tab" type="button" role="tab" aria-selected="true" aria-controls="performance-panel" tabindex="0"><i class="fas fa-chart-line me-2" aria-hidden="true"></i>Performance Analytics</button>
+                <button class="performance-career-tab" id="career-tab" type="button" role="tab" aria-selected="false" aria-controls="career-panel" tabindex="-1"><i class="fas fa-route me-2" aria-hidden="true"></i>Career Progression</button>
+            </div>
+            <div class="performance-career-panel" id="performance-panel" role="tabpanel" aria-labelledby="performance-tab" tabindex="0">
+                <div class="employee-section-header">
+                    <div><div class="employee-section-kicker"><i class="fas fa-chart-line text-warning"></i>Performance Analytics</div><h5 class="mb-0">5-Year Historical Performance Trend</h5></div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end"><span class="badge <?php echo $class_badge; ?> px-3 py-2" style="font-size:0.82rem;"><i class="fas fa-robot me-1"></i><?php echo $classification; ?></span><span class="badge bg-dark text-warning px-3 py-2" style="font-size:0.85rem;">Avg Score: <?php echo number_format($avg_5yr_score, 2); ?> / 4.00</span></div>
+                </div>
+                <div class="card-body">
+                    <?php if (empty($perf_history_data)): ?>
+                        <div class="empty-state py-4"><i class="fas fa-chart-line"></i><p>No approved performance evaluation history recorded for this employee yet.</p></div>
+                    <?php else: ?>
+                        <div class="row align-items-center g-3 mb-3">
+                            <div class="col-lg-8"><div style="height:220px;position:relative;"><canvas id="empPerformanceTrendChartStaff"></canvas></div></div>
+                            <div class="col-lg-4 border-start"><h6 class="fw-bold small text-muted uppercase mb-3">Evaluation History Summary</h6><div class="d-grid gap-2">
+                                <?php foreach (array_reverse($perf_history_data) as $phItem): $scoreVal = (float)$phItem['total_score']; $lvl = $phItem['performance_level'] ?? getPerformanceLevel($scoreVal); $lvlBadge = $scoreVal >= 3.6 ? 'bg-success' : ($scoreVal >= 2.6 ? 'bg-info text-dark' : ($scoreVal >= 2.0 ? 'bg-warning text-dark' : 'bg-danger')); ?>
+                                    <div class="p-2 bg-light rounded-3 d-flex justify-content-between align-items-center"><div><div class="fw-bold small"><?php echo date('F d, Y', strtotime($phItem['display_date'])); ?></div><div class="text-muted" style="font-size:0.72rem;"><?php echo e($phItem['evaluation_type'] ?? 'Annual'); ?> Evaluation</div></div><div class="text-end"><span class="badge <?php echo $lvlBadge; ?>"><?php echo number_format($scoreVal, 2); ?></span><div class="text-muted" style="font-size:0.68rem;"><?php echo e($lvl); ?></div></div></div>
+                                <?php endforeach; ?>
+                            </div></div>
+                        </div>
+                        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+                        <script>document.addEventListener('DOMContentLoaded', function () { const ctx = document.getElementById('empPerformanceTrendChartStaff').getContext('2d'); new Chart(ctx, { type: 'line', data: { labels: <?php echo json_encode($chart_labels); ?>, datasets: [{ label: 'Evaluation Score (1.00 - 4.00)', data: <?php echo json_encode($chart_scores); ?>, borderColor: '#BD9414', backgroundColor: 'rgba(189, 148, 20, 0.15)', borderWidth: 3, fill: true, tension: 0.35, pointBackgroundColor: '#294306', pointRadius: 5, pointHoverRadius: 7 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 1.0, max: 4.0, ticks: { stepSize: 0.5 } } }, plugins: { legend: { display: false } } } }); });</script>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <div class="performance-career-panel" id="career-panel" role="tabpanel" aria-labelledby="career-tab" tabindex="0" hidden>
+                <div class="employee-section-header"><div><div class="employee-section-kicker"><i class="fas fa-route text-warning me-1"></i>Career Progression</div><h5 class="mb-0">Career Movement History</h5></div><span class="badge bg-secondary px-3 py-2"><?php echo count($cm_history); ?> Record<?php echo count($cm_history) !== 1 ? 's' : ''; ?></span></div>
+                <div class="card-body">
+                    <?php if (empty($cm_history)): ?>
+                        <div class="empty-state"><i class="fas fa-route d-block mb-2" style="font-size:1.8rem;opacity:.3;"></i><p class="mb-0 text-muted">No approved career movements on record for this employee.</p></div>
+                    <?php else: ?>
+                        <div class="employee-table-wrap"><table class="table table-sm align-middle mb-0"><thead><tr><th>Effective Date</th><th>Type</th><th>From Position</th><th>To Position</th><th>From Branch</th><th>To Branch</th><th>Processed By</th><th>Reason</th></tr></thead><tbody>
+                        <?php foreach ($cm_history as $cm): $typeBadge = match($cm['movement_type']) { 'Promotion' => 'bg-success', 'Transfer' => 'bg-info text-dark', 'Demotion' => 'bg-danger', 'Role Change' => 'bg-primary', default => 'bg-secondary' }; ?>
+                            <tr><td data-label="Effective Date" class="fw-semibold"><?php echo formatDate($cm['effective_date']); ?></td><td data-label="Type"><span class="badge <?php echo $typeBadge; ?>"><?php echo e($cm['movement_type']); ?></span></td><td data-label="From Position" class="text-muted small"><?php echo e($cm['previous_position'] ?: 'N/A'); ?></td><td data-label="To Position" class="fw-bold text-success"><?php echo e($cm['new_position']); ?></td><td data-label="From Branch" class="text-muted small"><?php echo e($cm['from_branch_name'] ?: 'N/A'); ?></td><td data-label="To Branch" class="fw-semibold"><?php echo e($cm['to_branch_name'] ?: 'Same Branch'); ?></td><td data-label="Processed By" class="small"><?php echo e($cm['approved_by_name'] ?: ($cm['logged_by_name'] ?: 'HR Manager')); ?></td><td data-label="Reason" class="small"><?php echo e($cm['reason'] ?: 'N/A'); ?></td></tr>
+                        <?php endforeach; ?>
+                        </tbody></table></div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
         <div class="row g-4">
             <div class="col-xl-6">
                 <div class="content-card employee-section-card h-100">
@@ -654,6 +752,11 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
             </div>
         </div>
     </div>
+    <div class="d-flex justify-content-center mt-4 mb-2">
+        <button type="button" class="btn btn-outline-secondary px-4" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });" aria-label="Back to the top of Employee Information">
+            <i class="fas fa-arrow-up me-2" aria-hidden="true"></i>Back to Top
+        </button>
+    </div>
 <script>
     let govIdsVisible = false;
     function toggleGovIds() {
@@ -709,6 +812,29 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
             iconEl.className = 'fas fa-eye text-muted cursor-pointer single-id-toggle ms-auto';
         }
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const tabs = Array.from(document.querySelectorAll('.performance-career-tab'));
+        const panels = Array.from(document.querySelectorAll('.performance-career-panel'));
+        function activateTab(tab, moveFocus) {
+            const panelId = tab.getAttribute('aria-controls');
+            tabs.forEach(function (item) { const active = item === tab; item.setAttribute('aria-selected', active ? 'true' : 'false'); item.tabIndex = active ? 0 : -1; });
+            panels.forEach(function (panel) { panel.hidden = panel.id !== panelId; });
+            if (moveFocus) tab.focus();
+            window.dispatchEvent(new Event('resize'));
+        }
+        tabs.forEach(function (tab, index) {
+            tab.addEventListener('click', function () { activateTab(tab, false); });
+            tab.addEventListener('keydown', function (event) {
+                let nextIndex = null;
+                if (event.key === 'ArrowRight') nextIndex = (index + 1) % tabs.length;
+                if (event.key === 'ArrowLeft') nextIndex = (index - 1 + tabs.length) % tabs.length;
+                if (event.key === 'Home') nextIndex = 0;
+                if (event.key === 'End') nextIndex = tabs.length - 1;
+                if (nextIndex !== null) { event.preventDefault(); activateTab(tabs[nextIndex], true); }
+            });
+        });
+    });
 </script>
 
 <?php require_once '../includes/footer.php'; ?>

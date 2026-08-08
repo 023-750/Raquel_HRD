@@ -1,6 +1,6 @@
 <?php
 require_once '../includes/session-check.php';
-checkRole(['HR Manager']);
+checkRole(['HR Manager', 'HR Supervisor']);
 
 // Clear any previous output buffers
 if (ob_get_level()) {

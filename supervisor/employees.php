@@ -233,8 +233,13 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                 <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-users me-2"
                         style="color:#BD9414;"></i>Employee Information</h4>
             </div>
-            <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
-                <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+            <div class="d-flex align-items-center gap-3 flex-wrap justify-content-end">
+                <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
+                    <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>
+                </div>
+                <a href="<?php echo BASE_URL; ?>/supervisor/add-employee.php" class="btn btn-warning btn-sm fw-semibold">
+                    <i class="fas fa-user-plus me-1"></i>Add Employee
+                </a>
             </div>
         </div>
 
