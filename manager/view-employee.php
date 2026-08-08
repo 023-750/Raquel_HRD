@@ -303,6 +303,16 @@ $discList = [
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
         gap: 0.9rem;
+        min-width: 0;
+    }
+
+    /* Contact Channels: Telephone + Mobile side by side, Email full width below */
+    .contact-channels-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .contact-channels-grid .detail-item:last-child {
+        grid-column: 1 / -1;
     }
 
     .detail-item {
@@ -310,6 +320,8 @@ $discList = [
         border-radius: 14px;
         border: 1px solid #edf2f7;
         background: #fff;
+        min-width: 0;
+        overflow: hidden;
     }
 
     .detail-label {
@@ -327,11 +339,13 @@ $discList = [
         font-weight: 600;
         line-height: 1.45;
         word-break: break-word;
+        overflow-wrap: anywhere;
     }
 
     .profile-meta-list {
         display: grid;
         gap: 0.85rem;
+        min-width: 0;
     }
 
     .profile-meta-item {
@@ -343,11 +357,13 @@ $discList = [
         border-radius: 14px;
         background: #f8fafc;
         border: 1px solid #edf2f7;
+        min-width: 0;
     }
 
     .profile-meta-item > div {
         min-width: 0;
         flex: 1;
+        overflow: hidden;
     }
 
     .profile-meta-icon {
@@ -378,6 +394,7 @@ $discList = [
         color: var(--text-dark);
         line-height: 1.4;
         word-break: break-word;
+        overflow-wrap: anywhere;
     }
 
     .profile-email-value {
@@ -950,7 +967,7 @@ $discList = [
                     <div class="card-body">
                         <div class="employee-subsection">
                             <div class="employee-subsection-title">Contact Channels</div>
-                            <div class="detail-grid">
+                            <div class="detail-grid contact-channels-grid">
                                 <?php
                                 echo field('Telephone', $emp['telephone_number']);
                                 echo field('Mobile', $emp['contact_number']);
