@@ -466,6 +466,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $ref2_name = $getV('Reference 2 Name', 96);
             $ref2_addr = $getV('Reference 2 Address', 97);
             $ref2_tel  = $getV('Reference 2 Contact Number', 98);
+            $ref3_name = $getV('Reference 3 Name');
+            $ref3_addr = $getV('Reference 3 Address');
+            $ref3_tel  = $getV('Reference 3 Contact Number');
             $conn->query("DELETE FROM employee_references WHERE employee_id = $eid");
             if (!empty($ref1_name)) {
                 $stmt = $conn->prepare("INSERT INTO employee_references (employee_id, reference_name, reference_address, reference_telephone) VALUES (?,?,?,?)");
@@ -476,6 +479,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
                 $stmt = $conn->prepare("INSERT INTO employee_references (employee_id, reference_name, reference_address, reference_telephone) VALUES (?,?,?,?)");
                 $stmt->bind_param("isss", $eid, $ref2_name, $ref2_addr, $ref2_tel);
                 $stmt->execute(); $stmt->close();
+            }
+            if (!empty($ref3_name)) {
+                $stmt = $conn->prepare("INSERT INTO employee_references (employee_id, reference_name, reference_address, reference_telephone) VALUES (?,?,?,?)");
+                $stmt->bind_param("isss", $eid, $ref3_name, $ref3_addr, $ref3_tel);
+                $stmt->execute(); $stmt->close();
+            }
+
+            // Additional PDS fields included in the reordered template.
+            if (isset($headerMap['Skill/Hobby 1'])) {
+                $skill = $getV('Skill/Hobby 1');
+                $conn->query("DELETE FROM employee_skills WHERE employee_id = $eid");
+                if (!empty($skill)) {
+                    $stmt = $conn->prepare("INSERT INTO employee_skills (employee_id, skill_name) VALUES (?,?)");
+                    $stmt->bind_param("is", $eid, $skill);
+                    $stmt->execute(); $stmt->close();
+                }
+            }
+            if (isset($headerMap['Recognition 1 Title'])) {
+                $recognition = $getV('Recognition 1 Title');
+                $conn->query("DELETE FROM employee_recognitions WHERE employee_id = $eid");
+                if (!empty($recognition)) {
+                    $stmt = $conn->prepare("INSERT INTO employee_recognitions (employee_id, recognition_title) VALUES (?,?)");
+                    $stmt->bind_param("is", $eid, $recognition);
+                    $stmt->execute(); $stmt->close();
+                }
+            }
+            if (isset($headerMap['Membership 1 Organization'])) {
+                $membership = $getV('Membership 1 Organization');
+                $conn->query("DELETE FROM employee_memberships WHERE employee_id = $eid");
+                if (!empty($membership)) {
+                    $stmt = $conn->prepare("INSERT INTO employee_memberships (employee_id, organization_name) VALUES (?,?)");
+                    $stmt->bind_param("is", $eid, $membership);
+                    $stmt->execute(); $stmt->close();
+                }
             }
             // ─────────────────────────────────────────────────────────────────
 

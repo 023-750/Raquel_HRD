@@ -332,6 +332,11 @@ $rankBadgeClass = $rankBadgeClassMap[$emp['rank_name'] ?? ''] ?? 'rank-badge-def
         border: 1px solid #edf2f7;
     }
 
+    .profile-meta-item > div {
+        min-width: 0;
+        flex: 1;
+    }
+
     .profile-meta-icon {
         width: 2rem;
         height: 2rem;
@@ -359,6 +364,11 @@ $rankBadgeClass = $rankBadgeClassMap[$emp['rank_name'] ?? ''] ?? 'rank-badge-def
         font-weight: 600;
         color: var(--text-dark);
         line-height: 1.4;
+        word-break: break-word;
+    }
+
+    .profile-email-value {
+        overflow-wrap: anywhere;
         word-break: break-word;
     }
 
@@ -600,7 +610,7 @@ $rankBadgeClass = $rankBadgeClassMap[$emp['rank_name'] ?? ''] ?? 'rank-badge-def
                         <span class="profile-meta-icon"><i class="fas fa-envelope"></i></span>
                         <div>
                             <span class="profile-meta-label">Email</span>
-                            <span class="profile-meta-value"><?php echo e($emp['email'] ?: 'N/A'); ?></span>
+                            <span class="profile-meta-value profile-email-value"><?php echo e($emp['email'] ?: 'N/A'); ?></span>
                         </div>
                     </div>
                     <div class="profile-meta-item">
