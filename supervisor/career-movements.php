@@ -296,6 +296,7 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Supervisor &middot; Career</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-route me-2" style="color:#BD9414;"></i>Career Movements</h4>
+            <p class="text-white-50 small mb-0 mt-2">Submit and monitor employee promotion, transfer, and role-change requests for managerial review.</p>
         </div>
     </div>
     <div class="row g-3">

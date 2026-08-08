@@ -213,6 +213,7 @@ $branch_user_total = (int) $conn->query("SELECT COUNT(*) as cnt FROM users WHERE
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Organization</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-building me-2" style="color:#BD9414;"></i>Branch Management</h4>
+            <p class="text-white-50 small mb-0 mt-2">Maintain branch records used for employee assignments, organizational reporting, and system access scope.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#importBranchModal">

@@ -163,6 +163,7 @@ $used_template_count = (int) $conn->query("SELECT COUNT(DISTINCT template_id) as
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Evaluations</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-file-alt me-2" style="color:#BD9414;"></i>Evaluation Templates</h4>
+            <p class="text-white-50 small mb-0 mt-2">Create and maintain standardized evaluation templates for fair, consistent employee performance reviews.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
         <button type="button" class="btn btn-outline-danger d-none shadow-sm" id="batchDeleteBtn" onclick="confirmBatchDelete()">

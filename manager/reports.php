@@ -14,6 +14,7 @@ $departments = $conn->query("SELECT department_id, department_name FROM departme
             <div>
                 <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Reports</div>
                 <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-file-pdf me-2" style="color:#BD9414;"></i>Report Generation</h4>
+                <p class="text-white-50 small mb-0 mt-2">Build and export HR reports using the employee, performance, and organizational data you need.</p>
             </div>
             <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
                 <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>

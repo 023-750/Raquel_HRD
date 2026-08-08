@@ -100,6 +100,7 @@ $statuses = ['OJT','Probationary','Project Based','Regular','Separated','Trainee
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Staff · Employees</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-users me-2" style="color:#BD9414;"></i>All Employees</h4>
+            <p class="text-white-50 small mb-0 mt-2">Find employee records and submit update requests for review through the appropriate approval process.</p>
         </div>
         <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
             <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>

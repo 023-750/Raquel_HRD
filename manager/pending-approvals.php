@@ -460,6 +460,7 @@ if ($ecr_pending) { while ($r = $ecr_pending->fetch_assoc()) $ecr_all_pending[] 
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Approvals</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-check-double me-2" style="color:#BD9414;"></i>Pending Approvals</h4>
+            <p class="text-white-50 small mb-0 mt-2">Review pending employee changes and performance evaluations, then approve, return, or reject them with confidence.</p>
         </div>
         <div class="d-flex flex-column align-items-end gap-2">
             <div style="color:rgba(255,255,255,.6);font-size:.8rem;">

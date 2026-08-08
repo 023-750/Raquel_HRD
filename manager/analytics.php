@@ -433,6 +433,7 @@ $yoy_emp    = formatYoYData($yoy_emp_raw, $yoy_years);
         <div>
             <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">HR Manager · Analytics</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-chart-bar me-2" style="color:#BD9414;"></i>Performance Analytics</h4>
+            <p class="text-white-50 small mb-0 mt-2">Use performance trends and workforce insights to identify strengths, gaps, and HR priorities.</p>
         </div>
         <div style="color:rgba(255,255,255,.6);font-size:.8rem;">
             <i class="fas fa-sync-alt me-1"></i>Data as of <?php echo date('F d, Y'); ?>

@@ -212,6 +212,7 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                 Manager · Organization</div>
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-briefcase me-2"
                     style="color:#BD9414;"></i>Position Management</h4>
+            <p class="text-white-50 small mb-0 mt-2">Define job positions that appear in employee records and support clear organizational structure.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <div class="d-flex gap-2">
