@@ -116,13 +116,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Clear brute force attempts on successful login
                 clearLoginAttempts($conn, $username, $ip);
 
-                // Log the login
-                $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-                $logStmt = $conn->prepare("INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details, ip_address) VALUES (?, 'LOGIN', 'User', ?, 'User logged in successfully.', ?)");
-                $logStmt->bind_param("iis", $user['user_id'], $user['user_id'], $ip);
-                $logStmt->execute();
-                $logStmt->close();
-
                 // Notify Admins of successful login
                 $adminStmt = $conn->prepare("SELECT user_id FROM users WHERE role = 'Admin' AND is_active = 1");
                 $adminStmt->execute();

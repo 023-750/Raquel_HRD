@@ -355,8 +355,43 @@ function getPreferredLinkedUserId($conn, $employee_id, $context = 'employee_port
 
  */
 
-function logAudit($conn, $user_id, $action_type, $entity_type, $entity_id = null, $details = null)
+function ensureAuditTrailSchema($conn): bool
 {
+    static $checked = false;
+    if ($checked) {
+        return true;
+    }
+
+    try {
+        $columns = [
+            'module_name' => "VARCHAR(100) NULL AFTER entity_type",
+            'target_employee_id' => "INT NULL AFTER entity_id",
+            'previous_value' => "TEXT NULL AFTER details",
+            'new_value' => "TEXT NULL AFTER previous_value",
+            'branch_id' => "INT NULL AFTER new_value",
+            'department_id' => "INT NULL AFTER branch_id",
+            'user_agent' => "VARCHAR(500) NULL AFTER ip_address",
+            'action_status' => "ENUM('Successful','Failed','Cancelled') NOT NULL DEFAULT 'Successful' AFTER user_agent",
+        ];
+
+        foreach ($columns as $column => $definition) {
+            $escaped = $conn->real_escape_string($column);
+            $exists = $conn->query("SHOW COLUMNS FROM audit_logs LIKE '{$escaped}'")->num_rows > 0;
+            if (!$exists) {
+                $conn->query("ALTER TABLE audit_logs ADD COLUMN {$column} {$definition}");
+            }
+        }
+        $checked = true;
+        return true;
+    } catch (Throwable $e) {
+        error_log('Audit trail schema upgrade failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+function logAudit($conn, $user_id, $action_type, $entity_type, $entity_id = null, $details = null, array $context = [])
+{
+    ensureAuditTrailSchema($conn);
 
     // Ensure user_id actually exists to avoid Foreign Key constraint errors (e.g. after DB reset)
 
@@ -381,15 +416,36 @@ function logAudit($conn, $user_id, $action_type, $entity_type, $entity_id = null
 
 
     $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $user_agent = substr($_SERVER['HTTP_USER_AGENT'] ?? 'Unknown device', 0, 500);
+    $module = $context['module'] ?? auditModuleForEntity($entity_type);
+    $target_employee_id = $context['target_employee_id'] ?? (strcasecmp($entity_type, 'Employee') === 0 ? $entity_id : null);
+    $previous_value = $context['previous_value'] ?? null;
+    $new_value = $context['new_value'] ?? null;
+    $branch_id = $context['branch_id'] ?? null;
+    $department_id = $context['department_id'] ?? null;
+    $action_status = $context['status'] ?? 'Successful';
+    if (!in_array($action_status, ['Successful', 'Failed', 'Cancelled'], true)) {
+        $action_status = 'Successful';
+    }
 
-    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action_type, entity_type, entity_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?)");
-
-    $stmt->bind_param("ississ", $user_id, $action_type, $entity_type, $entity_id, $details, $ip);
+    $stmt = $conn->prepare("INSERT INTO audit_logs (user_id, action_type, entity_type, module_name, entity_id, target_employee_id, details, previous_value, new_value, branch_id, department_id, ip_address, user_agent, action_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("isssiisssiisss", $user_id, $action_type, $entity_type, $module, $entity_id, $target_employee_id, $details, $previous_value, $new_value, $branch_id, $department_id, $ip, $user_agent, $action_status);
 
     $stmt->execute();
 
     $stmt->close();
 
+}
+
+function auditModuleForEntity($entity_type): string
+{
+    $entity = strtolower($entity_type);
+    if (str_contains($entity, 'evaluation')) return 'Performance & Evaluation';
+    if (str_contains($entity, 'career') || str_contains($entity, 'movement')) return 'Career Progression';
+    if (str_contains($entity, 'user') || str_contains($entity, 'permission') || str_contains($entity, 'role')) return 'User & Access Management';
+    if (str_contains($entity, 'employee') || str_contains($entity, 'pds')) return 'Employee Management';
+    if (str_contains($entity, 'branch') || str_contains($entity, 'department') || str_contains($entity, 'setting') || str_contains($entity, 'config')) return 'System Administration';
+    return 'System Activity';
 }
 
 

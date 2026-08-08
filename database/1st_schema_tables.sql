@@ -575,9 +575,17 @@ CREATE TABLE audit_logs (
     user_id INT NULL,
     action_type VARCHAR(50) NOT NULL,
     entity_type VARCHAR(50) NOT NULL,
+    module_name VARCHAR(100) NULL,
     entity_id INT NULL,
+    target_employee_id INT NULL,
     details TEXT NULL,
+    previous_value TEXT NULL,
+    new_value TEXT NULL,
+    branch_id INT NULL,
+    department_id INT NULL,
     ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(500) NULL,
+    action_status ENUM('Successful','Failed','Cancelled') NOT NULL DEFAULT 'Successful',
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_audit_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

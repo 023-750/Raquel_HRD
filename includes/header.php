@@ -147,6 +147,7 @@ switch ($effective_role) {
             'EVALUATIONS' => [
                 ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/staff/evaluation-history.php', 'page' => 'evaluation-history.php'],
                 ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/staff/career-movements.php', 'page' => 'career-movements.php'],
+                ['icon' => 'fas fa-clipboard-list', 'label' => 'My Audit Trail', 'url' => BASE_URL . '/staff/audit-trail.php', 'page' => 'audit-trail.php'],
             ],
         ];
         break;
