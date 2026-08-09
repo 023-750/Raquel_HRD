@@ -715,6 +715,40 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('supRejectEmpName').textContent = btn.dataset.empname;
         });
     }
+
+    // ── Pre-select employee from career-progression.php deep-link ─────────────
+    // URL: ?new_movement=1&emp_id=123
+    const urlParams   = new URLSearchParams(window.location.search);
+    const preEmpId    = urlParams.get('emp_id');
+    const preNewMov   = urlParams.get('new_movement');
+
+    if (preNewMov === '1' && preEmpId && allEmployees[preEmpId]) {
+        const emp = allEmployees[preEmpId];
+
+        // 1. Switch to the Create tab
+        const createTabBtn = document.getElementById('supCreateTabBtn');
+        if (createTabBtn) {
+            bootstrap.Tab.getOrCreateInstance(createTabBtn).show();
+        }
+
+        // 2. Select the correct department (triggers cascade)
+        if (emp.department_id && deptSel) {
+            deptSel.value = emp.department_id;
+            deptSel.dispatchEvent(new Event('change'));
+
+            // 3. After cascade populates employees, select this employee
+            // Use a short delay so the options are rendered first
+            setTimeout(function () {
+                if (empSel) {
+                    empSel.value = preEmpId;
+                    empSel.dispatchEvent(new Event('change'));
+                }
+                // Clean up the URL so a page refresh doesn't re-trigger
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, '', cleanUrl);
+            }, 50);
+        }
+    }
 });
 </script>
 
