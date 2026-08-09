@@ -96,6 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_movement'])) {
 
     $previous_branch_id = !empty($employee['branch_id']) ? (int)$employee['branch_id'] : null;
     if ($new_branch_id === $previous_branch_id) { $new_branch_id = null; }
+    $previous_position  = $employee['job_title'] ?? '';
 
     // Fetch full employee name
     $emp_name_stmt = $conn->prepare("SELECT first_name, last_name FROM employees WHERE employee_id=? LIMIT 1");
@@ -369,7 +370,7 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                                     </td>
                                     <td><span class="badge <?php echo supCmTypeClass($mv['movement_type']); ?>"><?php echo e($mv['movement_type']); ?></span></td>
                                     <td>
-                                        <div class="small text-muted"><?php echo e($mv['previous_position']?:'N/A'); ?></div>
+                                        <div class="small text-muted"><?php echo e($mv['previous_position'] ?: $mv['current_job_title'] ?: '—'); ?></div>
                                         <div class="fw-semibold"><i class="fas fa-arrow-right text-success me-1" style="font-size:.75rem;"></i><?php echo e($mv['new_position']); ?></div>
                                     </td>
                                     <td>

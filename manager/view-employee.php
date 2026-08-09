@@ -904,7 +904,7 @@ $discList = [
                                     <tr>
                                         <td data-label="Effective Date" class="fw-semibold"><?php echo formatDate($cm['effective_date']); ?></td>
                                         <td data-label="Type"><span class="badge <?php echo $typeBadge; ?>"><?php echo e($cm['movement_type']); ?></span></td>
-                                        <td data-label="From Position" class="text-muted small"><?php echo e($cm['previous_position'] ?: 'N/A'); ?></td>
+                                        <td data-label="From Position" class="text-muted small"><?php echo e($cm['previous_position'] ?: '—'); ?></td>
                                         <td data-label="To Position" class="fw-bold text-success"><?php echo e($cm['new_position']); ?></td>
                                         <td data-label="From Branch" class="text-muted small"><?php echo e($cm['from_branch_name'] ?: 'N/A'); ?></td>
                                         <td data-label="To Branch" class="fw-semibold"><?php echo e($cm['to_branch_name'] ?: 'Same Branch'); ?></td>

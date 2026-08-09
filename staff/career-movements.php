@@ -298,7 +298,7 @@ function staffCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejec
                                     </td>
                                     <td><span class="badge <?php echo staffCmTypeClass($mv['movement_type']); ?>"><?php echo e($mv['movement_type']); ?></span></td>
                                     <td>
-                                        <div class="small text-muted"><?php echo e($mv['previous_position']?:'N/A'); ?></div>
+                                        <div class="small text-muted"><?php echo e($mv['previous_position']?:'—'); ?></div>
                                         <div class="fw-semibold"><?php echo e($mv['new_position']); ?></div>
                                     </td>
                                     <td>
