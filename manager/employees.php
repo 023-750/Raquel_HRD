@@ -38,6 +38,18 @@ if (!empty($branch_id)) {
     $br_stmt->close();
 }
 
+// Helper to preserve active filter parameters upon redirect
+$get_params = $_GET;
+$buildRedirectWithFilters = function ($actionKey) use ($get_params) {
+    $params = $get_params;
+    unset($params[$actionKey]);
+    if ($actionKey === 'deactivate') {
+        unset($params['status']);
+    }
+    $qs = http_build_query($params);
+    return BASE_URL . '/manager/employees.php' . ($qs ? '?' . $qs : '');
+};
+
 // Handle activate/deactivate
 if (isset($_GET['deactivate']) && is_numeric($_GET['deactivate'])) {
     $eid = (int) $_GET['deactivate'];
@@ -48,7 +60,7 @@ if (isset($_GET['deactivate']) && is_numeric($_GET['deactivate'])) {
     
     if ($stmt->execute()) {
         logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'Employee', $eid, "Deactivated employee with status: $status");
-        redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee deactivated successfully.');
+        redirectWith($buildRedirectWithFilters('deactivate'), 'success', 'Employee deactivated successfully.');
     }
     $stmt->close();
 }
@@ -56,7 +68,7 @@ if (isset($_GET['activate']) && is_numeric($_GET['activate'])) {
     $eid = (int) $_GET['activate'];
     $conn->query("UPDATE employees SET is_active = 1, employment_status = 'Regular' WHERE employee_id = $eid");
     logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'Employee', $eid, 'Reactivated employee');
-    redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee reactivated successfully.');
+    redirectWith($buildRedirectWithFilters('activate'), 'success', 'Employee reactivated successfully.');
 }
 
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
@@ -94,7 +106,7 @@ if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
 
     $conn->query("DELETE FROM employees WHERE employee_id = $eid");
     logAudit($conn, $_SESSION['user_id'], 'DELETE', 'Employee', $eid, 'Permanently deleted employee');
-    redirectWith(BASE_URL . '/manager/employees.php', 'success', 'Employee deleted permanently.');
+    redirectWith($buildRedirectWithFilters('delete'), 'success', 'Employee deleted permanently.');
 }
 
 require_once '../includes/header.php';
@@ -854,16 +866,23 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
     document.getElementById('deactivateConfirmBtn').addEventListener('click', function() {
         const reason = document.getElementById('separationReason').value;
         if (deactivateTargetId) {
-            window.location.href = '?deactivate=' + deactivateTargetId + '&status=' + encodeURIComponent(reason);
+            const params = new URLSearchParams(window.location.search);
+            params.set('deactivate', deactivateTargetId);
+            params.set('status', reason);
+            window.location.href = '?' + params.toString();
         }
     });
     function setActivateTarget(id, name) {
         document.getElementById('activateEmpName').textContent = name;
-        document.getElementById('activateConfirmBtn').href = '?activate=' + id;
+        const params = new URLSearchParams(window.location.search);
+        params.set('activate', id);
+        document.getElementById('activateConfirmBtn').href = '?' + params.toString();
     }
     function setDeleteTarget(id, name) {
         document.getElementById('deleteEmpName').textContent = name;
-        document.getElementById('deleteConfirmBtn').href = '?delete=' + id;
+        const params = new URLSearchParams(window.location.search);
+        params.set('delete', id);
+        document.getElementById('deleteConfirmBtn').href = '?' + params.toString();
     }
 
     // State Variables

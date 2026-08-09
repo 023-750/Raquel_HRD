@@ -621,9 +621,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         }
+        $success_msg = 'Your self-rating was submitted successfully. Awaiting supervisor confirmation.';
+        if ($hr_role === 'HR Manager') {
+            $success_msg = 'Your evaluation was submitted successfully. Awaiting HR supervisor confirmation.';
+        } elseif ($hr_role === 'HR Supervisor') {
+            $success_msg = 'Your evaluation was submitted successfully. Awaiting HR manager confirmation.';
+        } elseif ((int)($employee['rank_category_id'] ?? 0) === 3) {
+            $success_msg = 'Your evaluation was submitted successfully. Awaiting branch supervisor confirmation.';
+        } elseif ($is_supervisor_level_employee) {
+            $success_msg = 'Your evaluation was submitted successfully. Awaiting branch manager confirmation.';
+        }
 
         logAudit($conn, $user_id, 'CREATE', 'Evaluation', $eval_id, 'Submitted employee self-rating');
-        redirectWith(BASE_URL . '/employee/self-rating.php', 'success', 'Your self-rating was submitted successfully. Awaiting supervisor confirmation.');
+        redirectWith(BASE_URL . '/employee/self-rating.php', 'success', $success_msg);
     }
 
     // Only log manual saves — auto-saves would spam the audit trail with dozens of identical entries

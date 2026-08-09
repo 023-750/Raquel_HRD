@@ -20,6 +20,31 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// Verify user & employee account status
+if (isset($_SESSION['user_id'])) {
+    $uid = (int) $_SESSION['user_id'];
+    $active_chk = $conn->prepare("SELECT u.is_active as user_active, e.is_active as emp_active, e.employment_status FROM users u LEFT JOIN employees e ON u.employee_id = e.employee_id WHERE u.user_id = ?");
+    if ($active_chk) {
+        $active_chk->bind_param("i", $uid);
+        $active_chk->execute();
+        $active_res = $active_chk->get_result();
+        if ($row = $active_res->fetch_assoc()) {
+            $is_emp_inactive = ($row['emp_active'] !== null && (int)$row['emp_active'] === 0) || (strcasecmp($row['employment_status'] ?? '', 'Inactive') === 0);
+            if (!$row['user_active'] || $is_emp_inactive) {
+                session_unset();
+                session_destroy();
+                if (strpos($_SERVER['REQUEST_URI'], '/employee/') !== false) {
+                    header("Location: " . BASE_URL . "/employee/index.php");
+                } else {
+                    header("Location: " . BASE_URL . "/index.php");
+                }
+                exit();
+            }
+        }
+        $active_chk->close();
+    }
+}
+
 /**
  * Check if current user has the required role.
  * 

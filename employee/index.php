@@ -25,11 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please enter both username and password.';
     } else {
         $stmt = $conn->prepare("
-            SELECT user_id, employee_id, username, email, password_hash, full_name, role, branch_id, is_active, first_login_completed
-            FROM users
-            WHERE BINARY username = ? 
-              AND employee_id IS NOT NULL
-              AND role = 'Employee'
+            SELECT u.user_id, u.employee_id, u.username, u.email, u.password_hash, u.full_name, u.role, u.branch_id, u.is_active, u.first_login_completed, e.is_active as emp_is_active, e.employment_status
+            FROM users u
+            LEFT JOIN employees e ON u.employee_id = e.employee_id
+            WHERE BINARY u.username = ? 
+              AND u.employee_id IS NOT NULL
+              AND u.role = 'Employee'
             LIMIT 1
         ");
         $stmt->bind_param("s", $username);
@@ -38,7 +39,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result->num_rows === 1) {
             $user = $result->fetch_assoc();
-            if (!$user['is_active']) {
+            $is_emp_inactive = ($user['emp_is_active'] !== null && (int)$user['emp_is_active'] === 0) || (strcasecmp($user['employment_status'] ?? '', 'Inactive') === 0);
+            if (!$user['is_active'] || $is_emp_inactive) {
                 $error = 'Your account has been deactivated.';
                 registerLoginAttempt($conn, $username, $ip);
             } elseif (password_verify($password, $user['password_hash'])) {

@@ -87,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
         }
 
         $job_title_name = $getV('Job Title', 34);
+        $rank_name_csv  = $getV('Rank');
         $dept_name = $getV('Department', 35);
         $branch_name = $getV('Branch', 36);
         $emp_status = $getV('Employment Status', 37) ?: 'Regular';
@@ -149,13 +150,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
         }
 
         $job_title_id = null;
+        $jt_rank_category_id = null;
         if (!empty($job_title_name)) {
-            $jc = $conn->prepare("SELECT job_title_id FROM job_titles WHERE job_title = ? AND (department_id = ? OR department_id IS NULL)");
+            $jc = $conn->prepare("SELECT job_title_id, rank_category_id FROM job_titles WHERE job_title = ? AND (department_id = ? OR department_id IS NULL)");
             $jc->bind_param("si", $job_title_name, $did);
             $jc->execute();
             $jr = $jc->get_result();
-            if ($j = $jr->fetch_assoc())
+            if ($j = $jr->fetch_assoc()) {
                 $job_title_id = $j['job_title_id'];
+                $jt_rank_category_id = $j['rank_category_id'];
+            }
             $jc->close();
         }
 
@@ -177,18 +181,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $bc->close();
         }
 
+        // Robust Rank Category Resolution
+        $rcid = null;
+        if (!empty($rank_name_csv)) {
+            // 1. Case-insensitive exact match from rank_categories
+            $rq = $conn->prepare("SELECT rank_category_id FROM rank_categories WHERE LOWER(TRIM(rank_name)) = LOWER(TRIM(?)) LIMIT 1");
+            $rq->bind_param("s", $rank_name_csv);
+            $rq->execute();
+            $rr = $rq->get_result();
+            if ($rc_row = $rr->fetch_assoc()) {
+                $rcid = (int) $rc_row['rank_category_id'];
+            }
+            $rq->close();
+
+            // 2. Match common aliases / shorthand
+            if (!$rcid) {
+                $norm_rank = strtolower(trim($rank_name_csv));
+                if (in_array($norm_rank, ['executive', 'executives', 'exec'], true)) {
+                    $rcid = 1;
+                } elseif (in_array($norm_rank, ['management team', 'management', 'mgmt'], true)) {
+                    $rcid = 2;
+                } elseif (in_array($norm_rank, ['manager', 'managers', 'mgr'], true)) {
+                    $rcid = 3;
+                } elseif (in_array($norm_rank, ['supervisor', 'supervisors', 'sup', 'supv'], true)) {
+                    $rcid = 4;
+                } elseif (in_array($norm_rank, ['r&f', 'rf', 'rank & file', 'rank and file', 'staff'], true)) {
+                    $rcid = 5;
+                }
+            }
+        }
+
+        // 3. Fallback to rank_category_id from matched job_title table
+        if (!$rcid && !empty($jt_rank_category_id)) {
+            $rcid = (int) $jt_rank_category_id;
+        }
+
+        // 4. Fallback from job_title_name keywords if still unassigned
+        if (!$rcid && !empty($job_title_name)) {
+            $norm_jt = strtolower($job_title_name);
+            if (str_contains($norm_jt, 'executive') || str_contains($norm_jt, 'president') || str_contains($norm_jt, 'vp') || str_contains($norm_jt, 'ceo')) {
+                $rcid = 1;
+            } elseif (str_contains($norm_jt, 'manager') || str_contains($norm_jt, 'head') || str_contains($norm_jt, 'chief')) {
+                $rcid = 3;
+            } elseif (str_contains($norm_jt, 'supervisor') || str_contains($norm_jt, 'lead')) {
+                $rcid = 4;
+            } else {
+                $rcid = 5; // Default R&F / Staff
+            }
+        }
+
         $conn->begin_transaction();
         try {
             if ($existing_id) {
-                $stmt = $conn->prepare("UPDATE employees SET employee_code=?, first_name=?, last_name=?, middle_name=?, name_extension=?, date_of_birth=?, place_of_birth=?, gender=?, civil_status=?, hire_date=?, job_title=?, job_title_id=?, department_id=?, branch_id=?, employment_status=?, employment_type=? WHERE employee_id=?");
-                $stmt->bind_param("sssssssssssiiissi", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $bid, $emp_status, $emp_type, $existing_id);
+                $stmt = $conn->prepare("UPDATE employees SET employee_code=?, first_name=?, last_name=?, middle_name=?, name_extension=?, date_of_birth=?, place_of_birth=?, gender=?, civil_status=?, hire_date=?, job_title=?, job_title_id=?, department_id=?, rank_category_id=?, branch_id=?, employment_status=?, employment_type=? WHERE employee_id=?");
+                $stmt->bind_param("sssssssssssiiiissi", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $rcid, $bid, $emp_status, $emp_type, $existing_id);
                 $stmt->execute();
                 $eid = $existing_id;
                 $stmt->close();
                 $updated++;
             } else {
-                $stmt = $conn->prepare("INSERT INTO employees (employee_code, first_name, last_name, middle_name, name_extension, date_of_birth, place_of_birth, gender, civil_status, hire_date, job_title, job_title_id, department_id, branch_id, employment_status, employment_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-                $stmt->bind_param("sssssssssssiiiss", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $bid, $emp_status, $emp_type);
+                $stmt = $conn->prepare("INSERT INTO employees (employee_code, first_name, last_name, middle_name, name_extension, date_of_birth, place_of_birth, gender, civil_status, hire_date, job_title, job_title_id, department_id, rank_category_id, branch_id, employment_status, employment_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                $stmt->bind_param("sssssssssssiiiiss", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $rcid, $bid, $emp_status, $emp_type);
                 $stmt->execute();
                 $eid = $stmt->insert_id;
                 $stmt->close();
