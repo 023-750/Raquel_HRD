@@ -1,19 +1,208 @@
-1. HR Supervisors cannot edit the branch or department of other HR Supervisors because users with the same rank do not have authority over one another. Only higher-level administrators can perform these updates.
-2. inactive employees can still login to employee portal
-3. Visual Error ng branch supervisor pag nag perform ng evaluation.
-> "Raquel HRIS
-Success!
-Your self-rating was submitted successfully. Awaiting supervisor confirmation."
-4. branch manager performing evaluation dapat ay awaiting branch supervisor confirmation.
-"Raquel HRIS
-Success!
-Your self-rating was submitted successfully. Awaiting supervisor confirmation."
-5. si hr manager nag send dapat ay awaiting for hr supervisor confirmation
-"Raquel HRIS
-Success!
-Your self-rating was submitted successfully. Awaiting supervisor confirmation."
+Raquel HRIS — Bug Reports and Required Fixes
+1. Inactive Employees Can Still Log In to the Employee Portal
 
-6. hr supervisor na nag perform ng evaluation dapat ay awaiting for hr manager confirmation
-"Raquel HRIS
+Issue:
+Employees whose employment status is set to Inactive can still successfully log in and access the Employee Portal.
+
+Expected Behavior:
+Once an employee is marked as Inactive, they should no longer be allowed to authenticate or access the Employee Portal.
+
+Required Fix:
+
+Check the employee's current employment/status during login authentication.
+Deny login if the employee's status is Inactive.
+Display an appropriate message indicating that the account is inactive or deactivated.
+Perform the validation on the backend/server side, not only through the frontend.
+Ensure an inactive account cannot bypass the restriction through direct API requests.
+2. Incorrect Success Message When a Branch Supervisor Performs an Evaluation
+
+Issue:
+When a Branch Supervisor performs an evaluation, the system displays:
+
+Raquel HRIS
 Success!
-Your self-rating was submitted successfully. Awaiting supervisor confirmation."
+Your self-rating was submitted successfully. Awaiting supervisor confirmation.
+
+This message is incorrect because the Branch Supervisor is already acting as the supervisor/evaluator in this workflow.
+
+Expected Behavior:
+The system should identify the correct next confirmation level based on the evaluator's role.
+
+For a Branch Supervisor, the evaluation should proceed to the Branch Manager for confirmation.
+
+Expected Message:
+
+Raquel HRIS
+Success!
+Your evaluation was submitted successfully. Awaiting branch manager confirmation.
+
+3. Branch Manager Evaluation Has the Wrong Confirmation Status
+
+Issue:
+When a Branch Manager performs an evaluation, the system displays:
+
+Raquel HRIS
+Success!
+Your self-rating was submitted successfully. Awaiting supervisor confirmation.
+
+The message does not reflect the correct approval workflow.
+
+Expected Workflow:
+
+Branch Manager → Branch Supervisor Confirmation
+
+After the Branch Manager submits the evaluation, it should be marked as Awaiting Branch Supervisor Confirmation.
+
+Expected Message:
+
+Raquel HRIS
+Success!
+Your evaluation was submitted successfully. Awaiting branch supervisor confirmation.
+
+4. HR Manager Evaluation Has the Wrong Confirmation Status
+
+Issue:
+When an HR Manager performs an evaluation, the system displays the generic message:
+
+Raquel HRIS
+Success!
+Your self-rating was submitted successfully. Awaiting supervisor confirmation.
+
+This does not accurately represent the HR evaluation hierarchy.
+
+Expected Workflow:
+
+HR Manager → HR Supervisor Confirmation
+
+The evaluation should be routed to the HR Supervisor for confirmation.
+
+Expected Message:
+
+Raquel HRIS
+Success!
+Your evaluation was submitted successfully. Awaiting HR supervisor confirmation.
+
+5. HR Supervisor Evaluation Has the Wrong Confirmation Status
+
+Issue:
+When an HR Supervisor performs an evaluation, the system still displays:
+
+Raquel HRIS
+Success!
+Your self-rating was submitted successfully. Awaiting supervisor confirmation.
+
+The message is too generic and does not identify the correct next approval level.
+
+Expected Workflow:
+
+HR Supervisor → HR Manager Confirmation
+
+The evaluation should be routed to the HR Manager for confirmation.
+
+Expected Message:
+
+Raquel HRIS
+Success!
+Your evaluation was submitted successfully. Awaiting HR manager confirmation.
+
+6. Employee Filters Reset After Deleting an Employee
+
+Affected Pages:
+
+HR Manager → Employees → All Employees
+HR Supervisor → Employees → All Employees
+HR Staff → Employees → All Employees
+
+Issue:
+When an employee is deleted while one or more filters are active, the deletion succeeds, but the system resets the filters to their default values.
+
+Example:
+HR Manager opens All Employees.
+Selects Department → IT Department.
+Deletes an employee from the filtered results.
+Employee is successfully deleted.
+The employee list refreshes.
+The Department filter unexpectedly returns to All Departments.
+
+This causes the user to lose their current filtering context after performing an action.
+
+Expected Behavior:
+The currently selected filters must remain active after a successful employee deletion.
+
+Example:
+
+Before deletion:
+
+Department: IT Department
+Job Title: Software Developer
+Branch: Manila
+Status: Active
+
+After deletion:
+
+Department: IT Department
+Job Title: Software Developer
+Branch: Manila
+Status: Active
+
+The deleted employee should simply be removed from the current results while the selected filters remain unchanged.
+
+Filters That Must Be Tested
+
+Check the persistence of all available filters:
+
+Department
+Job Title
+Branch
+Status
+
+Also test combinations of multiple filters simultaneously.
+
+Affected User Roles
+
+The same issue should be checked on the All Employees page for:
+
+HR Manager
+HR Supervisor
+HR Staff
+
+The filter state should remain consistent after employee deletion and other actions that trigger the employee list to refresh.
+
+7. Imported Employees Do Not Display Their Assigned Rank
+
+Issue:
+Employees imported through the CSV Import feature are successfully created, but their assigned Rank does not appear correctly when viewing their employee profile.
+
+The employee exists in the system, but the Rank field is missing, blank, or not properly associated with the imported employee.
+
+Current Workaround
+
+The Rank only becomes correct after manually editing the employee.
+
+Current behavior:
+
+Import employee through CSV.
+Open the employee's profile.
+Rank is missing or incorrect.
+Click Edit Employee.
+Assign/re-select the correct Rank.
+Save the employee.
+Reopen the profile.
+Rank now appears correctly.
+
+This suggests that the CSV import process is not properly saving or associating the employee's Rank during the initial import.
+
+Expected Behavior:
+All applicable employee information provided through the CSV import should be correctly saved during the initial import.
+
+This includes, where applicable:
+
+Employee information
+Department
+Branch
+Job Title
+Rank
+Employment Status
+Other organizational assignments
+
+The employee's correct Rank should be visible immediately after the CSV import is completed, without requiring manual editing.
