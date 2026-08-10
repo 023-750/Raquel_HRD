@@ -149,11 +149,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movement_action'])) {
         redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Invalid action.');
     }
 
+    // Task 7.3/7.4 — Fetch movement; accept both HR Portal pending AND Portal_Requests at Pending_HR_Supervisor
     $stmt = $conn->prepare("
         SELECT cm.*, CONCAT(e.first_name,' ',e.last_name) AS employee_name
         FROM career_movements cm
         JOIN employees e ON cm.employee_id = e.employee_id
-        WHERE cm.movement_id = ? AND cm.approval_status = 'Pending' LIMIT 1
+        WHERE cm.movement_id = ?
+          AND (
+            (cm.approval_status = 'Pending' AND (cm.portal_workflow_stage IS NULL OR cm.request_source = 'HR Portal'))
+            OR
+            (cm.request_source = 'Employee Portal' AND cm.portal_workflow_stage = 'Pending_HR_Supervisor')
+          )
+        LIMIT 1
     ");
     $stmt->bind_param("i", $movement_id);
     $stmt->execute();
@@ -169,37 +176,179 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movement_action'])) {
         redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'You cannot approve or reject a request you submitted.');
     }
 
-    $status   = $action === 'Approve' ? 'Approved' : 'Rejected';
-    $comments = trim($_POST['manager_comments'] ?? '');
+    // Detect whether this is an Employee Portal request (Portal_Request) or an HR Portal request
+    $is_portal_request = (
+        ($movement['request_source'] ?? '') === 'Employee Portal' &&
+        ($movement['portal_workflow_stage'] ?? null) !== null
+    );
 
-    $upd = $conn->prepare("UPDATE career_movements SET approval_status=?, approved_by=?, decision_date=NOW(), manager_comments=?, is_applied=0 WHERE movement_id=?");
-    $upd->bind_param("sisi", $status, $current_user_id, $comments, $movement_id);
-    $upd->execute(); $upd->close();
+    // ── Task 7.3 — APPROVE ────────────────────────────────────────────────────
+    if ($action === 'Approve') {
 
-    // Apply immediately if effective date has already passed / is today
-    if ($status === 'Approved' && $movement['effective_date'] <= date('Y-m-d')) {
-        applyMovementNow($conn, $movement, $movement_id);
+        if ($is_portal_request) {
+            // Portal_Request: stage guard via checkApprovalAuthorization
+            if (!checkApprovalAuthorization($movement, $current_user_id, $sup_branch_id, 'HR Supervisor', 'Pending_HR_Supervisor')) {
+                redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'You are not authorized to approve this request.');
+            }
+
+            // Advance stage to Pending_HR_Manager, record HR Supervisor decision
+            $upd = $conn->prepare("
+                UPDATE career_movements
+                SET portal_workflow_stage       = 'Pending_HR_Manager',
+                    hr_supervisor_approved_by   = ?,
+                    hr_supervisor_decision_date = NOW()
+                WHERE movement_id = ?
+            ");
+            $upd->bind_param("ii", $current_user_id, $movement_id);
+            $upd->execute();
+            $upd->close();
+
+            // Notify all active HR Managers
+            $hr_mgr_res = $conn->query("SELECT user_id FROM users WHERE role = 'HR Manager' AND is_active = 1");
+            if ($hr_mgr_res && $hr_mgr_res->num_rows > 0) {
+                while ($hm = $hr_mgr_res->fetch_assoc()) {
+                    createNotification(
+                        $conn,
+                        (int) $hm['user_id'],
+                        'Transfer Request Pending Your Approval',
+                        "A Transfer request for {$movement['employee_name']} has been approved by HR Supervisor and requires your final decision.",
+                        BASE_URL . '/manager/career-movements.php'
+                    );
+                }
+                $hr_mgr_res->free();
+            } else {
+                error_log("Career movement notification skipped: no active HR Manager users found for movement_id={$movement_id}.");
+            }
+
+            logAudit($conn, $current_user_id, 'APPROVE', 'Career Movement', $movement_id,
+                "HR Supervisor approved portal Transfer request for {$movement['employee_name']}.",
+                ['module' => 'Career Progression']);
+            redirectWith(BASE_URL . '/supervisor/career-movements.php', 'success', 'Transfer request approved and forwarded to HR Manager.');
+
+        } else {
+            // ── Existing HR Portal single-step approval flow (unchanged) ─────
+            $status   = 'Approved';
+            $comments = trim($_POST['manager_comments'] ?? '');
+
+            $upd = $conn->prepare("UPDATE career_movements SET approval_status=?, approved_by=?, decision_date=NOW(), manager_comments=?, is_applied=0 WHERE movement_id=?");
+            $upd->bind_param("sisi", $status, $current_user_id, $comments, $movement_id);
+            $upd->execute();
+            $upd->close();
+
+            // Apply immediately if effective date has already passed / is today
+            if ($movement['effective_date'] <= date('Y-m-d')) {
+                applyMovementNow($conn, $movement, $movement_id);
+            }
+
+            if (!empty($movement['logged_by'])) {
+                createNotification($conn, (int)$movement['logged_by'],
+                    "Career Movement {$status}",
+                    "The {$movement['movement_type']} for {$movement['employee_name']} has been {$status}.",
+                    BASE_URL . '/supervisor/career-movements.php');
+            }
+            $emp_user = getPreferredLinkedUserId($conn, $movement['employee_id'], 'employee_portal');
+            if ($emp_user) {
+                createNotification($conn, $emp_user,
+                    "Career Movement {$status}",
+                    "Your career movement ({$movement['movement_type']}) has been {$status}.",
+                    BASE_URL . '/employee/notifications.php');
+            }
+
+            logAudit($conn, $current_user_id, 'APPROVE', 'Career Movement', $movement_id,
+                "Approved {$movement['movement_type']} for {$movement['employee_name']}.");
+            redirectWith(BASE_URL . '/supervisor/career-movements.php', 'success', 'Career movement approved.');
+        }
     }
 
-    if (!empty($movement['logged_by'])) {
-        createNotification($conn, (int)$movement['logged_by'],
-            "Career Movement {$status}",
-            "The {$movement['movement_type']} for {$movement['employee_name']} has been {$status}.",
-            BASE_URL . '/supervisor/career-movements.php');
-    }
-    // Notify employee portal user
-    $emp_user = getPreferredLinkedUserId($conn, $movement['employee_id'], 'employee_portal');
-    if ($emp_user) {
-        createNotification($conn, $emp_user,
-            "Career Movement {$status}",
-            "Your career movement ({$movement['movement_type']}) has been {$status}.",
-            BASE_URL . '/employee/notifications.php');
-    }
+    // ── Task 7.4 — REJECT ─────────────────────────────────────────────────────
+    if ($action === 'Reject') {
 
-    logAudit($conn, $current_user_id, strtoupper($action), 'Career Movement', $movement_id,
-        "{$action}d {$movement['movement_type']} for {$movement['employee_name']}.");
-    $msg = $status === 'Approved' ? 'Career movement approved.' : 'Career movement rejected.';
-    redirectWith(BASE_URL . '/supervisor/career-movements.php', $status === 'Approved' ? 'success' : 'warning', $msg);
+        if ($is_portal_request) {
+            // Portal_Request: stage guard via checkApprovalAuthorization
+            if (!checkApprovalAuthorization($movement, $current_user_id, $sup_branch_id, 'HR Supervisor', 'Pending_HR_Supervisor')) {
+                redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'You are not authorized to reject this request.');
+            }
+
+            // Require non-empty rejection comments (1–1000 chars)
+            $hr_supervisor_comments = trim($_POST['manager_comments'] ?? '');
+            if (strlen($hr_supervisor_comments) === 0 || strlen($hr_supervisor_comments) > 1000) {
+                redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'A rejection reason is required (1–1000 characters).');
+            }
+
+            // Terminate stage at Rejected, set approval_status = Rejected
+            $upd = $conn->prepare("
+                UPDATE career_movements
+                SET portal_workflow_stage       = 'Rejected',
+                    approval_status             = 'Rejected',
+                    hr_supervisor_approved_by   = ?,
+                    hr_supervisor_decision_date = NOW(),
+                    hr_supervisor_comments      = ?
+                WHERE movement_id = ?
+            ");
+            $upd->bind_param("isi", $current_user_id, $hr_supervisor_comments, $movement_id);
+            $upd->execute();
+            $upd->close();
+
+            // Resolve submitter's Employee Portal user for rejection notification
+            $submitter_portal_user_id = null;
+            $logged_by_user_id = (int)($movement['logged_by'] ?? 0);
+            if ($logged_by_user_id > 0) {
+                $sub_stmt = $conn->prepare("SELECT employee_id FROM users WHERE user_id = ? LIMIT 1");
+                $sub_stmt->bind_param("i", $logged_by_user_id);
+                $sub_stmt->execute();
+                $sub_row = $sub_stmt->get_result()->fetch_assoc();
+                $sub_stmt->close();
+                if ($sub_row && !empty($sub_row['employee_id'])) {
+                    $submitter_portal_user_id = getPreferredLinkedUserId($conn, (int)$sub_row['employee_id'], 'employee_portal');
+                }
+            }
+
+            if ($submitter_portal_user_id) {
+                createNotification(
+                    $conn,
+                    $submitter_portal_user_id,
+                    'Transfer Request Rejected',
+                    "Your Transfer request for {$movement['employee_name']} has been rejected by HR Supervisor. Reason: {$hr_supervisor_comments}",
+                    BASE_URL . '/employee/career-movement-request.php'
+                );
+            } else {
+                error_log("Rejection notification skipped: could not resolve submitter portal user for movement_id={$movement_id}.");
+            }
+
+            logAudit($conn, $current_user_id, 'REJECT', 'Career Movement', $movement_id,
+                "HR Supervisor rejected portal Transfer request for {$movement['employee_name']}. Reason: {$hr_supervisor_comments}",
+                ['module' => 'Career Progression']);
+            redirectWith(BASE_URL . '/supervisor/career-movements.php', 'success', 'Transfer request rejected.');
+
+        } else {
+            // ── Existing HR Portal single-step rejection flow (unchanged) ────
+            $status   = 'Rejected';
+            $comments = trim($_POST['manager_comments'] ?? '');
+
+            $upd = $conn->prepare("UPDATE career_movements SET approval_status=?, approved_by=?, decision_date=NOW(), manager_comments=?, is_applied=0 WHERE movement_id=?");
+            $upd->bind_param("sisi", $status, $current_user_id, $comments, $movement_id);
+            $upd->execute();
+            $upd->close();
+
+            if (!empty($movement['logged_by'])) {
+                createNotification($conn, (int)$movement['logged_by'],
+                    "Career Movement {$status}",
+                    "The {$movement['movement_type']} for {$movement['employee_name']} has been {$status}.",
+                    BASE_URL . '/supervisor/career-movements.php');
+            }
+            $emp_user = getPreferredLinkedUserId($conn, $movement['employee_id'], 'employee_portal');
+            if ($emp_user) {
+                createNotification($conn, $emp_user,
+                    "Career Movement {$status}",
+                    "Your career movement ({$movement['movement_type']}) has been {$status}.",
+                    BASE_URL . '/employee/notifications.php');
+            }
+
+            logAudit($conn, $current_user_id, 'REJECT', 'Career Movement', $movement_id,
+                "Rejected {$movement['movement_type']} for {$movement['employee_name']}.");
+            redirectWith(BASE_URL . '/supervisor/career-movements.php', 'warning', 'Career movement rejected.');
+        }
+    }
 }
 
 // ── Fetch display data ───────────────────────────────────────────────────────

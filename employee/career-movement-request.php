@@ -1,7 +1,11 @@
 <?php
 /**
  * Employee Portal - Career Movement Request
- * For Area Supervisors/Immediate Heads to submit career movement requests for their subordinates
+ * Branch Supervisors (rank_category_id = 4) submit Transfer-only requests
+ * for employees in their branch. Four-step approval chain:
+ *   Branch Supervisor → Branch Manager → HR Supervisor → HR Manager
+ *
+ * Tasks implemented: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.8
  */
 $page_title = 'Career Movement Request';
 require_once '../includes/session-check.php';
@@ -9,534 +13,639 @@ checkRole(['Employee']);
 require_once '../includes/functions.php';
 
 $supervisor_employee_id = (int) ($_SESSION['employee_id'] ?? 0);
-$user_id = (int) ($_SESSION['user_id'] ?? 0);
+$supervisor_branch_id   = (int) ($_SESSION['branch_id']   ?? 0);
+$user_id                = (int) ($_SESSION['user_id']      ?? 0);
+$full_name              = trim($_SESSION['full_name'] ?? '');
+$job_title_session      = trim($_SESSION['job_title'] ?? 'Branch Supervisor');
 
-// Check if this employee has subordinates (is a supervisor)
-$is_supervisor = hasEmployeeSubordinates($conn, $supervisor_employee_id);
-$subordinates = $is_supervisor ? getEmployeeSubordinates($conn, $supervisor_employee_id) : [];
+// ── Ensure portal schema columns exist before any queries reference them ─────
+ensureCareerProgressionMovements($conn);
 
-// Fetch branches for dropdown
-$branches = $conn->query("SELECT branch_id, branch_name FROM branches WHERE is_active = 1 ORDER BY branch_name");
+// ── Fetch supervisor's own employee record for hero display ──────────────────
+$sup_stmt = $conn->prepare(
+    "SELECT e.first_name, e.last_name, e.job_title, e.profile_picture,
+            e.rank_category_id, e.branch_id, e.department_id, b.branch_name
+     FROM employees e
+     LEFT JOIN branches b ON e.branch_id = b.branch_id
+     WHERE e.employee_id = ? LIMIT 1"
+);
+$sup_stmt->bind_param("i", $supervisor_employee_id);
+$sup_stmt->execute();
+$sup_emp = $sup_stmt->get_result()->fetch_assoc() ?? [];
+$sup_stmt->close();
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $is_supervisor) {
-    $employee_id = (int) ($_POST['employee_id'] ?? 0);
-    $movement_type = trim($_POST['movement_type'] ?? '');
-    $new_position = trim($_POST['new_position'] ?? '');
-    $new_branch_id = !empty($_POST['new_branch_id']) ? (int) $_POST['new_branch_id'] : null;
-    $effective_date = trim($_POST['effective_date'] ?? '');
-    $reason = trim($_POST['reason'] ?? '');
+// ── Task 4.1 — Access guard: rank_category_id = 4 AND at least one branch employee ──
+$is_branch_supervisor = ($sup_emp && (int) ($sup_emp['rank_category_id'] ?? 0) === 4);
 
-    // Validation
-    $errors = [];
-    if ($employee_id <= 0) {
-        $errors[] = 'Please select an employee.';
+// Use branch_id and department_id from the DB record — session values may be stale or 0
+$sup_branch_fetch = $conn->prepare("SELECT branch_id, department_id FROM employees WHERE employee_id = ? LIMIT 1");
+$sup_branch_fetch->bind_param("i", $supervisor_employee_id);
+$sup_branch_fetch->execute();
+$sup_branch_row = $sup_branch_fetch->get_result()->fetch_assoc();
+$sup_branch_fetch->close();
+if ($sup_branch_row) {
+    if ((int)$sup_branch_row['branch_id'] > 0) {
+        $supervisor_branch_id = (int)$sup_branch_row['branch_id'];
     }
-    if (empty($movement_type)) {
-        $errors[] = 'Please select a movement type.';
-    }
-    if (empty($new_position)) {
-        $errors[] = 'Please enter the new position.';
-    }
-    if (empty($effective_date)) {
-        $errors[] = 'Please select an effective date.';
-    }
+    $supervisor_department_id = (int)($sup_branch_row['department_id'] ?? 0);
+} else {
+    $supervisor_department_id = 0;
+}
 
-    // Verify the selected employee is actually a subordinate
-    $is_valid_subordinate = false;
-    foreach ($subordinates as $sub) {
-        if ($sub['employee_id'] == $employee_id) {
-            $is_valid_subordinate = true;
-            break;
+// Only bother fetching branch employees when rank check passes
+$branch_employees = [];
+$no_employees_in_branch = false;
+if ($is_branch_supervisor) {
+    $branch_employees = getBranchEmployeesForDropdown(
+        $conn,
+        $supervisor_employee_id,
+        $supervisor_branch_id,
+        $supervisor_department_id
+    );
+    if (empty($branch_employees)) {
+        $no_employees_in_branch = true;
+    }
+}
+
+$errors   = [];
+$success  = false;
+
+// ── Task 4.5 — POST handler ──────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verifyCsrfToken();
+
+    if ($is_branch_supervisor && !$no_employees_in_branch) {
+        $employee_id    = (int)   ($_POST['employee_id']    ?? 0);
+        $movement_type  = trim(    $_POST['movement_type']   ?? '');
+        $new_position   = trim(    $_POST['new_position']    ?? '');
+        $new_branch_id  = !empty($_POST['new_branch_id']) ? (int) $_POST['new_branch_id'] : null;
+        $effective_date = trim(    $_POST['effective_date']  ?? '');
+        $reason         = trim(    $_POST['reason']          ?? '');
+
+        // Hard-enforce Transfer only (requirement 1.2)
+        if ($movement_type !== 'Transfer') {
+            $errors[] = 'Only Transfer requests may be submitted through the Employee Portal.';
         }
-    }
-    if (!$is_valid_subordinate) {
-        $errors[] = 'Invalid employee selection.';
-    }
 
-    if (empty($errors)) {
-        // Ensure career_movements table has new columns
-        ensureCareerProgressionMovements($conn);
+        // Require destination branch
+        if (empty($new_branch_id)) {
+            $errors[] = 'A different destination branch must be selected.';
+        }
 
-        // Get current employee details
-        $emp_stmt = $conn->prepare("SELECT job_title, branch_id FROM employees WHERE employee_id = ? LIMIT 1");
-        $emp_stmt->bind_param("i", $employee_id);
-        $emp_stmt->execute();
-        $emp_data = $emp_stmt->get_result()->fetch_assoc();
-        $emp_stmt->close();
+        // Require effective date
+        if (empty($effective_date)) {
+            $errors[] = 'Please enter an effective date.';
+        }
 
-        $previous_position = $emp_data['job_title'] ?? '';
-        $previous_branch_id = $emp_data['branch_id'] ?? null;
+        // Run the business validation function
+        if (empty($errors)) {
+            $validation_error = validateTransferSubmission(
+                $conn,
+                $supervisor_branch_id,
+                $supervisor_employee_id,
+                $employee_id,
+                $new_branch_id
+            );
+            if ($validation_error !== null) {
+                $errors[] = $validation_error;
+            }
+        }
 
-        // Get supervisor info for initiated_by fields
-        $supervisor_name = $_SESSION['full_name'] ?? 'Unknown';
+        // ── Task 4.6 — Insertion with portal_workflow_stage ──────────────────
+        if (empty($errors)) {
+            ensureCareerProgressionMovements($conn);
 
-        // Fetch supervisor's job title
-        $sup_stmt = $conn->prepare("SELECT job_title FROM employees WHERE employee_id = ? LIMIT 1");
-        $sup_stmt->bind_param("i", $supervisor_employee_id);
-        $sup_stmt->execute();
-        $sup_data = $sup_stmt->get_result()->fetch_assoc();
-        $sup_stmt->close();
-        
-        $supervisor_title = $sup_data['job_title'] ?? 'Immediate Head';
+            // Fetch target employee's current position and branch
+            $emp_stmt = $conn->prepare(
+                "SELECT job_title, branch_id FROM employees WHERE employee_id = ? LIMIT 1"
+            );
+            $emp_stmt->bind_param("i", $employee_id);
+            $emp_stmt->execute();
+            $emp_row = $emp_stmt->get_result()->fetch_assoc();
+            $emp_stmt->close();
 
-        // Insert the career movement request
-        $insert = $conn->prepare("
-            INSERT INTO career_movements 
-            (employee_id, movement_type, previous_position, new_position, previous_branch_id, new_branch_id, 
-             effective_date, reason, logged_by, approval_status, initiated_by_name, initiated_by_role, initiated_via, request_source, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, 'Employee Portal', 'Employee Portal', NOW())
-        ");
-        $insert->bind_param(
-            "isssiississ",
-            $employee_id,
-            $movement_type,
-            $previous_position,
-            $new_position,
-            $previous_branch_id,
-            $new_branch_id,
-            $effective_date,
-            $reason,
-            $user_id,
-            $supervisor_name,
-            $supervisor_title
-        );
+            $previous_position  = $emp_row['job_title']  ?? null;
+            $previous_branch_id = (int) ($emp_row['branch_id'] ?? $supervisor_branch_id);
 
-        if ($insert->execute()) {
-            $movement_id = $insert->insert_id;
-            $insert->close();
-
-            // Notify HR Supervisor
-            $hr_supervisors = $conn->query("SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1");
-            while ($hr_sup = $hr_supervisors->fetch_assoc()) {
-                createNotification(
-                    $conn,
-                    $hr_sup['user_id'],
-                    'New Career Movement Request',
-                    $supervisor_name . ' has submitted a ' . $movement_type . ' request for ' . getEmployeeNameById($conn, $employee_id),
-                    BASE_URL . '/supervisor/career-movements.php'
+            // Build initiated_by_name from session or employee record
+            $initiated_by_name = $full_name;
+            if (empty($initiated_by_name)) {
+                $initiated_by_name = trim(
+                    ($sup_emp['first_name'] ?? '') . ' ' . ($sup_emp['last_name'] ?? '')
                 );
             }
+            $initiated_by_role = $sup_emp['job_title'] ?? $job_title_session;
 
-            // Log audit
-            logAudit($conn, $user_id, 'CREATE', 'CareerMovement', $movement_id, 'Career movement request submitted via Employee Portal by ' . $supervisor_name);
+            $insert = $conn->prepare(
+                "INSERT INTO career_movements
+                    (employee_id, movement_type, previous_position, new_position,
+                     previous_branch_id, new_branch_id, effective_date, reason,
+                     logged_by, initiated_by_name, initiated_by_role,
+                     request_source, approval_status, portal_workflow_stage,
+                     created_at)
+                 VALUES (?, 'Transfer', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Employee Portal', 'Pending',
+                         'Pending_Branch_Manager', NOW())"
+            );
+            $insert->bind_param(
+                "issiississ",
+                $employee_id,        // i - int
+                $previous_position,  // s - string
+                $new_position,       // s - string
+                $previous_branch_id, // i - int
+                $new_branch_id,      // i - int
+                $effective_date,     // s - string
+                $reason,             // s - string
+                $user_id,            // i - int
+                $initiated_by_name,  // s - string
+                $initiated_by_role   // s - string
+            );
 
-            // Store confirmation details for post-submit display (Req 11.4)
-            $emp_name = getEmployeeNameById($conn, $employee_id);
-            $_SESSION['career_confirmation'] = [
-                'movement_id'    => $movement_id,
-                'movement_type'  => $movement_type,
-                'new_position'   => $new_position,
-                'effective_date' => $effective_date,
-                'employee_name'  => $emp_name,
-                'submitted_at'   => date('Y-m-d H:i:s'),
-            ];
-            header("Location: " . BASE_URL . "/employee/career-movement-request.php");
-            exit();
-        } else {
-            $insert->close();
-            $errors[] = 'Failed to submit request. Please try again.';
+            if ($insert->execute()) {
+                $movement_id = (int) $conn->insert_id;
+                $insert->close();
+
+                // ── Look up Branch Manager for the submitting branch ──────────
+                $bm_stmt = $conn->prepare(
+                    "SELECT employee_id FROM employees
+                     WHERE branch_id = ? AND rank_category_id = 3 AND is_active = 1
+                     LIMIT 1"
+                );
+                $bm_stmt->bind_param("i", $supervisor_branch_id);
+                $bm_stmt->execute();
+                $bm_row = $bm_stmt->get_result()->fetch_assoc();
+                $bm_stmt->close();
+
+                // Fetch target employee name for notification messages
+                $tgt_stmt = $conn->prepare(
+                    "SELECT first_name, last_name FROM employees WHERE employee_id = ? LIMIT 1"
+                );
+                $tgt_stmt->bind_param("i", $employee_id);
+                $tgt_stmt->execute();
+                $tgt_row = $tgt_stmt->get_result()->fetch_assoc();
+                $tgt_stmt->close();
+                $target_emp_name = trim(
+                    ($tgt_row['first_name'] ?? '') . ' ' . ($tgt_row['last_name'] ?? '')
+                );
+
+                $bm_user_id = null;
+                if ($bm_row) {
+                    $bm_emp_id  = (int) $bm_row['employee_id'];
+                    $bm_user_id = getPreferredLinkedUserId($conn, $bm_emp_id, 'employee_portal');
+                }
+
+                if ($bm_user_id) {
+                    // BM found — notify BM; stage stays Pending_Branch_Manager
+                    createNotification(
+                        $conn,
+                        $bm_user_id,
+                        'Transfer Request Pending Your Approval',
+                        $initiated_by_name . ' has submitted a Transfer request for ' . $target_emp_name . '.',
+                        BASE_URL . '/employee/branch-manager-approvals.php'
+                    );
+                } else {
+                    // No BM user — escalate directly to HR Supervisor
+                    $upd = $conn->prepare(
+                        "UPDATE career_movements
+                         SET portal_workflow_stage = 'Pending_HR_Supervisor'
+                         WHERE movement_id = ?"
+                    );
+                    $upd->bind_param("i", $movement_id);
+                    $upd->execute();
+                    $upd->close();
+
+                    // Notify all active HR Supervisors
+                    $hr_sup_res = $conn->query(
+                        "SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1"
+                    );
+                    if ($hr_sup_res) {
+                        while ($hr_row = $hr_sup_res->fetch_assoc()) {
+                            createNotification(
+                                $conn,
+                                (int) $hr_row['user_id'],
+                                'Transfer Request Pending Your Approval',
+                                $initiated_by_name . ' submitted a Transfer request for ' .
+                                    $target_emp_name . ' (no Branch Manager found).',
+                                BASE_URL . '/supervisor/career-movements.php'
+                            );
+                        }
+                        $hr_sup_res->free();
+                    } else {
+                        error_log(
+                            "Career movement notification skipped: no active HR Supervisor users found."
+                        );
+                    }
+                }
+
+                // Audit log
+                logAudit(
+                    $conn,
+                    $user_id,
+                    'CREATE',
+                    'Career Movement',
+                    $movement_id,
+                    'Portal Transfer request submitted for employee_id=' . $employee_id,
+                    ['module' => 'Career Progression', 'target_employee_id' => $employee_id,
+                     'branch_id' => $supervisor_branch_id]
+                );
+
+                // Confirmation and redirect
+                $_SESSION['career_confirmation'] = [
+                    'ref'       => str_pad($movement_id, 6, '0', STR_PAD_LEFT),
+                    'employee'  => $target_emp_name,
+                    'effective' => $effective_date,
+                    'type'      => 'Transfer',
+                ];
+
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit();
+
+            } else {
+                $insert->close();
+                $errors[] = 'A database error occurred while saving your request. Please try again.';
+            }
         }
-    }
 
-    if (!empty($errors)) {
-        $_SESSION['flash_message'] = implode(' ', $errors);
-        $_SESSION['flash_type'] = 'danger';
-    }
-}
+    } // end if $is_branch_supervisor
+} // end POST
 
-// Fetch my submitted requests
-$my_requests = [];
-if ($is_supervisor) {
-    $req_stmt = $conn->prepare("
-        SELECT cm.*, e.first_name, e.last_name, e.job_title, b.branch_name
-        FROM career_movements cm
-        JOIN employees e ON cm.employee_id = e.employee_id
-        LEFT JOIN branches b ON cm.new_branch_id = b.branch_id
-        WHERE cm.logged_by = ?
-        ORDER BY cm.created_at DESC
-        LIMIT 10
-    ");
-    $req_stmt->bind_param("i", $user_id);
-    $req_stmt->execute();
-    $my_requests = $req_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $req_stmt->close();
-}
-
-// Check for a just-submitted confirmation to show (stored in session)
-$confirmation_data = null;
+// Pop confirmation from session (for display after redirect)
+$career_confirmation = null;
 if (!empty($_SESSION['career_confirmation'])) {
-    $confirmation_data = $_SESSION['career_confirmation'];
+    $career_confirmation = $_SESSION['career_confirmation'];
     unset($_SESSION['career_confirmation']);
 }
+
+// ── Load active job titles for the New Position dropdown ─────────────────────
+$active_positions = [];
+$pos_res = $conn->query(
+    "SELECT job_title FROM job_titles WHERE is_active = 1 ORDER BY job_title ASC"
+);
+if ($pos_res) {
+    while ($pos_row = $pos_res->fetch_assoc()) {
+        $active_positions[] = $pos_row['job_title'];
+    }
+    $pos_res->free();
+}
+
+// ── Task 4.4 — Load active branches (excluding supervisor's own branch) ──────
+$dest_branches = [];
+$br_stmt = $conn->prepare(
+    "SELECT branch_id, branch_name FROM branches
+     WHERE is_active = 1 AND branch_id != ?
+     ORDER BY branch_name"
+);
+$br_stmt->bind_param("i", $supervisor_branch_id);
+$br_stmt->execute();
+$br_res = $br_stmt->get_result();
+while ($br_row = $br_res->fetch_assoc()) {
+    $dest_branches[] = $br_row;
+}
+$br_stmt->close();
+
+// ── Task 4.8 — Status table query ────────────────────────────────────────────
+$my_requests = [];
+$status_stmt = $conn->prepare(
+    "SELECT cm.movement_id, cm.portal_workflow_stage, cm.approval_status,
+            cm.effective_date, cm.created_at,
+            cm.branch_manager_comments, cm.hr_supervisor_comments, cm.manager_comments,
+            e.first_name, e.last_name,
+            b.branch_name AS dest_branch_name
+     FROM career_movements cm
+     JOIN employees e ON cm.employee_id = e.employee_id
+     LEFT JOIN branches b ON cm.new_branch_id = b.branch_id
+     WHERE cm.request_source = 'Employee Portal'
+       AND cm.logged_by = ?
+       AND cm.portal_workflow_stage IS NOT NULL
+     ORDER BY cm.created_at DESC
+     LIMIT 20"
+);
+$status_stmt->bind_param("i", $user_id);
+$status_stmt->execute();
+$status_res = $status_stmt->get_result();
+while ($sr = $status_res->fetch_assoc()) {
+    $my_requests[] = $sr;
+}
+$status_stmt->close();
 
 require_once '../includes/header.php';
 ?>
 
+<!-- ── Page Hero ─────────────────────────────────────────────────────────── -->
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-0 gap-4">
-        <div>
-            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">
-                Employee Portal</div>
-            <h2 class="text-white fw-bold mb-1 mt-1">Career Movement Request</h2>
-            <p class="mb-0 text-white-50 small">
-                <i class="fas fa-route me-1"></i>Submit transfer, promotion, or role change requests for your team
-                members
-            </p>
+        <div class="d-flex align-items-center gap-4 flex-wrap">
+            <img src="<?php echo getEmployeeAvatar($sup_emp['profile_picture'] ?? ''); ?>"
+                 loading="lazy"
+                 alt="Profile photo"
+                 style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:4px solid rgba(255,255,255,.3);box-shadow:0 4px 15px rgba(0,0,0,.2);">
+            <div>
+                <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">
+                    Employee Portal &middot; Career Management
+                </div>
+                <h2 class="text-white fw-bold mb-1 mt-1">Career Movement Request</h2>
+                <p class="mb-2 text-white-50 small">
+                    <i class="fas fa-briefcase me-1"></i><?php echo e($sup_emp['job_title'] ?? '—'); ?>
+                    &bull; <?php echo e($sup_emp['branch_name'] ?? '—'); ?>
+                </p>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0" style="font-size:.78rem;">
+                        <li class="breadcrumb-item">
+                            <a href="<?php echo BASE_URL; ?>/employee/dashboard.php"
+                               class="text-white-50 text-decoration-none">Dashboard</a>
+                        </li>
+                        <li class="breadcrumb-item text-white active" aria-current="page">
+                            Career Movement Request
+                        </li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+        <div class="d-none d-md-block text-end">
+            <a href="<?php echo BASE_URL; ?>/employee/dashboard.php"
+               class="btn btn-outline-light btn-sm rounded-pill px-3">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
         </div>
     </div>
 </div>
 
-<!-- Breadcrumb navigation -->
-<nav aria-label="Breadcrumb" class="breadcrumb-nav" style="margin-top: 1rem;">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="<?php echo BASE_URL; ?>/employee/dashboard.php">Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Career Movement Request</li>
-    </ol>
-</nav>
+<!-- ── Mobile back button ──────────────────────────────────────────────────── -->
+<div class="d-md-none mt-3 mb-2 fadeup" style="animation-delay:.1s;">
+    <a href="<?php echo BASE_URL; ?>/employee/dashboard.php"
+       class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm">
+        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+    </a>
+</div>
 
-<?php if (!$is_supervisor): ?>
-    <!-- Not a supervisor - informational message -->
-    <div class="content-card fadeup-1">
-        <div class="card-body text-center py-5">
-            <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
-            <h5 class="text-muted">Supervisor Access Only</h5>
-            <p class="text-muted mb-0">
-                This feature is available for Area Supervisors and Immediate Heads only.<br>
-                If you believe you should have access, please contact HRD.
-            </p>
-        </div>
-    </div>
-<?php else: ?>
+<div class="container-fluid px-3 py-4">
 
-    <!-- ============================================================
-         TASK 16.3 — Confirmation Panel (shown after successful submit)
-         Req 11.4: confirmation screen with request number and expected timeline
-    ============================================================ -->
-    <?php if ($confirmation_data): ?>
-    <div class="content-card fadeup-1 mb-4" id="submission-confirmation" role="region" aria-label="Submission Confirmation" style="border-left: 4px solid var(--color-success);">
-        <div class="card-header" style="background: rgba(15,107,46,0.07);">
-            <h5 class="mb-0" style="color: var(--color-success);">
-                <i class="fas fa-check-circle me-2" aria-hidden="true"></i>Request Submitted Successfully
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="row g-3 align-items-start">
-                <div class="col-md-8">
-                    <dl class="row mb-0" style="font-size: 1rem;">
-                        <dt class="col-sm-5 text-muted">Request Reference #</dt>
-                        <dd class="col-sm-7 fw-bold"><?php echo str_pad($confirmation_data['movement_id'], 6, '0', STR_PAD_LEFT); ?></dd>
-
-                        <dt class="col-sm-5 text-muted">Employee</dt>
-                        <dd class="col-sm-7"><?php echo e($confirmation_data['employee_name']); ?></dd>
-
-                        <dt class="col-sm-5 text-muted">Movement Type</dt>
-                        <dd class="col-sm-7"><?php echo e($confirmation_data['movement_type']); ?></dd>
-
-                        <dt class="col-sm-5 text-muted">New Position</dt>
-                        <dd class="col-sm-7"><?php echo e($confirmation_data['new_position']); ?></dd>
-
-                        <dt class="col-sm-5 text-muted">Effective Date</dt>
-                        <dd class="col-sm-7"><?php echo formatDate($confirmation_data['effective_date']); ?></dd>
-
-                        <dt class="col-sm-5 text-muted">Submitted At</dt>
-                        <dd class="col-sm-7"><?php echo date('M d, Y h:i A', strtotime($confirmation_data['submitted_at'])); ?></dd>
-
-                        <dt class="col-sm-5 text-muted">Current Status</dt>
-                        <dd class="col-sm-7">
-                            <span class="badge bg-warning text-dark">
-                                <i class="fas fa-clock me-1" aria-hidden="true"></i>Pending HRD Review
-                            </span>
-                        </dd>
-                    </dl>
-                </div>
-                <div class="col-md-4">
-                    <div class="p-3 rounded" style="background: var(--color-bg-secondary); border: 1px solid var(--color-border-light);">
-                        <h6 class="fw-bold mb-2"><i class="fas fa-calendar-alt me-1" aria-hidden="true"></i>Expected Timeline</h6>
-                        <ul class="list-unstyled mb-0 small" style="font-size: 0.95rem; line-height: 1.8;">
-                            <li><i class="fas fa-circle text-success me-2" style="font-size:.5rem;vertical-align:middle;" aria-hidden="true"></i>HRD Review: 1–3 business days</li>
-                            <li><i class="fas fa-circle text-warning me-2" style="font-size:.5rem;vertical-align:middle;" aria-hidden="true"></i>Management Approval: 3–5 business days</li>
-                            <li><i class="fas fa-circle text-info me-2" style="font-size:.5rem;vertical-align:middle;" aria-hidden="true"></i>Final Decision: Up to 7 business days</li>
-                        </ul>
-                        <p class="mt-2 mb-0 small text-muted">You will be notified when the status changes.</p>
-                    </div>
-                </div>
+    <?php if ($career_confirmation): ?>
+    <!-- ── Success confirmation panel ───────────────────────────────────────── -->
+    <div class="alert alert-success alert-dismissible fade show shadow-sm mb-4" role="alert">
+        <div class="d-flex align-items-start gap-3">
+            <i class="fas fa-check-circle fa-2x text-success mt-1"></i>
+            <div>
+                <h6 class="alert-heading mb-1">Transfer Request Submitted</h6>
+                <p class="mb-1">
+                    Your request for <strong><?php echo e($career_confirmation['employee']); ?></strong>
+                    has been submitted successfully.
+                </p>
+                <p class="mb-0 small text-muted">
+                    Reference #: <strong><?php echo e($career_confirmation['ref']); ?></strong>
+                    &bull; Effective Date: <strong><?php echo formatDate($career_confirmation['effective']); ?></strong>
+                </p>
             </div>
         </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
     <?php endif; ?>
 
-    <!-- Supervisor View - Request Form -->
-    <div class="row g-4">
-        <div class="col-lg-8">
-            <div class="content-card fadeup-1">
-                <div class="card-header">
-                    <h5><i class="fas fa-plus-circle me-2"></i>New Career Movement Request</h5>
-                </div>
-                <div class="card-body">
-
-                    <!-- ============================================================
-                         TASK 16.2 — Progress Indicator (Req 11.1, 11.3)
-                         Shows step-by-step guidance and eligibility info
-                    ============================================================ -->
-                    <div class="progress-indicator mb-4" role="list" aria-label="Form steps">
-                        <div class="progress-step completed" role="listitem" aria-label="Step 1: Select Employee - completed">
-                            <div class="progress-step-number"><i class="fas fa-check" aria-hidden="true"></i></div>
-                            <div class="progress-step-label">Select<br>Employee</div>
-                        </div>
-                        <div class="progress-line" id="prog-line-1"></div>
-                        <div class="progress-step active" role="listitem" id="prog-step-2" aria-label="Step 2: Request Details - current step">
-                            <div class="progress-step-number">2</div>
-                            <div class="progress-step-label">Request<br>Details</div>
-                        </div>
-                        <div class="progress-line" id="prog-line-2"></div>
-                        <div class="progress-step" role="listitem" id="prog-step-3" aria-label="Step 3: Review &amp; Submit - upcoming">
-                            <div class="progress-step-number">3</div>
-                            <div class="progress-step-label">Review &amp;<br>Submit</div>
-                        </div>
-                    </div>
-
-                    <!-- ============================================================
-                         TASK 16.2 — Eligibility Requirements Info (Req 11.3)
-                         Shown before submission, context-aware
-                    ============================================================ -->
-                    <div id="eligibility-info" class="alert alert-info d-flex align-items-start gap-2 mb-4" role="note" style="font-size: 0.97rem; border-left: 4px solid var(--color-info);">
-                        <i class="fas fa-info-circle mt-1 flex-shrink-0" aria-hidden="true" style="color: var(--color-info);"></i>
-                        <div>
-                            <strong>Before You Submit</strong>
-                            <ul class="mb-0 mt-1 ps-3" id="eligibility-list">
-                                <li>The employee must have completed their probationary period.</li>
-                                <li>A minimum of 6 months tenure in the current position is typically required for <strong>Promotion</strong>.</li>
-                                <li>Branch transfers require coordination with the receiving branch head.</li>
-                                <li>Attach supporting documentation or justification in the Reason field.</li>
-                                <li>All requests are subject to HRD and management approval.</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <form method="POST" action="" id="career-request-form" data-validate novalidate>
-                        <div class="row g-3">
-                            <!-- Employee Selection -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold" for="employee_id_select">Select Employee <span
-                                        class="text-danger" aria-label="required">*</span></label>
-                                <select name="employee_id" id="employee_id_select" class="form-select" required
-                                    onchange="onEmployeeSelected(this)">
-                                    <option value="">Choose employee...</option>
-                                    <?php foreach ($subordinates as $sub): ?>
-                                        <option value="<?php echo $sub['employee_id']; ?>">
-                                            <?php echo e($sub['last_name'] . ', ' . $sub['first_name'] . ' - ' . $sub['job_title']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <div class="form-text">Select the team member for this career movement</div>
-                            </div>
-
-                            <!-- Movement Type -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold" for="movement_type_select">Movement Type <span class="text-danger" aria-label="required">*</span></label>
-                                <select name="movement_type" id="movement_type_select" class="form-select" required>
-                                    <option value="">-- Select type --</option>
-                                    <option value="Transfer"  <?php if (!empty($_POST['movement_type']) && $_POST['movement_type']==='Transfer')  echo 'selected'; ?>>Transfer</option>
-                                    <option value="Promotion" <?php if (!empty($_POST['movement_type']) && $_POST['movement_type']==='Promotion') echo 'selected'; ?>>Promotion</option>
-                                    <option value="Demotion"  <?php if (!empty($_POST['movement_type']) && $_POST['movement_type']==='Demotion')  echo 'selected'; ?>>Demotion</option>
-                                    <option value="Role Change" <?php if (!empty($_POST['movement_type']) && $_POST['movement_type']==='Role Change') echo 'selected'; ?>>Role Change</option>
-                                </select>
-                                <div class="form-text">Select <strong>Transfer</strong> for branch re-assignment.</div>
-                            </div>
-
-                            <!-- New Position -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold" for="new_position">New Position <span
-                                        class="text-danger" aria-label="required">*</span></label>
-                                <input type="text" name="new_position" id="new_position" class="form-control" placeholder="e.g. Senior Teller"
-                                    required>
-                            </div>
-
-                            <!-- New Branch (Optional) -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold" for="new_branch_id">New Branch</label>
-                                <select name="new_branch_id" id="new_branch_id" class="form-select">
-                                    <option value="">Same branch (no transfer)</option>
-                                    <?php $branches->data_seek(0);
-                                    while ($branch = $branches->fetch_assoc()): ?>
-                                        <option value="<?php echo $branch['branch_id']; ?>">
-                                            <?php echo e($branch['branch_name']); ?>
-                                        </option>
-                                    <?php endwhile; ?>
-                                </select>
-                                <div class="form-text">Leave blank if not a branch transfer</div>
-                            </div>
-
-                            <!-- Effective Date -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold" for="effective_date">Effective Date <span
-                                        class="text-danger" aria-label="required">*</span></label>
-                                <input type="date" name="effective_date" id="effective_date" class="form-control" required
-                                    min="<?php echo date('Y-m-d'); ?>">
-                            </div>
-
-                            <!-- Reason -->
-                            <div class="col-12">
-                                <label class="form-label fw-semibold" for="reason">Reason / Justification</label>
-                                <textarea name="reason" id="reason" class="form-control" rows="3"
-                                    placeholder="Provide reason for this career movement..."></textarea>
-                            </div>
-
-                            <!-- Submit Button -->
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary" id="submit-btn">
-                                    <i class="fas fa-paper-plane me-2"></i>Submit Request to HRD
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <!-- My Team Summary -->
-            <div class="content-card fadeup-1">
-                <div class="card-header">
-                    <h5><i class="fas fa-users me-2"></i>My Team</h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted small mb-3">You can submit career movement requests for these team members:</p>
-                    <div class="list-group list-group-flush">
-                        <?php foreach ($subordinates as $sub): ?>
-                            <div class="list-group-item px-0 py-2">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-grow-1">
-                                        <div class="fw-semibold"><?php echo e($sub['first_name'] . ' ' . $sub['last_name']); ?>
-                                        </div>
-                                        <div class="small text-muted"><?php echo e($sub['job_title']); ?></div>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+    <?php if (!$is_branch_supervisor): ?>
+    <!-- ── Task 4.1: Access restricted message ──────────────────────────────── -->
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-7">
+            <div class="alert alert-info shadow-sm" role="alert">
+                <div class="d-flex align-items-start gap-3">
+                    <i class="fas fa-info-circle fa-2x text-info mt-1"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">Feature Restricted</h6>
+                        <p class="mb-0">
+                            Career Movement Requests through the Employee Portal are available only to
+                            <strong>Branch Supervisors</strong> (rank level 4). If you believe this is
+                            an error, please contact your HR department.
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ============================================================
-         TASK 16.3 — My Submitted Requests with Visual Status Badges
-         Req 11.5: status tracking with visual indicators for approval stages
-    ============================================================ -->
-    <?php if (!empty($my_requests)): ?>
-        <div class="content-card fadeup-2 mt-4">
-            <div class="card-header">
-                <h5><i class="fas fa-history me-2"></i>My Submitted Requests</h5>
+    <?php elseif ($no_employees_in_branch): ?>
+    <!-- ── Task 4.3: No eligible employees message ──────────────────────────── -->
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-7">
+            <div class="alert alert-info shadow-sm" role="alert">
+                <div class="d-flex align-items-start gap-3">
+                    <i class="fas fa-users fa-2x text-info mt-1"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">No Eligible Employees</h6>
+                        <p class="mb-0">
+                            There are currently no active employees in your branch available for
+                            Transfer. Please contact HR if you believe this is incorrect.
+                        </p>
+                    </div>
+                </div>
             </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>Ref #</th>
-                                <th>Employee</th>
-                                <th>Type</th>
-                                <th>New Position</th>
-                                <th>Effective Date</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($my_requests as $req): ?>
+        </div>
+    </div>
+
+    <?php else: ?>
+    <!-- ── Main content: form + status table ─────────────────────────────────── -->
+    <div class="row g-4">
+
+        <!-- ── Submission Form ─────────────────────────────────────────────── -->
+        <div class="col-12 col-xl-5">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="mb-0 fw-semibold text-dark">
+                        <i class="fas fa-paper-plane me-2 text-primary"></i>Submit Transfer Request
+                    </h6>
+                </div>
+                <div class="card-body">
+
+                    <?php if (!empty($errors)): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong><i class="fas fa-exclamation-triangle me-1"></i>Please fix the following:</strong>
+                        <ul class="mb-0 mt-2 ps-3">
+                            <?php foreach ($errors as $err): ?>
+                                <li><?php echo e($err); ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    <?php endif; ?>
+
+                    <form method="POST" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>"
+                          novalidate>
+                        <?php echo csrfField(); ?>
+
+                        <!-- Task 4.2: Transfer-only movement type (hidden, fixed) -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Movement Type</label>
+                            <select name="movement_type" class="form-select" required aria-required="true">
+                                <option value="Transfer" selected>Transfer</option>
+                            </select>
+                        </div>
+
+                        <!-- Task 4.3: Branch-scoped employee dropdown -->
+                        <div class="mb-3">
+                            <label for="employee_id" class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
+                            <select name="employee_id" id="employee_id" class="form-select" required aria-required="true">
+                                <option value="">— Select Employee —</option>
+                                <?php foreach ($branch_employees as $be): ?>
+                                    <option value="<?php echo (int) $be['employee_id']; ?>"
+                                        <?php echo (isset($_POST['employee_id']) && (int) $_POST['employee_id'] === (int) $be['employee_id']) ? 'selected' : ''; ?>>
+                                        <?php echo e($be['last_name'] . ', ' . $be['first_name'] . ' — ' . ($be['job_title'] ?? '')); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <!-- Task 4.4: Destination Branch (required) -->
+                        <div class="mb-3">
+                            <label for="new_branch_id" class="form-label fw-semibold">Destination Branch <span class="text-danger">*</span></label>
+                            <select name="new_branch_id" id="new_branch_id" class="form-select" required aria-required="true">
+                                <option value="">— Select Destination Branch —</option>
+                                <?php foreach ($dest_branches as $db): ?>
+                                    <option value="<?php echo (int) $db['branch_id']; ?>"
+                                        <?php echo (isset($_POST['new_branch_id']) && (int) $_POST['new_branch_id'] === (int) $db['branch_id']) ? 'selected' : ''; ?>>
+                                        <?php echo e($db['branch_name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text">The employee's current branch is excluded.</div>
+                        </div>
+
+                        <!-- New Position (optional dropdown) -->
+                        <div class="mb-3">
+                            <label for="new_position" class="form-label fw-semibold">New Position / Role <span class="text-muted fw-normal">(optional)</span></label>
+                            <select name="new_position" id="new_position" class="form-select">
+                                <option value="">— Keep current position —</option>
+                                <?php foreach ($active_positions as $pos): ?>
+                                    <option value="<?php echo e($pos); ?>"
+                                        <?php echo (isset($_POST['new_position']) && $_POST['new_position'] === $pos) ? 'selected' : ''; ?>>
+                                        <?php echo e($pos); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text">Leave blank if the position stays the same after transfer.</div>
+                        </div>
+
+                        <!-- Effective Date -->
+                        <div class="mb-3">
+                            <label for="effective_date" class="form-label fw-semibold">Effective Date <span class="text-danger">*</span></label>
+                            <input type="date" name="effective_date" id="effective_date"
+                                   class="form-control" required aria-required="true"
+                                   min="<?php echo date('Y-m-d'); ?>"
+                                   value="<?php echo e($_POST['effective_date'] ?? ''); ?>">
+                        </div>
+
+                        <!-- Reason -->
+                        <div class="mb-4">
+                            <label for="reason" class="form-label fw-semibold">Reason / Justification <span class="text-muted fw-normal">(optional)</span></label>
+                            <textarea name="reason" id="reason" class="form-control" rows="3"
+                                      maxlength="1000"
+                                      placeholder="Briefly explain the reason for this transfer…"><?php echo e($_POST['reason'] ?? ''); ?></textarea>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary fw-semibold">
+                                <i class="fas fa-paper-plane me-2"></i>Submit Transfer Request
+                            </button>
+                        </div>
+                    </form>
+
+                </div><!-- /.card-body -->
+            </div><!-- /.card -->
+        </div><!-- /.col (form) -->
+
+        <!-- ── Task 4.8: Status table ────────────────────────────────────────── -->
+        <div class="col-12 col-xl-7">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
+                    <h6 class="mb-0 fw-semibold text-dark">
+                        <i class="fas fa-list-alt me-2 text-primary"></i>My Submitted Requests
+                    </h6>
+                    <span class="badge bg-primary rounded-pill"><?php echo count($my_requests); ?></span>
+                </div>
+                <div class="card-body p-0">
+
+                    <?php if (empty($my_requests)): ?>
+                    <div class="text-center py-5 text-muted">
+                        <i class="fas fa-inbox fa-3x mb-3 d-block opacity-25"></i>
+                        <p class="mb-0">You have not submitted any Transfer requests yet.</p>
+                    </div>
+
+                    <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size:.85rem;">
+                            <thead class="table-light">
                                 <tr>
-                                    <td class="text-muted small"><?php echo str_pad($req['movement_id'], 6, '0', STR_PAD_LEFT); ?></td>
-                                    <td><?php echo e($req['first_name'] . ' ' . $req['last_name']); ?></td>
-                                    <td><?php echo e($req['movement_type']); ?></td>
-                                    <td><?php echo e($req['new_position']); ?></td>
-                                    <td><?php echo formatDate($req['effective_date']); ?></td>
+                                    <th class="ps-3">Ref #</th>
+                                    <th>Employee</th>
+                                    <th>Destination</th>
+                                    <th>Effective</th>
+                                    <th>Submitted</th>
+                                    <th>Stage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach ($my_requests as $req): ?>
+                                <?php
+                                // Badge CSS
+                                $stage = $req['portal_workflow_stage'] ?? '';
+                                if (str_starts_with($stage, 'Pending')) {
+                                    $badge_class = 'badge bg-warning text-dark';
+                                } elseif ($stage === 'Approved') {
+                                    $badge_class = 'badge bg-success';
+                                } elseif ($stage === 'Rejected') {
+                                    $badge_class = 'badge bg-danger';
+                                } else {
+                                    $badge_class = 'badge bg-secondary';
+                                }
+
+                                // Rejection reason: first non-null of bm, hr_sup, manager comments
+                                $rejection_reason = null;
+                                if ($stage === 'Rejected') {
+                                    foreach (['branch_manager_comments', 'hr_supervisor_comments', 'manager_comments'] as $fld) {
+                                        if (!empty($req[$fld])) {
+                                            $rejection_reason = $req[$fld];
+                                            break;
+                                        }
+                                    }
+                                    if ($rejection_reason === null) {
+                                        $rejection_reason = 'No reason provided';
+                                    }
+                                }
+                                ?>
+                                <tr>
+                                    <td class="ps-3 fw-semibold text-muted" style="white-space:nowrap;">
+                                        #<?php echo str_pad($req['movement_id'], 6, '0', STR_PAD_LEFT); ?>
+                                    </td>
                                     <td>
-                                        <?php
-                                        // TASK 16.3 — Visual status badges: icon + color + text (Req 4.6, 11.5)
-                                        $status_map = [
-                                            'Pending'  => ['icon' => 'fa-clock',        'class' => 'bg-warning', 'label' => 'Pending Review'],
-                                            'Approved' => ['icon' => 'fa-check-circle',  'class' => 'bg-success', 'label' => 'Approved'],
-                                            'Rejected' => ['icon' => 'fa-times-circle',  'class' => 'bg-danger',  'label' => 'Rejected'],
-                                        ];
-                                        $s = $status_map[$req['approval_status']] ?? ['icon' => 'fa-circle', 'class' => 'bg-secondary', 'label' => $req['approval_status']];
-                                        ?>
-                                        <span class="badge <?php echo $s['class']; ?>" title="<?php echo e($req['approval_status']); ?>">
-                                            <i class="fas <?php echo $s['icon']; ?> me-1" aria-hidden="true"></i><?php echo e($s['label']); ?>
+                                        <?php echo e(trim(($req['last_name'] ?? '') . ', ' . ($req['first_name'] ?? ''))); ?>
+                                    </td>
+                                    <td><?php echo e($req['dest_branch_name'] ?? '—'); ?></td>
+                                    <td style="white-space:nowrap;">
+                                        <?php echo formatDate($req['effective_date'] ?? ''); ?>
+                                    </td>
+                                    <td style="white-space:nowrap;">
+                                        <?php echo formatDate($req['created_at'] ?? ''); ?>
+                                    </td>
+                                    <td>
+                                        <span class="<?php echo $badge_class; ?>" style="font-size:.75rem;">
+                                            <?php echo e(getPortalStageLabel($stage)); ?>
                                         </span>
+                                        <?php if ($rejection_reason !== null): ?>
+                                        <div class="mt-1 text-danger small" style="font-size:.72rem;max-width:180px;">
+                                            <i class="fas fa-comment-alt me-1"></i><?php echo e($rejection_reason); ?>
+                                        </div>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-<?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
 
+                </div><!-- /.card-body -->
+            </div><!-- /.card -->
+        </div><!-- /.col (status table) -->
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
+    </div><!-- /.row -->
+    <?php endif; // end $is_branch_supervisor && !$no_employees_in_branch ?>
 
-    // Progress indicator — driven by employee + movement type dropdowns
-    var empSel  = document.getElementById('employee_id_select');
-    var typeSel = document.getElementById('movement_type_select');
+</div><!-- /.container-fluid -->
 
-    function updateProgress() {
-        var step2 = document.getElementById('prog-step-2');
-        var step3 = document.getElementById('prog-step-3');
-        var line2 = document.getElementById('prog-line-2');
-
-        var empOk  = empSel  && empSel.value  !== '';
-        var typeOk = typeSel && typeSel.value !== '';
-
-        if (empOk && !typeOk) {
-            if (step2) { step2.classList.remove('completed'); step2.classList.add('active'); }
-        }
-        if (empOk && typeOk) {
-            if (step2) {
-                step2.classList.remove('active');
-                step2.classList.add('completed');
-                var n = step2.querySelector('.progress-step-number');
-                if (n) n.innerHTML = '<i class="fas fa-check"></i>';
-            }
-            if (line2) line2.classList.add('completed');
-            if (step3) step3.classList.add('active');
-        } else {
-            if (step2 && step2.classList.contains('completed')) {
-                step2.classList.remove('completed');
-                step2.classList.add('active');
-                var n2 = step2.querySelector('.progress-step-number');
-                if (n2) n2.innerHTML = '2';
-            }
-            if (line2) line2.classList.remove('completed');
-            if (step3) step3.classList.remove('active');
-        }
-    }
-
-    if (empSel)  empSel.addEventListener('change',  updateProgress);
-    if (typeSel) typeSel.addEventListener('change', updateProgress);
-    updateProgress();
-
-    // Prevent double-submit
-    var form = document.getElementById('career-request-form');
-    if (form) {
-        form.addEventListener('submit', function (e) {
-            var btn = document.getElementById('submit-btn');
-            if (btn) {
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Submitting...';
-            }
-        });
-    }
-
-    // Auto-scroll to confirmation after successful submit
-    var conf = document.getElementById('submission-confirmation');
-    if (conf) {
-        conf.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-});
-</script>
-
-<?php require_once '../includes/footer.php'; ?>
+<?php require_once '../includes/footer.php'; ?>

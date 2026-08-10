@@ -6,8 +6,8 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
 
 ## Tasks
 
-- [ ] 1. Extend `ensureCareerProgressionMovements()` with schema migration
-  - [ ] 1.1 Add seven new columns to the `$new_portal_columns` array inside `ensureCareerProgressionMovements()` in `includes/functions.php`
+- [x] 1. Extend `ensureCareerProgressionMovements()` with schema migration
+  - [x] 1.1 Add seven new columns to the `$new_portal_columns` array inside `ensureCareerProgressionMovements()` in `includes/functions.php`
     - Add `portal_workflow_stage` ENUM column (NULL default) after `request_source`
     - Add `branch_manager_approved_by` INT NULL, `branch_manager_decision_date` DATETIME NULL, `branch_manager_comments` TEXT NULL
     - Add `hr_supervisor_approved_by` INT NULL, `hr_supervisor_decision_date` DATETIME NULL, `hr_supervisor_comments` TEXT NULL
@@ -21,8 +21,8 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Call `ensureCareerProgressionMovements()` 2–10 times with random call counts against a test DB
     - Assert the function returns `true` each time and the column count remains unchanged after the first call
 
-- [ ] 2. Implement helper functions for portal workflow
-  - [ ] 2.1 Add `buildAllowedMovementTypes($rank_category_id, $has_subordinates)` to `includes/functions.php`
+- [x] 2. Implement helper functions for portal workflow
+  - [x] 2.1 Add `buildAllowedMovementTypes($rank_category_id, $has_subordinates)` to `includes/functions.php`
     - Returns `['Transfer']` only when `$rank_category_id === 4` AND `$has_subordinates === true`
     - Returns empty array for all other combinations
     - _Requirements: 1.1, 1.2_
@@ -34,7 +34,7 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Assert result equals `['Transfer']` only when rank=4 and has_subordinates=true; empty/restricted otherwise
     - Run ≥ 100 iterations; tag: `// Feature: employee-portal-career-movements, Property 1`
 
-  - [ ] 2.3 Add `getBranchEmployeesForDropdown($conn, $sup_employee_id, $branch_id)` to `includes/functions.php`
+  - [x] 2.3 Add `getBranchEmployeesForDropdown($conn, $sup_employee_id, $branch_id)` to `includes/functions.php`
     - Query: `SELECT employee_id, first_name, last_name, job_title FROM employees WHERE branch_id = ? AND is_active = 1 AND employee_id != ? ORDER BY last_name, first_name`
     - Returns array of employee rows excluding the supervisor themselves
     - _Requirements: 2.1, 2.2, 2.3_
@@ -46,7 +46,7 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Assert count = N − 1, all rows share the same `branch_id`, supervisor's `employee_id` absent
     - Run ≥ 100 iterations; tag: `// Feature: employee-portal-career-movements, Property 3`
 
-  - [ ] 2.5 Add `validateTransferSubmission($conn, $submitter_branch_id, $submitter_emp_id, $employee_id, $new_branch_id)` to `includes/functions.php`
+  - [x] 2.5 Add `validateTransferSubmission($conn, $submitter_branch_id, $submitter_emp_id, $employee_id, $new_branch_id)` to `includes/functions.php`
     - Returns validation error string if `movement_type !== 'Transfer'`, `$employee_id` not in submitter's branch, `$new_branch_id` is null/empty/same as employee's current branch, or a duplicate pending Portal_Request exists for `$employee_id`
     - Returns `null` on valid input
     - _Requirements: 1.2, 1.3, 2.2, 4.1_
@@ -58,7 +58,7 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Assert `validateTransferSubmission()` always returns a non-null error string
     - Run ≥ 100 iterations; tag: `// Feature: employee-portal-career-movements, Property 2`
 
-  - [ ] 2.7 Add `getPortalStageLabel($stage)` to `includes/functions.php`
+  - [x] 2.7 Add `getPortalStageLabel($stage)` to `includes/functions.php`
     - Map all five ENUM values to human-readable strings: `Pending_Branch_Manager` → "Pending Branch Manager", etc.
     - Returns the label string for valid ENUM values; returns empty string or safe fallback for unknown values
     - _Requirements: 8.2, 8.3_
@@ -70,7 +70,7 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Assert non-empty string returned for all ENUM values; identical output on repeated calls (deterministic)
     - Run ≥ 100 iterations; tag: `// Feature: employee-portal-career-movements, Property 10`
 
-  - [ ] 2.9 Add `applyStageTransition($current_stage, $action)` to `includes/functions.php`
+  - [x] 2.9 Add `applyStageTransition($current_stage, $action)` to `includes/functions.php`
     - Encodes valid transitions: BM Approve → `Pending_HR_Supervisor`, BM Reject → `Rejected`, HR Sup Approve → `Pending_HR_Manager`, HR Sup Reject → `Rejected`, HR Mgr Approve → `Approved`, HR Mgr Reject → `Rejected`
     - Returns the next stage string on valid input; returns `null` or throws on invalid/terminal-state transitions
     - _Requirements: 5.2, 5.3, 6.2, 6.3, 7.2, 7.3_
@@ -82,7 +82,7 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Assert output is always a member of the defined transition table; terminal states never transition; no stage is skipped
     - Run ≥ 100 iterations; tag: `// Feature: employee-portal-career-movements, Property 6`
 
-  - [ ] 2.11 Add `checkApprovalAuthorization($movement, $actor_user_id, $actor_branch_id, $actor_role, $required_stage)` to `includes/functions.php`
+  - [x] 2.11 Add `checkApprovalAuthorization($movement, $actor_user_id, $actor_branch_id, $actor_role, $required_stage)` to `includes/functions.php`
     - Returns `false` if `portal_workflow_stage` does not match `$required_stage`
     - Returns `false` if Branch Manager action and `previous_branch_id !== $actor_branch_id`
     - Returns `false` if `$actor_user_id === $movement['logged_by']` (self-approval)
@@ -96,31 +96,31 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Assert `checkApprovalAuthorization()` returns `false` for every mismatch combination
     - Run ≥ 100 iterations; tag: `// Feature: employee-portal-career-movements, Property 7`
 
-- [ ] 3. Checkpoint — Ensure all tests pass
+- [x] 3. Checkpoint — Ensure all tests pass
   - Ensure all helper function tests pass, ask the user if questions arise.
 
-- [ ] 4. Modify `/employee/career-movement-request.php` — Transfer form and status table
-  - [ ] 4.1 Update access guard to require `rank_category_id = 4` AND at least one active branch employee
+- [x] 4. Modify `/employee/career-movement-request.php` — Transfer form and status table
+  - [x] 4.1 Update access guard to require `rank_category_id = 4` AND at least one active branch employee
     - Replace or augment the existing `hasEmployeeSubordinates()` check with a branch-employee count check
     - Display the "access restricted" informational message if the user fails either condition
     - _Requirements: 1.4, 2.4_
 
-  - [ ] 4.2 Restrict movement type dropdown to Transfer only
+  - [x] 4.2 Restrict movement type dropdown to Transfer only
     - Render only `<option value="Transfer">Transfer</option>` in the movement type `<select>`
     - Remove Promotion, Demotion, Role Change options from the HTML
     - _Requirements: 1.1_
 
-  - [ ] 4.3 Replace employee dropdown with branch-scoped query
+  - [x] 4.3 Replace employee dropdown with branch-scoped query
     - Call `getBranchEmployeesForDropdown()` to populate the employee `<select>`
     - Show the "no eligible employees" informational message when the returned array is empty
     - _Requirements: 2.1, 2.3, 2.4_
 
-  - [ ] 4.4 Add required "Destination Branch" field to the form
+  - [x] 4.4 Add required "Destination Branch" field to the form
     - Add a mandatory `<select name="new_branch_id">` populated from the `branches` table (excluding the submitting employee's current branch)
     - Display a validation error if no destination branch is selected
     - _Requirements: 1.3_
 
-  - [ ] 4.5 Add server-side POST validation using `validateTransferSubmission()`
+  - [x] 4.5 Add server-side POST validation using `validateTransferSubmission()`
     - Call `validateTransferSubmission()` on every POST; collect errors into `$errors[]`
     - Reject non-Transfer `movement_type` with message "Only Transfer requests may be submitted through the Employee Portal."
     - Reject out-of-branch `employee_id` with "The selected employee is not eligible."
@@ -129,7 +129,7 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Re-render the form with POST values preserved on any error
     - _Requirements: 1.2, 2.2_
 
-  - [ ] 4.6 Implement Portal_Request insertion with `portal_workflow_stage`
+  - [x] 4.6 Implement Portal_Request insertion with `portal_workflow_stage`
     - Insert with `request_source = 'Employee Portal'`, `approval_status = 'Pending'`, `portal_workflow_stage = 'Pending_Branch_Manager'`
     - Record `logged_by`, `initiated_by_name`, `initiated_by_role` from session
     - After insert, look up Branch Manager via branch employees query (`rank_category_id = 3`, `is_active = 1`)
@@ -145,7 +145,7 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Assert inserted record has `request_source = 'Employee Portal'`, `approval_status = 'Pending'`, and `portal_workflow_stage` ∈ `{Pending_Branch_Manager, Pending_HR_Supervisor}`
     - Run ≥ 100 iterations; tag: `// Feature: employee-portal-career-movements, Property 5`
 
-  - [ ] 4.8 Implement status table for Branch Supervisor
+  - [x] 4.8 Implement status table for Branch Supervisor
     - Query: `WHERE cm.request_source = 'Employee Portal' AND cm.logged_by = ? AND cm.portal_workflow_stage IS NOT NULL ORDER BY cm.created_at DESC`
     - Display columns: ref # (zero-padded), target employee name, destination branch, effective date, submitted date, stage badge
     - Map stage labels using `getPortalStageLabel()`
@@ -153,22 +153,22 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - If `portal_workflow_stage = 'Rejected'`, display rejection reason from the first non-null of: `branch_manager_comments`, `hr_supervisor_comments`, `manager_comments`; fall back to "No reason provided"
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 5. Create `/employee/branch-manager-approvals.php` — New Branch Manager approval page
-  - [ ] 5.1 Implement access guard and pending queue display
+- [x] 5. Create `/employee/branch-manager-approvals.php` — New Branch Manager approval page
+  - [x] 5.1 Implement access guard and pending queue display
     - Guard: `checkRole(['Employee'])` + query `rank_category_id` from `employees`; redirect with danger message if not 3
     - Pending queue query: join `career_movements`, `employees`, `branches`, `users` filtering `portal_workflow_stage = 'Pending_Branch_Manager'` AND `previous_branch_id = $bm_branch_id`
     - Display columns: target employee name, current position, current branch, destination branch, effective date, submitted by name, reason/notes, Approve and Reject action buttons
     - Include CSRF field in all action forms
     - _Requirements: 5.1, 5.5, 11.1_
 
-  - [ ] 5.2 Implement Approve POST handler
+  - [x] 5.2 Implement Approve POST handler
     - Call `checkApprovalAuthorization()` for stage + branch + self-approval guards; redirect on failure
     - UPDATE: `portal_workflow_stage = 'Pending_HR_Supervisor'`, `branch_manager_approved_by = $current_user_id`, `branch_manager_decision_date = NOW()`
     - Query all active HR Supervisors (`role = 'HR Supervisor' AND is_active = 1`) and call `createNotification()` for each
     - Call `logAudit()` with action `'APPROVE'` and entity `'Career Movement'`
     - _Requirements: 5.2, 9.2, 11.2_
 
-  - [ ] 5.3 Implement Reject POST handler
+  - [x] 5.3 Implement Reject POST handler
     - Call `checkApprovalAuthorization()` guards; redirect on failure
     - Require non-empty `branch_manager_comments`
     - UPDATE: `portal_workflow_stage = 'Rejected'`, `approval_status = 'Rejected'`, `branch_manager_approved_by`, `branch_manager_decision_date = NOW()`, `branch_manager_comments`
@@ -176,11 +176,11 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Call `logAudit()`
     - _Requirements: 5.3, 9.5, 9.6, 11.2_
 
-- [ ] 6. Checkpoint — Ensure all tests pass
+- [x] 6. Checkpoint — Ensure all tests pass
   - Ensure all tests pass for the new branch-manager-approvals page, ask the user if questions arise.
 
-- [ ] 7. Modify `/supervisor/career-movements.php` — HR Supervisor approval step
-  - [ ] 7.1 Extend the pending queue query to include Portal_Requests at `Pending_HR_Supervisor`
+- [x] 7. Modify `/supervisor/career-movements.php` — HR Supervisor approval step
+  - [x] 7.1 Extend the pending queue query to include Portal_Requests at `Pending_HR_Supervisor`
     - Replace or extend the existing `approval_status = 'Pending'` WHERE clause with the combined condition:
       ```sql
       WHERE (
@@ -192,12 +192,12 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Ensure HR_Portal_Requests still appear unchanged
     - _Requirements: 6.1, 10.1, 10.2_
 
-  - [ ] 7.2 Add source badge distinguishing Portal_Requests from HR_Portal_Requests in the table
+  - [x] 7.2 Add source badge distinguishing Portal_Requests from HR_Portal_Requests in the table
     - Render "Branch Head Requisition" badge (`bg-info text-dark`) for `request_source = 'Employee Portal'`
     - Keep existing badge for HR Portal records
     - _Requirements: 6.5_
 
-  - [ ] 7.3 Implement differentiated Approve action for Portal_Requests
+  - [x] 7.3 Implement differentiated Approve action for Portal_Requests
     - Detect `$is_portal_request` flag (`request_source = 'Employee Portal'` AND `portal_workflow_stage IS NOT NULL`)
     - For Portal_Requests: verify `portal_workflow_stage = 'Pending_HR_Supervisor'` via `checkApprovalAuthorization()`; redirect on mismatch
     - UPDATE: `portal_workflow_stage = 'Pending_HR_Manager'`, `hr_supervisor_approved_by`, `hr_supervisor_decision_date = NOW()`
@@ -205,15 +205,15 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - For HR_Portal_Requests: execute existing unchanged single-step flow
     - _Requirements: 6.2, 6.4, 9.3, 11.3_
 
-  - [ ] 7.4 Implement differentiated Reject action for Portal_Requests
+  - [x] 7.4 Implement differentiated Reject action for Portal_Requests
     - For Portal_Requests at `Pending_HR_Supervisor`: validate `hr_supervisor_comments` (1–1000 chars)
     - UPDATE: `portal_workflow_stage = 'Rejected'`, `approval_status = 'Rejected'`, `hr_supervisor_approved_by`, `hr_supervisor_decision_date = NOW()`, `hr_supervisor_comments`
     - Resolve submitter's Employee Portal user; notify; silently skip and log if null
     - For HR_Portal_Requests: existing flow unchanged
     - _Requirements: 6.3, 6.4, 9.5, 9.6, 11.3_
 
-- [ ] 8. Modify `/manager/career-movements.php` — HR Manager final approval step
-  - [ ] 8.1 Extend the pending queue query to include Portal_Requests at `Pending_HR_Manager`
+- [x] 8. Modify `/manager/career-movements.php` — HR Manager final approval step
+  - [x] 8.1 Extend the pending queue query to include Portal_Requests at `Pending_HR_Manager`
     - Replace or extend WHERE clause:
       ```sql
       WHERE (
@@ -225,7 +225,7 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Ensure HR_Portal_Requests (stage IS NULL) still appear
     - _Requirements: 7.1, 10.3_
 
-  - [ ] 8.2 Implement differentiated Approve action for Portal_Requests
+  - [x] 8.2 Implement differentiated Approve action for Portal_Requests
     - Detect `$is_portal_request` and verify `portal_workflow_stage = 'Pending_HR_Manager'` via `checkApprovalAuthorization()`
     - UPDATE: `portal_workflow_stage = 'Approved'`, `approval_status = 'Approved'`, `approved_by`, `decision_date = NOW()`, `manager_comments`, `is_applied = 0`
     - If `effective_date <= date('Y-m-d')`: call `executeCareerMovementApplication()`
@@ -233,18 +233,18 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - For HR_Portal_Requests: existing flow unchanged
     - _Requirements: 7.2, 7.4, 9.4, 10.3, 10.5, 11.4_
 
-  - [ ] 8.3 Implement differentiated Reject action for Portal_Requests
+  - [x] 8.3 Implement differentiated Reject action for Portal_Requests
     - For Portal_Requests at `Pending_HR_Manager`: UPDATE `portal_workflow_stage = 'Rejected'`, `approval_status = 'Rejected'`, `approved_by`, `decision_date = NOW()`, `manager_comments`
     - Notify submitting Branch Supervisor of rejection
     - For HR_Portal_Requests: existing flow unchanged
     - _Requirements: 7.3, 9.5, 9.6, 11.4_
 
-  - [ ] 8.4 Display approval chain history row for Portal_Requests
+  - [x] 8.4 Display approval chain history row for Portal_Requests
     - When showing a Portal_Request in the detail/modal view, display Branch Manager row: name (lookup from `branch_manager_approved_by`) + `branch_manager_decision_date`, or "Branch Manager step bypassed" if `branch_manager_approved_by IS NULL`
     - Display HR Supervisor row: name (lookup from `hr_supervisor_approved_by`) + `hr_supervisor_decision_date`
     - _Requirements: 7.5_
 
-- [ ] 9. Checkpoint — Ensure all tests pass
+- [x] 9. Checkpoint — Ensure all tests pass
   - Ensure all tests pass across all modified pages, ask the user if questions arise.
 
 - [ ] 10. Write integration and property tests for end-to-end workflow
@@ -283,7 +283,7 @@ Implement a four-step approval chain for Employee Portal Transfer requests in th
     - Call `applyDueCareerProgressionMovements()` and assert all qualifying records are applied (employees table updated, `is_applied = 1`)
     - Run ≥ 100 iterations; tag: `// Feature: employee-portal-career-movements, Property 11`
 
-- [ ] 11. Final checkpoint — Ensure all tests pass
+- [x] 11. Final checkpoint — Ensure all tests pass
   - Ensure all tests pass and ask the user if questions arise.
 
 ## Notes

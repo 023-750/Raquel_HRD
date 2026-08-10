@@ -275,6 +275,8 @@ require_once '../includes/header.php';
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
+    </div><!-- /.pds-card Emergency Contacts -->
+
     <!-- Career Movement History Card -->
     <?php
     $cm_history = [];

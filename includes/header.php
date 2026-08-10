@@ -67,6 +67,15 @@ switch ($effective_role) {
         break;
 
     case 'HR Manager':
+        // Count pending career movements for badge (HR Portal pending + Portal Requests at Pending_HR_Manager)
+        $_mgr_career_pending = 0;
+        try {
+            $r = $conn->query("SELECT COUNT(*) AS c FROM career_movements
+                WHERE (approval_status = 'Pending' AND portal_workflow_stage IS NULL)
+                   OR (request_source = 'Employee Portal' AND portal_workflow_stage = 'Pending_HR_Manager')");
+            if ($r) $_mgr_career_pending = (int)($r->fetch_assoc()['c'] ?? 0);
+        } catch (Exception $e) {}
+
         $sidebar_menus = [
             'MAIN' => [
                 ['icon' => 'fas fa-tachometer-alt', 'label' => 'Dashboard', 'url' => BASE_URL . '/manager/dashboard.php', 'page' => 'dashboard.php'],
@@ -91,7 +100,8 @@ switch ($effective_role) {
             ],
 
             'CAREER' => [
-                ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/manager/career-movements.php', 'page' => 'career-movements.php'],
+                ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/manager/career-movements.php', 'page' => 'career-movements.php',
+                 'badge' => $_mgr_career_pending ?: null, 'badge_class' => 'bg-warning text-dark'],
                 ['icon' => 'fas fa-user-tie', 'label' => 'Succession Planning', 'url' => BASE_URL . '/manager/succession-planning.php', 'page' => 'succession-planning.php'],
             ],
             'ANALYTICS' => [
@@ -103,6 +113,15 @@ switch ($effective_role) {
         break;
 
     case 'HR Supervisor':
+        // Count pending career movements for badge (HR Portal pending + Portal Requests at Pending_HR_Supervisor)
+        $_sup_career_pending = 0;
+        try {
+            $r = $conn->query("SELECT COUNT(*) AS c FROM career_movements
+                WHERE (approval_status = 'Pending' AND (portal_workflow_stage IS NULL OR request_source = 'HR Portal'))
+                   OR (request_source = 'Employee Portal' AND portal_workflow_stage = 'Pending_HR_Supervisor')");
+            if ($r) $_sup_career_pending = (int)($r->fetch_assoc()['c'] ?? 0);
+        } catch (Exception $e) {}
+
         $sidebar_menus = [
             'MAIN' => [
                 ['icon' => 'fas fa-tachometer-alt', 'label' => 'Dashboard', 'url' => BASE_URL . '/supervisor/dashboard.php', 'page' => 'dashboard.php'],
@@ -116,7 +135,8 @@ switch ($effective_role) {
                 ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/supervisor/evaluation-history.php', 'page' => 'evaluation-history.php'],
             ],
             'CAREER' => [
-                ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/supervisor/career-movements.php', 'page' => 'career-movements.php'],
+                ['icon' => 'fas fa-route', 'label' => 'Career Movements', 'url' => BASE_URL . '/supervisor/career-movements.php', 'page' => 'career-movements.php',
+                 'badge' => $_sup_career_pending ?: null, 'badge_class' => 'bg-warning text-dark'],
                 ['icon' => 'fas fa-chart-line', 'label' => 'Career Progression', 'url' => BASE_URL . '/supervisor/career-progression.php', 'page' => 'career-progression.php'],
             ],
             'ANALYTICS' => [
@@ -303,6 +323,34 @@ switch ($effective_role) {
                 $self_service_menu[] = ['icon' => 'fas fa-user-check', 'label' => 'Confirm Self-Rating', 'url' => BASE_URL . '/employee/confirm-rating.php', 'page' => 'confirm-rating.php', 'badge' => $m_confirm_rating_count];
             }
             $self_service_menu[] = ['icon' => 'fas fa-users', 'label' => 'My Team', 'url' => BASE_URL . '/employee/team-list.php', 'page' => 'team-list.php'];
+        }
+
+        // Career movement links based on rank
+        // Branch Supervisor (rank 4): can submit Transfer requests
+        if ($_hdr_emp_rank === 4) {
+            $self_service_menu[] = ['icon' => 'fas fa-route', 'label' => 'Career Movement Request', 'url' => BASE_URL . '/employee/career-movement-request.php', 'page' => 'career-movement-request.php'];
+        }
+        // Branch Manager (rank 3): can approve/reject Transfer requests from their branch
+        if ($_hdr_emp_rank === 3) {
+            // Count pending BM approvals for badge — guarded in case schema migration hasn't run yet
+            $_hdr_bm_pending = 0;
+            if ($_hdr_emp_branch_id > 0) {
+                try {
+                    $_hdr_bm_stmt = $conn->prepare(
+                        "SELECT COUNT(*) AS cnt FROM career_movements
+                         WHERE portal_workflow_stage = 'Pending_Branch_Manager'
+                           AND previous_branch_id = ? AND request_source = 'Employee Portal'"
+                    );
+                    $_hdr_bm_stmt->bind_param("i", $_hdr_emp_branch_id);
+                    $_hdr_bm_stmt->execute();
+                    $_hdr_bm_pending = (int)($_hdr_bm_stmt->get_result()->fetch_assoc()['cnt'] ?? 0);
+                    $_hdr_bm_stmt->close();
+                } catch (mysqli_sql_exception $e) {
+                    // Column not yet migrated — badge shows 0
+                    $_hdr_bm_pending = 0;
+                }
+            }
+            $self_service_menu[] = ['icon' => 'fas fa-clipboard-check', 'label' => 'Transfer Approvals', 'url' => BASE_URL . '/employee/branch-manager-approvals.php', 'page' => 'branch-manager-approvals.php', 'badge' => $_hdr_bm_pending];
         }
 
         $self_service_menu[] = ['icon' => 'fas fa-bell', 'label' => 'Notifications', 'url' => BASE_URL . '/employee/notifications.php', 'page' => 'notifications.php'];

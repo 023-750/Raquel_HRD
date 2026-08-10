@@ -963,13 +963,56 @@ function ensureCareerProgressionMovements($conn)
 
         }
 
+        $new_portal_columns = [
+
+            'portal_workflow_stage' =>
+                "ALTER TABLE career_movements ADD COLUMN portal_workflow_stage
+                 ENUM('Pending_Branch_Manager','Pending_HR_Supervisor','Pending_HR_Manager','Approved','Rejected')
+                 NULL DEFAULT NULL AFTER request_source",
+
+            'branch_manager_approved_by' =>
+                "ALTER TABLE career_movements ADD COLUMN branch_manager_approved_by INT NULL AFTER portal_workflow_stage",
+
+            'branch_manager_decision_date' =>
+                "ALTER TABLE career_movements ADD COLUMN branch_manager_decision_date DATETIME NULL AFTER branch_manager_approved_by",
+
+            'branch_manager_comments' =>
+                "ALTER TABLE career_movements ADD COLUMN branch_manager_comments TEXT NULL AFTER branch_manager_decision_date",
+
+            'hr_supervisor_approved_by' =>
+                "ALTER TABLE career_movements ADD COLUMN hr_supervisor_approved_by INT NULL AFTER branch_manager_comments",
+
+            'hr_supervisor_decision_date' =>
+                "ALTER TABLE career_movements ADD COLUMN hr_supervisor_decision_date DATETIME NULL AFTER hr_supervisor_approved_by",
+
+            'hr_supervisor_comments' =>
+                "ALTER TABLE career_movements ADD COLUMN hr_supervisor_comments TEXT NULL AFTER hr_supervisor_decision_date",
+
+        ];
+
+        $columns = getCareerProgressionMovementColumns($conn);
+
+        foreach ($new_portal_columns as $column => $sql) {
+
+            if (!isset($columns[$column])) {
+
+                $conn->query($sql);
+
+            }
+
+        }
+
     } catch (mysqli_sql_exception $e) {
+
+        error_log('ensureCareerProgressionMovements error: ' . $e->getMessage());
 
         return false;
 
     }
 
 
+
+    $ensured = true;
 
     return true;
 
@@ -1175,37 +1218,48 @@ function resolveRoleFromJobTitle(string $job_title): string
 function executeCareerMovementApplication($conn, array $movement, int $movement_id): void
 {
     $eid          = (int)$movement['employee_id'];
-    $new_position = $movement['new_position'];
+    $new_position = trim((string)($movement['new_position'] ?? ''));
     $new_bid      = !empty($movement['new_branch_id']) ? (int)$movement['new_branch_id'] : null;
 
-    // ── 1. Lookup job_titles metadata (job_title_id, department_id, rank_category_id) ──
-    $jt_stmt = $conn->prepare("SELECT job_title_id, department_id, rank_category_id FROM job_titles WHERE job_title = ? AND is_active = 1 LIMIT 1");
-    $jt_stmt->bind_param("s", $new_position);
-    $jt_stmt->execute();
-    $jt_info = $jt_stmt->get_result()->fetch_assoc();
-    $jt_stmt->close();
+    // ── 1. Update employee position/branch ───────────────────────────────────
+    // Only update job_title if a new position was actually specified
+    $has_new_position = $new_position !== '';
 
-    if ($jt_info) {
-        $j_id = (int)$jt_info['job_title_id'];
-        $d_id = (int)$jt_info['department_id'];
-        $r_id = (int)$jt_info['rank_category_id'];
+    if ($has_new_position) {
+        // Lookup job_titles metadata (job_title_id, department_id, rank_category_id)
+        $jt_stmt = $conn->prepare("SELECT job_title_id, department_id, rank_category_id FROM job_titles WHERE job_title = ? AND is_active = 1 LIMIT 1");
+        $jt_stmt->bind_param("s", $new_position);
+        $jt_stmt->execute();
+        $jt_info = $jt_stmt->get_result()->fetch_assoc();
+        $jt_stmt->close();
 
-        if ($new_bid) {
-            $eu = $conn->prepare("UPDATE employees SET job_title=?, job_title_id=?, department_id=?, rank_category_id=?, branch_id=? WHERE employee_id=?");
-            $eu->bind_param("siiiii", $new_position, $j_id, $d_id, $r_id, $new_bid, $eid);
+        if ($jt_info) {
+            $j_id = (int)$jt_info['job_title_id'];
+            $d_id = (int)$jt_info['department_id'];
+            $r_id = (int)$jt_info['rank_category_id'];
+
+            if ($new_bid) {
+                $eu = $conn->prepare("UPDATE employees SET job_title=?, job_title_id=?, department_id=?, rank_category_id=?, branch_id=? WHERE employee_id=?");
+                $eu->bind_param("siiiii", $new_position, $j_id, $d_id, $r_id, $new_bid, $eid);
+            } else {
+                $eu = $conn->prepare("UPDATE employees SET job_title=?, job_title_id=?, department_id=?, rank_category_id=? WHERE employee_id=?");
+                $eu->bind_param("siiii", $new_position, $j_id, $d_id, $r_id, $eid);
+            }
+            $eu->execute(); $eu->close();
         } else {
-            $eu = $conn->prepare("UPDATE employees SET job_title=?, job_title_id=?, department_id=?, rank_category_id=? WHERE employee_id=?");
-            $eu->bind_param("siiii", $new_position, $j_id, $d_id, $r_id, $eid);
+            if ($new_bid) {
+                $eu = $conn->prepare("UPDATE employees SET job_title=?, branch_id=? WHERE employee_id=?");
+                $eu->bind_param("sii", $new_position, $new_bid, $eid);
+            } else {
+                $eu = $conn->prepare("UPDATE employees SET job_title=? WHERE employee_id=?");
+                $eu->bind_param("si", $new_position, $eid);
+            }
+            $eu->execute(); $eu->close();
         }
-        $eu->execute(); $eu->close();
-    } else {
-        if ($new_bid) {
-            $eu = $conn->prepare("UPDATE employees SET job_title=?, branch_id=? WHERE employee_id=?");
-            $eu->bind_param("sii", $new_position, $new_bid, $eid);
-        } else {
-            $eu = $conn->prepare("UPDATE employees SET job_title=? WHERE employee_id=?");
-            $eu->bind_param("si", $new_position, $eid);
-        }
+    } elseif ($new_bid) {
+        // No new position but branch is changing — only update branch_id
+        $eu = $conn->prepare("UPDATE employees SET branch_id=? WHERE employee_id=?");
+        $eu->bind_param("ii", $new_bid, $eid);
         $eu->execute(); $eu->close();
     }
 
@@ -3107,6 +3161,265 @@ function getOriginalSelfRatingScore($conn, $evaluation_id)
     $kra_subtotal = round($kra_subtotal, 2);
     $behavior_average = $beh_count > 0 ? round($beh_total / $beh_count, 2) : 0;
     return calculateEvalTotal($kra_subtotal, $behavior_average, $kra_weight_pct, $beh_weight_pct);
+}
+
+// ============================================
+// Employee Portal — Career Movement Helpers
+// ============================================
+
+/**
+ * Return the movement types a user is allowed to submit through the Employee Portal.
+ *
+ * Only Branch Supervisors (rank_category_id === 4) who have at least one subordinate
+ * in their branch may submit Transfer requests.
+ *
+ * @param  int  $rank_category_id   The submitting employee's rank category (4 = Branch Supervisor).
+ * @param  bool $has_subordinates   Whether the employee has at least one active branch employee.
+ * @return array                    ['Transfer'] when eligible; [] otherwise.
+ *
+ * Requirements: 1.1, 1.2
+ */
+function buildAllowedMovementTypes(int $rank_category_id, bool $has_subordinates): array
+{
+    if ($rank_category_id === 4 && $has_subordinates === true) {
+        return ['Transfer'];
+    }
+    return [];
+}
+
+/**
+ * Get all active employees in a branch (and optionally department) for the Transfer request dropdown,
+ * excluding the submitting supervisor themselves.
+ *
+ * @param mysqli $conn
+ * @param int    $sup_employee_id  The supervisor's employee_id (excluded from results)
+ * @param int    $branch_id        The branch to query
+ * @param int    $department_id    Optional — when > 0, further restricts to same department
+ * @return array  Rows with keys: employee_id, first_name, last_name, job_title
+ */
+function getBranchEmployeesForDropdown($conn, $sup_employee_id, $branch_id, int $department_id = 0): array
+{
+    $sup_employee_id = (int) $sup_employee_id;
+    $branch_id       = (int) $branch_id;
+
+    if ($branch_id <= 0) {
+        return [];
+    }
+
+    if ($department_id > 0) {
+        $stmt = $conn->prepare(
+            "SELECT employee_id, first_name, last_name, job_title
+             FROM employees
+             WHERE branch_id = ? AND department_id = ? AND is_active = 1 AND employee_id != ?
+             ORDER BY last_name, first_name"
+        );
+        $stmt->bind_param("iii", $branch_id, $department_id, $sup_employee_id);
+    } else {
+        $stmt = $conn->prepare(
+            "SELECT employee_id, first_name, last_name, job_title
+             FROM employees
+             WHERE branch_id = ? AND is_active = 1 AND employee_id != ?
+             ORDER BY last_name, first_name"
+        );
+        $stmt->bind_param("ii", $branch_id, $sup_employee_id);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $employees = [];
+    while ($row = $result->fetch_assoc()) {
+        $employees[] = $row;
+    }
+    $stmt->close();
+
+    return $employees;
+}
+
+/**
+ * Return a human-readable label for a portal_workflow_stage ENUM value.
+ *
+ * Valid ENUM values and their labels:
+ *   Pending_Branch_Manager  → "Pending Branch Manager"
+ *   Pending_HR_Supervisor   → "Pending HR Supervisor"
+ *   Pending_HR_Manager      → "Pending HR Manager"
+ *   Approved                → "Approved"
+ *   Rejected                → "Rejected"
+ *
+ * @param  string|null $stage  A portal_workflow_stage ENUM value.
+ * @return string              Human-readable label, or '' for unknown/invalid values.
+ *
+ * Requirements: 8.2, 8.3
+ */
+function getPortalStageLabel($stage): string
+{
+    $labels = [
+        'Pending_Branch_Manager' => 'Pending Branch Manager',
+        'Pending_HR_Supervisor'  => 'Pending HR Supervisor',
+        'Pending_HR_Manager'     => 'Pending HR Manager',
+        'Approved'               => 'Approved',
+        'Rejected'               => 'Rejected',
+    ];
+
+    return $labels[$stage] ?? '';
+}
+
+/**
+ * Apply a stage transition for a Portal_Request approval workflow.
+ *
+ * Encodes the six valid transitions across the three-approver chain:
+ *   Pending_Branch_Manager  + approve → Pending_HR_Supervisor
+ *   Pending_Branch_Manager  + reject  → Rejected
+ *   Pending_HR_Supervisor   + approve → Pending_HR_Manager
+ *   Pending_HR_Supervisor   + reject  → Rejected
+ *   Pending_HR_Manager      + approve → Approved
+ *   Pending_HR_Manager      + reject  → Rejected
+ *
+ * Terminal states (Approved, Rejected) and any unrecognised stage/action combination
+ * return null — callers must treat null as an authorization/logic error and abort.
+ *
+ * @param  string $current_stage  The current portal_workflow_stage value.
+ * @param  string $action         The action being taken: 'approve' or 'reject'.
+ * @return string|null            The next stage string, or null for invalid input.
+ *
+ * Requirements: 5.2, 5.3, 6.2, 6.3, 7.2, 7.3
+ */
+function applyStageTransition(string $current_stage, string $action): ?string
+{
+    $transitions = [
+        'Pending_Branch_Manager' => [
+            'approve' => 'Pending_HR_Supervisor',
+            'reject'  => 'Rejected',
+        ],
+        'Pending_HR_Supervisor' => [
+            'approve' => 'Pending_HR_Manager',
+            'reject'  => 'Rejected',
+        ],
+        'Pending_HR_Manager' => [
+            'approve' => 'Approved',
+            'reject'  => 'Rejected',
+        ],
+    ];
+
+    return $transitions[$current_stage][$action] ?? null;
+}
+
+/**
+ * Validate a Transfer submission from the Employee Portal before inserting a career_movements record.
+ *
+ * Checks (in order):
+ *  1. The target employee belongs to the submitter's branch (active, same branch_id).
+ *  2. $new_branch_id is provided and is different from the employee's current branch.
+ *  3. No duplicate pending Portal_Request already exists for the same employee.
+ *
+ * @param mysqli $conn
+ * @param int    $submitter_branch_id  The branch_id of the submitting Branch Supervisor.
+ * @param int    $submitter_emp_id     The employee_id of the submitting Branch Supervisor (unused
+ *                                     in DB checks here but kept for future audit use).
+ * @param int    $employee_id          The target employee being transferred.
+ * @param mixed  $new_branch_id        The destination branch_id selected by the submitter.
+ * @return string|null  Validation error message string, or null when input is valid.
+ *
+ * Requirements: 1.2, 1.3, 2.2, 4.1
+ */
+function validateTransferSubmission($conn, $submitter_branch_id, $submitter_emp_id, $employee_id, $new_branch_id): ?string
+{
+    $submitter_branch_id = (int) $submitter_branch_id;
+    $submitter_emp_id    = (int) $submitter_emp_id;
+    $employee_id         = (int) $employee_id;
+
+    // --- Check 1: Employee must exist, be active, and belong to the submitter's branch ---
+    if ($employee_id <= 0 || $submitter_branch_id <= 0) {
+        return 'The selected employee is not eligible.';
+    }
+
+    $stmt = $conn->prepare(
+        "SELECT branch_id FROM employees WHERE employee_id = ? AND branch_id = ? AND is_active = 1 LIMIT 1"
+    );
+    $stmt->bind_param("ii", $employee_id, $submitter_branch_id);
+    $stmt->execute();
+    $emp_row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$emp_row) {
+        return 'The selected employee is not eligible.';
+    }
+
+    $current_branch_id = (int) $emp_row['branch_id'];
+
+    // --- Check 2: new_branch_id must be present and differ from the employee's current branch ---
+    if (empty($new_branch_id) || (int) $new_branch_id <= 0) {
+        return 'A different destination branch must be selected.';
+    }
+
+    if ((int) $new_branch_id === $current_branch_id) {
+        return 'A different destination branch must be selected.';
+    }
+
+    // --- Check 3: No duplicate pending Portal_Request for this employee ---
+    $stmt = $conn->prepare(
+        "SELECT movement_id FROM career_movements
+         WHERE employee_id = ? AND request_source = 'Employee Portal' AND approval_status = 'Pending'
+         LIMIT 1"
+    );
+    $stmt->bind_param("i", $employee_id);
+    $stmt->execute();
+    $dup_row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if ($dup_row) {
+        return 'A pending Transfer request already exists for this employee.';
+    }
+
+    return null;
+}
+
+/**
+ * Determine whether an actor is authorised to take an approval action on a Portal_Request.
+ *
+ * All three guards must pass for the function to return true:
+ *   1. Stage match  — the movement's current portal_workflow_stage equals $required_stage.
+ *   2. Branch match — when the required stage is 'Pending_Branch_Manager', the movement's
+ *                     previous_branch_id must equal the actor's own branch_id.
+ *   3. Self-approval — the actor must NOT be the user who originally logged the request
+ *                      (logged_by field).
+ *
+ * @param  array  $movement        Associative array of the career_movements row (must include
+ *                                 'portal_workflow_stage', 'previous_branch_id', 'logged_by').
+ * @param  int    $actor_user_id   The user_id of the approver attempting the action.
+ * @param  int    $actor_branch_id The branch_id of the approver (from their employee record).
+ * @param  string $actor_role      The role string of the approver (not currently used in checks
+ *                                 but kept for callers that pass it for logging/context).
+ * @param  string $required_stage  The portal_workflow_stage the movement must be at for this
+ *                                 action to be valid.
+ * @return bool   true if all guards pass; false otherwise.
+ *
+ * Requirements: 5.4, 11.1, 11.2, 11.3, 11.4, 11.5
+ */
+function checkApprovalAuthorization(
+    array  $movement,
+    int    $actor_user_id,
+    int    $actor_branch_id,
+    string $actor_role,
+    string $required_stage
+): bool {
+    // Guard 1: Stage must match the required stage
+    if (($movement['portal_workflow_stage'] ?? null) !== $required_stage) {
+        return false;
+    }
+
+    // Guard 2: Branch Manager actions are scoped to the movement's originating branch
+    if ($required_stage === 'Pending_Branch_Manager') {
+        if ((int)($movement['previous_branch_id'] ?? -1) !== $actor_branch_id) {
+            return false;
+        }
+    }
+
+    // Guard 3: Prevent self-approval — the actor must not be the original submitter
+    if ($actor_user_id === (int)($movement['logged_by'] ?? 0)) {
+        return false;
+    }
+
+    return true;
 }
 
 /**

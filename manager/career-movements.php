@@ -23,11 +23,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movement_action'])) {
         redirectWith(BASE_URL . '/manager/career-movements.php', 'danger', 'Invalid career movement request.');
     }
 
+    // Task 8.1: Extend pending queue to include Portal_Requests at Pending_HR_Manager
     $stmt = $conn->prepare("
         SELECT cm.*, CONCAT(e.first_name,' ',e.last_name) AS employee_name
         FROM career_movements cm
         JOIN employees e ON cm.employee_id = e.employee_id
-        WHERE cm.movement_id = ? AND cm.approval_status = 'Pending' LIMIT 1
+        WHERE cm.movement_id = ?
+          AND (
+            (cm.approval_status = 'Pending' AND cm.portal_workflow_stage IS NULL)
+            OR
+            (cm.request_source = 'Employee Portal' AND cm.portal_workflow_stage = 'Pending_HR_Manager')
+          )
+        LIMIT 1
     ");
     $stmt->bind_param("i", $movement_id);
     $stmt->execute();
@@ -38,37 +45,119 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['movement_action'])) {
         redirectWith(BASE_URL . '/manager/career-movements.php', 'danger', 'Career movement not found or already processed.');
     }
 
-    $status   = $action === 'Approve' ? 'Approved' : 'Rejected';
-    $comments = trim($_POST['manager_comments'] ?? '');
+    // Task 8.1: Detect whether this is a Portal_Request
+    $is_portal_request = (
+        ($movement['request_source'] ?? '') === 'Employee Portal' &&
+        ($movement['portal_workflow_stage'] ?? null) !== null
+    );
 
-    $upd = $conn->prepare("UPDATE career_movements SET approval_status=?, approved_by=?, decision_date=NOW(), manager_comments=?, is_applied=0 WHERE movement_id=?");
-    $upd->bind_param("sisi", $status, $current_user_id, $comments, $movement_id);
-    $upd->execute();
-    $upd->close();
+    // Task 8.2 & 8.3: Differentiated approve/reject for Portal_Requests vs HR Portal requests
+    if ($is_portal_request) {
+        // ── Portal_Request (Employee Portal, at Pending_HR_Manager) ─────────
+        if (!checkApprovalAuthorization($movement, $current_user_id, 0, 'HR Manager', 'Pending_HR_Manager')) {
+            redirectWith(BASE_URL . '/manager/career-movements.php', 'danger', 'You are not authorized to approve this request.');
+        }
 
-    if ($status === 'Approved' && $movement['effective_date'] <= date('Y-m-d')) {
-        executeCareerMovementApplication($conn, $movement, $movement_id);
+        $comments = trim($_POST['manager_comments'] ?? '');
+
+        if ($action === 'Approve') {
+            // Task 8.2: Portal_Request Approve
+            $upd = $conn->prepare("
+                UPDATE career_movements
+                SET portal_workflow_stage = 'Approved',
+                    approval_status       = 'Approved',
+                    approved_by           = ?,
+                    decision_date         = NOW(),
+                    manager_comments      = ?,
+                    is_applied            = 0
+                WHERE movement_id = ?
+            ");
+            $upd->bind_param("isi", $current_user_id, $comments, $movement_id);
+            $upd->execute();
+            $upd->close();
+
+            if ($movement['effective_date'] <= date('Y-m-d')) {
+                executeCareerMovementApplication($conn, $movement, $movement_id);
+            }
+
+            // Notify submitting Branch Supervisor directly via logged_by (already a user_id)
+            $logged_by = (int) $movement['logged_by'];
+            if ($logged_by > 0) {
+                createNotification($conn, $logged_by,
+                    'Transfer Request Fully Approved',
+                    "Your Transfer request for {$movement['employee_name']} has been fully approved.",
+                    BASE_URL . '/employee/career-movement-request.php');
+            }
+
+            logAudit($conn, $current_user_id, 'APPROVE', 'Career Movement', $movement_id,
+                "Approved Transfer (Portal Request) for {$movement['employee_name']}.");
+
+            redirectWith(BASE_URL . '/manager/career-movements.php', 'success', 'Transfer request fully approved.');
+
+        } else {
+            // Task 8.3: Portal_Request Reject
+            $upd = $conn->prepare("
+                UPDATE career_movements
+                SET portal_workflow_stage = 'Rejected',
+                    approval_status       = 'Rejected',
+                    approved_by           = ?,
+                    decision_date         = NOW(),
+                    manager_comments      = ?
+                WHERE movement_id = ?
+            ");
+            $upd->bind_param("isi", $current_user_id, $comments, $movement_id);
+            $upd->execute();
+            $upd->close();
+
+            // Notify submitting Branch Supervisor
+            $logged_by = (int) $movement['logged_by'];
+            if ($logged_by > 0) {
+                createNotification($conn, $logged_by,
+                    'Transfer Request Rejected',
+                    "Your Transfer request for {$movement['employee_name']} has been rejected by HR Manager. Reason: {$comments}",
+                    BASE_URL . '/employee/career-movement-request.php');
+            }
+
+            logAudit($conn, $current_user_id, 'REJECT', 'Career Movement', $movement_id,
+                "Rejected Transfer (Portal Request) for {$movement['employee_name']}.");
+
+            redirectWith(BASE_URL . '/manager/career-movements.php', 'success', 'Transfer request rejected.');
+        }
+
+    } else {
+        // ── HR Portal request — existing flow unchanged ────────────────────
+        $status   = $action === 'Approve' ? 'Approved' : 'Rejected';
+        $comments = trim($_POST['manager_comments'] ?? '');
+
+        $upd = $conn->prepare("UPDATE career_movements SET approval_status=?, approved_by=?, decision_date=NOW(), manager_comments=?, is_applied=0 WHERE movement_id=?");
+        $upd->bind_param("sisi", $status, $current_user_id, $comments, $movement_id);
+        $upd->execute();
+        $upd->close();
+
+        if ($status === 'Approved' && $movement['effective_date'] <= date('Y-m-d')) {
+            executeCareerMovementApplication($conn, $movement, $movement_id);
+        }
+
+        if (!empty($movement['logged_by'])) {
+            createNotification($conn, (int) $movement['logged_by'],
+                "Career Movement {$status}",
+                "The {$movement['movement_type']} for {$movement['employee_name']} has been {$status}.",
+                BASE_URL . '/supervisor/career-movements.php');
+        }
+        $emp_user = getPreferredLinkedUserId($conn, $movement['employee_id'], 'employee_portal');
+        if ($emp_user) {
+            createNotification($conn, $emp_user,
+                "Career Movement {$status}",
+                "Your career movement ({$movement['movement_type']}) has been {$status}.",
+                BASE_URL . '/employee/notifications.php');
+        }
+
+        logAudit($conn, $current_user_id, strtoupper($action), 'Career Movement', $movement_id,
+            "{$action}d {$movement['movement_type']} for {$movement['employee_name']}.");
+
+        $msg = $status === 'Approved' ? 'Career movement approved. It will apply on the effective date.' : 'Career movement rejected.';
+        redirectWith(BASE_URL . '/manager/career-movements.php', $status === 'Approved' ? 'success' : 'warning', $msg);
     }
-
-    if (!empty($movement['logged_by'])) {
-        createNotification($conn, (int) $movement['logged_by'],
-            "Career Movement {$status}",
-            "The {$movement['movement_type']} for {$movement['employee_name']} has been {$status}.",
-            BASE_URL . '/supervisor/career-movements.php');
-    }
-    $emp_user = getPreferredLinkedUserId($conn, $movement['employee_id'], 'employee_portal');
-    if ($emp_user) {
-        createNotification($conn, $emp_user,
-            "Career Movement {$status}",
-            "Your career movement ({$movement['movement_type']}) has been {$status}.",
-            BASE_URL . '/employee/notifications.php');
-    }
-
-    logAudit($conn, $current_user_id, strtoupper($action), 'Career Movement', $movement_id,
-        "{$action}d {$movement['movement_type']} for {$movement['employee_name']}.");
-
-    $msg = $status === 'Approved' ? 'Career movement approved. It will apply on the effective date.' : 'Career movement rejected.';
-    redirectWith(BASE_URL . '/manager/career-movements.php', $status === 'Approved' ? 'success' : 'warning', $msg);
 }
 
 // ── Fetch data ────────────────────────────────────────────────────────────────
@@ -78,6 +167,7 @@ $movements = [];
 $counts    = ['total' => 0, 'Pending' => 0, 'Approved' => 0, 'Rejected' => 0, 'Applied' => 0];
 
 if ($movement_ready) {
+    // Task 8.4: Add JOINs for BM and HR Supervisor approver names (approval chain history)
     $stmt = $conn->prepare("
         SELECT cm.*,
             e.employee_code,
@@ -87,14 +177,22 @@ if ($movement_ready) {
             pb.branch_name AS previous_branch_name,
             nb.branch_name AS new_branch_name,
             u1.full_name   AS logged_by_name,
-            u2.full_name   AS approved_by_name
+            u2.full_name   AS approved_by_name,
+            bm_u.full_name  AS bm_approver_name,
+            hrs_u.full_name AS hrs_approver_name,
+            cm.branch_manager_decision_date,
+            cm.hr_supervisor_decision_date,
+            cm.branch_manager_approved_by,
+            cm.hr_supervisor_approved_by
         FROM career_movements cm
-        JOIN employees e       ON cm.employee_id        = e.employee_id
-        LEFT JOIN departments d ON e.department_id      = d.department_id
-        LEFT JOIN branches pb   ON cm.previous_branch_id = pb.branch_id
-        LEFT JOIN branches nb   ON cm.new_branch_id      = nb.branch_id
-        LEFT JOIN users u1      ON cm.logged_by          = u1.user_id
-        LEFT JOIN users u2      ON cm.approved_by        = u2.user_id
+        JOIN employees e        ON cm.employee_id         = e.employee_id
+        LEFT JOIN departments d ON e.department_id        = d.department_id
+        LEFT JOIN branches pb   ON cm.previous_branch_id  = pb.branch_id
+        LEFT JOIN branches nb   ON cm.new_branch_id       = nb.branch_id
+        LEFT JOIN users u1      ON cm.logged_by           = u1.user_id
+        LEFT JOIN users u2      ON cm.approved_by         = u2.user_id
+        LEFT JOIN users bm_u    ON cm.branch_manager_approved_by   = bm_u.user_id
+        LEFT JOIN users hrs_u   ON cm.hr_supervisor_approved_by    = hrs_u.user_id
         ORDER BY FIELD(cm.approval_status,'Pending','Approved','Rejected'), cm.created_at DESC
     ");
     $stmt->execute();
@@ -122,9 +220,6 @@ function mgrCmStatusClass($s){ return match($s) { 'Approved' => 'bg-success', 'R
             <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-route me-2" style="color:#BD9414;"></i>Career Movements</h4>
             <p class="text-white-50 small mb-0 mt-2">Review and decide on employee promotions, transfers, role changes, and other career progression requests.</p>
         </div>
-        <a href="career-progression.php" class="btn btn-sm px-3 fw-semibold" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:20px;font-size:.78rem;backdrop-filter:blur(4px);">
-            <i class="fas fa-chart-line me-1"></i>Career Progression
-        </a>
     </div>
     <div class="row g-3">
         <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value"><?php echo $counts['total']; ?></div><div class="stat-label">Total</div></div></div>
@@ -259,6 +354,33 @@ function mgrCmStatusClass($s){ return match($s) { 'Approved' => 'bg-success', 'R
                                     </td>
                                 </tr>
                                 <?php endif; ?>
+                                <?php if (($mv['request_source'] ?? '') === 'Employee Portal' && !empty($mv['portal_workflow_stage'])): ?>
+                                <tr class="bg-light border-top-0">
+                                    <td colspan="8" class="small py-2 ps-4">
+                                        <span class="fw-semibold text-muted me-3">Approval Chain:</span>
+                                        <span class="me-3">
+                                            <i class="fas fa-user-tie me-1 text-muted"></i>
+                                            <strong>Branch Manager:</strong>
+                                            <?php if (!empty($mv['branch_manager_approved_by'])): ?>
+                                                <?php echo e($mv['bm_approver_name'] ?? 'Unknown'); ?>
+                                                &middot; <?php echo formatDate($mv['branch_manager_decision_date'] ?? '', 'M d, Y'); ?>
+                                            <?php else: ?>
+                                                <span class="fst-italic text-muted">Branch Manager step bypassed</span>
+                                            <?php endif; ?>
+                                        </span>
+                                        <span>
+                                            <i class="fas fa-user-shield me-1 text-muted"></i>
+                                            <strong>HR Supervisor:</strong>
+                                            <?php if (!empty($mv['hr_supervisor_approved_by'])): ?>
+                                                <?php echo e($mv['hrs_approver_name'] ?? 'Unknown'); ?>
+                                                &middot; <?php echo formatDate($mv['hr_supervisor_decision_date'] ?? '', 'M d, Y'); ?>
+                                            <?php else: ?>
+                                                <span class="fst-italic text-muted">Pending</span>
+                                            <?php endif; ?>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
@@ -343,6 +465,33 @@ function mgrCmStatusClass($s){ return match($s) { 'Approved' => 'bg-success', 'R
                                 <tr class="bg-light">
                                     <td colspan="7" class="small text-muted py-2">
                                         <span class="fw-semibold">Reason:</span> <?php echo e($mv['reason']); ?>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
+                                <?php if (($mv['request_source'] ?? '') === 'Employee Portal' && !empty($mv['portal_workflow_stage'])): ?>
+                                <tr class="bg-light border-top-0">
+                                    <td colspan="8" class="small py-2 ps-4">
+                                        <span class="fw-semibold text-muted me-3">Approval Chain:</span>
+                                        <span class="me-3">
+                                            <i class="fas fa-user-tie me-1 text-muted"></i>
+                                            <strong>Branch Manager:</strong>
+                                            <?php if (!empty($mv['branch_manager_approved_by'])): ?>
+                                                <?php echo e($mv['bm_approver_name'] ?? 'Unknown'); ?>
+                                                &middot; <?php echo formatDate($mv['branch_manager_decision_date'] ?? '', 'M d, Y'); ?>
+                                            <?php else: ?>
+                                                <span class="fst-italic text-muted">Branch Manager step bypassed</span>
+                                            <?php endif; ?>
+                                        </span>
+                                        <span>
+                                            <i class="fas fa-user-shield me-1 text-muted"></i>
+                                            <strong>HR Supervisor:</strong>
+                                            <?php if (!empty($mv['hr_supervisor_approved_by'])): ?>
+                                                <?php echo e($mv['hrs_approver_name'] ?? 'Unknown'); ?>
+                                                &middot; <?php echo formatDate($mv['hr_supervisor_decision_date'] ?? '', 'M d, Y'); ?>
+                                            <?php else: ?>
+                                                <span class="fst-italic text-muted">Pending</span>
+                                            <?php endif; ?>
+                                        </span>
                                     </td>
                                 </tr>
                                 <?php endif; ?>
