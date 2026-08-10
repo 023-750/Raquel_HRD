@@ -1,3 +1,3 @@
-1. Branch Supervisor when checking someone's evaluation UI/UX should be the same layout as Branch Manager has.
-2. Hr Supervisor Movement Type (TRANSFER, DEMOTION, PROMOTION, ETC) when performing this to an csv employee the Career Progression
-Career Movement History employe viewing "From Position" is N/A or labbeled with "--" for some reason.
+Career movements via employee portal
+
+1. When branch supervisor perform career movement while it doesn't has branch manager the Submitted Requests "Stage" marks as Approved instantly but the hr supervisor recieved the request-- when it tries to approve the request it gives error and let the request sit on the request table.
