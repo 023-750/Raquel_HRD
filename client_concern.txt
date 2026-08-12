@@ -1,35 +1,4 @@
-=== ADDRESS ===
+New Evaluation flow including the higher official
 
-Upgrade Residential Address and Permanent Address fields from the current textbox-only format into a structured location selection system.
+our standard flow 
 
-Residential Address and Permanent Address should contain the following:
-
-House/Block/Lot No. — remain as textbox
-Street — remain as textbox
-Subdivision/Village — remain as textbox
-Region — dropdown
-Province — cascading dropdown
-City/Municipality — cascading dropdown
-Barangay — cascading dropdown
-Zip Code — automatically populated based on the selected location
-
-The location dropdowns should follow a hierarchical structure:
-
-Region → Province → City/Municipality → Barangay
-
-Each location should only display options belonging to the previously selected location. For example, after selecting a Region, the Province dropdown should only display provinces under that Region. After selecting a Province, only its corresponding Cities/Municipalities should be displayed, followed by the appropriate Barangays.
-
-The system should use standardized Philippine geographic/location data such as the Philippine Standard Geographic Code (PSGC) instead of allowing users to manually type Province, City/Municipality, and Barangay names.
-
-ZIP Code should be automatically populated based on the selected location whenever the corresponding ZIP Code is available in the location database.
-
-Add a "Same as Residential Address" option under Permanent Address so users can automatically copy the Residential Address information when both addresses are identical.
-
-The address database structure should be upgraded so that Province, City/Municipality, and Barangay are stored using standardized location records/codes rather than unrelated manually entered text values.
-
-The location data should preferably be maintained within the HRIS database after being sourced from a reliable PSGC dataset/API. This will allow the cascading address selection to work efficiently without requiring the system to request the external API every time an employee address is entered.
-
-The standardized address selection system should also be designed for reuse in other HRIS modules that require Philippine location information, such as Employee Records and Branch Management.
-
-
-=== New Evaluation Flow ===
