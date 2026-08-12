@@ -1,0 +1,39 @@
+The evaluation flow would be like this according to what they excpect:
+
+I choose AP department for perfect example.
+
+AP department has manager and supervisor below them there's a plenty more positions, they were encapsulated as a team -- AP manager & supervisor could oversee all of its teammates and each evaluations statuses (pending,success, doesn't perform yet).
+
+The evaluations has KRA and Behavioral, The KRA exclusively for individual employees on the other hand the behavioral is a group evaluation within department.
+
+Let's say, All of them performed Evaluation for annual evaluation, AP Supervisor and Manager inspect all of thier collegues Core Behaviors & Values evaluation and consolidate into one rating. By doing this they're could monitor their department performance and at the same time each evaluation KRA.
+
+Both manager and supervisor could consolidate the result and submit it to the higher ranking officers until it was approved and saved to Human resource system. (Standing supervisor first consolidator before standing manager after supervisor submit this the only time that manager could see the initial consolidated version of their team evaluation).
+
+After successful team evaluation there will be an history for later checking.
+
+As far as I remember, the flow would be like this:
+
+R&F's, standing supervisor, standing manager simultaneously or one after another perform evaluation and then submit it to its standing supervisor, Now the Supervisor has the evaluation form it'll be waiting for the other to finish the're evaluation before the submit button's avalability takes effect (if some employee hasn't perform the dedicated evaluation form, the standing supervisor submit button won't work until all of the employee or team was done).
+
+Standing supervisor could see who's hasn't yet submitting the evaluation -- if the team was submit each evaluation the standing supervisor can alter each self evaluation the KRA AND Core Behaviors & Values.
+
+The system would get the 20% of  Core Behaviors & Values consolidated from the other member of the team.
+
+Let's say, All of team was successfuly perform the evaluation the computation for evaluation was somehow still the same the only thing that changed is the Core Behaviors & Values.
+
+all of the team have the same Core Behaviors & Values, for example me ranked as R&F I've got KRA of 2.50 my Core Behaviors & Values is updated to our team's Core Behaviors & Values.
+
+now that each employee has the clear KRA and Core Behaviors & Values computations same process employee could see on thier employee portal end such as (waiting for Standing supervisor consolidation, waiting for standing manager consolidation, waiting for ____ initial approval) you get my point here.
+
+Let's get to the point that the Department manager has the request sent by Department supervisor, Dept manager could also alter KRA Ratings and  Core Behaviors & Values each of its teammates. Dept manager and Dept supervisor have the same UI/UX on this.
+
+If the standing dept manager submit it it would be sent to "vp operations" and it can perform altering values too. "vp operations" Send it to the next which is the "PRESIDENT" same as vp operations it can modify everything. and lastly "BOARD DIRECTORS" handles the Final Approval.
+
+Upon successful approval by BOARD DIRECTORS the evaluation request anchored with a comprehensive audit trail, and also Human resources department notified for successful approval by BOARD DIRECTORS containing the details and accept button so it can take effect to the entire system.
+
+
+
+
+note:
+    This new evaluation process is exclusively for certain evaluation type I'm in the stage where I'm still planning to built the proper flow.
