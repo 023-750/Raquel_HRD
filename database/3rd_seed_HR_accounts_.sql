@@ -108,13 +108,13 @@ REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number
 -- ==================================
 -- 11. ADDRESSES & EMERGENCY CONTACTS
 -- ==================================
-REPLACE INTO employee_addresses (employee_id, address_type, barangay, city, province) VALUES
-(101, 'Residential', 'San Isidro', 'Tayabas City', 'Quezon'),
-(101, 'Permanent', 'San Isidro', 'Tayabas City', 'Quezon'),
-(301, 'Residential', 'Quezon City', 'Quezon City', 'Metro Manila'),
-(301, 'Permanent', 'Nueva Ecija', 'Cabanatuan City', 'Nueva Ecija'),
-(302, 'Residential', 'Taguig', 'Taguig City', 'Metro Manila'),
-(302, 'Permanent', 'Cavite', 'Dasmariñas', 'Cavite');
+REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, city, province) VALUES
+(101, 'Residential', 'Region IV-A (CALABARZON)', 'San Isidro', 'Tayabas City', 'Quezon'),
+(101, 'Permanent', 'Region IV-A (CALABARZON)', 'San Isidro', 'Tayabas City', 'Quezon'),
+(301, 'Residential', 'National Capital Region (NCR)', 'Quezon City', 'Quezon City', 'Metro Manila'),
+(301, 'Permanent', 'Region III (Central Luzon)', 'Nueva Ecija', 'Cabanatuan City', 'Nueva Ecija'),
+(302, 'Residential', 'National Capital Region (NCR)', 'Taguig', 'Taguig City', 'Metro Manila'),
+(302, 'Permanent', 'Region IV-A (CALABARZON)', 'Cavite', 'Dasmariñas', 'Cavite');
 
 REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES
 (101, 'Marco Antonio Delgado', 'Spouse', '09161111111'),
