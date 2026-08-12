@@ -346,15 +346,61 @@ function updatePDSSummary() {
     if (sumDiscEl) sumDiscEl.innerHTML = activeDisclosures + ' active declaration(s)';
 }
 
-// Copy residential address to permanent
+// Copy residential address to permanent with cascading dropdown support
 function copyResAddress() {
-    const fields = ['house_no','street','subdivision','barangay','city','province','zip_code'];
-    fields.forEach(f => {
-        const src = document.querySelector('[name="res_' + f + '"]');
-        const dst = document.getElementById('perm_' + f);
+    // Copy plain text fields first
+    var fields = ['house_no', 'street', 'subdivision', 'zip_code'];
+    fields.forEach(function (f) {
+        var src = document.getElementById('res_' + f) || document.querySelector('[name="res_' + f + '"]');
+        var dst = document.getElementById('perm_' + f);
         if (src && dst) dst.value = src.value;
     });
+
+    var resRegion = document.getElementById('res_region');
+    var permRegion = document.getElementById('perm_region');
+    if (!resRegion || !permRegion || !resRegion.value) return;
+
+    // Step 1: Copy & fire Region → this repopulates Province options
+    selectOrAddOption(permRegion, resRegion.value);
+    permRegion.dispatchEvent(new Event('change'));
+
+    // Step 2: After Province options are populated, select Province & fire → repopulates City options
+    setTimeout(function () {
+        var resProv = document.getElementById('res_province');
+        var permProv = document.getElementById('perm_province');
+        if (!resProv || !permProv || !resProv.value) return;
+
+        selectOrAddOption(permProv, resProv.value);
+        permProv.dispatchEvent(new Event('change'));
+
+        // Step 3: After City options are populated, select City & fire → repopulates Barangay + autofills zip
+        setTimeout(function () {
+            var resCity = document.getElementById('res_city');
+            var permCity = document.getElementById('perm_city');
+            if (!resCity || !permCity || !resCity.value) return;
+
+            selectOrAddOption(permCity, resCity.value);
+            permCity.dispatchEvent(new Event('change'));
+
+            // Step 4: After Barangay options are populated, select Barangay
+            setTimeout(function () {
+                var resBrgy = document.getElementById('res_barangay');
+                var permBrgy = document.getElementById('perm_barangay');
+                if (resBrgy && permBrgy && resBrgy.value) {
+                    selectOrAddOption(permBrgy, resBrgy.value);
+                }
+
+                // Also sync zip from residential (in case city didn't match zip lookup)
+                var resZip = document.getElementById('res_zip_code');
+                var permZip = document.getElementById('perm_zip_code');
+                if (resZip && permZip && resZip.value) {
+                    permZip.value = resZip.value;
+                }
+            }, 100);
+        }, 100);
+    }, 100);
 }
+
 
 // Toggle disclosure detail areas
 function toggleDetails(checkbox, detailsDivId) {
@@ -1609,4 +1655,210 @@ function bindJobTitleRankAutofill() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', bindJobTitleRankAutofill);
+document.addEventListener('DOMContentLoaded', function () {
+    bindJobTitleRankAutofill();
+    initPhAddresses();
+});
+
+/**
+ * Modern Cascading Address Dropdowns for Philippines (Region -> Province -> City -> Barangay -> Zip)
+ */
+function initPhAddresses() {
+    var regSelects = document.querySelectorAll('.ph-region-select');
+    if (!regSelects.length) return;
+
+    var basePath = (typeof BASE_URL !== 'undefined') ? BASE_URL : '';
+    if (!basePath && window.location.pathname.includes('/FINAL_RAQUEL_PAWNSHOP_HRD')) {
+        basePath = '/FINAL_RAQUEL_PAWNSHOP_HRD';
+    }
+
+    var locUrl = basePath + '/assets/data/ph_locations.json';
+    var zipUrl = basePath + '/assets/data/zip_codes.json';
+
+    Promise.all([
+        fetch(locUrl).then(function (r) { return r.json(); }),
+        fetch(zipUrl).then(function (r) { return r.json(); }).catch(function () { return {}; })
+    ]).then(function (results) {
+        var phData = results[0];
+        var zipData = results[1] || {};
+
+        window.PH_LOCATIONS = phData;
+        window.ZIP_CODES = zipData;
+
+        ['res_', 'perm_'].forEach(function (prefix) {
+            setupAddressBlock(prefix, phData, zipData);
+        });
+    }).catch(function (err) {
+        console.error('Failed to load PH address dataset:', err);
+    });
+}
+
+function setupAddressBlock(prefix, phData, zipData) {
+    var regEl  = document.getElementById(prefix + 'region');
+    var provEl = document.getElementById(prefix + 'province');
+    var cityEl = document.getElementById(prefix + 'city');
+    var brgyEl = document.getElementById(prefix + 'barangay');
+    var zipEl  = document.getElementById(prefix + 'zip_code');
+
+    if (!regEl || !provEl || !cityEl || !brgyEl) return;
+
+    var savedReg  = regEl.getAttribute('data-saved-value') || '';
+    var savedProv = provEl.getAttribute('data-saved-value') || '';
+    var savedCity = cityEl.getAttribute('data-saved-value') || '';
+    var savedBrgy = brgyEl.getAttribute('data-saved-value') || '';
+
+    // 1. Populate Regions
+    regEl.innerHTML = '<option value="">Select Region...</option>';
+    phData.regions.forEach(function (r) {
+        var opt = document.createElement('option');
+        opt.value = r.name;
+        opt.textContent = r.name + (r.regionName && r.regionName !== r.name ? ' (' + r.regionName + ')' : '');
+        opt.setAttribute('data-code', r.code);
+        regEl.appendChild(opt);
+    });
+
+    // Region change listener
+    regEl.addEventListener('change', function () {
+        var selOpt = regEl.options[regEl.selectedIndex];
+        var regCode = selOpt ? selOpt.getAttribute('data-code') : '';
+
+        provEl.innerHTML = '<option value="">Select Province...</option>';
+        cityEl.innerHTML = '<option value="">Select City/Municipality...</option>';
+        brgyEl.innerHTML = '<option value="">Select Barangay...</option>';
+
+        provEl.disabled = true;
+        cityEl.disabled = true;
+        brgyEl.disabled = true;
+
+        if (!regCode) return;
+
+        // Populate Provinces for region
+        var filteredProvs = phData.provinces.filter(function (p) {
+            return p.regionCode === regCode;
+        });
+
+        if (filteredProvs.length === 0 && regCode === '130000000') {
+            filteredProvs = [{ code: '130000000', name: 'Metro Manila (NCR)', regionCode: '130000000' }];
+        }
+
+        filteredProvs.forEach(function (p) {
+            var opt = document.createElement('option');
+            opt.value = p.name;
+            opt.textContent = p.name;
+            opt.setAttribute('data-code', p.code);
+            provEl.appendChild(opt);
+        });
+
+        provEl.disabled = false;
+    });
+
+    // Province change listener
+    provEl.addEventListener('change', function () {
+        var selOpt = provEl.options[provEl.selectedIndex];
+        var provCode = selOpt ? selOpt.getAttribute('data-code') : '';
+        var selRegOpt = regEl.options[regEl.selectedIndex];
+        var regCode = selRegOpt ? selRegOpt.getAttribute('data-code') : '';
+
+        cityEl.innerHTML = '<option value="">Select City/Municipality...</option>';
+        brgyEl.innerHTML = '<option value="">Select Barangay...</option>';
+
+        cityEl.disabled = true;
+        brgyEl.disabled = true;
+
+        if (!provCode && !regCode) return;
+
+        var filteredCities = phData.cities.filter(function (c) {
+            if (provCode) return c.provinceCode === provCode;
+            if (regCode) return c.regionCode === regCode;
+            return false;
+        });
+
+        // Sort cities alphabetically
+        filteredCities.sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+        filteredCities.forEach(function (c) {
+            var opt = document.createElement('option');
+            opt.value = c.name;
+            opt.textContent = c.name;
+            opt.setAttribute('data-code', c.code);
+            cityEl.appendChild(opt);
+        });
+
+        cityEl.disabled = false;
+    });
+
+    // City change listener
+    cityEl.addEventListener('change', function () {
+        var selOpt = cityEl.options[cityEl.selectedIndex];
+        var cityCode = selOpt ? selOpt.getAttribute('data-code') : '';
+        var cityName = selOpt ? selOpt.value : '';
+
+        brgyEl.innerHTML = '<option value="">Select Barangay...</option>';
+        brgyEl.disabled = true;
+
+        if (cityName && zipEl && zipData[cityName]) {
+            zipEl.value = zipData[cityName];
+        }
+
+        if (!cityCode) return;
+
+        var brgyList = phData.barangays[cityCode] || [];
+        brgyList.forEach(function (bName) {
+            var opt = document.createElement('option');
+            opt.value = bName;
+            opt.textContent = bName;
+            brgyEl.appendChild(opt);
+        });
+
+        brgyEl.disabled = false;
+    });
+
+    // 2. Edit Mode Pre-fill Execution
+    if (savedReg || savedProv || savedCity || savedBrgy) {
+        selectOrAddOption(regEl, savedReg);
+        if (regEl.value) {
+            regEl.dispatchEvent(new Event('change'));
+
+            if (savedProv) {
+                selectOrAddOption(provEl, savedProv);
+                if (provEl.value) {
+                    provEl.dispatchEvent(new Event('change'));
+
+                    if (savedCity) {
+                        selectOrAddOption(cityEl, savedCity);
+                        if (cityEl.value) {
+                            cityEl.dispatchEvent(new Event('change'));
+
+                            if (savedBrgy) {
+                                selectOrAddOption(brgyEl, savedBrgy);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+function selectOrAddOption(selectEl, val) {
+    if (!val || !selectEl) return;
+    var cleanVal = val.trim();
+
+    // Check exact or case-insensitive match
+    for (var i = 0; i < selectEl.options.length; i++) {
+        var optVal = selectEl.options[i].value.trim();
+        if (optVal.toLowerCase() === cleanVal.toLowerCase()) {
+            selectEl.selectedIndex = i;
+            return;
+        }
+    }
+
+    // Fallback for custom legacy values: append option as selected
+    var newOpt = document.createElement('option');
+    newOpt.value = cleanVal;
+    newOpt.textContent = cleanVal + ' (Legacy)';
+    newOpt.selected = true;
+    selectEl.appendChild(newOpt);
+    selectEl.value = cleanVal;
+}
+
