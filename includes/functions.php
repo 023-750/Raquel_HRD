@@ -1138,7 +1138,7 @@ function applyEmployeeChangeRequest($conn, $request_id)
     // ── 5. employee_addresses (residential + permanent) ──────────────────────
     $addr_pfxs = ['res_','perm_'];
     $addr_types = ['res_' => 'Residential', 'perm_' => 'Permanent'];
-    $addr_subs  = ['house_no','street','subdivision','barangay','city','province','zip_code'];
+    $addr_subs  = ['region','house_no','street','subdivision','barangay','city','province','zip_code'];
     foreach ($addr_pfxs as $pfx) {
         $changed_addr = false;
         foreach ($addr_subs as $sub) { if (isset($changes[$pfx.$sub])) { $changed_addr = true; break; } }
@@ -1149,10 +1149,10 @@ function applyEmployeeChangeRequest($conn, $request_id)
                 $vals[$sub] = isset($changes[$pfx.$sub]) ? $changes[$pfx.$sub]['new'] : ($cur[$sub] ?? '');
             }
             $conn->query("DELETE FROM employee_addresses WHERE employee_id=$eid AND address_type='" . $addr_types[$pfx] . "'");
-            if (!empty($vals['street']) || !empty($vals['city'])) {
-                $u = $conn->prepare("INSERT INTO employee_addresses (employee_id,address_type,house_no,street,subdivision,barangay,city,province,zip_code) VALUES (?,?,?,?,?,?,?,?,?)");
+            if (!empty($vals['street']) || !empty($vals['city']) || !empty($vals['province'])) {
+                $u = $conn->prepare("INSERT INTO employee_addresses (employee_id,address_type,region,house_no,street,subdivision,barangay,city,province,zip_code) VALUES (?,?,?,?,?,?,?,?,?,?)");
                 $t = $addr_types[$pfx];
-                $u->bind_param("isssssss", $eid, $t, $vals['house_no'], $vals['street'], $vals['subdivision'], $vals['barangay'], $vals['city'], $vals['province'], $vals['zip_code']);
+                $u->bind_param("isssssssss", $eid, $t, $vals['region'], $vals['house_no'], $vals['street'], $vals['subdivision'], $vals['barangay'], $vals['city'], $vals['province'], $vals['zip_code']);
                 $u->execute(); $u->close();
             }
         }

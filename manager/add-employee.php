@@ -284,6 +284,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
 
             // Addresses
             $conn->query("DELETE FROM employee_addresses WHERE employee_id = $eid");
+            $res_reg = $getV('Residential Region') ?: 'Region IV-A (CALABARZON)';
             $res_h = $getV('Residential House No', 16);
             $res_s = $getV('Residential Street', 17);
             $res_v = $getV('Residential Subdivision', 18);
@@ -291,12 +292,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $res_c = $getV('Residential City', 20);
             $res_p = $getV('Residential Province', 21);
             $res_z = $getV('Residential Zip Code', 22);
-            if (!empty($res_s) || !empty($res_c)) {
-                $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Residential', ?,?,?,?,?,?,?)");
-                $stmt->bind_param("isssssss", $eid, $res_h, $res_s, $res_v, $res_b, $res_c, $res_p, $res_z);
+            if (!empty($res_s) || !empty($res_c) || !empty($res_p)) {
+                $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, region, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Residential', ?,?,?,?,?,?,?,?)");
+                $stmt->bind_param("issssssss", $eid, $res_reg, $res_h, $res_s, $res_v, $res_b, $res_c, $res_p, $res_z);
                 $stmt->execute();
                 $stmt->close();
             }
+            $per_reg = $getV('Permanent Region') ?: 'Region IV-A (CALABARZON)';
             $per_h = $getV('Permanent House No', 23);
             $per_s = $getV('Permanent Street', 24);
             $per_v = $getV('Permanent Subdivision', 25);
@@ -304,9 +306,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             $per_c = $getV('Permanent City', 27);
             $per_p = $getV('Permanent Province', 28);
             $per_z = $getV('Permanent Zip Code', 29);
-            if (!empty($per_s) || !empty($per_c)) {
-                $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Permanent', ?,?,?,?,?,?,?)");
-                $stmt->bind_param("isssssss", $eid, $per_h, $per_s, $per_v, $per_b, $per_c, $per_p, $per_z);
+            if (!empty($per_s) || !empty($per_c) || !empty($per_p)) {
+                $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, region, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Permanent', ?,?,?,?,?,?,?,?)");
+                $stmt->bind_param("issssssss", $eid, $per_reg, $per_h, $per_s, $per_v, $per_b, $per_c, $per_p, $per_z);
                 $stmt->execute();
                 $stmt->close();
             }
@@ -616,6 +618,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
     $tin_number = trim($_POST['tin_number'] ?? '');
 
     // Addresses
+    $res_region = trim($_POST['res_region'] ?? '');
     $res_house_no = trim($_POST['res_house_no'] ?? '');
     $res_street = trim($_POST['res_street'] ?? '');
     $res_subdivision = trim($_POST['res_subdivision'] ?? '');
@@ -623,6 +626,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
     $res_city = trim($_POST['res_city'] ?? '');
     $res_province = trim($_POST['res_province'] ?? '');
     $res_zip_code = trim($_POST['res_zip_code'] ?? '');
+    $perm_region = trim($_POST['perm_region'] ?? '');
     $perm_house_no = trim($_POST['perm_house_no'] ?? '');
     $perm_street = trim($_POST['perm_street'] ?? '');
     $perm_subdivision = trim($_POST['perm_subdivision'] ?? '');
@@ -820,17 +824,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
         $stmt->close();
 
         // 4. Addresses (Residential)
-        if (!empty($res_street) || !empty($res_city)) {
-            $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Residential', ?,?,?,?,?,?,?)");
-            $stmt->bind_param("isssssss", $new_id, $res_house_no, $res_street, $res_subdivision, $res_barangay, $res_city, $res_province, $res_zip_code);
+        if (!empty($res_street) || !empty($res_city) || !empty($res_province)) {
+            $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, region, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Residential', ?,?,?,?,?,?,?,?)");
+            $stmt->bind_param("isssssssss", $new_id, $res_region, $res_house_no, $res_street, $res_subdivision, $res_barangay, $res_city, $res_province, $res_zip_code);
             $stmt->execute();
             $stmt->close();
         }
 
         // 5. Addresses (Permanent)
-        if (!empty($perm_street) || !empty($perm_city)) {
-            $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Permanent', ?,?,?,?,?,?,?)");
-            $stmt->bind_param("isssssss", $new_id, $perm_house_no, $perm_street, $perm_subdivision, $perm_barangay, $perm_city, $perm_province, $perm_zip_code);
+        if (!empty($perm_street) || !empty($perm_city) || !empty($perm_province)) {
+            $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, region, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Permanent', ?,?,?,?,?,?,?,?)");
+            $stmt->bind_param("isssssssss", $new_id, $perm_region, $perm_house_no, $perm_street, $perm_subdivision, $perm_barangay, $perm_city, $perm_province, $perm_zip_code);
             $stmt->execute();
             $stmt->close();
         }

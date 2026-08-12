@@ -64,7 +64,7 @@ $emp['contact_number'] = $emp['mobile_number'];
 
 $res_addr  = $conn->query("SELECT * FROM employee_addresses WHERE employee_id=$eid AND address_type='Residential'")->fetch_assoc();
 $perm_addr = $conn->query("SELECT * FROM employee_addresses WHERE employee_id=$eid AND address_type='Permanent'")->fetch_assoc();
-foreach (['house_no','street','subdivision','barangay','city','province','zip_code'] as $f) {
+foreach (['region','house_no','street','subdivision','barangay','city','province','zip_code'] as $f) {
     $emp['res_'.$f]  = $res_addr[$f]  ?? '';
     $emp['perm_'.$f] = $perm_addr[$f] ?? '';
 }

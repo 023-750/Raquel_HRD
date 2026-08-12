@@ -124,6 +124,7 @@ function buildAddress(array $emp, string $prefix): string {
         $emp[$prefix . 'barangay'] ?? '',
         $emp[$prefix . 'city'] ?? '',
         $emp[$prefix . 'province'] ?? '',
+        $emp[$prefix . 'region'] ?? '',
         $emp[$prefix . 'zip_code'] ?? '',
     ]);
     return implode(', ', $parts);

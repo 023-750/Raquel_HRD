@@ -173,31 +173,43 @@ $rankCategories = $rankCategories ?? [
     <div class="row">
         <div class="col-md-3 mb-3">
             <label class="form-label">House/Block/Lot No.</label>
-            <input type="text" class="form-control" name="res_house_no" value="<?php echo $v('res_house_no'); ?>">
+            <input type="text" class="form-control" name="res_house_no" id="res_house_no" value="<?php echo $v('res_house_no'); ?>">
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">Street</label>
-            <input type="text" class="form-control" name="res_street" value="<?php echo $v('res_street'); ?>">
+            <input type="text" class="form-control" name="res_street" id="res_street" value="<?php echo $v('res_street'); ?>">
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">Subdivision/Village</label>
-            <input type="text" class="form-control" name="res_subdivision" value="<?php echo $v('res_subdivision'); ?>">
+            <input type="text" class="form-control" name="res_subdivision" id="res_subdivision" value="<?php echo $v('res_subdivision'); ?>">
         </div>
         <div class="col-md-3 mb-3">
-            <label class="form-label">Barangay</label>
-            <input type="text" class="form-control" name="res_barangay" value="<?php echo $v('res_barangay'); ?>">
-        </div>
-        <div class="col-md-3 mb-3">
-            <label class="form-label">City/Municipality</label>
-            <input type="text" class="form-control" name="res_city" value="<?php echo $v('res_city'); ?>">
+            <label class="form-label">Region</label>
+            <select class="form-select ph-region-select" name="res_region" id="res_region" data-saved-value="<?php echo $v('res_region'); ?>">
+                <option value="">Select Region...</option>
+            </select>
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">Province</label>
-            <input type="text" class="form-control" name="res_province" value="<?php echo $v('res_province'); ?>">
+            <select class="form-select ph-province-select" name="res_province" id="res_province" data-saved-value="<?php echo $v('res_province'); ?>" disabled>
+                <option value="">Select Province...</option>
+            </select>
+        </div>
+        <div class="col-md-3 mb-3">
+            <label class="form-label">City/Municipality</label>
+            <select class="form-select ph-city-select" name="res_city" id="res_city" data-saved-value="<?php echo $v('res_city'); ?>" disabled>
+                <option value="">Select City/Municipality...</option>
+            </select>
+        </div>
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Barangay</label>
+            <select class="form-select ph-barangay-select" name="res_barangay" id="res_barangay" data-saved-value="<?php echo $v('res_barangay'); ?>" disabled>
+                <option value="">Select Barangay...</option>
+            </select>
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">Zip Code</label>
-            <input type="text" class="form-control" name="res_zip_code" value="<?php echo $v('res_zip_code'); ?>">
+            <input type="text" class="form-control" name="res_zip_code" id="res_zip_code" value="<?php echo $v('res_zip_code'); ?>" placeholder="Auto-filled / Editable">
         </div>
     </div>
 
@@ -224,24 +236,33 @@ $rankCategories = $rankCategories ?? [
                 value="<?php echo $v('perm_subdivision'); ?>">
         </div>
         <div class="col-md-3 mb-3">
-            <label class="form-label">Barangay</label>
-            <input type="text" class="form-control" name="perm_barangay" id="perm_barangay"
-                value="<?php echo $v('perm_barangay'); ?>">
-        </div>
-        <div class="col-md-3 mb-3">
-            <label class="form-label">City/Municipality</label>
-            <input type="text" class="form-control" name="perm_city" id="perm_city"
-                value="<?php echo $v('perm_city'); ?>">
+            <label class="form-label">Region</label>
+            <select class="form-select ph-region-select" name="perm_region" id="perm_region" data-saved-value="<?php echo $v('perm_region'); ?>">
+                <option value="">Select Region...</option>
+            </select>
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">Province</label>
-            <input type="text" class="form-control" name="perm_province" id="perm_province"
-                value="<?php echo $v('perm_province'); ?>">
+            <select class="form-select ph-province-select" name="perm_province" id="perm_province" data-saved-value="<?php echo $v('perm_province'); ?>" disabled>
+                <option value="">Select Province...</option>
+            </select>
+        </div>
+        <div class="col-md-3 mb-3">
+            <label class="form-label">City/Municipality</label>
+            <select class="form-select ph-city-select" name="perm_city" id="perm_city" data-saved-value="<?php echo $v('perm_city'); ?>" disabled>
+                <option value="">Select City/Municipality...</option>
+            </select>
+        </div>
+        <div class="col-md-3 mb-3">
+            <label class="form-label">Barangay</label>
+            <select class="form-select ph-barangay-select" name="perm_barangay" id="perm_barangay" data-saved-value="<?php echo $v('perm_barangay'); ?>" disabled>
+                <option value="">Select Barangay...</option>
+            </select>
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">Zip Code</label>
             <input type="text" class="form-control" name="perm_zip_code" id="perm_zip_code"
-                value="<?php echo $v('perm_zip_code'); ?>">
+                value="<?php echo $v('perm_zip_code'); ?>" placeholder="Auto-filled / Editable">
         </div>
     </div>
 

@@ -56,7 +56,7 @@ $res_addr = $conn->query("SELECT * FROM employee_addresses WHERE employee_id=$ei
 $perm_addr = $conn->query("SELECT * FROM employee_addresses WHERE employee_id=$eid AND address_type='Permanent'")->fetch_assoc();
 
 // Flatten address fields into $emp for legacy UI compatibility
-$addr_fields = ['house_no', 'street', 'subdivision', 'barangay', 'city', 'province', 'zip_code'];
+$addr_fields = ['region', 'house_no', 'street', 'subdivision', 'barangay', 'city', 'province', 'zip_code'];
 foreach ($addr_fields as $f) {
     $emp['res_' . $f] = $res_addr[$f] ?? '';
     $emp['perm_' . $f] = $perm_addr[$f] ?? '';
