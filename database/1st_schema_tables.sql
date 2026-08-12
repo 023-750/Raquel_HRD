@@ -220,6 +220,7 @@ CREATE TABLE employee_addresses (
     address_id INT AUTO_INCREMENT PRIMARY KEY,
     employee_id INT NOT NULL,
     address_type ENUM('Residential', 'Permanent') NOT NULL,
+    region VARCHAR(150) NULL,
     house_no VARCHAR(100) NULL,
     street VARCHAR(150) NULL,
     subdivision VARCHAR(150) NULL,

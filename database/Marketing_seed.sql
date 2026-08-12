@@ -94,21 +94,21 @@ REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number
 (9006, '18-8938740-8', '16-128309105-6', '9584-2363-2702', '368-732-259-000'),
 (9007, '21-8413185-4', '56-542600470-4', '3551-5973-1172', '100-635-934-000');
 
-REPLACE INTO employee_addresses (employee_id, address_type, barangay, city, province) VALUES
-(9001, 'Residential', 'Barangay 10', 'Candelaria', 'Quezon'),
-(9001, 'Permanent', 'Barangay 10', 'Candelaria', 'Quezon'),
-(9002, 'Residential', 'Barangay 14', 'Pagbilao', 'Quezon'),
-(9002, 'Permanent', 'Barangay 14', 'Pagbilao', 'Quezon'),
-(9003, 'Residential', 'Barangay 3', 'Pagbilao', 'Quezon'),
-(9003, 'Permanent', 'Barangay 3', 'Pagbilao', 'Quezon'),
-(9004, 'Residential', 'Barangay 14', 'Pagbilao', 'Quezon'),
-(9004, 'Permanent', 'Barangay 14', 'Pagbilao', 'Quezon'),
-(9005, 'Residential', 'Barangay 10', 'Candelaria', 'Quezon'),
-(9005, 'Permanent', 'Barangay 10', 'Candelaria', 'Quezon'),
-(9006, 'Residential', 'Barangay 2', 'Candelaria', 'Quezon'),
-(9006, 'Permanent', 'Barangay 2', 'Candelaria', 'Quezon'),
-(9007, 'Residential', 'Barangay 13', 'Tayabas City', 'Quezon'),
-(9007, 'Permanent', 'Barangay 13', 'Tayabas City', 'Quezon');
+REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, city, province) VALUES
+(9001, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Candelaria', 'Quezon'),
+(9001, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Candelaria', 'Quezon'),
+(9002, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 14', 'Pagbilao', 'Quezon'),
+(9002, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 14', 'Pagbilao', 'Quezon'),
+(9003, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 3', 'Pagbilao', 'Quezon'),
+(9003, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 3', 'Pagbilao', 'Quezon'),
+(9004, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 14', 'Pagbilao', 'Quezon'),
+(9004, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 14', 'Pagbilao', 'Quezon'),
+(9005, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Candelaria', 'Quezon'),
+(9005, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Candelaria', 'Quezon'),
+(9006, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 2', 'Candelaria', 'Quezon'),
+(9006, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 2', 'Candelaria', 'Quezon'),
+(9007, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 13', 'Tayabas City', 'Quezon'),
+(9007, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 13', 'Tayabas City', 'Quezon');
 
 REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES
 (9001, 'Anthony Bautista', 'Father', '09185081447'),

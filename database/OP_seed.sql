@@ -73,17 +73,17 @@ REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number
 (10004, '51-8858359-4', '86-695411648-2', '2128-9702-3539', '560-402-939-000'),
 (999, '73-5621048-2', '41-378294561-7', '3916-7204-6183', '712-304-581-000');
 
-REPLACE INTO employee_addresses (employee_id, address_type, barangay, city, province) VALUES
-(10001, 'Residential', 'Barangay 8', 'Tayabas City', 'Quezon'),
-(10001, 'Permanent', 'Barangay 8', 'Tayabas City', 'Quezon'),
-(10002, 'Residential', 'Barangay 8', 'Lucena City', 'Quezon'),
-(10002, 'Permanent', 'Barangay 8', 'Lucena City', 'Quezon'),
-(10003, 'Residential', 'Barangay 6', 'Lucena City', 'Quezon'),
-(10003, 'Permanent', 'Barangay 6', 'Lucena City', 'Quezon'),
-(10004, 'Residential', 'Barangay 5', 'Pagbilao', 'Quezon'),
-(10004, 'Permanent', 'Barangay 5', 'Pagbilao', 'Quezon'),
-(999, 'Residential', 'Barangay 3', 'Lucena City', 'Quezon'),
-(999, 'Permanent', 'Barangay 3', 'Lucena City', 'Quezon');
+REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, city, province) VALUES
+(10001, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Tayabas City', 'Quezon'),
+(10001, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Tayabas City', 'Quezon'),
+(10002, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Lucena City', 'Quezon'),
+(10002, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Lucena City', 'Quezon'),
+(10003, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 6', 'Lucena City', 'Quezon'),
+(10003, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 6', 'Lucena City', 'Quezon'),
+(10004, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 5', 'Pagbilao', 'Quezon'),
+(10004, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 5', 'Pagbilao', 'Quezon'),
+(999, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 3', 'Lucena City', 'Quezon'),
+(999, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 3', 'Lucena City', 'Quezon');
 
 REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES
 (10001, 'Albert Bautista', 'Father', '09186379509'),

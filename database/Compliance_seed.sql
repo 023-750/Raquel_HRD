@@ -85,19 +85,19 @@ REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number
 (4005, '66-5780297-7', '39-673390109-3', '6070-8684-4178', '476-794-684-000'),
 (4006, '60-9422281-5', '40-514642708-1', '7142-4678-1461', '426-201-959-000');
 
-REPLACE INTO employee_addresses (employee_id, address_type, barangay, city, province) VALUES
-(4001, 'Residential', 'Barangay 6', 'Tayabas City', 'Quezon'),
-(4001, 'Permanent', 'Barangay 6', 'Tayabas City', 'Quezon'),
-(4002, 'Residential', 'Barangay 3', 'Candelaria', 'Quezon'),
-(4002, 'Permanent', 'Barangay 3', 'Candelaria', 'Quezon'),
-(4003, 'Residential', 'Barangay 8', 'Pagbilao', 'Quezon'),
-(4003, 'Permanent', 'Barangay 8', 'Pagbilao', 'Quezon'),
-(4004, 'Residential', 'Barangay 9', 'Sariaya', 'Quezon'),
-(4004, 'Permanent', 'Barangay 9', 'Sariaya', 'Quezon'),
-(4005, 'Residential', 'Barangay 8', 'Candelaria', 'Quezon'),
-(4005, 'Permanent', 'Barangay 8', 'Candelaria', 'Quezon'),
-(4006, 'Residential', 'Barangay 12', 'Sariaya', 'Quezon'),
-(4006, 'Permanent', 'Barangay 12', 'Sariaya', 'Quezon');
+REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, city, province) VALUES
+(4001, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 6', 'Tayabas City', 'Quezon'),
+(4001, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 6', 'Tayabas City', 'Quezon'),
+(4002, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 3', 'Candelaria', 'Quezon'),
+(4002, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 3', 'Candelaria', 'Quezon'),
+(4003, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Pagbilao', 'Quezon'),
+(4003, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Pagbilao', 'Quezon'),
+(4004, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 9', 'Sariaya', 'Quezon'),
+(4004, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 9', 'Sariaya', 'Quezon'),
+(4005, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Candelaria', 'Quezon'),
+(4005, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Candelaria', 'Quezon'),
+(4006, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 12', 'Sariaya', 'Quezon'),
+(4006, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 12', 'Sariaya', 'Quezon');
 
 REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES
 (4001, 'Michael Fernandez', 'Father', '09188719145'),

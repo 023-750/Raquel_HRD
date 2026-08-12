@@ -53,13 +53,13 @@ REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number
 (12002, '57-1891328-0', '81-981277125-5', '2797-5623-1510', '340-542-819-000'),
 (12003, '68-9546564-6', '80-980544989-7', '7303-6821-4698', '290-534-719-000');
 
-REPLACE INTO employee_addresses (employee_id, address_type, barangay, city, province) VALUES
-(12001, 'Residential', 'Barangay 11', 'Lucena City', 'Quezon'),
-(12001, 'Permanent', 'Barangay 11', 'Lucena City', 'Quezon'),
-(12002, 'Residential', 'Barangay 10', 'Candelaria', 'Quezon'),
-(12002, 'Permanent', 'Barangay 10', 'Candelaria', 'Quezon'),
-(12003, 'Residential', 'Barangay 1', 'Pagbilao', 'Quezon'),
-(12003, 'Permanent', 'Barangay 1', 'Pagbilao', 'Quezon');
+REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, city, province) VALUES
+(12001, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 11', 'Lucena City', 'Quezon'),
+(12001, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 11', 'Lucena City', 'Quezon'),
+(12002, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Candelaria', 'Quezon'),
+(12002, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Candelaria', 'Quezon'),
+(12003, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 1', 'Pagbilao', 'Quezon'),
+(12003, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 1', 'Pagbilao', 'Quezon');
 
 REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES
 (12001, 'Arthur De Leon', 'Father', '09182518891'),
