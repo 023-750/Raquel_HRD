@@ -33,6 +33,7 @@ If the standing dept manager submit it it would be sent to "vp operations" and i
 Upon successful approval by BOARD DIRECTORS the evaluation request anchored with a comprehensive audit trail, and also Human resources department notified for successful approval by BOARD DIRECTORS containing the details and accept button so it can take effect to the entire system.
 
 
+when a standing manager and supervisor viewing the consolidated evaluations it should be look like this:
 
 
 note:
