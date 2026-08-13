@@ -78,12 +78,4 @@ FROM employees
 WHERE employee_code LIKE 'OP-%'
 ORDER BY employee_code;
 ========
-
-======== THIS IS FOR THE EVALUATION COMPUTATION LOGIC ======== 
-includes/functions.php
-Weighted Overall Total Formula In 
-includes/functions.php:L755-L758:
-
-KRA Weighted Subtotal & Behavior Average Recalculation In includes/functions.php:L2308-L2327:
-
-Rating Scale to Performance Band Conversion In includes/functions.php:L670-L689:
+HI!
