@@ -1312,18 +1312,101 @@ document.addEventListener("DOMContentLoaded", function () {
         }, true); // Use capture phase
     }
 
-    // Toggle contract dates visibility
+    // Toggle contract dates visibility + update labels dynamically based on employment status
     const statusSelect = document.querySelector('select[name="employment_status"]');
     const contractDatesRow = document.getElementById('contractDatesRow');
     if (statusSelect && contractDatesRow) {
         const statusesWithDates = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Trainee'];
+
+        // Label maps
+        const hireDateLabels = {
+            'OJT':           'OJT Start Date',
+            'Probationary':  'Probation Start Date',
+            'Project Based': 'Project Start Date',
+            'Project-Based': 'Project Start Date',
+            'Trainee':       'Training Start Date',
+        };
+        const hireDateHints = {
+            'OJT':           'The date this person first joined as an OJT. Not the same as regularization.',
+            'Probationary':  'The date this person started their probationary period.',
+            'Project Based': 'The date this person started on this project contract.',
+            'Project-Based': 'The date this person started on this project contract.',
+            'Trainee':       'The date this person began their training engagement.',
+        };
+        const contractStartLabels = {
+            'OJT':           'OJT Period \u2014 Start Date',
+            'Probationary':  'Probation Period \u2014 Start Date',
+            'Project Based': 'Project Period \u2014 Start Date',
+            'Project-Based': 'Project Period \u2014 Start Date',
+            'Trainee':       'Training Period \u2014 Start Date',
+        };
+        const contractEndLabels = {
+            'OJT':           'OJT Period \u2014 End Date',
+            'Probationary':  'Probation Period \u2014 End Date',
+            'Project Based': 'Project Period \u2014 End Date',
+            'Project-Based': 'Project Period \u2014 End Date',
+            'Trainee':       'Training Period \u2014 End Date',
+        };
+        const arrangementWords = {
+            'OJT':           'ojt',
+            'Probationary':  'probation',
+            'Project Based': 'project',
+            'Project-Based': 'project',
+            'Trainee':       'trainee',
+        };
+
+        const hireDateLabel      = document.getElementById('hireDateLabel');
+        const hireDateHint       = document.getElementById('hireDateHint');
+        const contractStartLabel = document.getElementById('contractStartLabel');
+        const contractEndLabel   = document.getElementById('contractEndLabel');
+        const contractStartInput = document.getElementById('contract_start_date');
+        const contractInfoNote   = contractDatesRow.querySelector('.alert-info');
+
         const checkStatus = () => {
-            if (statusesWithDates.includes(statusSelect.value)) {
-                contractDatesRow.style.display = 'flex';
-            } else {
-                contractDatesRow.style.display = 'none';
+            const status = statusSelect.value;
+            const isNonRegular = statusesWithDates.includes(status);
+
+            // Show/hide contract dates row
+            contractDatesRow.style.display = isNonRegular ? 'flex' : 'none';
+
+            // Update hire_date label
+            if (hireDateLabel) {
+                const labelText = hireDateLabels[status] || 'Date Hired';
+                hireDateLabel.innerHTML = labelText + ' <span class="text-danger">*</span>';
+            }
+
+            // Update hire_date hint
+            if (hireDateHint) {
+                hireDateHint.textContent = isNonRegular
+                    ? (hireDateHints[status] || 'The date this person first engaged with the company.')
+                    : 'The official date this employee was hired / regularized.';
+            }
+
+            // Update contract date labels
+            if (contractStartLabel) {
+                const labelText = contractStartLabels[status] || 'Contract Start Date';
+                contractStartLabel.innerHTML = labelText + ' <span class="text-danger">*</span>';
+            }
+            if (contractEndLabel) {
+                contractEndLabel.textContent = contractEndLabels[status] || 'Contract End Date';
+            }
+
+            // Toggle required on contract start date
+            if (contractStartInput) {
+                contractStartInput.required = isNonRegular;
+            }
+
+            // Update the info note arrangement word
+            if (contractInfoNote && isNonRegular) {
+                const word = arrangementWords[status] || status.toLowerCase();
+                contractInfoNote.innerHTML =
+                    '<i class="fas fa-info-circle me-1"></i>' +
+                    '<strong>Note:</strong> The <em>engagement date</em> above records when this person first joined the company. ' +
+                    'The <em>arrangement period</em> below tracks the duration of their specific <strong>' + word + '</strong> arrangement. ' +
+                    'If they are later regularized, this record will be updated via a <strong>Career Movement</strong>.';
             }
         };
+
         statusSelect.addEventListener('change', checkStatus);
         // Run once on load for edit mode
         checkStatus();

@@ -93,6 +93,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
         $emp_status = $getV('Employment Status', 37) ?: 'Regular';
         $emp_type = $getV('Employment Type', 38) ?: 'Full-time';
 
+        $csRaw = $getV('Contract Start Date');
+        $contract_start_date = null;
+        if (!empty($csRaw)) {
+            $dCS = DateTime::createFromFormat('m/d/Y', $csRaw) ?: DateTime::createFromFormat('Y-m-d', $csRaw);
+            if ($dCS) $contract_start_date = $dCS->format('Y-m-d');
+            else $contract_start_date = $csRaw;
+        }
+
+        $ceRaw = $getV('Contract End Date');
+        $contract_end_date = null;
+        if (!empty($ceRaw)) {
+            $dCE = DateTime::createFromFormat('m/d/Y', $ceRaw) ?: DateTime::createFromFormat('Y-m-d', $ceRaw);
+            if ($dCE) $contract_end_date = $dCE->format('Y-m-d');
+            else $contract_end_date = $ceRaw;
+        }
+
         // Validate Status against ENUM 
         $foundStatus = false;
         foreach ($allowed_statuses as $as) {
@@ -233,15 +249,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
         $conn->begin_transaction();
         try {
             if ($existing_id) {
-                $stmt = $conn->prepare("UPDATE employees SET employee_code=?, first_name=?, last_name=?, middle_name=?, name_extension=?, date_of_birth=?, place_of_birth=?, gender=?, civil_status=?, hire_date=?, job_title=?, job_title_id=?, department_id=?, rank_category_id=?, branch_id=?, employment_status=?, employment_type=? WHERE employee_id=?");
-                $stmt->bind_param("sssssssssssiiiissi", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $rcid, $bid, $emp_status, $emp_type, $existing_id);
+                $stmt = $conn->prepare("UPDATE employees SET employee_code=?, first_name=?, last_name=?, middle_name=?, name_extension=?, date_of_birth=?, place_of_birth=?, gender=?, civil_status=?, hire_date=?, job_title=?, job_title_id=?, department_id=?, rank_category_id=?, branch_id=?, employment_status=?, employment_type=?, contract_start_date=?, contract_end_date=? WHERE employee_id=?");
+                $stmt->bind_param("sssssssssssiiiissssi", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $rcid, $bid, $emp_status, $emp_type, $contract_start_date, $contract_end_date, $existing_id);
                 $stmt->execute();
                 $eid = $existing_id;
                 $stmt->close();
                 $updated++;
             } else {
-                $stmt = $conn->prepare("INSERT INTO employees (employee_code, first_name, last_name, middle_name, name_extension, date_of_birth, place_of_birth, gender, civil_status, hire_date, job_title, job_title_id, department_id, rank_category_id, branch_id, employment_status, employment_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-                $stmt->bind_param("sssssssssssiiiiss", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $rcid, $bid, $emp_status, $emp_type);
+                $stmt = $conn->prepare("INSERT INTO employees (employee_code, first_name, last_name, middle_name, name_extension, date_of_birth, place_of_birth, gender, civil_status, hire_date, job_title, job_title_id, department_id, rank_category_id, branch_id, employment_status, employment_type, contract_start_date, contract_end_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                $stmt->bind_param("sssssssssssiiiissss", $employee_code, $first_name, $last_name, $middle_name, $name_extension, $dob, $pob, $gender, $civil_status, $hd, $job_title_name, $job_title_id, $did, $rcid, $bid, $emp_status, $emp_type, $contract_start_date, $contract_end_date);
                 $stmt->execute();
                 $eid = $stmt->insert_id;
                 $stmt->close();
@@ -826,7 +842,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
         // 4. Addresses (Residential)
         if (!empty($res_street) || !empty($res_city) || !empty($res_province)) {
             $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, region, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Residential', ?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("isssssssss", $new_id, $res_region, $res_house_no, $res_street, $res_subdivision, $res_barangay, $res_city, $res_province, $res_zip_code);
+            $stmt->bind_param("issssssss", $new_id, $res_region, $res_house_no, $res_street, $res_subdivision, $res_barangay, $res_city, $res_province, $res_zip_code);
             $stmt->execute();
             $stmt->close();
         }
@@ -834,7 +850,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
         // 5. Addresses (Permanent)
         if (!empty($perm_street) || !empty($perm_city) || !empty($perm_province)) {
             $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, region, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Permanent', ?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("isssssssss", $new_id, $perm_region, $perm_house_no, $perm_street, $perm_subdivision, $perm_barangay, $perm_city, $perm_province, $perm_zip_code);
+            $stmt->bind_param("issssssss", $new_id, $perm_region, $perm_house_no, $perm_street, $perm_subdivision, $perm_barangay, $perm_city, $perm_province, $perm_zip_code);
             $stmt->execute();
             $stmt->close();
         }

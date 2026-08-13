@@ -35,7 +35,7 @@ $pds_sections = [
     'Liabilities' => ['Liability 1 Nature', 'Liability 1 Outstanding Balance'],
     'Employment-Related Disclosures' => ['Related to Company (Yes/No)', 'Related Details', 'Admin Offense (Yes/No)', 'Admin Offense Details', 'Criminal Charge (Yes/No)', 'Criminal Charge Details', 'PWD Status (Yes/No)', 'Solo Parent Status (Yes/No)'],
     'Character References (3 persons not related)' => ['Reference 1 Name', 'Reference 1 Address', 'Reference 1 Contact Number', 'Reference 2 Name', 'Reference 2 Address', 'Reference 2 Contact Number', 'Reference 3 Name', 'Reference 3 Address', 'Reference 3 Contact Number'],
-    'Employment Details' => ['Company ID', 'Hire Date', 'Job Title', 'Rank', 'Department', 'Branch', 'Employment Status', 'Employment Type', 'Previous Company 1', 'Previous Position 1', 'Previous Monthly Salary 1', 'Previous Employment Period 1', 'Previous Reason for Leaving 1', 'Training Title 1', 'Training Conducted By 1', 'Training Hours 1'],
+    'Employment Details' => ['Company ID', 'Hire Date', 'Job Title', 'Rank', 'Department', 'Branch', 'Employment Status', 'Employment Type', 'Contract Start Date', 'Contract End Date', 'Previous Company 1', 'Previous Position 1', 'Previous Monthly Salary 1', 'Previous Employment Period 1', 'Previous Reason for Leaving 1', 'Training Title 1', 'Training Conducted By 1', 'Training Hours 1'],
     'Emergency Contacts' => ['Emergency Contact Name', 'Emergency Contact Relationship', 'Emergency Contact Number'],
 ];
 $headers = array_merge(...array_values($pds_sections));
@@ -55,7 +55,7 @@ $sample = [
     'Real Property 1 Description' => 'Residential lot', 'Real Property 1 Market Value' => '1500000', 'Personal Property 1 Description' => 'Motorcycle', 'Personal Property 1 Cost' => '85000', 'Liability 1 Nature' => 'Housing loan', 'Liability 1 Outstanding Balance' => '500000',
     'Related to Company (Yes/No)' => 'No', 'Admin Offense (Yes/No)' => 'No', 'Criminal Charge (Yes/No)' => 'No', 'PWD Status (Yes/No)' => 'No', 'Solo Parent Status (Yes/No)' => 'No',
     'Reference 1 Name' => 'Pedro Reyes', 'Reference 1 Address' => 'Calamba, Laguna', 'Reference 1 Contact Number' => '09181234567', 'Reference 2 Name' => 'Liza Santos', 'Reference 2 Address' => 'Los Baños, Laguna', 'Reference 2 Contact Number' => '09182345678', 'Reference 3 Name' => 'Marco Lim', 'Reference 3 Address' => 'Sta. Rosa, Laguna', 'Reference 3 Contact Number' => '09183456789',
-    'Company ID' => 'EMP-2026-0001', 'Hire Date' => '05/27/2026', 'Job Title' => 'IT Supervisor', 'Rank' => 'Supervisor', 'Department' => 'Information Technology', 'Branch' => 'Raquel Pawnshop Main Office', 'Employment Status' => 'Regular', 'Employment Type' => 'Full-time',
+    'Company ID' => 'EMP-2026-0001', 'Hire Date' => '05/27/2026', 'Job Title' => 'IT Supervisor', 'Rank' => 'Supervisor', 'Department' => 'Information Technology', 'Branch' => 'Raquel Pawnshop Main Office', 'Employment Status' => 'Regular', 'Employment Type' => 'Full-time', 'Contract Start Date' => '', 'Contract End Date' => '',
     'Previous Company 1' => 'ABC Technologies Inc.', 'Previous Position 1' => 'Systems Analyst', 'Previous Monthly Salary 1' => '35000', 'Previous Employment Period 1' => '2018-2022', 'Previous Reason for Leaving 1' => 'Career growth', 'Training Title 1' => 'Data Privacy Fundamentals', 'Training Conducted By 1' => 'ABC Training Institute', 'Training Hours 1' => '16',
     'Emergency Contact Name' => 'Maria Dela Cruz', 'Emergency Contact Relationship' => 'Mother', 'Emergency Contact Number' => '09187654321',
 ];

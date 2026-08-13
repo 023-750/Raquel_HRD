@@ -1063,8 +1063,27 @@ $rankCategories = $rankCategories ?? [
             <small class="text-muted">Optional: Official company issued ID.</small>
         </div>
         <div class="col-md-3 mb-3">
-            <label class="form-label">Hire Date <span class="text-danger">*</span></label>
-            <input type="date" class="form-control" name="hire_date" value="<?php echo $v('hire_date'); ?>" required>
+            <?php
+            $nonRegularStatuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Trainee'];
+            $currentStatus = $e['employment_status'] ?? 'Regular';
+            $hireDateLabels = [
+                'OJT'          => 'OJT Start Date',
+                'Probationary' => 'Probation Start Date',
+                'Project Based'=> 'Project Start Date',
+                'Project-Based'=> 'Project Start Date',
+                'Trainee'      => 'Training Start Date',
+            ];
+            $hireDateLabel = $hireDateLabels[$currentStatus] ?? 'Date Hired';
+            ?>
+            <label class="form-label" id="hireDateLabel"><?php echo $hireDateLabel; ?> <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" name="hire_date" id="hire_date" value="<?php echo $v('hire_date'); ?>" required>
+            <small class="text-muted" id="hireDateHint">
+                <?php if (in_array($currentStatus, $nonRegularStatuses, true)): ?>
+                    The date this person first engaged with the company. Not the same as regularization.
+                <?php else: ?>
+                    The official date this employee was hired / regularized.
+                <?php endif; ?>
+            </small>
         </div>
         <div class="col-md-3 mb-3">
             <label class="form-label">Department <span class="text-danger">*</span></label>
@@ -1155,18 +1174,19 @@ $rankCategories = $rankCategories ?? [
             </select>
         </div>
         <div class="col-md-4 mb-3">
-            <label class="form-label">Employment Status</label>
+            <label class="form-label">Employment Status <span class="text-danger">*</span></label>
             <?php
             $employmentStatuses = ['OJT', 'Probationary', 'Project Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
             $employmentStatusValue = $e['employment_status'] ?? 'Regular';
             ?>
-            <select class="form-select" name="employment_status">
+            <select class="form-select" name="employment_status" id="employment_status_select" required>
                 <?php foreach ($employmentStatuses as $status): ?>
                     <option value="<?php echo e($status); ?>" <?php echo $employmentStatusValue === $status ? 'selected' : ''; ?>>
                         <?php echo e($status); ?>
                     </option>
                 <?php endforeach; ?>
             </select>
+            <small class="text-muted">OJT / Trainee / Probationary / Project Based require contract dates below.</small>
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Employment Type</label>
@@ -1174,18 +1194,57 @@ $rankCategories = $rankCategories ?? [
                 <option value="Full-time" <?php echo $sel('employment_type', 'Full-time'); ?>>Full-time</option>
                 <option value="Part-time" <?php echo $sel('employment_type', 'Part-time'); ?>>Part-time</option>
             </select>
+            <small class="text-muted">
+                <?php if (in_array($currentStatus, $nonRegularStatuses, true)): ?>
+                    Refers to their daily schedule commitment, not official employment classification.
+                <?php else: ?>
+                    Indicates whether this employee works full or reduced hours.
+                <?php endif; ?>
+            </small>
         </div>
     </div>
 
-    <!-- Contract Dates (Visible for temporary employment statuses) -->
-    <div class="row" id="contractDatesRow" style="display: <?php echo in_array(($e['employment_status'] ?? 'Regular'), ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Trainee'], true) ? 'flex' : 'none'; ?>;">
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Date Start</label>
-            <input type="date" class="form-control" name="contract_start_date" value="<?php echo $v('contract_start_date'); ?>">
+    <!-- Contract / Arrangement Dates (Visible for non-regular employment statuses) -->
+    <?php
+    $isNonRegular = in_array(($e['employment_status'] ?? 'Regular'), ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Trainee'], true);
+    $contractStartLabels = [
+        'OJT'          => 'OJT Period — Start Date',
+        'Probationary' => 'Probation Period — Start Date',
+        'Project Based'=> 'Project Period — Start Date',
+        'Project-Based'=> 'Project Period — Start Date',
+        'Trainee'      => 'Training Period — Start Date',
+    ];
+    $contractEndLabels = [
+        'OJT'          => 'OJT Period — End Date',
+        'Probationary' => 'Probation Period — End Date',
+        'Project Based'=> 'Project Period — End Date',
+        'Project-Based'=> 'Project Period — End Date',
+        'Trainee'      => 'Training Period — End Date',
+    ];
+    $contractStartLabel = $contractStartLabels[$currentStatus] ?? 'Contract Start Date';
+    $contractEndLabel   = $contractEndLabels[$currentStatus]   ?? 'Contract End Date';
+    ?>
+    <div class="row" id="contractDatesRow" style="display: <?php echo $isNonRegular ? 'flex' : 'none'; ?>;">
+        <div class="col-12 mb-2">
+            <div class="alert alert-info border-0 py-2 px-3 mb-0" style="font-size:0.85rem; border-radius:8px;">
+                <i class="fas fa-info-circle me-1"></i>
+                <strong>Note:</strong> The <em>engagement date</em> above records when this person first joined the company.
+                The <em>arrangement period</em> below tracks the duration of their specific <?php echo strtolower(in_array($currentStatus, ['OJT','Trainee'], true) ? $currentStatus : ($currentStatus === 'Project Based' || $currentStatus === 'Project-Based' ? 'project' : 'probation')); ?> arrangement.
+                If they are later regularized, this record will be updated via a <strong>Career Movement</strong>.
+            </div>
         </div>
         <div class="col-md-4 mb-3">
-            <label class="form-label">Date Ended</label>
-            <input type="date" class="form-control" name="contract_end_date" value="<?php echo $v('contract_end_date'); ?>">
+            <label class="form-label" id="contractStartLabel"><?php echo $contractStartLabel; ?> <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" name="contract_start_date" id="contract_start_date"
+                value="<?php echo $v('contract_start_date'); ?>"
+                <?php echo $isNonRegular ? 'required' : ''; ?>>
+            <small class="text-muted">Start of the <?php echo strtolower($currentStatus); ?> arrangement.</small>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label class="form-label" id="contractEndLabel"><?php echo $contractEndLabel; ?></label>
+            <input type="date" class="form-control" name="contract_end_date" id="contract_end_date"
+                value="<?php echo $v('contract_end_date'); ?>">
+            <small class="text-muted">Expected end date. Leave blank if ongoing.</small>
         </div>
     </div>
 

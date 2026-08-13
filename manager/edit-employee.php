@@ -329,13 +329,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->query("DELETE FROM employee_addresses WHERE employee_id = $eid");
         if (!empty($res_street) || !empty($res_city) || !empty($res_province)) {
             $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, region, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Residential', ?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("isssssssss", $eid, $res_region, $res_house_no, $res_street, $res_subdivision, $res_barangay, $res_city, $res_province, $res_zip_code);
+            $stmt->bind_param("issssssss", $eid, $res_region, $res_house_no, $res_street, $res_subdivision, $res_barangay, $res_city, $res_province, $res_zip_code);
             $stmt->execute();
             $stmt->close();
         }
         if (!empty($perm_street) || !empty($perm_city) || !empty($perm_province)) {
             $stmt = $conn->prepare("INSERT INTO employee_addresses (employee_id, address_type, region, house_no, street, subdivision, barangay, city, province, zip_code) VALUES (?, 'Permanent', ?,?,?,?,?,?,?,?)");
-            $stmt->bind_param("isssssssss", $eid, $perm_region, $perm_house_no, $perm_street, $perm_subdivision, $perm_barangay, $perm_city, $perm_province, $perm_zip_code);
+            $stmt->bind_param("issssssss", $eid, $perm_region, $perm_house_no, $perm_street, $perm_subdivision, $perm_barangay, $perm_city, $perm_province, $perm_zip_code);
             $stmt->execute();
             $stmt->close();
         }
