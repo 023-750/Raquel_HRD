@@ -528,7 +528,20 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                 </thead>
                 <tbody>
                     <?php $count = 1;
-                    while ($emp = $employees->fetch_assoc()): ?>
+                    while ($emp = $employees->fetch_assoc()):
+                        // Compute days remaining for non-regular statuses
+                        $nonRegSt = ['OJT','Trainee','Probationary','Project Based','Project-Based'];
+                        $emp_dr = null;
+                        if (in_array($emp['employment_status'], $nonRegSt, true)) {
+                            if (!empty($emp['contract_end_date'])) {
+                                $emp_dr = (int)((strtotime($emp['contract_end_date']) - strtotime(date('Y-m-d'))) / 86400);
+                            } elseif ($emp['employment_status'] === 'Probationary') {
+                                $emp_dr = (int)((strtotime(date('Y-m-d', strtotime($emp['hire_date'] . ' +6 months'))) - strtotime(date('Y-m-d'))) / 86400);
+                            } elseif (in_array($emp['employment_status'], ['OJT','Trainee'], true)) {
+                                $emp_dr = (int)((strtotime(date('Y-m-d', strtotime($emp['hire_date'] . ' +60 days'))) - strtotime(date('Y-m-d'))) / 86400);
+                            }
+                        }
+                    ?>
                         <tr data-jobtitle="<?php echo e($emp['job_title']); ?>"
                             data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                             data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
@@ -553,9 +566,17 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                             <td data-label="Department"><?php echo e($emp['department_name'] ?? 'N/A'); ?></td>
                             <td data-label="Branch"><?php echo e($emp['branch_name'] ?? 'N/A'); ?></td>
                             <td data-label="Status">
-                                <span class="badge <?php echo $emp['is_active'] ? 'bg-success' : 'bg-danger'; ?>">
-                                    <?php echo $emp['employment_status']; ?>
-                                </span>
+                                <?php echo renderEmploymentStatusBadge($emp['employment_status']); ?>
+                                <?php if ($emp_dr !== null && $emp_dr <= 60): ?>
+                                    <?php
+                                    if ($emp_dr < 0)       { $eI = 'fa-times-circle';         $eL = 'Overdue '.abs($emp_dr).'d'; $eC = 'bg-danger'; }
+                                    elseif ($emp_dr === 0) { $eI = 'fa-exclamation-circle';  $eL = 'Ends Today!';               $eC = 'bg-danger'; }
+                                    elseif ($emp_dr <= 14) { $eI = 'fa-exclamation-triangle'; $eL = $emp_dr.'d left';             $eC = 'bg-warning text-dark'; }
+                                    elseif ($emp_dr <= 30) { $eI = 'fa-exclamation-circle';   $eL = $emp_dr.'d left';             $eC = 'bg-warning text-dark'; }
+                                    else                   { $eI = 'fa-calendar-alt';         $eL = $emp_dr.'d left';             $eC = 'bg-info text-dark'; }
+                                    ?>
+                                    <br><span class="badge <?php echo $eC; ?> mt-1" style="font-size:0.65rem;"><i class="fas <?php echo $eI; ?> me-1"></i><?php echo $eL; ?></span>
+                                <?php endif; ?>
                             </td>
                             <td data-label="Hire Date"><small><?php echo formatDate($emp['hire_date']); ?></small></td>
                             <td data-label="Actions">
@@ -611,9 +632,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 
                     <!-- Top Header Bar: Status Badge on left + Actions Menu Button on right -->
                     <div class="d-flex align-items-center justify-content-between pb-2 mb-2 border-bottom">
-                        <span class="badge <?php echo $emp['is_active'] ? 'bg-success' : 'bg-danger'; ?>" style="font-size: 0.7rem; padding: 4px 9px; letter-spacing: 0.3px;">
-                            <i class="fas fa-circle me-1" style="font-size:0.45rem;"></i><?php echo $emp['employment_status']; ?>
-                        </span>
+                        <?php echo renderEmploymentStatusBadge($emp['employment_status']); ?>
 
                         <!-- Actions Dropdown Menu -->
                         <div class="dropdown">

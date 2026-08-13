@@ -3449,4 +3449,86 @@ function getEvaluationScoreCirclesHtml($conn, $evaluation_id, $current_score)
         </div>';
     }
 }
+/**
+ * Returns active non-regular employees (OJT, Trainee, Probationary, Project Based)
+ * whose contract/probation is expiring within $daysThreshold days or already overdue.
+ * Each row includes a calculated `days_remaining` (negative = overdue) and `urgency`
+ * (overdue | critical | warning | upcoming).
+ */
+function getExpiringNonRegularEmployees($conn, $daysThreshold = 60)
+{
+    $nonRegularStatuses = "('OJT','Trainee','Probationary','Project Based','Project-Based')";
+    $result = $conn->query("
+        SELECT e.employee_id, e.first_name, e.last_name, e.profile_picture,
+               e.job_title, e.employment_status, e.hire_date,
+               e.contract_start_date, e.contract_end_date,
+               b.branch_name, d.department_name,
+               CASE
+                   WHEN e.contract_end_date IS NOT NULL
+                       THEN DATEDIFF(e.contract_end_date, CURRENT_DATE())
+                   WHEN e.employment_status = 'Probationary'
+                       THEN DATEDIFF(DATE_ADD(e.hire_date, INTERVAL 6 MONTH), CURRENT_DATE())
+                   WHEN e.employment_status IN ('OJT','Trainee')
+                       THEN DATEDIFF(DATE_ADD(e.hire_date, INTERVAL 60 DAY), CURRENT_DATE())
+                   ELSE NULL
+               END AS days_remaining
+        FROM employees e
+        LEFT JOIN branches b ON e.branch_id = b.branch_id
+        LEFT JOIN departments d ON e.department_id = d.department_id
+        WHERE e.is_active = 1
+          AND e.employment_status IN {$nonRegularStatuses}
+          AND e.employee_id NOT IN (
+              SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL
+          )
+        HAVING days_remaining IS NOT NULL AND days_remaining <= {$daysThreshold}
+        ORDER BY days_remaining ASC
+    ");
+
+    $rows = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $d = (int)$row['days_remaining'];
+            if ($d < 0)         $row['urgency'] = 'overdue';
+            elseif ($d <= 14)   $row['urgency'] = 'critical';
+            elseif ($d <= 30)   $row['urgency'] = 'warning';
+            else                $row['urgency'] = 'upcoming';
+            $rows[] = $row;
+        }
+    }
+    return $rows;
+}
+/**
+ * Returns distinct color styling (bg, text color, border) for each employment status.
+ */
+function getEmploymentStatusBadgeStyle(string $status): array
+{
+    $statusMap = [
+        'Regular'                        => ['bg' => '#d1fae5', 'color' => '#065f46', 'border' => '#a7f3d0'], // Emerald Green
+        'Probationary'                   => ['bg' => '#e0e7ff', 'color' => '#3730a3', 'border' => '#c7d2fe'], // Royal Indigo
+        'OJT'                            => ['bg' => '#f3e8ff', 'color' => '#6b21a8', 'border' => '#e9d5ff'], // Vibrant Purple
+        'Trainee'                        => ['bg' => '#ccfbf1', 'color' => '#115e59', 'border' => '#99f6e4'], // Bright Teal
+        'Project Based'                  => ['bg' => '#fef3c7', 'color' => '#92400e', 'border' => '#fde68a'], // Warm Amber
+        'Project-Based'                  => ['bg' => '#fef3c7', 'color' => '#92400e', 'border' => '#fde68a'], // Warm Amber
+        'Resignation'                    => ['bg' => '#ffedd5', 'color' => '#c2410c', 'border' => '#fed7aa'], // Warm Orange
+        'Separated'                      => ['bg' => '#f3f4f6', 'color' => '#4b5563', 'border' => '#e5e7eb'], // Cool Slate
+        'AWOL'                           => ['bg' => '#ffe4e6', 'color' => '#9f1239', 'border' => '#fecdd3'], // Crimson Red
+        'Failed in Training'             => ['bg' => '#fee2e2', 'color' => '#991b1b', 'border' => '#fca5a5'], // Rose Red
+        'Termination for Cause'          => ['bg' => '#7f1d1d', 'color' => '#ffffff', 'border' => '#991b1b'], // Dark Burgundy
+        'Retirement'                     => ['bg' => '#e0f2fe', 'color' => '#075985', 'border' => '#bae6fd'], // Sky Blue
+        'Death'                          => ['bg' => '#111827', 'color' => '#f9fafb', 'border' => '#374151'], // Dark Slate
+        'Permanent of Total Disability'  => ['bg' => '#f5f3ff', 'color' => '#5b21b6', 'border' => '#ddd6fe'], // Deep Lavender
+    ];
+
+    return $statusMap[$status] ?? ['bg' => '#f3f4f6', 'color' => '#374151', 'border' => '#d1d5db'];
+}
+
+/**
+ * Renders a distinct HTML badge for any employment status.
+ */
+function renderEmploymentStatusBadge(string $status, string $extraClass = ''): string
+{
+    $st = getEmploymentStatusBadgeStyle($status);
+    $style = "background-color: {$st['bg']}; color: {$st['color']}; border: 1px solid {$st['border']}; font-weight: 600; font-size: 0.72rem; padding: 3px 9px; border-radius: 12px; display: inline-block; white-space: nowrap;";
+    return sprintf('<span class="status-badge %s" style="%s">%s</span>', htmlspecialchars($extraClass), $style, htmlspecialchars($status));
+}
 ?>
