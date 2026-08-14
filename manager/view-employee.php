@@ -1603,6 +1603,10 @@ $discList = [
                         <?php endif; ?>
                     </div>
                 </div>
+            </div>
+
+            <?php require_once '../includes/employee-edit-history-card.php'; ?>
+
         </div>
     </div>
 </div>

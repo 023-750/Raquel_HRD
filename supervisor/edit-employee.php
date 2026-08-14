@@ -56,18 +56,6 @@ if ($adminCheck->get_result()->num_rows > 0) {
 }
 $adminCheck->close();
 
-// Prevent HR Supervisors from editing HR Managers and other HR Supervisors
-$restrictedRolesCheck = $conn->prepare("SELECT user_id, role FROM users WHERE employee_id = ? AND role IN ('HR Manager', 'HR Supervisor')");
-$restrictedRolesCheck->bind_param("i", $eid);
-$restrictedRolesCheck->execute();
-$restrictedUser = $restrictedRolesCheck->get_result()->fetch_assoc();
-$restrictedRolesCheck->close();
-
-if ($restrictedUser) {
-    $roleName = $restrictedUser['role'];
-    redirectWith($return_to, 'danger', "Access denied. HR Supervisors cannot edit $roleName profiles.");
-}
-
 // Reconstruct flattened array for UI compatibility
 $emp['email'] = $emp['personal_email'];
 $emp['contact_number'] = $emp['mobile_number'];
@@ -694,9 +682,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $rf->close();
         }
 
-        logAudit($conn, $_SESSION['user_id'], 'UPDATE', 'Employee', $eid, "Updated employee: $first_name $last_name");
+        $step = (int)($_POST['current_step'] ?? 1);
+        $stepNamesList = [
+            1 => 'Personal Info', 2 => 'Family', 3 => 'Education', 4 => 'Work Exp.',
+            5 => 'Training', 6 => 'Voluntary', 7 => 'Eligibility', 8 => 'Skills',
+            9 => 'Assets', 10 => 'Disclosures', 11 => 'References', 12 => 'Employment'
+        ];
+        $currentStepName = $stepNamesList[$step] ?? 'Profile Edit';
 
-        $step = $_POST['current_step'] ?? 1;
+        $submitted_fields = [
+            'employee_code' => $employee_code,
+            'first_name' => $first_name,
+            'last_name' => $last_name,
+            'middle_name' => $middle_name,
+            'name_extension' => $name_extension,
+            'date_of_birth' => $date_of_birth,
+            'place_of_birth' => $place_of_birth,
+            'gender' => $gender,
+            'civil_status' => $civil_status,
+            'height_m' => $height_m,
+            'weight_kg' => $weight_kg,
+            'blood_type' => $blood_type,
+            'citizenship' => $citizenship,
+            'sss_number' => $sss_number,
+            'philhealth_number' => $philhealth_number,
+            'pagibig_number' => $pagibig_number,
+            'tin_number' => $tin_number,
+            'telephone_number' => $telephone_number,
+            'mobile_number' => $mobile_number,
+            'personal_email' => $personal_email,
+            'email' => $personal_email,
+            'contact_number' => $mobile_number,
+            'hire_date' => $hire_date,
+            'job_title' => $job_title,
+            'department_id' => $department_id,
+            'branch_id' => $branch_id,
+            'rank_category_id' => $rank_category_id,
+            'employment_status' => $employment_status,
+            'employment_type' => $employment_type,
+            'contract_start_date' => $contract_start_date,
+            'contract_end_date' => $contract_end_date,
+            'res_street' => $res_street,
+            'res_barangay' => $res_barangay,
+            'res_city' => $res_city,
+            'res_province' => $res_province,
+            'res_zip_code' => $res_zip_code,
+            'perm_street' => $perm_street,
+            'perm_barangay' => $perm_barangay,
+            'perm_city' => $perm_city,
+            'perm_province' => $perm_province,
+            'perm_zip_code' => $perm_zip_code,
+            'spouse_first_name' => $spouse_first_name,
+            'spouse_surname' => $spouse_surname,
+            'father_first_name' => $father_first_name,
+            'father_surname' => $father_surname,
+            'mother_first_name' => $mother_first_name,
+            'mother_maiden_surname' => $mother_maiden_surname,
+            'is_related_to_company' => $is_related_to_company,
+            'has_admin_offense' => $has_admin_offense,
+            'has_criminal_charge' => $has_criminal_charge,
+            'has_criminal_conviction' => $has_criminal_conviction,
+            'has_been_separated' => $has_been_separated,
+            'is_pwd' => $is_pwd,
+            'is_solo_parent' => $is_solo_parent,
+            'has_recent_hospital' => $has_recent_hospital,
+            'has_current_treatment' => $has_current_treatment,
+        ];
+        if ($new_filename) {
+            $submitted_fields['profile_picture'] = $new_filename;
+        }
+
+        logEmployeeProfileEdit($conn, $eid, (int)$_SESSION['user_id'], $step, $currentStepName, $emp, $submitted_fields);
         if (isset($_POST['quick_save'])) {
             redirectWith(BASE_URL . "/supervisor/edit-employee.php?id=$eid&step=$step$return_param", 'success', "Changes saved successfully.");
         } else {

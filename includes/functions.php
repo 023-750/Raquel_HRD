@@ -1178,6 +1178,49 @@ function applyEmployeeChangeRequest($conn, $request_id)
         }
     }
 
+    // Record into employee_edit_history
+    $reviewer_id = (int)($req['reviewed_by'] ?? $_SESSION['user_id'] ?? 0);
+    $summary = $req['change_summary'] ?: 'Applied approved employee edit request';
+    
+    $formatted_changes = [];
+    foreach ($changes as $k => $c) {
+        if (is_array($c) && array_key_exists('old', $c) && array_key_exists('new', $c)) {
+            $formatted_changes[$k] = [
+                'label' => ucwords(str_replace('_', ' ', $k)),
+                'old' => (string)($c['old'] ?? ''),
+                'new' => (string)($c['new'] ?? '')
+            ];
+        }
+    }
+    
+    ensureEmployeeEditHistorySchema($conn);
+    $editor_name = 'HR Manager (Approved Request)';
+    $editor_role = 'HR Manager';
+    if ($reviewer_id > 0) {
+        $u_stmt = $conn->prepare("SELECT u.role, CONCAT(COALESCE(e.first_name,''), ' ', COALESCE(e.last_name,'')) as full_name, u.username FROM users u LEFT JOIN employees e ON u.employee_id = e.employee_id WHERE u.user_id = ?");
+        if ($u_stmt) {
+            $u_stmt->bind_param("i", $reviewer_id);
+            $u_stmt->execute();
+            $u_row = $u_stmt->get_result()->fetch_assoc();
+            $u_stmt->close();
+            if ($u_row) {
+                $editor_role = $u_row['role'] ?: 'HR Manager';
+                $editor_name = trim($u_row['full_name']) ?: ($u_row['username'] ?: 'HR Manager');
+            }
+        }
+    }
+    
+    $changes_json = !empty($formatted_changes) ? json_encode($formatted_changes, JSON_UNESCAPED_UNICODE) : null;
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $step_num = 12;
+    $step_title = 'Staff Edit Request (Approved)';
+    $stmt_hist = $conn->prepare("INSERT INTO employee_edit_history (employee_id, edited_by, editor_name, editor_role, step_number, step_name, change_summary, changes_json, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    if ($stmt_hist) {
+        $stmt_hist->bind_param("iississss", $eid, $reviewer_id, $editor_name, $editor_role, $step_num, $step_title, $summary, $changes_json, $ip);
+        $stmt_hist->execute();
+        $stmt_hist->close();
+    }
+
     return true;
 }
 
@@ -3531,4 +3574,245 @@ function renderEmploymentStatusBadge(string $status, string $extraClass = ''): s
     $style = "background-color: {$st['bg']}; color: {$st['color']}; border: 1px solid {$st['border']}; font-weight: 600; font-size: 0.72rem; padding: 3px 9px; border-radius: 12px; display: inline-block; white-space: nowrap;";
     return sprintf('<span class="status-badge %s" style="%s">%s</span>', htmlspecialchars($extraClass), $style, htmlspecialchars($status));
 }
+
+/**
+ * Ensures the employee_edit_history table exists in the database.
+ */
+function ensureEmployeeEditHistorySchema($conn): bool
+{
+    static $history_ensured = false;
+    if ($history_ensured) return true;
+    try {
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS employee_edit_history (
+                edit_id        INT AUTO_INCREMENT PRIMARY KEY,
+                employee_id    INT NOT NULL,
+                edited_by      INT NOT NULL,
+                editor_name    VARCHAR(150) NOT NULL,
+                editor_role    VARCHAR(50) NOT NULL,
+                step_number    INT NULL,
+                step_name      VARCHAR(100) NULL,
+                change_summary TEXT NULL,
+                changes_json   LONGTEXT NULL,
+                ip_address     VARCHAR(45) NULL,
+                created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_eeh_emp (employee_id),
+                INDEX idx_eeh_created (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+        $history_ensured = true;
+        return true;
+    } catch (Throwable $e) {
+        error_log('ensureEmployeeEditHistorySchema error: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Computes the differences between original and newly submitted employee data,
+ * records the exact changes to employee_edit_history, and creates an audit log entry.
+ */
+function logEmployeeProfileEdit($conn, int $employee_id, int $editor_user_id, ?int $step_number, ?string $step_name, array $old_data, array $new_data, ?string $custom_summary = null): bool
+{
+    ensureEmployeeEditHistorySchema($conn);
+
+    // Fetch editor user information
+    $editor_name = 'System / HR Personnel';
+    $editor_role = 'HR Personnel';
+    $u_stmt = $conn->prepare("SELECT u.role, CONCAT(COALESCE(e.first_name,''), ' ', COALESCE(e.last_name,'')) as full_name, u.username FROM users u LEFT JOIN employees e ON u.employee_id = e.employee_id WHERE u.user_id = ?");
+    if ($u_stmt) {
+        $u_stmt->bind_param("i", $editor_user_id);
+        $u_stmt->execute();
+        $u_row = $u_stmt->get_result()->fetch_assoc();
+        $u_stmt->close();
+        if ($u_row) {
+            $editor_role = $u_row['role'] ?: 'HR Personnel';
+            $editor_name = trim($u_row['full_name']) ?: ($u_row['username'] ?: 'HR Personnel');
+        }
+    }
+
+    // Comprehensive field label dictionary
+    $field_labels = [
+        'employee_code'        => 'Employee Code',
+        'first_name'           => 'First Name',
+        'last_name'            => 'Last Name',
+        'middle_name'          => 'Middle Name',
+        'name_extension'       => 'Name Extension',
+        'date_of_birth'        => 'Date of Birth',
+        'place_of_birth'       => 'Place of Birth',
+        'gender'               => 'Gender',
+        'civil_status'         => 'Civil Status',
+        'height_m'             => 'Height (m)',
+        'weight_kg'            => 'Weight (kg)',
+        'blood_type'           => 'Blood Type',
+        'citizenship'          => 'Citizenship',
+        'sss_number'           => 'SSS No.',
+        'philhealth_number'    => 'PhilHealth No.',
+        'pagibig_number'       => 'Pag-IBIG No.',
+        'tin_number'           => 'TIN No.',
+        'telephone_number'     => 'Telephone No.',
+        'mobile_number'        => 'Mobile No.',
+        'personal_email'       => 'Personal Email',
+        'email'                => 'Email Address',
+        'contact_number'       => 'Contact Number',
+        'hire_date'            => 'Engagement / Hire Date',
+        'job_title'            => 'Job Title',
+        'department_id'        => 'Department',
+        'branch_id'            => 'Branch',
+        'rank_category_id'     => 'Rank Category',
+        'employment_status'    => 'Employment Status',
+        'employment_type'      => 'Employment Type',
+        'contract_start_date'  => 'Contract Start Date',
+        'contract_end_date'    => 'Contract End Date',
+        'profile_picture'      => 'Profile Picture',
+        'res_street'           => 'Residential Street',
+        'res_barangay'         => 'Residential Barangay',
+        'res_city'             => 'Residential City',
+        'res_province'         => 'Residential Province',
+        'res_zip_code'         => 'Residential Zip Code',
+        'perm_street'          => 'Permanent Street',
+        'perm_barangay'        => 'Permanent Barangay',
+        'perm_city'            => 'Permanent City',
+        'perm_province'        => 'Permanent Province',
+        'perm_zip_code'        => 'Permanent Zip Code',
+        'spouse_first_name'    => 'Spouse First Name',
+        'spouse_surname'       => 'Spouse Surname',
+        'father_first_name'    => 'Father First Name',
+        'father_surname'       => 'Father Surname',
+        'mother_first_name'    => 'Mother First Name',
+        'mother_maiden_surname'=> 'Mother Maiden Surname',
+        'emergency_contact_name'         => 'Emergency Contact Name',
+        'emergency_contact_relationship' => 'Emergency Contact Relationship',
+        'emergency_contact_number'       => 'Emergency Contact Number',
+        'is_related_to_company'          => 'Company Relationship Disclosure',
+        'related_details'                => 'Company Relationship Details',
+        'has_admin_offense'              => 'Admin Offense Disclosure',
+        'admin_offense_details'          => 'Admin Offense Details',
+        'has_criminal_charge'            => 'Criminal Charge Disclosure',
+        'criminal_charge_details'        => 'Criminal Charge Details',
+        'has_criminal_conviction'        => 'Criminal Conviction Disclosure',
+        'criminal_conviction_details'    => 'Criminal Conviction Details',
+        'has_been_separated'             => 'Previous Separation Disclosure',
+        'separation_details'             => 'Previous Separation Details',
+        'is_pwd'                         => 'PWD Status',
+        'pwd_details'                    => 'PWD Details',
+        'is_solo_parent'                 => 'Solo Parent Status',
+        'solo_parent_details'            => 'Solo Parent Details',
+        'has_recent_hospital'            => 'Recent Hospitalization Disclosure',
+        'hospital_details'               => 'Hospitalization Details',
+        'has_current_treatment'          => 'Current Medical Treatment',
+        'treatment_details'              => 'Medical Treatment Details',
+    ];
+
+    // Branch & Department name resolver caches
+    static $dept_map = null;
+    static $branch_map = null;
+    if ($dept_map === null) {
+        $dept_map = [];
+        $dres = $conn->query("SELECT department_id, department_name FROM departments");
+        if ($dres) while ($dr = $dres->fetch_assoc()) $dept_map[(int)$dr['department_id']] = $dr['department_name'];
+    }
+    if ($branch_map === null) {
+        $branch_map = [];
+        $bres = $conn->query("SELECT branch_id, branch_name FROM branches");
+        if ($bres) while ($br = $bres->fetch_assoc()) $branch_map[(int)$br['branch_id']] = $br['branch_name'];
+    }
+
+    $changes = [];
+    $summary_parts = [];
+
+    foreach ($field_labels as $f_key => $label) {
+        if (!array_key_exists($f_key, $new_data)) continue;
+
+        $old_val = isset($old_data[$f_key]) ? trim((string)$old_data[$f_key]) : '';
+        $new_val = isset($new_data[$f_key]) ? trim((string)$new_data[$f_key]) : '';
+
+        // Normalize nulls and booleans
+        if ($old_val !== $new_val) {
+            $display_old = $old_val;
+            $display_new = $new_val;
+
+            // Resolve branch & department names
+            if ($f_key === 'department_id') {
+                $display_old = $dept_map[(int)$old_val] ?? ($old_val ?: 'None');
+                $display_new = $dept_map[(int)$new_val] ?? ($new_val ?: 'None');
+            } elseif ($f_key === 'branch_id') {
+                $display_old = $branch_map[(int)$old_val] ?? ($old_val ?: 'None');
+                $display_new = $branch_map[(int)$new_val] ?? ($new_val ?: 'None');
+            } elseif (in_array($f_key, ['is_related_to_company', 'has_admin_offense', 'has_criminal_charge', 'has_criminal_conviction', 'has_been_separated', 'is_pwd', 'is_solo_parent', 'has_recent_hospital', 'has_current_treatment'])) {
+                $display_old = ((int)$old_val === 1) ? 'Yes' : 'No';
+                $display_new = ((int)$new_val === 1) ? 'Yes' : 'No';
+                if ($display_old === $display_new) continue;
+            }
+
+            $changes[$f_key] = [
+                'label' => $label,
+                'old'   => $display_old,
+                'new'   => $display_new
+            ];
+            $summary_parts[] = $label;
+        }
+    }
+
+    if (empty($changes) && empty($custom_summary)) {
+        return false; // No changes to log
+    }
+
+    $summary = $custom_summary;
+    if (empty($summary)) {
+        if (!empty($summary_parts)) {
+            $count = count($summary_parts);
+            if ($count <= 3) {
+                $summary = "Updated " . implode(', ', $summary_parts);
+            } else {
+                $summary = "Updated $count fields: " . implode(', ', array_slice($summary_parts, 0, 3)) . " and " . ($count - 3) . " more";
+            }
+        } else {
+            $summary = "Updated profile details";
+        }
+    }
+
+    $changes_json = !empty($changes) ? json_encode($changes, JSON_UNESCAPED_UNICODE) : null;
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+    $stmt = $conn->prepare("INSERT INTO employee_edit_history (employee_id, edited_by, editor_name, editor_role, step_number, step_name, change_summary, changes_json, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    if ($stmt) {
+        $stmt->bind_param("iississss", $employee_id, $editor_user_id, $editor_name, $editor_role, $step_number, $step_name, $summary, $changes_json, $ip);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    // Also link with master logAudit
+    $emp_first = $new_data['first_name'] ?? ($old_data['first_name'] ?? '');
+    $emp_last  = $new_data['last_name'] ?? ($old_data['last_name'] ?? '');
+    logAudit($conn, $editor_user_id, 'UPDATE', 'Employee', $employee_id, "Profile edited by {$editor_role} ({$editor_name}) for employee {$emp_first} {$emp_last}. {$summary}");
+
+    return true;
+}
+
+/**
+ * Retrieves the profile edit history for a specific employee.
+ */
+function getEmployeeEditHistory($conn, int $employee_id, int $limit = 50): array
+{
+    ensureEmployeeEditHistorySchema($conn);
+    $records = [];
+    $stmt = $conn->prepare("SELECT * FROM employee_edit_history WHERE employee_id = ? ORDER BY created_at DESC LIMIT ?");
+    if ($stmt) {
+        $stmt->bind_param("ii", $employee_id, $limit);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while ($row = $res->fetch_assoc()) {
+            if (!empty($row['changes_json'])) {
+                $row['changes_data'] = json_decode($row['changes_json'], true) ?: [];
+            } else {
+                $row['changes_data'] = [];
+            }
+            $records[] = $row;
+        }
+        $stmt->close();
+    }
+    return $records;
+}
 ?>
+

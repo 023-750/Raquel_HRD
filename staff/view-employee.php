@@ -777,6 +777,8 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
                     </div>
                 </div>
             </div>
+
+            <?php require_once '../includes/employee-edit-history-card.php'; ?>
         </div>
     </div>
     <div class="d-flex justify-content-center mt-4 mb-2">
