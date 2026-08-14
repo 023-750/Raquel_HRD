@@ -13,6 +13,9 @@ const PORTAL_MAP = [
 
 function showPortal(portalId) {
     const currentStep = getCurrentStep();
+    if (!validateStep(currentStep)) {
+        return; // Validation failed, field highlighted and focused!
+    }
     const activePortal = PORTAL_MAP.find(p => p.steps.includes(currentStep));
     const targetPortal = PORTAL_MAP.find(p => p.id === portalId);
     
@@ -53,6 +56,9 @@ function getCurrentStep() {
 
 function nextStep() {
     const s = getCurrentStep();
+    if (!validateStep(s)) {
+        return; // Validation failed on current step, user taken directly to problem field
+    }
     if (s < TOTAL_STEPS) {
         if (typeof autoSaveDraft === 'function') {
             autoSaveDraft(() => {
@@ -71,7 +77,7 @@ function prevStep() {
     }
 }
 
-function showStep(step) {
+function showStep(step, scrollToTop = true) {
     step = parseInt(step, 10) || 1;
     if (step < 1) step = 1;
     if (step > TOTAL_STEPS) step = TOTAL_STEPS;
@@ -170,8 +176,211 @@ function showStep(step) {
         updatePDSSummary();
     }
 
-    // Scroll page to top smoothly
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Scroll page to top smoothly only if requested (don't scroll to top when focusing an invalid field)
+    if (scrollToTop) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+// ── Validation & Error Navigation Helpers ─────────────────────────────────────
+
+function getFieldLabel(el) {
+    if (!el) return 'This field';
+    if (el.id) {
+        const lbl = document.querySelector(`label[for="${el.id}"]`);
+        if (lbl) return lbl.textContent.replace('*', '').trim();
+    }
+    const formGroup = el.closest('.mb-3, .form-group, div');
+    if (formGroup) {
+        const lbl = formGroup.querySelector('label');
+        if (lbl) return lbl.textContent.replace('*', '').trim();
+    }
+    return el.placeholder || el.name || 'This field';
+}
+
+function showValidationAlertBanner(stepNum, message) {
+    let existing = document.getElementById('wizardValidationAlert');
+    if (existing) existing.remove();
+
+    const banner = document.createElement('div');
+    banner.id = 'wizardValidationAlert';
+    banner.className = 'alert alert-danger alert-dismissible fade show shadow-sm mb-3 d-flex align-items-center justify-content-between';
+    banner.style.borderRadius = '10px';
+    banner.style.borderLeft = '5px solid #dc3545';
+    banner.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-exclamation-circle fs-4 me-3 text-danger"></i>
+            <div>
+                <strong>Action Required:</strong> ${message}
+                <div class="small text-muted">We shifted to <strong>Step ${stepNum}</strong> and placed your focus directly on the input below.</div>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+
+    const cardBody = document.querySelector('.content-card .card-body') || document.querySelector('form');
+    if (cardBody) {
+        cardBody.insertBefore(banner, cardBody.firstChild);
+    }
+}
+
+function highlightAndFocusInvalidField(inputElement, errorMessage) {
+    if (!inputElement) return;
+
+    // Find step containing this element
+    const stepDiv = inputElement.closest('.step-content');
+    let stepNum = 1;
+    if (stepDiv && stepDiv.id && stepDiv.id.startsWith('step')) {
+        stepNum = parseInt(stepDiv.id.replace('step', ''), 10) || 1;
+    }
+
+    // Switch to that step WITHOUT scrolling to top
+    showStep(stepNum, false);
+
+    // Apply error styling
+    inputElement.classList.add('is-invalid');
+    inputElement.classList.add('error-pulse');
+    
+    // Find or create invalid feedback container
+    let parent = inputElement.parentElement;
+    let feedback = parent.querySelector('.invalid-feedback-custom');
+    if (!feedback) {
+        feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback-custom text-danger fw-bold small mt-1';
+        parent.appendChild(feedback);
+    }
+    feedback.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${errorMessage}`;
+    feedback.style.display = 'block';
+
+    // Show floating alert banner
+    showValidationAlertBanner(stepNum, errorMessage);
+
+    // Center the element smoothly in viewport and focus
+    setTimeout(() => {
+        inputElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        inputElement.focus({ preventScroll: true });
+    }, 150);
+
+    // Remove error on edit
+    const clearError = () => {
+        inputElement.classList.remove('is-invalid');
+        inputElement.classList.remove('error-pulse');
+        if (feedback) {
+            feedback.style.display = 'none';
+        }
+        inputElement.removeEventListener('input', clearError);
+        inputElement.removeEventListener('change', clearError);
+    };
+    inputElement.addEventListener('input', clearError);
+    inputElement.addEventListener('change', clearError);
+}
+
+function validateStep(stepNum) {
+    const stepEl = document.getElementById('step' + stepNum);
+    if (!stepEl) return true;
+
+    // Remove old feedback in this step
+    stepEl.querySelectorAll('.invalid-feedback-custom').forEach(el => el.remove());
+    stepEl.querySelectorAll('.is-invalid, .error-pulse').forEach(el => el.classList.remove('is-invalid', 'error-pulse'));
+
+    const inputs = Array.from(stepEl.querySelectorAll('input:not([type="hidden"]), select, textarea'));
+    for (let input of inputs) {
+        if (input.disabled) continue;
+
+        const val = input.value ? input.value.trim() : '';
+        const name = input.name || '';
+        const label = getFieldLabel(input);
+
+        // Required check
+        if (input.hasAttribute('required') && val === '') {
+            highlightAndFocusInvalidField(input, `${label} is required.`);
+            return false;
+        }
+
+        // Mobile Number (contact_number)
+        if (name === 'contact_number' && val !== '') {
+            const digits = val.replace(/\D/g, '');
+            if (digits.length === 10 && digits.startsWith('9')) {
+                input.value = '0' + digits; // Auto-correct on the fly
+            } else if (!/^09\d{9}$/.test(digits)) {
+                highlightAndFocusInvalidField(input, `Mobile Number must be 11 digits starting with 09 (e.g., 09998988877). You entered: "${val}"`);
+                return false;
+            }
+        }
+
+        // Emergency Contact Number
+        if (name === 'emergency_contact_number[]' && val !== '') {
+            const digits = val.replace(/\D/g, '');
+            if (digits.length === 10 && digits.startsWith('9')) {
+                input.value = '0' + digits; // Auto-correct on the fly
+            } else if (!/^09\d{9}$/.test(digits) && digits.length < 7) {
+                highlightAndFocusInvalidField(input, `Emergency Contact Number must be a valid 11-digit mobile (09XXXXXXXXX) or landline number.`);
+                return false;
+            }
+        }
+
+        // Email
+        if ((input.type === 'email' || name === 'email') && val !== '') {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+                highlightAndFocusInvalidField(input, `Please enter a valid email address.`);
+                return false;
+            }
+        }
+
+        // SSS Number
+        if (name === 'sss_number' && val !== '') {
+            const digits = val.replace(/\D/g, '');
+            if (digits.length !== 10) {
+                highlightAndFocusInvalidField(input, `SSS Number must be 10 digits (format: 00-0000000-0).`);
+                return false;
+            }
+        }
+
+        // PhilHealth Number
+        if (name === 'philhealth_number' && val !== '') {
+            const digits = val.replace(/\D/g, '');
+            if (digits.length !== 12) {
+                highlightAndFocusInvalidField(input, `PhilHealth Number must be 12 digits (format: 00-000000000-0).`);
+                return false;
+            }
+        }
+
+        // Pag-IBIG Number
+        if (name === 'pagibig_number' && val !== '') {
+            const digits = val.replace(/\D/g, '');
+            if (digits.length !== 12) {
+                highlightAndFocusInvalidField(input, `Pag-IBIG Number must be 12 digits (format: 0000-0000-0000).`);
+                return false;
+            }
+        }
+
+        // TIN Number
+        if (name === 'tin_number' && val !== '') {
+            const digits = val.replace(/\D/g, '');
+            if (digits.length !== 9 && digits.length !== 12) {
+                highlightAndFocusInvalidField(input, `TIN Number must be 9 or 12 digits (format: 000-000-000-000).`);
+                return false;
+            }
+        }
+
+        // HTML5 pattern check
+        if (!input.checkValidity()) {
+            const msg = input.title || input.validationMessage || `Invalid format for ${label}.`;
+            highlightAndFocusInvalidField(input, msg);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function validateAllSteps() {
+    for (let s = 1; s <= TOTAL_STEPS; s++) {
+        if (!validateStep(s)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 // ── Mobile Accordion Repeater Helper ─────────────────────────────────────────
@@ -1480,12 +1689,83 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Auto-normalize Philippine Mobile numbers on blur (e.g. 9998988877 -> 09998988877)
+    const normalizeMobileInput = (inputEl) => {
+        if (!inputEl) return;
+        let val = inputEl.value.trim().replace(/\D/g, '');
+        if (val.length === 10 && val.startsWith('9')) {
+            inputEl.value = '0' + val;
+            inputEl.classList.remove('is-invalid', 'error-pulse');
+            const feedback = inputEl.parentElement.querySelector('.invalid-feedback-custom');
+            if (feedback) feedback.style.display = 'none';
+        } else if (val.length === 12 && val.startsWith('639')) {
+            inputEl.value = '0' + val.substring(2);
+            inputEl.classList.remove('is-invalid', 'error-pulse');
+            const feedback = inputEl.parentElement.querySelector('.invalid-feedback-custom');
+            if (feedback) feedback.style.display = 'none';
+        }
+    };
+
+    const mainContactInput = document.querySelector('[name="contact_number"]');
+    if (mainContactInput) {
+        mainContactInput.addEventListener('blur', (e) => normalizeMobileInput(e.target));
+    }
+
+    document.addEventListener('blur', (e) => {
+        if (e.target && e.target.name === 'emergency_contact_number[]') {
+            normalizeMobileInput(e.target);
+        }
+    }, true);
+
+    // Inject validation helper CSS styles
+    const validationStyles = document.createElement('style');
+    validationStyles.textContent = `
+        @keyframes fieldErrorPulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+        .form-control.is-invalid, .form-select.is-invalid {
+            border-color: #dc3545 !important;
+            background-color: #fff8f8 !important;
+        }
+        .form-control.error-pulse, .form-select.error-pulse {
+            animation: fieldErrorPulse 1.6s infinite !important;
+        }
+        .invalid-feedback-custom {
+            display: block;
+            color: #dc3545;
+            background: #fff0f1;
+            border: 1px solid #ffccd0;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.82rem;
+            margin-top: 6px;
+            box-shadow: 0 2px 4px rgba(220,53,69,0.08);
+        }
+    `;
+    document.head.appendChild(validationStyles);
+
     // === AUTO-SAVE DRAFT FEATURE ===
     const isEdit = employeeForm ? employeeForm.dataset.isEdit === 'true' : false;
     const employeeId = isEdit ? (new URLSearchParams(window.location.search)).get('id') : 'new';
     const DRAFT_KEY = `hris_employee_draft_${employeeId}`;
     const initialComparisonSnapshot = (employeeForm && isEdit) ? serializeFormForComparison(employeeForm) : null;
     let allowEditSubmit = false;
+
+    // Intercept native browser invalid events to smoothly focus & scroll to the exact faulty element
+    if (employeeForm) {
+        employeeForm.addEventListener('invalid', (e) => {
+            e.preventDefault();
+            const el = e.target;
+            const label = getFieldLabel(el);
+            let msg = el.validationMessage || `Please check ${label}.`;
+            if (el.name === 'contact_number' || el.name === 'emergency_contact_number[]') {
+                msg = `Mobile Number must be 11 digits starting with 09 (e.g., 09998988877).`;
+            }
+            highlightAndFocusInvalidField(el, msg);
+        }, true);
+    }
 
     // Run for both Add and Edit pages (exclude PDS Wizard as it uses server-side draft)
     const isPdsWizard = !!document.getElementById('pdsWizardForm');
@@ -1526,6 +1806,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 event.preventDefault();
 
+                // Validate all steps before opening modal
+                if (!validateAllSteps()) {
+                    event.stopPropagation();
+                    return;
+                }
+
                 const currentSnapshot = serializeFormForComparison(employeeForm);
                 const changes = buildChangedFieldList(initialComparisonSnapshot, currentSnapshot);
 
@@ -1552,7 +1838,12 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         } else {
             // For Add mode or any submission that doesn't require a review modal
-            employeeForm.addEventListener('submit', () => {
+            employeeForm.addEventListener('submit', (event) => {
+                if (!validateAllSteps()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                }
                 isSubmitting = true;
             });
         }

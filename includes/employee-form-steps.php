@@ -275,8 +275,8 @@ $rankCategories = $rankCategories ?? [
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Mobile No.</label>
-            <input type="text" class="form-control" name="contact_number" value="<?php echo $v('contact_number'); ?>" 
-                placeholder="09171234567" pattern="\d{11}" title="Format: 11 digits (e.g. 09171234567)" inputmode="numeric">
+            <input type="text" class="form-control" name="contact_number" id="contact_number" value="<?php echo $v('contact_number'); ?>" 
+                placeholder="09171234567" pattern="09\d{9}" title="Format: 11 digits starting with 09 (e.g. 09171234567)" inputmode="numeric" maxlength="11">
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Email Address</label>
