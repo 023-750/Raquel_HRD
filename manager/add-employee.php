@@ -290,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
 
             // Contacts
             $tel = $getV('Telephone No', 30);
-            $mob = $getV('Mobile No', 31);
+            $mob = formatPHMobileNumber($getV('Mobile No', 31));
             $eml = $getV('Email', 32);
             $conn->query("DELETE FROM employee_contacts WHERE employee_id = $eid");
             $stmt = $conn->prepare("INSERT INTO employee_contacts (employee_id, telephone_number, mobile_number, personal_email) VALUES (?,?,?,?)");
@@ -332,7 +332,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             // Emergency
             $ec_n = $getV('Emergency Contact Name', 40);
             $ec_r = $getV('Emergency Contact Relationship', 41);
-            $ec_p = $getV('Emergency Contact Number', 42);
+            $ec_p = formatPHMobileNumber($getV('Emergency Contact Number', 42));
             $conn->query("DELETE FROM employee_emergency_contacts WHERE employee_id = $eid");
             if (!empty($ec_n)) {
                 $stmt = $conn->prepare("INSERT INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES (?,?,?,?)");
@@ -533,13 +533,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['import_csv'])) {
             // References
             $ref1_name = $getV('Reference 1 Name', 93);
             $ref1_addr = $getV('Reference 1 Address', 94);
-            $ref1_tel  = $getV('Reference 1 Contact Number', 95);
+            $ref1_tel  = formatPHMobileNumber($getV('Reference 1 Contact Number', 95));
             $ref2_name = $getV('Reference 2 Name', 96);
             $ref2_addr = $getV('Reference 2 Address', 97);
-            $ref2_tel  = $getV('Reference 2 Contact Number', 98);
+            $ref2_tel  = formatPHMobileNumber($getV('Reference 2 Contact Number', 98));
             $ref3_name = $getV('Reference 3 Name');
             $ref3_addr = $getV('Reference 3 Address');
-            $ref3_tel  = $getV('Reference 3 Contact Number');
+            $ref3_tel  = formatPHMobileNumber($getV('Reference 3 Contact Number'));
             $conn->query("DELETE FROM employee_references WHERE employee_id = $eid");
             if (!empty($ref1_name)) {
                 $stmt = $conn->prepare("INSERT INTO employee_references (employee_id, reference_name, reference_address, reference_telephone) VALUES (?,?,?,?)");
@@ -653,7 +653,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
 
     // Contact
     $telephone_number = trim($_POST['telephone_number'] ?? '');
-    $contact_number = trim($_POST['contact_number'] ?? '');
+    $contact_number = formatPHMobileNumber(trim($_POST['contact_number'] ?? ''));
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: null;
 
     // === SECTION 2: Family Background ===
@@ -865,7 +865,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
                 if ($name === '') continue;
                 $idx++;
                 $rel = trim($_POST['emergency_contact_relationship'][$i] ?? '');
-                $num = trim($_POST['emergency_contact_number'][$i] ?? '');
+                $num = formatPHMobileNumber(trim($_POST['emergency_contact_number'][$i] ?? ''));
                 $is_pri = ($idx === $primary_idx) ? 1 : 0;
                 $stmt->bind_param("isssi", $new_id, $name, $rel, $num, $is_pri);
                 $stmt->execute();
@@ -1155,7 +1155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['import_csv'])) {
                     continue;
                 $rn = trim($rn);
                 $ra = trim($_POST['ref_address'][$i] ?? '');
-                $rt = trim($_POST['ref_telephone'][$i] ?? '');
+                $rt = formatPHMobileNumber(trim($_POST['ref_telephone'][$i] ?? ''));
                 $rfstmt->bind_param("isss", $new_id, $rn, $ra, $rt);
                 $rfstmt->execute();
             }

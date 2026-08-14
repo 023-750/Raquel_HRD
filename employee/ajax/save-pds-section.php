@@ -117,7 +117,7 @@ try {
 
     // ── 5. Contacts ───────────────────────────────────────────────────────────
     $phone = $_POST['telephone_number'] ?? null;
-    $mobile= $_POST['contact_number']   ?? null;
+    $mobile= isset($_POST['contact_number']) ? formatPHMobileNumber($_POST['contact_number']) : null;
     $email = $_POST['email']            ?? null;
     $ec_ex = $conn->query("SELECT contact_id FROM employee_contacts WHERE employee_id=$employee_id")->fetch_assoc();
     if ($ec_ex) {
@@ -139,7 +139,7 @@ try {
             if ($name === '') continue;
             $idx++;
             $rel = trim($_POST['emergency_contact_relationship'][$i] ?? '');
-            $num = trim($_POST['emergency_contact_number'][$i] ?? '');
+            $num = formatPHMobileNumber(trim($_POST['emergency_contact_number'][$i] ?? ''));
             $is_pri = ($idx === $primary_idx) ? 1 : 0;
             $em->bind_param("isssi", $employee_id, $name, $rel, $num, $is_pri);
             $em->execute();

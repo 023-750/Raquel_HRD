@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$existingPending) {
         'pagibig_number'       => trim($_POST['pagibig_number'] ?? ''),
         'tin_number'           => trim($_POST['tin_number'] ?? ''),
         'telephone_number'     => trim($_POST['telephone_number'] ?? ''),
-        'mobile_number'        => trim($_POST['contact_number'] ?? ''),
+        'mobile_number'        => formatPHMobileNumber(trim($_POST['contact_number'] ?? '')),
         'personal_email'       => trim($_POST['email'] ?? ''),
         'hire_date'            => trim($_POST['hire_date'] ?? ''),
         'employment_status'    => trim($_POST['employment_status'] ?? ''),

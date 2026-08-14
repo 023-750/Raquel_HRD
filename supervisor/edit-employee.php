@@ -149,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Contact
     $telephone_number = trim($_POST['telephone_number'] ?? '');
-    $contact_number = trim($_POST['contact_number'] ?? '');
+    $contact_number = formatPHMobileNumber(trim($_POST['contact_number'] ?? ''));
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL) ?: null;
 
     // Family
@@ -353,7 +353,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($name === '') continue;
                 $idx++;
                 $rel = trim($_POST['emergency_contact_relationship'][$i] ?? '');
-                $num = trim($_POST['emergency_contact_number'][$i] ?? '');
+                $num = formatPHMobileNumber(trim($_POST['emergency_contact_number'][$i] ?? ''));
                 $is_pri = ($idx === $primary_idx) ? 1 : 0;
                 $stmt->bind_param("isssi", $eid, $name, $rel, $num, $is_pri);
                 $stmt->execute();
@@ -675,7 +675,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $a = $eid;
                 $b = trim($rn);
                 $c = trim($_POST['ref_address'][$i] ?? '');
-                $d = trim($_POST['ref_telephone'][$i] ?? '');
+                $d = formatPHMobileNumber(trim($_POST['ref_telephone'][$i] ?? ''));
                 $rf->bind_param("isss", $a, $b, $c, $d);
                 $rf->execute();
             }

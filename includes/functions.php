@@ -3814,5 +3814,53 @@ function getEmployeeEditHistory($conn, int $employee_id, int $limit = 50): array
     }
     return $records;
 }
+
+/**
+ * Normalizes and formats Philippine mobile numbers to standard 11-digit format starting with '0' (e.g., 09998988877).
+ * Handles:
+ *   - '09998988877' (standard format, preserves leading 0)
+ *   - '9998988877'  (10 digits where Excel dropped the leading 0 -> prepends '0')
+ *   - '+639998988877' or '639998988877' (international format -> '09998988877')
+ *   - '0999-898-8877', '(0999) 898 8877', '0999.898.8877' (formats with spaces/dashes -> '09998988877')
+ *
+ * @param  string|int|null $number
+ * @return string
+ */
+function formatPHMobileNumber($number): string
+{
+    if ($number === null || $number === '') {
+        return '';
+    }
+
+    $str = trim((string)$number);
+    if ($str === '') {
+        return '';
+    }
+
+    // Strip non-digits
+    $digits = preg_replace('/[^\d]/', '', $str);
+
+    if ($digits === '') {
+        return $str;
+    }
+
+    // 12 digits starting with 639 (e.g., 639998988877 from +639998988877) -> 09998988877
+    if (strlen($digits) === 12 && str_starts_with($digits, '63') && substr($digits, 2, 1) === '9') {
+        return '0' . substr($digits, 2);
+    }
+
+    // 10 digits starting with 9 (Excel dropped leading 0 e.g. 9998988877) -> 09998988877
+    if (strlen($digits) === 10 && str_starts_with($digits, '9')) {
+        return '0' . $digits;
+    }
+
+    // 11 digits starting with 0 (standard e.g. 09998988877)
+    if (strlen($digits) === 11 && str_starts_with($digits, '0')) {
+        return $digits;
+    }
+
+    // Otherwise return cleaned digits or string
+    return $digits;
+}
 ?>
 
