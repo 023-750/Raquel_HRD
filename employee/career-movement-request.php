@@ -136,6 +136,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             $initiated_by_role = $sup_emp['job_title'] ?? $job_title_session;
 
+            // ── Look up Branch Manager for the submitting branch ──────────
+            $bm_stmt = $conn->prepare(
+                "SELECT employee_id FROM employees
+                 WHERE branch_id = ? AND rank_category_id = 3 AND is_active = 1
+                 LIMIT 1"
+            );
+            $bm_stmt->bind_param("i", $supervisor_branch_id);
+            $bm_stmt->execute();
+            $bm_row = $bm_stmt->get_result()->fetch_assoc();
+            $bm_stmt->close();
+
+            $bm_user_id = null;
+            if ($bm_row) {
+                $bm_emp_id  = (int) $bm_row['employee_id'];
+                $bm_user_id = getPreferredLinkedUserId($conn, $bm_emp_id, 'employee_portal');
+            }
+
+            // If Branch Manager exists, stage starts at Pending_Branch_Manager.
+            // If no Branch Manager is assigned/active, directly route to Pending_HR_Supervisor.
+            $initial_stage = $bm_user_id ? 'Pending_Branch_Manager' : 'Pending_HR_Supervisor';
+
             $insert = $conn->prepare(
                 "INSERT INTO career_movements
                     (employee_id, movement_type, previous_position, new_position,
@@ -144,10 +165,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      request_source, approval_status, portal_workflow_stage,
                      created_at)
                  VALUES (?, 'Transfer', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Employee Portal', 'Pending',
-                         'Pending_Branch_Manager', NOW())"
+                         ?, NOW())"
             );
             $insert->bind_param(
-                "issiississ",
+                "issiississs",
                 $employee_id,        // i - int
                 $previous_position,  // s - string
                 $new_position,       // s - string
@@ -157,23 +178,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $reason,             // s - string
                 $user_id,            // i - int
                 $initiated_by_name,  // s - string
-                $initiated_by_role   // s - string
+                $initiated_by_role,  // s - string
+                $initial_stage       // s - string
             );
 
             if ($insert->execute()) {
                 $movement_id = (int) $conn->insert_id;
                 $insert->close();
-
-                // ── Look up Branch Manager for the submitting branch ──────────
-                $bm_stmt = $conn->prepare(
-                    "SELECT employee_id FROM employees
-                     WHERE branch_id = ? AND rank_category_id = 3 AND is_active = 1
-                     LIMIT 1"
-                );
-                $bm_stmt->bind_param("i", $supervisor_branch_id);
-                $bm_stmt->execute();
-                $bm_row = $bm_stmt->get_result()->fetch_assoc();
-                $bm_stmt->close();
 
                 // Fetch target employee name for notification messages
                 $tgt_stmt = $conn->prepare(
@@ -187,14 +198,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ($tgt_row['first_name'] ?? '') . ' ' . ($tgt_row['last_name'] ?? '')
                 );
 
-                $bm_user_id = null;
-                if ($bm_row) {
-                    $bm_emp_id  = (int) $bm_row['employee_id'];
-                    $bm_user_id = getPreferredLinkedUserId($conn, $bm_emp_id, 'employee_portal');
-                }
-
                 if ($bm_user_id) {
-                    // BM found — notify BM; stage stays Pending_Branch_Manager
+                    // BM found — notify BM; stage is Pending_Branch_Manager
                     createNotification(
                         $conn,
                         $bm_user_id,
@@ -203,17 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         BASE_URL . '/employee/branch-manager-approvals.php'
                     );
                 } else {
-                    // No BM user — escalate directly to HR Supervisor
-                    $upd = $conn->prepare(
-                        "UPDATE career_movements
-                         SET portal_workflow_stage = 'Pending_HR_Supervisor'
-                         WHERE movement_id = ?"
-                    );
-                    $upd->bind_param("i", $movement_id);
-                    $upd->execute();
-                    $upd->close();
-
-                    // Notify all active HR Supervisors
+                    // No BM user — routed directly to HR Supervisor
                     $hr_sup_res = $conn->query(
                         "SELECT user_id FROM users WHERE role = 'HR Supervisor' AND is_active = 1"
                     );
@@ -224,7 +219,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 (int) $hr_row['user_id'],
                                 'Transfer Request Pending Your Approval',
                                 $initiated_by_name . ' submitted a Transfer request for ' .
-                                    $target_emp_name . ' (no Branch Manager found).',
+                                    $target_emp_name . ' (no Branch Manager found for branch).',
                                 BASE_URL . '/supervisor/career-movements.php'
                             );
                         }
@@ -243,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'CREATE',
                     'Career Movement',
                     $movement_id,
-                    'Portal Transfer request submitted for employee_id=' . $employee_id,
+                    'Portal Transfer request submitted for employee_id=' . $employee_id . ' (Initial Stage: ' . $initial_stage . ')',
                     ['module' => 'Career Progression', 'target_employee_id' => $employee_id,
                      'branch_id' => $supervisor_branch_id]
                 );
@@ -582,17 +577,24 @@ require_once '../includes/header.php';
                             <tbody>
                             <?php foreach ($my_requests as $req): ?>
                                 <?php
-                                // Badge CSS
+                                // Distinct Badge CSS and Icons for each stage
                                 $stage = $req['portal_workflow_stage'] ?? '';
-                                if (str_starts_with($stage, 'Pending')) {
-                                    $badge_class = 'badge bg-warning text-dark';
-                                } elseif ($stage === 'Approved') {
-                                    $badge_class = 'badge bg-success';
-                                } elseif ($stage === 'Rejected') {
-                                    $badge_class = 'badge bg-danger';
-                                } else {
-                                    $badge_class = 'badge bg-secondary';
-                                }
+                                $badge_class = match($stage) {
+                                    'Pending_Branch_Manager' => 'badge bg-warning text-dark',
+                                    'Pending_HR_Supervisor'  => 'badge bg-primary text-white',
+                                    'Pending_HR_Manager'     => 'badge bg-info text-dark',
+                                    'Approved'               => 'badge bg-success',
+                                    'Rejected'               => 'badge bg-danger',
+                                    default                  => 'badge bg-secondary',
+                                };
+                                $stage_icon = match($stage) {
+                                    'Pending_Branch_Manager' => 'fa-user-tie',
+                                    'Pending_HR_Supervisor'  => 'fa-user-shield',
+                                    'Pending_HR_Manager'     => 'fa-paper-plane',
+                                    'Approved'               => 'fa-check-circle',
+                                    'Rejected'               => 'fa-times-circle',
+                                    default                  => 'fa-clock',
+                                };
 
                                 // Rejection reason: first non-null of bm, hr_sup, manager comments
                                 $rejection_reason = null;
@@ -624,7 +626,7 @@ require_once '../includes/header.php';
                                     </td>
                                     <td>
                                         <span class="<?php echo $badge_class; ?>" style="font-size:.75rem;">
-                                            <?php echo e(getPortalStageLabel($stage)); ?>
+                                            <i class="fas <?php echo $stage_icon; ?> me-1"></i><?php echo e(getPortalStageLabel($stage) ?: ($req['approval_status'] ?? 'Pending')); ?>
                                         </span>
                                         <?php if ($rejection_reason !== null): ?>
                                         <div class="mt-1 text-danger small" style="font-size:.72rem;max-width:180px;">

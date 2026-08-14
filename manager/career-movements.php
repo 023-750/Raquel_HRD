@@ -206,8 +206,14 @@ if ($movement_ready) {
     $stmt->close();
 }
 
-$pending_movements  = array_filter($movements, fn($m) => $m['approval_status'] === 'Pending');
-$decided_movements  = array_filter($movements, fn($m) => $m['approval_status'] !== 'Pending');
+// Filter movements that specifically require HR Manager decision
+$pending_movements  = array_filter($movements, function($m) {
+    if (($m['request_source'] ?? '') === 'Employee Portal' && !empty($m['portal_workflow_stage'])) {
+        return $m['portal_workflow_stage'] === 'Pending_HR_Manager';
+    }
+    return $m['approval_status'] === 'Pending' && empty($m['portal_workflow_stage']);
+});
+$pending_count_for_mgr = count($pending_movements);
 
 function mgrCmTypeClass($t)  { return match($t) { 'Promotion' => 'bg-success', 'Transfer' => 'bg-info text-dark', 'Demotion' => 'bg-danger', 'Role Change' => 'bg-primary', default => 'bg-secondary' }; }
 function mgrCmStatusClass($s){ return match($s) { 'Approved' => 'bg-success', 'Rejected' => 'bg-danger', default => 'bg-warning text-dark' }; }
@@ -223,7 +229,7 @@ function mgrCmStatusClass($s){ return match($s) { 'Approved' => 'bg-success', 'R
     </div>
     <div class="row g-3">
         <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value"><?php echo $counts['total']; ?></div><div class="stat-label">Total</div></div></div>
-        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value" style="<?php echo $counts['Pending'] > 0 ? 'color:#ffc107;' : ''; ?>"><?php echo $counts['Pending']; ?></div><div class="stat-label">Pending</div></div></div>
+        <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value" style="<?php echo $pending_count_for_mgr > 0 ? 'color:#ffc107;' : ''; ?>"><?php echo $pending_count_for_mgr; ?></div><div class="stat-label">Pending Approval</div></div></div>
         <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value" style="color:#28a745;"><?php echo $counts['Approved']; ?></div><div class="stat-label">Approved</div></div></div>
         <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-value"><?php echo $counts['Applied']; ?></div><div class="stat-label">Applied</div></div></div>
     </div>
@@ -239,14 +245,14 @@ function mgrCmStatusClass($s){ return match($s) { 'Approved' => 'bg-success', 'R
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#mgrAllTab" type="button" role="tab">
                     <i class="fas fa-list me-1"></i>All Movements
-                    <span class="badge bg-secondary ms-1" style="font-size:.65rem;"><?php echo count($decided_movements); ?></span>
+                    <span class="badge bg-secondary ms-1" style="font-size:.65rem;"><?php echo count($movements); ?></span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#mgrPendingTab" type="button" role="tab">
                     <i class="fas fa-clock me-1"></i>Pending Approval
-                    <?php if ($counts['Pending'] > 0): ?>
-                        <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;"><?php echo $counts['Pending']; ?></span>
+                    <?php if ($pending_count_for_mgr > 0): ?>
+                        <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;"><?php echo $pending_count_for_mgr; ?></span>
                     <?php endif; ?>
                 </button>
             </li>
@@ -277,10 +283,11 @@ function mgrCmStatusClass($s){ return match($s) { 'Approved' => 'bg-success', 'R
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (empty($decided_movements)): ?>
-                                <tr><td colspan="8" class="text-center py-5 text-muted"><i class="fas fa-route d-block mb-2" style="font-size:2rem;opacity:.2;"></i>No decided movements yet.</td></tr>
+                            <?php if (empty($movements)): ?>
+                                <tr><td colspan="8" class="text-center py-5 text-muted"><i class="fas fa-route d-block mb-2" style="font-size:2rem;opacity:.2;"></i>No career movements yet.</td></tr>
                             <?php else: ?>
-                                <?php foreach ($decided_movements as $mv):
+                                <?php foreach ($movements as $mv):
+                                    $is_portal_req  = (($mv['request_source'] ?? '') === 'Employee Portal' && !empty($mv['portal_workflow_stage']));
                                     $is_hr_staff_req = ($mv['request_source'] === 'HR Portal' && ($mv['initiated_by_role'] ?? '') === 'HR Staff');
                                 ?>
                                 <tr>
@@ -320,11 +327,34 @@ function mgrCmStatusClass($s){ return match($s) { 'Approved' => 'bg-success', 'R
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <span class="badge <?php echo mgrCmStatusClass($mv['approval_status']); ?>"><?php echo e($mv['approval_status']); ?></span>
-                                        <?php if ($mv['approval_status'] === 'Approved' && (int) $mv['is_applied'] === 1): ?>
-                                            <span class="badge bg-success ms-1">Applied</span>
-                                        <?php elseif ($mv['approval_status'] === 'Approved'): ?>
-                                            <span class="badge bg-secondary ms-1">Scheduled</span>
+                                        <?php if ($is_portal_req): ?>
+                                            <?php
+                                            $p_stage = $mv['portal_workflow_stage'];
+                                            if ($p_stage === 'Pending_Branch_Manager'): ?>
+                                                <span class="badge bg-warning text-dark"><i class="fas fa-user-tie me-1"></i>Pending Branch Manager</span>
+                                            <?php elseif ($p_stage === 'Pending_HR_Supervisor'): ?>
+                                                <span class="badge bg-primary text-white"><i class="fas fa-user-shield me-1"></i>Pending HR Supervisor</span>
+                                            <?php elseif ($p_stage === 'Pending_HR_Manager'): ?>
+                                                <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Pending HR Manager</span>
+                                            <?php elseif ($p_stage === 'Approved' || $mv['approval_status'] === 'Approved'): ?>
+                                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Approved</span>
+                                                <?php if ((int) $mv['is_applied'] === 1): ?>
+                                                    <span class="badge bg-success ms-1">Applied</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary ms-1">Scheduled</span>
+                                                <?php endif; ?>
+                                            <?php elseif ($p_stage === 'Rejected' || $mv['approval_status'] === 'Rejected'): ?>
+                                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary"><?php echo e($mv['approval_status']); ?></span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge <?php echo mgrCmStatusClass($mv['approval_status']); ?>"><?php echo e($mv['approval_status']); ?></span>
+                                            <?php if ($mv['approval_status'] === 'Approved' && (int) $mv['is_applied'] === 1): ?>
+                                                <span class="badge bg-success ms-1">Applied</span>
+                                            <?php elseif ($mv['approval_status'] === 'Approved'): ?>
+                                                <span class="badge bg-secondary ms-1">Scheduled</span>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-end">

@@ -416,7 +416,9 @@ if ($movement_ready) {
             pb.branch_name AS previous_branch_name,
             nb.branch_name AS new_branch_name,
             u1.full_name   AS logged_by_name,
-            u2.full_name   AS approved_by_name
+            u2.full_name   AS approved_by_name,
+            bm_u.full_name  AS bm_approver_name,
+            hrs_u.full_name AS hrs_approver_name
         FROM career_movements cm
         JOIN employees  e  ON cm.employee_id       = e.employee_id
         LEFT JOIN departments d ON e.department_id = d.department_id
@@ -424,6 +426,8 @@ if ($movement_ready) {
         LEFT JOIN branches nb ON cm.new_branch_id       = nb.branch_id
         LEFT JOIN users   u1 ON cm.logged_by            = u1.user_id
         LEFT JOIN users   u2 ON cm.approved_by          = u2.user_id
+        LEFT JOIN users   bm_u ON cm.branch_manager_approved_by = bm_u.user_id
+        LEFT JOIN users   hrs_u ON cm.hr_supervisor_approved_by = hrs_u.user_id
         ORDER BY cm.created_at DESC
     ");
     $stmt->execute();
@@ -505,9 +509,18 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                                 <tr><td colspan="8" class="text-center py-5 text-muted"><i class="fas fa-route d-block mb-2" style="font-size:2rem;opacity:.2;"></i>No career movements yet.</td></tr>
                             <?php else: ?>
                                 <?php foreach ($movements as $mv):
-                                    $is_mine    = (int)($mv['logged_by']??0) === $current_user_id;
-                                    $is_pending = $mv['approval_status'] === 'Pending';
+                                    $is_mine        = (int)($mv['logged_by']??0) === $current_user_id;
+                                    $is_portal_req  = (($mv['request_source'] ?? '') === 'Employee Portal' && !empty($mv['portal_workflow_stage']));
+                                    $is_pending     = $mv['approval_status'] === 'Pending';
                                     $is_hr_staff_req = ($mv['request_source']==='HR Portal' && ($mv['initiated_by_role']??'')==='HR Staff');
+
+                                    // Authorize HR Supervisor actions only when it is at Pending_HR_Supervisor stage (for portal requests) or Pending (for HR direct requests)
+                                    $can_sup_act = false;
+                                    if ($is_portal_req) {
+                                        $can_sup_act = ($mv['portal_workflow_stage'] === 'Pending_HR_Supervisor' && !$is_mine);
+                                    } else {
+                                        $can_sup_act = ($is_pending && !$is_mine);
+                                    }
                                 ?>
                                 <tr>
                                     <td>
@@ -546,20 +559,45 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                                         <?php endif; ?>
                                     </td>
                                     <td>
-                                        <span class="badge <?php echo supCmStatusClass($mv['approval_status']); ?>"><?php echo e($mv['approval_status']); ?></span>
-                                        <?php if ($mv['approval_status']==='Approved' && (int)$mv['is_applied']===1): ?>
-                                            <span class="badge bg-success ms-1">Applied</span>
-                                        <?php elseif ($mv['approval_status']==='Approved'): ?>
-                                            <span class="badge bg-secondary ms-1">Scheduled</span>
+                                        <?php if ($is_portal_req): ?>
+                                            <?php
+                                            $p_stage = $mv['portal_workflow_stage'];
+                                            if ($p_stage === 'Pending_Branch_Manager'): ?>
+                                                <span class="badge bg-warning text-dark"><i class="fas fa-user-tie me-1"></i>Pending Branch Manager</span>
+                                            <?php elseif ($p_stage === 'Pending_HR_Supervisor'): ?>
+                                                <span class="badge bg-primary text-white"><i class="fas fa-user-shield me-1"></i>Pending HR Supervisor</span>
+                                            <?php elseif ($p_stage === 'Pending_HR_Manager'): ?>
+                                                <span class="badge bg-info text-dark"><i class="fas fa-paper-plane me-1"></i>Endorsed to HR Manager</span>
+                                            <?php elseif ($p_stage === 'Approved' || $mv['approval_status'] === 'Approved'): ?>
+                                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Approved</span>
+                                                <?php if ((int)($mv['is_applied']??0) === 1): ?>
+                                                    <span class="badge bg-success ms-1">Applied</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary ms-1">Scheduled</span>
+                                                <?php endif; ?>
+                                            <?php elseif ($p_stage === 'Rejected' || $mv['approval_status'] === 'Rejected'): ?>
+                                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary"><?php echo e($mv['approval_status']); ?></span>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <span class="badge <?php echo supCmStatusClass($mv['approval_status']); ?>"><?php echo e($mv['approval_status']); ?></span>
+                                            <?php if ($mv['approval_status']==='Approved' && (int)$mv['is_applied']===1): ?>
+                                                <span class="badge bg-success ms-1">Applied</span>
+                                            <?php elseif ($mv['approval_status']==='Approved'): ?>
+                                                <span class="badge bg-secondary ms-1">Scheduled</span>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </td>
                                     <td class="text-end">
-                                        <?php if ($is_pending && !$is_mine): ?>
+                                        <?php if ($can_sup_act): ?>
                                             <form method="POST" class="d-inline">
                                                 <?php echo csrfField(); ?>
                                                 <input type="hidden" name="movement_id" value="<?php echo (int)$mv['movement_id']; ?>">
                                                 <input type="hidden" name="movement_action" value="Approve">
-                                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Approve this career movement?');"><i class="fas fa-check me-1"></i>Approve</button>
+                                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('<?php echo $is_portal_req ? 'Approve and endorse this transfer request to HR Manager?' : 'Approve this career movement?'; ?>');">
+                                                    <i class="fas fa-check me-1"></i><?php echo $is_portal_req ? 'Endorse' : 'Approve'; ?>
+                                                </button>
                                             </form>
                                             <button class="btn btn-sm btn-outline-danger ms-1"
                                                 data-bs-toggle="modal" data-bs-target="#supRejectModal"
@@ -567,6 +605,10 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                                                 data-empname="<?php echo e($mv['employee_name']); ?>">
                                                 <i class="fas fa-times me-1"></i>Reject
                                             </button>
+                                        <?php elseif ($is_portal_req && $mv['portal_workflow_stage'] === 'Pending_HR_Manager'): ?>
+                                            <span class="small text-muted"><i class="fas fa-check text-success me-1"></i>Endorsed &middot; Awaiting HR Manager</span>
+                                        <?php elseif ($is_portal_req && $mv['portal_workflow_stage'] === 'Pending_Branch_Manager'): ?>
+                                            <span class="small text-muted fst-italic">Awaiting Branch Manager</span>
                                         <?php elseif ($is_pending && $is_mine): ?>
                                             <span class="badge bg-light text-dark border" title="You submitted this request — awaiting HR Manager approval."><i class="fas fa-clock me-1"></i>Awaiting Review</span>
                                         <?php else: ?>
@@ -579,6 +621,33 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                                     <td colspan="8" class="small text-muted py-2">
                                         <?php if (!empty($mv['reason'])): ?><span class="fw-semibold">Reason:</span> <?php echo e($mv['reason']); ?><?php endif; ?>
                                         <?php if (!empty($mv['manager_comments'])): ?><span class="ms-3 fw-semibold">Decision Notes:</span> <?php echo e($mv['manager_comments']); ?><?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
+                                <?php if ($is_portal_req): ?>
+                                <tr class="bg-light border-top-0">
+                                    <td colspan="8" class="small py-2 ps-4">
+                                        <span class="fw-semibold text-muted me-3">Approval Chain:</span>
+                                        <span class="me-3">
+                                            <i class="fas fa-user-tie me-1 text-muted"></i>
+                                            <strong>Branch Manager:</strong>
+                                            <?php if (!empty($mv['branch_manager_approved_by'])): ?>
+                                                <?php echo e($mv['bm_approver_name'] ?? 'Approved'); ?>
+                                                &middot; <?php echo formatDate($mv['branch_manager_decision_date'] ?? '', 'M d, Y'); ?>
+                                            <?php else: ?>
+                                                <span class="fst-italic text-muted">Branch Manager step bypassed</span>
+                                            <?php endif; ?>
+                                        </span>
+                                        <span>
+                                            <i class="fas fa-user-shield me-1 text-muted"></i>
+                                            <strong>HR Supervisor:</strong>
+                                            <?php if (!empty($mv['hr_supervisor_approved_by'])): ?>
+                                                <?php echo e($mv['hrs_approver_name'] ?? 'Approved'); ?>
+                                                &middot; <?php echo formatDate($mv['hr_supervisor_decision_date'] ?? '', 'M d, Y'); ?>
+                                            <?php else: ?>
+                                                <span class="fst-italic text-muted">Pending Review</span>
+                                            <?php endif; ?>
+                                        </span>
                                     </td>
                                 </tr>
                                 <?php endif; ?>

@@ -1,3 +1,7 @@
 Career movements via employee portal
 
-1. When branch supervisor perform career movement while it doesn't has branch manager the Submitted Requests "Stage" marks as Approved instantly but the hr supervisor recieved the request-- when it tries to approve the request it gives error and let the request sit on the request table.
+1. [FIXED] When branch supervisor perform career movement while it doesn't has branch manager the Submitted Requests "Stage" marks as Approved instantly but the hr supervisor recieved the request-- when it tries to approve the request it gives error and let the request sit on the request table.
+   - Fixed initial stage routing: Look up Branch Manager before INSERT; if none exists for the branch, directly route to `Pending_HR_Supervisor` and notify HR Supervisors.
+   - Fixed stage display badges with distinct colors and FontAwesome icons (Pending BM: warning/yellow, Pending HR Supervisor: primary/blue, Pending HR Manager: info/cyan, Approved: success/green, Rejected: danger/red).
+   - Fixed HR Supervisor Action guard in `supervisor/career-movements.php`: The "Approve/Endorse" action is only active while the request is at `Pending_HR_Supervisor`. Once endorsed to `Pending_HR_Manager`, the table shows "Endorsed · Awaiting HR Manager" instead of continuing to show an action button that triggered a processing error.
+   - Fixed HR Manager Pending queue in `manager/career-movements.php`: Only displays requests that have reached `Pending_HR_Manager` for final decision.
