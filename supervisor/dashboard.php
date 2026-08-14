@@ -567,31 +567,150 @@ $queue_employee_count = count($pending_groups);
 
 <?php /* ── Non-Regular Personnel Watchlist (Supervisor) ── */ ?>
 <style>
-    .watchlist-card { border-radius: 16px; border: none; box-shadow: 0 4px 24px rgba(0,0,0,.08); overflow: hidden; margin-bottom: 24px; }
-    .watchlist-header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-    .watchlist-header h5 { margin: 0; font-weight: 700; font-size: 1rem; }
-    .watchlist-badge-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
-    .wb-overdue  { background: rgba(220,53,69,.25); color: #ff6b7a; border: 1px solid rgba(220,53,69,.4); }
-    .wb-critical { background: rgba(255,152,0,.2); color: #ffb74d; border: 1px solid rgba(255,152,0,.4); }
-    .wb-ok       { background: rgba(40,167,69,.15); color: #66bb6a; border: 1px solid rgba(40,167,69,.3); }
-    .watchlist-body { background: #fff; }
-    .watchlist-empty { padding: 48px 24px; text-align: center; color: #8094ae; }
-    .watchlist-empty i { font-size: 2.5rem; color: #d1fae5; margin-bottom: 12px; display: block; }
-    .wl-row { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid #f0f3f8; transition: background .15s; }
-    .wl-row:last-child { border-bottom: none; }
-    .wl-row:hover { background: #f8faff; }
-    .wl-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-    .wl-info { flex: 1; min-width: 0; }
-    .wl-name { font-weight: 700; font-size: 0.88rem; color: #1e2d40; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .wl-sub  { font-size: 0.73rem; color: #8094ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .wl-countdown { flex-shrink: 0; text-align: right; }
-    .wl-days { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 0.73rem; font-weight: 700; white-space: nowrap; }
-    .wl-overdue  { background: #fff1f2; color: #dc3545; border: 1px solid #f8c4c8; }
-    .wl-critical { background: #fff8e1; color: #e65100; border: 1px solid #ffe0b2; }
-    .wl-warning  { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
-    .wl-upcoming { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-    .wl-status-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; background: #eef4ff; color: #3b5bdb; }
-    .wl-actions { flex-shrink: 0; }
+    .watchlist-card 
+    { border-radius: 16px; 
+        border: none; 
+        overflow: hidden; 
+        margin-bottom: 24px; 
+    }
+    .watchlist-header { 
+        background: linear-gradient(135deg, #043d07ff 0%, #074604ff 100%); 
+        color: #fff; 
+        padding: 20px 24px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between; 
+        flex-wrap: wrap; gap: 12px; 
+    }
+    .watchlist-header h5 { 
+        margin: 0; 
+        font-weight: 700; 
+        font-size: 1rem; 
+    }
+    .watchlist-badge-pill { 
+        display: inline-flex; 
+        align-items: center; 
+        gap: 6px; 
+        padding: 4px 12px; 
+        border-radius: 20px; 
+        font-size: 0.75rem; 
+        font-weight: 700; 
+    }
+    .wb-overdue  { 
+        background: rgba(220,53,69,.25);
+        color: #ff6b7a; 
+        border: 1px solid rgba(220,53,69,.4); 
+    }
+    .wb-critical { 
+        background: rgba(255,152,0,.2); 
+        color: #ffb74d; 
+        border: 1px solid rgba(255,152,0,.4); 
+    }
+    .wb-ok       { 
+        background: rgba(40,167,69,.15); 
+        color: #66bb6a; 
+        border: 1px solid rgba(40,167,69,.3); 
+    }
+    .watchlist-body { 
+        background: #fff; 
+    }
+    .watchlist-empty { 
+        padding: 48px 24px; 
+        text-align: center; 
+        color: #8094ae; 
+    }
+    .watchlist-empty i { 
+        font-size: 2.5rem; 
+        color: #d1fae5; 
+        margin-bottom: 12px; 
+        display: block; 
+    }
+    .wl-row { 
+        display: flex; 
+        align-items: center; 
+        gap: 14px; 
+        padding: 14px 20px; 
+        border-bottom: 1px solid #f0f3f8; 
+        transition: background .15s; 
+    }
+    .wl-row:last-child { 
+        border-bottom: none; 
+    }
+    .wl-row:hover { 
+        background: #f8faff; 
+    }
+    .wl-avatar { 
+        width: 40px; 
+        height: 40px; 
+        border-radius: 50%; 
+        object-fit: cover; 
+        flex-shrink: 0; 
+    }
+    .wl-info { 
+        flex: 1; 
+        min-width: 0; 
+    }
+    .wl-name { 
+        font-weight: 700; 
+        font-size: 0.88rem; 
+        color: #1e2d40; 
+        white-space: nowrap; 
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+    }
+    .wl-sub  { 
+        font-size: 0.73rem; 
+        color: #8094ae; 
+        white-space: nowrap; 
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+    }
+    .wl-countdown { 
+        flex-shrink: 0; 
+        text-align: right; 
+    }
+    .wl-days { 
+        display: inline-flex; 
+        align-items: center; 
+        gap: 5px; 
+        padding: 4px 10px; 
+        border-radius: 20px; 
+        font-size: 0.73rem; 
+        font-weight: 700; 
+        white-space: nowrap; 
+    }
+    .wl-overdue  { 
+        background: #fff1f2; 
+        color: #dc3545; 
+        border: 1px solid #f8c4c8; 
+    }
+    .wl-critical { 
+        background: #fff8e1; 
+        color: #e65100; 
+        border: 1px solid #ffe0b2; 
+    }
+    .wl-warning  { 
+        background: #fffbeb; 
+        color: #b45309; 
+        border: 1px solid #fde68a; 
+    }
+    .wl-upcoming { 
+        background: #f0fdf4; 
+        color: #15803d; 
+        border: 1px solid #bbf7d0; 
+    }
+    .wl-status-tag { 
+        display: inline-block; 
+        padding: 2px 8px; 
+        border-radius: 10px; 
+        font-size: 0.68rem; 
+        font-weight: 700; 
+        background: #eef4ff; 
+        color: #3b5bdb; 
+    }
+    .wl-actions { 
+        flex-shrink: 0; 
+    }
 </style>
 <div class="watchlist-card">
     <div class="watchlist-header">
