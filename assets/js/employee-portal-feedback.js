@@ -138,27 +138,26 @@
 
   /* ================================================================
      HAPTIC FEEDBACK (Req 15.7)
-     Vibrates device (if supported) on important actions
+     Vibrates device (if supported) on navigation and important actions
   ================================================================ */
   function vibrate(pattern) {
-    if (navigator.vibrate) {
-      navigator.vibrate(pattern || 50);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate(pattern || 15);
+      } catch (err) {}
     }
   }
 
-  // Attach haptic to elements with class .haptic-feedback
-  document.addEventListener('click', function (e) {
-    var el = e.target.closest('.haptic-feedback, [data-haptic]');
+  // Attach haptic feedback to bottom nav shortcuts, gear button, and interactive controls
+  var hapticSelector = '.nav-item, .hr-nav-item, .btn, button, .dropdown-item, .notification-btn, #mobileGearBtn, .haptic-feedback, [data-haptic]';
+
+  document.addEventListener('pointerdown', function (e) {
+    var el = e.target.closest(hapticSelector);
     if (el) {
-      var pattern = el.dataset.haptic ? parseInt(el.dataset.haptic) : 50;
+      var pattern = el.dataset.haptic ? parseInt(el.dataset.haptic, 10) : 15;
       vibrate(pattern);
     }
-  });
-
-  // Apply haptic to all submit buttons automatically
-  document.querySelectorAll('button[type="submit"], .btn-primary, .btn-danger').forEach(function (btn) {
-    btn.classList.add('haptic-feedback');
-  });
+  }, { passive: true });
 
   /* ================================================================
      FORM SUBMIT LOADING STATE (Req 15.2)
