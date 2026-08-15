@@ -340,11 +340,14 @@ if (in_array($_ft_role, ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin'])):
 </script>
 <script src="<?php echo BASE_URL; ?>/assets/js/zebra-stripe.js?v=<?php echo time(); ?>"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/main.js?v=<?php echo time(); ?>"></script>
+<?php if (isset($_SESSION['role'])): ?>
+<!-- Global Sound Effects & UX Feedback System — loaded for all HRIS & Admin roles -->
+<script src="<?php echo BASE_URL; ?>/assets/js/employee-portal-feedback.js?v=<?php echo time(); ?>" defer></script>
+<?php endif; ?>
 <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'): ?>
 <!-- Employee Portal UX JS utilities — deferred for performance -->
 <script src="<?php echo BASE_URL; ?>/assets/js/auto-save.js?v=<?php echo time(); ?>" defer></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js?v=<?php echo time(); ?>" defer></script>
-<script src="<?php echo BASE_URL; ?>/assets/js/employee-portal-feedback.js?v=<?php echo time(); ?>" defer></script>
 <?php endif; ?>
 <?php if (in_array($_SESSION['role'] ?? '', ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin'])): ?>
 <!-- HR Department Mobile View JS — exclusive to HR roles -->

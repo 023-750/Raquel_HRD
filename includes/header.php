@@ -407,8 +407,10 @@ switch ($effective_role) {
     <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-ratings.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-progress.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-notifications.css?v=<?php echo time(); ?>" rel="stylesheet">
-    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-feedback.css?v=<?php echo time(); ?>" rel="stylesheet">
     <?php endif; ?>
+    <!-- Feedback & Sound Effects System CSS — loaded for all roles -->
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-feedback.css?v=<?php echo time(); ?>" rel="stylesheet">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <script src="<?php echo BASE_URL; ?>/assets/js/pjax.js?v=<?php echo time(); ?>" defer></script>
     <script>
@@ -729,6 +731,12 @@ switch ($effective_role) {
                             <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/profile-settings.php" style="font-size:0.82rem; padding: 6px 10px;">
                                 <i class="fas fa-user-cog me-2" style="width: 18px; text-align: center;"></i>Change Password
                             </a>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item d-flex align-items-center justify-content-between w-100 border-0 bg-transparent sound-toggle-btn" id="soundToggleBtn" onclick="if(window.toggleUiSound) window.toggleUiSound();" style="font-size:0.82rem; padding: 6px 10px; cursor: pointer;">
+                                <span><i class="fas fa-volume-up me-2 sound-icon text-success" style="width: 18px; text-align: center;"></i>Sound Effects</span>
+                                <span class="badge bg-success sound-status-badge" style="font-size:0.7rem;">ON</span>
+                            </button>
                         </li>
                         <li><hr class="dropdown-divider my-1"></li>
                         <li>

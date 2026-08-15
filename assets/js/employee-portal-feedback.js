@@ -242,6 +242,48 @@
   window.playUiSound = playUiSound;
 
   /* ================================================================
+     SOUND EFFECTS TOGGLE & STATUS MANAGEMENT
+  ================================================================ */
+  function updateSoundToggleUI() {
+    var isMuted = typeof localStorage !== 'undefined' && localStorage.getItem('ep_sound_disabled') === 'true';
+    var toggleBtns = document.querySelectorAll('#soundToggleBtn, .sound-toggle-btn');
+    toggleBtns.forEach(function (btn) {
+      var icon = btn.querySelector('.sound-icon, i');
+      var badge = btn.querySelector('.sound-status-badge');
+      if (isMuted) {
+        if (icon) icon.className = 'fas fa-volume-mute me-2 sound-icon text-muted';
+        if (badge) {
+          badge.className = 'badge bg-secondary sound-status-badge';
+          badge.textContent = 'OFF';
+        }
+      } else {
+        if (icon) icon.className = 'fas fa-volume-up me-2 sound-icon text-success';
+        if (badge) {
+          badge.className = 'badge bg-success sound-status-badge';
+          badge.textContent = 'ON';
+        }
+      }
+    });
+  }
+
+  window.toggleUiSound = function () {
+    var currentlyDisabled = typeof localStorage !== 'undefined' && localStorage.getItem('ep_sound_disabled') === 'true';
+    if (currentlyDisabled) {
+      localStorage.removeItem('ep_sound_disabled');
+      playUiSound('success');
+    } else {
+      localStorage.setItem('ep_sound_disabled', 'true');
+    }
+    updateSoundToggleUI();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', updateSoundToggleUI);
+  } else {
+    updateSoundToggleUI();
+  }
+
+  /* ================================================================
      HAPTIC FEEDBACK (Req 15.7) & UI SOUND EFFECTS
      Vibrates device + plays subtle audio feedback on navigation and key actions
   ================================================================ */
@@ -253,21 +295,38 @@
     }
   }
 
-  // Attach haptic feedback + soft UI tap sound to navigation shortcuts, gear button, and controls
-  var hapticSelector = '.nav-item, .hr-nav-item, .btn, button, .dropdown-item, .notification-btn, #mobileGearBtn, .haptic-feedback, [data-haptic]';
+  // Broad selector for all interactive elements across Admin and HRIS pages
+  var hapticSelector = [
+    '.sidebar-nav a', '.nav-item', '.hr-nav-item', '.nav-link',
+    '.btn', 'button', 'a.btn', 'input[type="submit"]', 'input[type="button"]',
+    '.dropdown-item', '.notification-btn', '#notificationBtn', '#mobileGearBtn',
+    '.action-btn', '.btn-action', '[data-bs-toggle]', '.page-link', '.filter-tab',
+    '.haptic-feedback', '[data-haptic]'
+  ].join(', ');
 
   document.addEventListener('pointerdown', function (e) {
     var el = e.target.closest(hapticSelector);
     if (el) {
       var pattern = el.dataset.haptic ? parseInt(el.dataset.haptic, 10) : 15;
       vibrate(pattern);
-      if (el.classList.contains('notification-btn') || el.id === 'notificationBtn') {
+      if (el.classList.contains('notification-btn') || el.id === 'notificationBtn' || el.classList.contains('notification-item')) {
         playUiSound('notify');
+      } else if (el.classList.contains('btn-danger') || el.classList.contains('text-danger') || el.dataset.action === 'delete') {
+        playUiSound('warning');
       } else if (el.type === 'submit' || el.classList.contains('btn-primary') || el.classList.contains('btn-success')) {
         playUiSound('success');
+      } else if (el.classList.contains('page-link') || el.classList.contains('filter-tab') || (el.classList.contains('nav-link') && el.closest('.nav-tabs'))) {
+        playUiSound('step');
       } else {
         playUiSound('tap');
       }
+    }
+  }, { passive: true });
+
+  // Play tap sound on checkbox, radio button, and select field changes
+  document.addEventListener('change', function (e) {
+    if (e.target && (e.target.matches('input[type="checkbox"], input[type="radio"], select.form-select, select.form-control'))) {
+      playUiSound('tap');
     }
   }, { passive: true });
 
@@ -387,18 +446,27 @@
   }
 
   /* ================================================================
-     AUTO-DISMISS SUCCESS ALERTS (Req 15.3)
-     Auto-hide Bootstrap .alert-success after 3 seconds
+     AUTO-DISMISS SUCCESS ALERTS & AUDIO FEEDBACK (Req 15.3)
+     Auto-plays audio chime on page load and auto-dismisses success banners
   ================================================================ */
-  document.querySelectorAll('.alert-success, .alert-ep-success').forEach(function (alert) {
-    setTimeout(function () {
-      alert.style.transition = 'opacity 0.4s ease-out';
-      alert.style.opacity = '0';
+  var successAlerts = document.querySelectorAll('.alert-success, .alert-ep-success');
+  if (successAlerts.length > 0) {
+    setTimeout(function () { playUiSound('success'); }, 150);
+    successAlerts.forEach(function (alert) {
       setTimeout(function () {
-        if (alert.parentNode) alert.style.display = 'none';
-      }, 420);
-    }, 3000);
-  });
+        alert.style.transition = 'opacity 0.4s ease-out';
+        alert.style.opacity = '0';
+        setTimeout(function () {
+          if (alert.parentNode) alert.style.display = 'none';
+        }, 420);
+      }, 3500);
+    });
+  }
+
+  var dangerAlerts = document.querySelectorAll('.alert-danger, .alert-warning, .alert-ep-error');
+  if (dangerAlerts.length > 0) {
+    setTimeout(function () { playUiSound('warning'); }, 150);
+  }
 
   /* ================================================================
      DISMISSIBLE ERROR ALERTS (Req 15.4)
