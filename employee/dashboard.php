@@ -679,7 +679,6 @@ function movementIcon(string $type): string {
                     <i class="fas fa-route" aria-hidden="true"></i>
                     Career Timeline
                 </h2>
-                <a href="<?php echo BASE_URL; ?>/employee/career-movement-request.php" class="btn btn-sm btn-outline-primary">Request Movement</a>
             </div>
             <div class="content-card-body">
                 <?php if (!empty($career_movements)): ?>

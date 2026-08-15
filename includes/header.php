@@ -606,16 +606,16 @@ switch ($effective_role) {
                     <button class="notification-btn" data-bs-toggle="dropdown" aria-expanded="false" id="mobileGearBtn" style="color: #074B02;">
                         <i class="fas fa-cog"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); min-width: 220px;">
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="mobileGearDropdown" style="border-radius: 14px; border: 1px solid rgba(0,0,0,0.08); min-width: 200px; max-width: calc(100vw - 24px); font-size: 0.84rem; padding: 6px;">
                         <li>
-                            <span class="dropdown-item-text fw-bold d-flex align-items-center" style="font-size:0.85rem;color:var(--text-muted); white-space: nowrap;">
+                            <span class="dropdown-item-text fw-bold d-flex align-items-center" style="font-size:0.8rem;color:var(--text-muted); padding: 6px 10px;">
                                 <i class="fas fa-user-circle me-2"></i><?php echo e($_SESSION['full_name']); ?>
                             </span>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li><hr class="dropdown-divider my-1"></li>
                         <li>
-                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/dashboard.php" style="white-space: nowrap;">
-                                <i class="fas fa-tachometer-alt me-2" style="width: 20px; text-align: center;"></i>Dashboard
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/dashboard.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                <i class="fas fa-tachometer-alt me-2" style="width: 18px; text-align: center;"></i>Dashboard
                             </a>
                         </li>
                         <?php
@@ -649,8 +649,8 @@ switch ($effective_role) {
                             }
                         ?>
                             <li>
-                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" style="white-space: nowrap;">
-                                    <span><i class="fas fa-user-shield me-2" style="width: 20px; text-align: center;"></i>Dept Manager Review</span>
+                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                    <span><i class="fas fa-user-shield me-2" style="width: 18px; text-align: center;"></i>Dept Manager Review</span>
                                     <?php if ($_g_dept_pending > 0): ?>
                                         <span class="badge bg-danger rounded-pill ms-2"><?php echo $_g_dept_pending > 9 ? '9+' : $_g_dept_pending; ?></span>
                                     <?php endif; ?>
@@ -697,8 +697,8 @@ switch ($effective_role) {
                             }
                         ?>
                             <li>
-                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" style="white-space: nowrap;">
-                                    <span><i class="fas fa-user-check me-2" style="width: 20px; text-align: center;"></i>Confirm Rating</span>
+                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                    <span><i class="fas fa-user-check me-2" style="width: 18px; text-align: center;"></i>Confirm Rating</span>
                                     <?php if ($_g_confirm_pending > 0): ?>
                                         <span class="badge bg-danger rounded-pill ms-2"><?php echo $_g_confirm_pending > 9 ? '9+' : $_g_confirm_pending; ?></span>
                                     <?php endif; ?>
@@ -706,29 +706,34 @@ switch ($effective_role) {
                             </li>
                         <?php endif; ?>
                         <li>
-                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/my-performance.php" style="white-space: nowrap;">
-                                <i class="fas fa-chart-line me-2" style="width: 20px; text-align: center;"></i>My Performance
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/my-performance.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                <i class="fas fa-chart-line me-2" style="width: 18px; text-align: center;"></i>My Performance
                             </a>
                         </li>
                         <?php
-                        // My Team — for supervisors/managers excluding Human Resources dept
+                        // My Team & Movement Requests — for supervisors/managers excluding Human Resources dept
                         if ($_g_is_sup && $_g_dept_name !== 'Human Resources'):
                         ?>
                             <li>
-                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/team-list.php" style="white-space: nowrap;">
-                                    <i class="fas fa-users me-2" style="width: 20px; text-align: center;"></i>My Team
+                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/team-list.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                    <i class="fas fa-users me-2" style="width: 18px; text-align: center;"></i>My Team
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/career-movement-request.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                    <i class="fas fa-route me-2" style="width: 18px; text-align: center;"></i>Movement Requests
                                 </a>
                             </li>
                         <?php endif; ?>
                         <li>
-                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/profile-settings.php" style="white-space: nowrap;">
-                                <i class="fas fa-user-cog me-2" style="width: 20px; text-align: center;"></i>Change Password
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/profile-settings.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                <i class="fas fa-user-cog me-2" style="width: 18px; text-align: center;"></i>Change Password
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li><hr class="dropdown-divider my-1"></li>
                         <li>
-                            <a class="dropdown-item text-danger d-flex align-items-center" href="<?php echo BASE_URL; ?>/logout.php" style="white-space: nowrap;">
-                                <i class="fas fa-sign-out-alt me-2" style="width: 20px; text-align: center;"></i>Logout
+                            <a class="dropdown-item text-danger d-flex align-items-center" href="<?php echo BASE_URL; ?>/logout.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                <i class="fas fa-sign-out-alt me-2" style="width: 18px; text-align: center;"></i>Logout
                             </a>
                         </li>
                     </ul>
