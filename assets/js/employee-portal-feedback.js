@@ -152,7 +152,7 @@
   function getAudioContext() {
     if (!audioCtx && typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
       var AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      audioCtx = new AudioCont
+      audioCtx = new AudioContextClass();
     }
     if (audioCtx && audioCtx.state === 'suspended') {
       audioCtx.resume();
@@ -430,6 +430,43 @@
       }
       prevLevel = level;
     });
+  }
+
+  /* ================================================================
+     FLOATING BACK TO TOP BUTTON (Employee Portal & Self-Rating)
+  ================================================================ */
+  function initEpBackToTop() {
+    var floatBtn = document.getElementById('epFloatingTopBtn');
+    if (!floatBtn) {
+      floatBtn = document.createElement('button');
+      floatBtn.id = 'epFloatingTopBtn';
+      floatBtn.className = 'ep-floating-top-btn';
+      floatBtn.type = 'button';
+      floatBtn.setAttribute('aria-label', 'Back to top');
+      floatBtn.innerHTML = '<i class="fas fa-arrow-up"></i>';
+      document.body.appendChild(floatBtn);
+    }
+
+    window.addEventListener('scroll', function () {
+      if (window.scrollY > 250) {
+        floatBtn.classList.add('visible');
+      } else {
+        floatBtn.classList.remove('visible');
+      }
+    }, { passive: true });
+
+    floatBtn.addEventListener('click', function (e) {
+      e.preventDefault();
+      vibrate(15);
+      playUiSound('tap');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initEpBackToTop);
+  } else {
+    initEpBackToTop();
   }
 
 })();
