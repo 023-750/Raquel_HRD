@@ -530,6 +530,17 @@ body:not(.show-ess) .bcon {
   padding: 4px 10px;
   border-radius: 6px;
   margin-bottom: 12px;
+}
+
+/* HRIS portal badge — gold tones */
+.ey-gold {
+  color: var(--gold);
+  background: rgba(189,148,20,0.1);
+  border: 1px solid rgba(189,148,20,0.35);
+}
+
+/* Employee portal badge — dark green */
+.ey-green {
   color: var(--green-primary);
   background: rgba(41,67,6,0.1);
   border: 1px solid rgba(41,67,6,0.25);
@@ -950,11 +961,12 @@ body:not(.show-ess) .bcon {
     top: auto;
     bottom: auto;
     width: 100%;
-    height: auto;
     padding: 0;
     background: transparent;
     box-shadow: none;
-    display: block;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
     border-radius: 28px 28px 0 0;
     margin-top: 0;
     transform: none;
@@ -969,29 +981,34 @@ body:not(.show-ess) .bcon {
     width: 100%;
     max-width: 100%;
     border-radius: 28px 28px 0 0;
-    padding: 32px 20px 40px;
+    padding: 28px 20px max(40px, env(safe-area-inset-bottom, 40px));
     box-shadow: 0 -8px 40px rgba(4,82,2,0.22);
-    min-height: calc(100vh - 220px);
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
     opacity: 1;
     pointer-events: auto;
     transform: none;
     animation: mobileCardIn 0.35s ease both;
     inset: auto;
     margin: 0;
-    height: auto;
   }
 
-  @supports (height: 100svh) {
-    .form-inner.hris,
-    .form-inner.essf {
-      min-height: calc(100svh - 220px);
-    }
+  /* Push the form (and footer beneath it) toward the bottom of the card */
+  .form-inner.hris #hrisForm,
+  .form-inner.essf #essForm {
+    margin-top: auto;
+  }
+
+  /* Footer sticks right below the form */
+  .form-inner .ffoot {
+    margin-top: 16px;
   }
 
   /* Show/hide cards */
   .form-inner.essf               { display: none; }
   .show-ess .form-inner.hris     { display: none; }
-  .show-ess .form-inner.essf     { display: block; }
+  .show-ess .form-inner.essf     { display: flex; }
 
   /* Mobile tab switcher */
   .mob-tabs {
