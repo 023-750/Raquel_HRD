@@ -192,7 +192,7 @@ render_login:
   <title>Login - Raquel Pawnshop HRIS</title>
   <meta name="description" content="Login to Raquel Pawnshop Human Resource Information System">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/raquel-hris-login.css">
+  <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/raquel-hris-login.css?v=<?php echo filemtime(__DIR__ . '/assets/css/raquel-hris-login.css'); ?>">
   <noscript>
     <style>
       body::before {
