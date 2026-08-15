@@ -606,7 +606,7 @@ switch ($effective_role) {
                     <button class="notification-btn" data-bs-toggle="dropdown" aria-expanded="false" id="mobileGearBtn" style="color: #074B02;">
                         <i class="fas fa-cog"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); min-width: 210px;">
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); min-width: 220px;">
                         <li>
                             <span class="dropdown-item-text fw-bold d-flex align-items-center" style="font-size:0.85rem;color:var(--text-muted); white-space: nowrap;">
                                 <i class="fas fa-user-circle me-2"></i><?php echo e($_SESSION['full_name']); ?>
@@ -618,32 +618,108 @@ switch ($effective_role) {
                                 <i class="fas fa-tachometer-alt me-2" style="width: 20px; text-align: center;"></i>Dashboard
                             </a>
                         </li>
-                        <?php if (isset($_SESSION['employee_id']) && $conn && isDeptManagerRole($conn, (int)$_SESSION['employee_id'])): ?>
+                        <?php
+                        $_g_emp_id = (int)($_SESSION['employee_id'] ?? 0);
+                        $_g_is_dept_mgr = false;
+                        if ($_g_emp_id > 0 && $conn) {
+                            $_g_is_dept_mgr = isDeptManagerRole($conn, $_g_emp_id);
+                        }
+                        if ($_g_is_dept_mgr):
+                            $_g_dept_pending = $m_dept_review_count ?? 0;
+                            if (!isset($m_dept_review_count) && $conn) {
+                                $_g_dept_stmt = $conn->prepare("
+                                    SELECT e.evaluation_id, e.employee_id
+                                    FROM evaluations e
+                                    JOIN employees emp ON e.employee_id = emp.employee_id
+                                    WHERE e.status = 'Pending Dept Manager'
+                                      AND e.deleted_at IS NULL
+                                      AND emp.is_active = 1
+                                      AND emp.deleted_at IS NULL
+                                ");
+                                if ($_g_dept_stmt) {
+                                    $_g_dept_stmt->execute();
+                                    $_g_pending_rows = $_g_dept_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                                    $_g_dept_stmt->close();
+                                    foreach ($_g_pending_rows as $_g_pending) {
+                                        if (isDeptManagerOfEmployee($conn, (int)$_SESSION['user_id'], (int)$_g_pending['employee_id'])) {
+                                            $_g_dept_pending++;
+                                        }
+                                    }
+                                }
+                            }
+                        ?>
                             <li>
-                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" style="white-space: nowrap;">
-                                    <i class="fas fa-user-shield me-2" style="width: 20px; text-align: center;"></i>Dept Manager Review
+                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" style="white-space: nowrap;">
+                                    <span><i class="fas fa-user-shield me-2" style="width: 20px; text-align: center;"></i>Dept Manager Review</span>
+                                    <?php if ($_g_dept_pending > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-2"><?php echo $_g_dept_pending > 9 ? '9+' : $_g_dept_pending; ?></span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                         <?php endif; ?>
                         <?php
+                        // Confirm Rating — for immediate heads outside HR department
+                        $_g_is_sup = false;
+                        $_g_dept_name = '';
+                        if ($_g_emp_id > 0 && $conn) {
+                            $_g_is_sup = hasSupervisorPrivileges($conn, $_g_emp_id);
+                            if ($_g_is_sup) {
+                                $_g_dep_r = $conn->query("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = $_g_emp_id LIMIT 1");
+                                if ($_g_dep_r) {
+                                    $_g_dept_name = $_g_dep_r->fetch_assoc()['department_name'] ?? '';
+                                }
+                            }
+                        }
+                        if ($_g_is_sup && !$_g_is_dept_mgr && $_g_dept_name !== 'Human Resources'):
+                            $_g_confirm_pending = $m_confirm_rating_count ?? 0;
+                            if (!isset($m_confirm_rating_count) && $conn) {
+                                $_g_c_stmt = $conn->prepare("
+                                    SELECT ev.evaluation_id, ev.employee_id
+                                    FROM evaluations ev
+                                    JOIN employees e ON ev.employee_id = e.employee_id
+                                    WHERE e.employee_id <> ?
+                                      AND ev.status IN ('Pending Dept Supervisor','Pending Supervisor')
+                                      AND ev.deleted_at IS NULL
+                                      AND e.is_active = 1
+                                      AND e.deleted_at IS NULL
+                                ");
+                                if ($_g_c_stmt) {
+                                    $_g_c_stmt->bind_param('i', $_g_emp_id);
+                                    $_g_c_stmt->execute();
+                                    $_g_confirm_rows = $_g_c_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                                    $_g_c_stmt->close();
+                                    foreach ($_g_confirm_rows as $_g_confirm_row) {
+                                        if (isSupervisorOfEmployee($conn, (int)$_SESSION['user_id'], (int)$_g_confirm_row['employee_id'])) {
+                                            $_g_confirm_pending++;
+                                        }
+                                    }
+                                }
+                            }
+                        ?>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" style="white-space: nowrap;">
+                                    <span><i class="fas fa-user-check me-2" style="width: 20px; text-align: center;"></i>Confirm Rating</span>
+                                    <?php if ($_g_confirm_pending > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-2"><?php echo $_g_confirm_pending > 9 ? '9+' : $_g_confirm_pending; ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/my-performance.php" style="white-space: nowrap;">
+                                <i class="fas fa-chart-line me-2" style="width: 20px; text-align: center;"></i>My Performance
+                            </a>
+                        </li>
+                        <?php
                         // My Team — for supervisors/managers excluding Human Resources dept
-                        if (isset($_SESSION['employee_id']) && $conn) {
-                            $_gear_sup_id = (int)$_SESSION['employee_id'];
-                            if (hasSupervisorPrivileges($conn, $_gear_sup_id)) {
-                                $_gear_dep = $conn->query("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = $_gear_sup_id LIMIT 1");
-                                $_gear_dept_name = $_gear_dep ? ($_gear_dep->fetch_assoc()['department_name'] ?? '') : '';
-                                if ($_gear_dept_name !== 'Human Resources'):
+                        if ($_g_is_sup && $_g_dept_name !== 'Human Resources'):
                         ?>
                             <li>
                                 <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/team-list.php" style="white-space: nowrap;">
                                     <i class="fas fa-users me-2" style="width: 20px; text-align: center;"></i>My Team
                                 </a>
                             </li>
-                        <?php
-                                endif;
-                            }
-                        }
-                        ?>
+                        <?php endif; ?>
                         <li>
                             <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/profile-settings.php" style="white-space: nowrap;">
                                 <i class="fas fa-user-cog me-2" style="width: 20px; text-align: center;"></i>Change Password

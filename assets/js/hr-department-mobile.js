@@ -664,7 +664,6 @@
     ============================================================ */
     function initHRBackToTop() {
         if (window.innerWidth >= 992) return;
-        if (window.location.pathname.indexOf('add-employee.php') !== -1) return;
 
         // 1. Create floating back to top button if not exists
         let floatBtn = document.getElementById('hrFloatingTopBtn');
