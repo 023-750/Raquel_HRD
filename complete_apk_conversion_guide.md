@@ -1,6 +1,9 @@
 # 📱 Master Guide: Converting PHP/MySQL HRIS to Direct-Launch Android APK
 
-This guide provides an end-to-end reference for packaging the **Raquel Pawnshop HRIS** web system into an instant, direct-launch native Android APK for testing the **Employee Evaluation Portal**.
+This guide provides an end-to-end, zero-error reference for packaging the **Raquel Pawnshop HRIS** web system into an instant, direct-launch native Android APK for testing the **Employee Evaluation Portal**.
+
+> [!IMPORTANT]
+> Follow every step in sequence. Pay special attention to matching your **Package Name** and **Theme Name** across all files to avoid build errors.
 
 ---
 
@@ -21,7 +24,10 @@ This guide provides an end-to-end reference for packaging the **Raquel Pawnshop 
 ### 1.1 Start XAMPP
 1. Open **XAMPP Control Panel**.
 2. Click **Start** for both **Apache** and **MySQL**.
-3. Verify your site works locally: `http://localhost/FINAL_RAQUEL_PAWNSHOP_HRD/`
+3. Verify your site works locally in your PC browser:
+   ```
+   http://localhost/FINAL_RAQUEL_PAWNSHOP_HRD/
+   ```
 
 ### 1.2 Start ngrok Tunnel
 1. Open PowerShell or Command Prompt.
@@ -33,12 +39,12 @@ This guide provides an end-to-end reference for packaging the **Raquel Pawnshop 
    ```powershell
    ngrok http 80
    ```
-4. Copy the **HTTPS** URL generated under `Forwarding` (e.g. `https://your-subdomain.ngrok-free.dev`).
+4. Copy the **HTTPS** URL generated under `Forwarding` (e.g. `https://german-subaxillary-elina.ngrok-free.dev`).
 
 ### 1.3 Test Tunnel in Mobile Browser
-Open the following URL on your phone's browser to ensure the tunnel is reachable:
+Open the following URL on your phone's browser to ensure your local server is publicly reachable:
 ```
-https://your-subdomain.ngrok-free.dev/FINAL_RAQUEL_PAWNSHOP_HRD/employee/index.php
+https://YOUR-SUBDOMAIN.ngrok-free.dev/FINAL_RAQUEL_PAWNSHOP_HRD/employee/index.php
 ```
 
 ---
@@ -47,11 +53,11 @@ https://your-subdomain.ngrok-free.dev/FINAL_RAQUEL_PAWNSHOP_HRD/employee/index.p
 
 1. Launch **Android Studio**.
 2. Click **New Project** (or **File → New → New Project**).
-3. Select **`Empty Views Activity`** (Do NOT choose "Empty Activity" which uses Jetpack Compose).
+3. Select **`Empty Views Activity`** (⚠️ **Do NOT choose "Empty Activity"** which uses Jetpack Compose).
 4. Configure the project settings:
-   - **Name**: `RaquelPawnshopHRIS`
-   - **Package name**: `com.example.raquelpawnshophris`
-   - **Save location**: `D:\aok` (or your preferred folder)
+   - **Name**: `Capstone_app` *(or `RaquelPawnshopHRIS`)*
+   - **Package name**: `com.example.capstone_app`
+   - **Save location**: `D:\Capstone_app`
    - **Language**: **`Java`**
    - **Minimum SDK**: **`API 24 (Android 7.0)`**
 5. Click **Finish** and wait for the Gradle sync bar at the bottom right to complete.
@@ -60,12 +66,13 @@ https://your-subdomain.ngrok-free.dev/FINAL_RAQUEL_PAWNSHOP_HRD/employee/index.p
 
 ## 💻 Phase 3: Android App Architecture & Source Code
 
-Below is the complete set of source files that power the Android WebView application for **instant launch** into the Employee Login page.
+Below is the complete set of source files required for an error-free build.
 
+Project Directory Structure:
 ```
-D:\aok\app\src\main\
+D:\Capstone_app\app\src\main\
 ├── AndroidManifest.xml
-├── java/com/example/raquelpawnshophris/
+├── java/com/example/capstone_app/
 │   └── MainActivity.java
 └── res/
     ├── layout/
@@ -79,14 +86,16 @@ D:\aok\app\src\main\
 ---
 
 ### File 1: `AndroidManifest.xml`
-*Declares permissions and sets `MainActivity` directly as the primary launcher activity.*
+> Path: `app/src/main/AndroidManifest.xml`
+
+Declares network permissions, cleartext HTTP support, and sets `MainActivity` as the primary launcher activity.
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.raquelpawnshophris">
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Network & Hardware Permissions -->
+    <!-- Network & Hardware Permissions (CRITICAL FOR WEBVIEW) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -95,11 +104,13 @@ D:\aok\app\src\main\
 
     <application
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:label="Raquel Pawnshop HRIS"
         android:supportsRtl="true"
-        android:theme="@style/Theme.RaquelHRIS"
+        android:theme="@style/Theme.Capstone_app"
         android:usesCleartextTraffic="true"
         android:hardwareAccelerated="true">
 
@@ -123,10 +134,13 @@ D:\aok\app\src\main\
 ---
 
 ### File 2: `MainActivity.java`
-*Controls the WebView container, session cookies, custom User-Agent, progress bar, file uploads, and back-button navigation.*
+> Path: `app/src/main/java/com/example/capstone_app/MainActivity.java`
+
+> [!CAUTION]
+> **Check Line 1**: Line 1 MUST match your actual package name (e.g. `package com.example.capstone_app;`). If you named your project differently in Android Studio, update line 1 accordingly!
 
 ```java
-package com.example.raquelpawnshophris;
+package com.example.capstone_app;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -175,15 +189,15 @@ public class MainActivity extends AppCompatActivity {
 
     // File chooser launcher for profile picture uploads
     private final ActivityResultLauncher<Intent> fileChooserLauncher =
-        registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-            if (fileUploadCallback == null) return;
-            Uri[] results = null;
-            if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                results = new Uri[]{ result.getData().getData() };
-            }
-            fileUploadCallback.onReceiveValue(results);
-            fileUploadCallback = null;
-        });
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (fileUploadCallback == null) return;
+                Uri[] results = null;
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    results = new Uri[]{ result.getData().getData() };
+                }
+                fileUploadCallback.onReceiveValue(results);
+                fileUploadCallback = null;
+            });
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -260,10 +274,10 @@ public class MainActivity extends AppCompatActivity {
             public void onReceivedError(WebView v, int c, String desc, String u) {
                 progressBar.setVisibility(View.GONE);
                 String html = "<html><body style='font-family:sans-serif;text-align:center;padding:40px;background:#F4F6F8;'>"
-                    + "<h2 style='color:#074B02;'>Connection Error</h2><p>" + desc + "</p>"
-                    + "<button onclick='location.reload()' style='padding:12px 28px;background:#074B02;"
-                    + "color:white;border:none;border-radius:8px;font-size:16px;'>Retry</button>"
-                    + "</body></html>";
+                        + "<h2 style='color:#074B02;'>Connection Error</h2><p>" + desc + "</p>"
+                        + "<button onclick='location.reload()' style='padding:12px 28px;background:#074B02;"
+                        + "color:white;border:none;border-radius:8px;font-size:16px;'>Retry</button>"
+                        + "</body></html>";
                 v.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
             }
 
@@ -307,15 +321,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onJsAlert(WebView v, String url, String msg, JsResult r) {
                 new AlertDialog.Builder(MainActivity.this).setMessage(msg)
-                    .setPositiveButton("OK", (d, w) -> r.confirm()).setCancelable(false).show();
+                        .setPositiveButton("OK", (d, w) -> r.confirm()).setCancelable(false).show();
                 return true;
             }
 
             @Override
             public boolean onJsConfirm(WebView v, String url, String msg, JsResult r) {
                 new AlertDialog.Builder(MainActivity.this).setMessage(msg)
-                    .setPositiveButton("Yes", (d, w) -> r.confirm())
-                    .setNegativeButton("No",  (d, w) -> r.cancel()).setCancelable(false).show();
+                        .setPositiveButton("Yes", (d, w) -> r.confirm())
+                        .setNegativeButton("No",  (d, w) -> r.cancel()).setCancelable(false).show();
                 return true;
             }
         });
@@ -336,11 +350,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         new AlertDialog.Builder(this)
-            .setTitle("Exit App")
-            .setMessage("Are you sure you want to exit?")
-            .setPositiveButton("Exit",   (d, w) -> finish())
-            .setNegativeButton("Cancel", null)
-            .show();
+                .setTitle("Exit App")
+                .setMessage("Are you sure you want to exit?")
+                .setPositiveButton("Exit",   (d, w) -> finish())
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     @Override protected void onSaveInstanceState(@NonNull Bundle out) { super.onSaveInstanceState(out); webView.saveState(out); }
@@ -353,7 +367,8 @@ public class MainActivity extends AppCompatActivity {
 
 ---
 
-### File 3: `activity_main.xml` (`res/layout/activity_main.xml`)
+### File 3: `activity_main.xml`
+> Path: `app/src/main/res/layout/activity_main.xml`
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -393,7 +408,7 @@ public class MainActivity extends AppCompatActivity {
 
 ### File 4: Resource Values (`colors.xml` & `themes.xml`)
 
-**`res/values/colors.xml`**:
+> **`app/src/main/res/values/colors.xml`**:
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
@@ -404,11 +419,23 @@ public class MainActivity extends AppCompatActivity {
 </resources>
 ```
 
-**`res/values/themes.xml`**:
+> **`app/src/main/res/values/themes.xml`**:
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.RaquelHRIS" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.Capstone_app" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary_green</item>
+        <item name="colorAccent">@color/primary_gold</item>
+        <item name="android:statusBarColor">@color/primary_green</item>
+    </style>
+</resources>
+```
+
+> **`app/src/main/res/values-night/themes.xml`**:
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.Capstone_app" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/primary_green</item>
         <item name="colorAccent">@color/primary_gold</item>
         <item name="android:statusBarColor">@color/primary_green</item>
@@ -419,49 +446,119 @@ public class MainActivity extends AppCompatActivity {
 ---
 
 ### File 5: App Gradle Dependencies (`app/build.gradle.kts`)
+> Path: `app/build.gradle.kts`
 
 ```kotlin
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+android {
+    namespace = "com.example.capstone_app"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "com.example.capstone_app"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
 dependencies {
-    implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation(libs.appcompat)
+    implementation(libs.material)
+    implementation(libs.activity)
+    implementation(libs.constraintlayout)
+    implementation(libs.swiperefreshlayout)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.ext.junit)
+    androidTestImplementation(libs.espresso.core)
 }
 ```
 
 ---
 
-## ⚡ Phase 4: Build & Install APK
+### 🎨 Phase 3.5: Customizing App Icon & App Name
 
-1. In Android Studio, click **File → Sync Project with Gradle Files**.
-2. Click **Build → Generate App Bundles or APKs → Generate APKs**.
-3. When compilation finishes, click **`locate`** in the bottom-right notification popup.
-4. Transfer `app-debug.apk` to your phone and install!
+#### 1. Change App Name (App Title under launcher icon)
+1. Open `app/src/main/res/values/strings.xml`.
+2. Change the `app_name` string:
+   ```xml
+   <resources>
+       <string name="app_name">Raquel HRIS</string>
+   </resources>
+   ```
+
+#### 2. Create Custom App Icon using Android Studio Image Asset Studio (Recommended)
+1. Right-click the **`app`** folder (or `res` folder) in the left Android Studio project menu.
+2. Go to **New → Image Asset**.
+3. In the **Asset Studio** window:
+   - **Icon Type**: Select **`Launcher Icons (Adaptive and Legacy)`**.
+   - **Name**: Leave as **`ic_launcher`** (this automatically overwrites standard defaults).
+   - **Foreground Layer**:
+     - Select **`Image`** under Asset Type.
+     - Click the folder icon next to **Path** and browse to your logo image file (`.png`, `.jpg`, or `.svg`).
+     - Adjust the **Resize** slider so your logo fits nicely inside the green circle guide.
+   - **Background Layer**:
+     - Select **`Color`** under Asset Type and set your brand color (e.g. `#074B02` green), OR select **`Image`** for a background texture.
+4. Click **Next**, then click **Finish**.
+5. Android Studio will automatically generate all icon densities (`hdpi`, `xhdpi`, `xxhdpi`, `xxxhdpi`, and adaptive XML icons) inside `res/mipmap/`.
 
 ---
 
-## 🎓 Phase 5: Key Lessons Learned & Troubleshooting Gotchas
+## ⚡ Phase 4: Build & Install APK
 
-### 1. Direct Launch (No Splash Screen)
-- `MainActivity` is declared directly as the `MAIN` launcher activity in `AndroidManifest.xml`. Opening the app launches `employee/index.php` immediately with zero splash delay.
+1. In Android Studio, click **File → Sync Project with Gradle Files** (or click the 🐘 Elephant icon in top-right bar).
+2. Click **Build → Generate App Bundles or APKs → Build APK(s)**.
+3. When compilation finishes, click **`locate`** in the bottom-right notification popup.
+4. Transfer `app-debug.apk` to your Android device via USB/Drive and install!
 
-### 2. The Two Login Portals
-- **Root Login (`index.php`)**: For Admin & HR roles. If an Employee attempts to log in here, PHP rejects it.
-- **Employee Login (`employee/index.php`)**: The target entry point for the APK. `START_URL` points directly to `BASE_URL + "/employee/index.php"`.
+---
 
-### 3. ngrok Interstitial Warning Page (Missing CSS & Broken Login)
-- **Problem**: ngrok intercepts secondary asset requests (CSS, JS) and POST forms, returning an HTML warning page instead of CSS/login response.
-- **Solution**: Set a custom `User-Agent` string on the WebView:
+## 🎓 Phase 5: Troubleshooting & Zero-Error Checksheet
+
+If you encounter any issue during setup, check this list:
+
+### 1. `Package name does not match declared package`
+- **Cause**: Line 1 of `MainActivity.java` does not match the actual folder directory or Gradle namespace.
+- **Solution**: Ensure line 1 is `package com.example.capstone_app;` (or matches your exact project package name).
+
+### 2. `AAPT: error: resource style/Theme.Capstone_app not found`
+- **Cause**: The theme name in `AndroidManifest.xml` (`android:theme="@style/Theme.Capstone_app"`) doesn't match the `<style name="...">` in `themes.xml`.
+- **Solution**: Make sure both files specify the exact same style name (`Theme.Capstone_app`).
+
+### 3. Connection Error / `net::ERR_NAME_NOT_RESOLVED` inside APK
+- **Cause**: Missing `<uses-permission android:name="android.permission.INTERNET" />` in `AndroidManifest.xml` OR ngrok tunnel was closed/restarted.
+- **Solution**: Ensure the permission tag is present in `AndroidManifest.xml`, check that ngrok is running, and update `BASE_URL` in `MainActivity.java`.
+
+### 4. Broken CSS/Formatting or ngrok Interstitial Warning Page
+- **Cause**: ngrok serves an HTML warning page for asset requests if no custom User-Agent is sent.
+- **Solution**: Handled automatically in `MainActivity.java` via:
   ```java
   s.setUserAgentString("RaquelHRISNativeApp/1.0 Mobile");
   ```
-  ngrok automatically bypasses the warning page for non-browser/custom User-Agents on ALL requests.
 
-### 4. File Encoding (BOM / `\ufeff`)
-- **Problem**: Saving Java files with UTF-8 BOM encoding causes `illegal character: '\ufeff'` compilation errors.
-- **Solution**: Save Java source files strictly in **UTF-8 Without BOM**.
+### 5. `illegal character: '\ufeff'` Compiler Error
+- **Cause**: Java file was saved with UTF-8 BOM encoding.
+- **Solution**: Save Java files in UTF-8 Without BOM.
 
-### 5. Correct `FileChooserParams` Import
-- Use `import android.webkit.WebChromeClient.FileChooserParams;` instead of `import android.webkit.FileChooserParams;`.
+### 6. AAR Metadata Error: `Dependency requires compileSdk 36 or later`
+- **Cause**: AndroidX dependencies (`androidx.activity:1.13.0`, `core-ktx:1.18.0`, etc.) require compilation against Android API 36+.
+- **Solution**: Set `compileSdk = 36` in `app/build.gradle.kts`. You can safely leave `targetSdk = 35` for runtime behavior stability.
 
-### 6. Dynamic ngrok Tunnel URLs
-- Every time ngrok restarts, it generates a new HTTPS domain. Update `BASE_URL` in `MainActivity.java` whenever the tunnel restarts.
+
