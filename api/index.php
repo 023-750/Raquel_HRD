@@ -1,12 +1,22 @@
 <?php
 // Router for Vercel serverless deployment
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$file = __DIR__ . '/..' . $uri;
 
-if ($uri !== '/' && file_exists($file) && !is_dir($file)) {
+// Strip leading slash
+$uri = ltrim($uri, '/');
+
+// Default to index.php at root
+if (empty($uri) || $uri === '/') {
+    $uri = 'index.php';
+}
+
+$base = __DIR__ . '/..';
+$file = $base . '/' . $uri;
+
+// Serve static assets with correct MIME types
+if (file_exists($file) && !is_dir($file)) {
     $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-    
-    // Static assets MIME types
+
     $mimes = [
         'css'   => 'text/css; charset=UTF-8',
         'js'    => 'application/javascript; charset=UTF-8',
@@ -21,18 +31,27 @@ if ($uri !== '/' && file_exists($file) && !is_dir($file)) {
         'woff2' => 'font/woff2',
         'ttf'   => 'font/ttf',
         'eot'   => 'application/vnd.ms-fontobject',
-        'json'  => 'application/json'
+        'json'  => 'application/json',
+        'mp3'   => 'audio/mpeg',
+        'wav'   => 'audio/wav',
     ];
-    
+
     if (isset($mimes[$ext])) {
         header("Content-Type: " . $mimes[$ext]);
         header("Cache-Control: public, max-age=3600");
         readfile($file);
         exit;
     }
-    
-    require $file;
-} else {
-    require __DIR__ . '/../index.php';
+
+    if ($ext === 'php') {
+        // Change working directory to the file's directory so relative paths work
+        chdir(dirname($file));
+        require $file;
+        exit;
+    }
 }
+
+// Default: serve root index.php
+chdir($base);
+require $base . '/index.php';
 ?>
