@@ -39,23 +39,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_movement'])) {
         redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Career Movements could not be initialized.');
     }
 
-    $department_id  = (int)  ($_POST['department_id']   ?? 0);
-    $employee_id    = (int)  ($_POST['employee_id']      ?? 0);
-    $movement_type  = trim(  $_POST['movement_type']     ?? '');
-    $new_position   = trim(  $_POST['new_position']      ?? '');
-    $new_branch_id  = ($_POST['new_branch_id'] ?? '') !== '' ? (int) $_POST['new_branch_id'] : null;
-    $effective_date = trim(  $_POST['effective_date']    ?? '');
-    $reason         = trim(  $_POST['reason']            ?? '');
-    $allowed_types  = ['Promotion', 'Transfer', 'Demotion', 'Role Change'];
+    $department_id     = (int)  ($_POST['department_id']     ?? 0);
+    $new_department_id = (int)  ($_POST['new_department_id'] ?? $department_id);
+    $employee_id       = (int)  ($_POST['employee_id']        ?? 0);
+    $movement_type     = trim(  $_POST['movement_type']       ?? '');
+    $new_position      = trim(  $_POST['new_position']        ?? '');
+    $new_branch_id     = ($_POST['new_branch_id'] ?? '') !== '' ? (int) $_POST['new_branch_id'] : null;
+    $effective_date    = trim(  $_POST['effective_date']      ?? '');
+    $reason            = trim(  $_POST['reason']              ?? '');
+    $allowed_types     = ['Promotion', 'Transfer', 'Demotion', 'Role Change'];
 
     // Basic validation
-    if ($department_id <= 0 || $employee_id <= 0 || !in_array($movement_type, $allowed_types, true) || $effective_date === '' || $reason === '') {
+    if ($employee_id <= 0 || !in_array($movement_type, $allowed_types, true) || $effective_date === '' || $reason === '') {
         redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Please complete all required Career Movement fields.');
     }
 
     if ($movement_type === 'Transfer') {
-        if (empty($new_branch_id)) {
-            redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'New Branch is required for a Transfer.');
+        if (empty($new_branch_id) && empty($new_position)) {
+            redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'New Branch or New Position is required for a Transfer.');
         }
     } else {
         if ($new_position === '') {
@@ -78,20 +79,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_movement'])) {
     }
     $mgr_check->close();
 
-    // Validate employee belongs to selected department (and branch if supervisor is branch-scoped)
+    // Validate employee exists and is active (and within authorized branch if supervisor is branch-scoped)
     if ($sup_branch_id > 0) {
-        $emp_chk = $conn->prepare("SELECT employee_id, job_title, branch_id FROM employees WHERE employee_id=? AND department_id=? AND branch_id=? AND is_active=1 LIMIT 1");
-        $emp_chk->bind_param("iii", $employee_id, $department_id, $sup_branch_id);
+        $emp_chk = $conn->prepare("SELECT employee_id, job_title, branch_id, department_id FROM employees WHERE employee_id=? AND branch_id=? AND is_active=1 LIMIT 1");
+        $emp_chk->bind_param("ii", $employee_id, $sup_branch_id);
     } else {
-        $emp_chk = $conn->prepare("SELECT employee_id, job_title, branch_id FROM employees WHERE employee_id=? AND department_id=? AND is_active=1 LIMIT 1");
-        $emp_chk->bind_param("ii", $employee_id, $department_id);
+        $emp_chk = $conn->prepare("SELECT employee_id, job_title, branch_id, department_id FROM employees WHERE employee_id=? AND is_active=1 LIMIT 1");
+        $emp_chk->bind_param("i", $employee_id);
     }
     $emp_chk->execute();
     $employee = $emp_chk->get_result()->fetch_assoc();
     $emp_chk->close();
 
     if (!$employee) {
-        redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Selected employee is not valid or not within your authorized department/branch.');
+        redirectWith(BASE_URL . '/supervisor/career-movements.php', 'danger', 'Selected employee is not valid or not within your authorized scope.');
     }
 
     $previous_branch_id = !empty($employee['branch_id']) ? (int)$employee['branch_id'] : null;
@@ -365,10 +366,20 @@ $departments = [];
 while ($row = $dept_result->fetch_assoc()) $departments[] = $row;
 
 // Job titles grouped by department (for JS)
-$jt_result = $conn->query("SELECT job_title_id, job_title, department_id FROM job_titles WHERE is_active=1 ORDER BY department_id, job_title");
+$jt_result = $conn->query("
+    SELECT jt.job_title_id, jt.job_title, jt.department_id, jt.rank_category_id, rc.level_order
+    FROM job_titles jt
+    LEFT JOIN rank_categories rc ON jt.rank_category_id = rc.rank_category_id
+    WHERE jt.is_active=1
+    ORDER BY jt.department_id, rc.level_order ASC, jt.job_title ASC
+");
 $dept_positions = []; // dept_id => [positions]
 while ($row = $jt_result->fetch_assoc()) {
-    $dept_positions[$row['department_id']][] = ['id' => $row['job_title_id'], 'title' => $row['job_title']];
+    $dept_positions[$row['department_id']][] = [
+        'id'          => $row['job_title_id'],
+        'title'       => $row['job_title'],
+        'level_order' => (int)($row['level_order'] ?? 5)
+    ];
 }
 
 // Employees grouped by department (+ branch filter)
@@ -381,10 +392,10 @@ if ($sup_branch_id > 0) {
     $emp_sql_where .= " AND e.branch_id = {$sup_branch_id}";
 }
 $emp_result = $conn->query("
-    SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title,
-           e.branch_id, e.department_id,
+    SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.job_title_id,
+           e.branch_id, e.department_id, e.rank_category_id,
            b.branch_name, d.department_name,
-           rc.rank_name
+           rc.rank_name, rc.level_order
     FROM employees e
     LEFT JOIN branches b ON e.branch_id = b.branch_id
     LEFT JOIN departments d ON e.department_id = d.department_id
@@ -664,99 +675,190 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                     <form method="POST" id="supCreateForm">
                         <?php echo csrfField(); ?>
                         <input type="hidden" name="create_movement" value="1">
-                        <div class="row g-3">
 
-                            <!-- Department -->
-                            <div class="col-lg-6">
-                                <label class="form-label fw-semibold">Department <span class="text-danger">*</span></label>
-                                <select class="form-select" name="department_id" id="supDeptSelect" required <?php echo !$movement_ready ? 'disabled' : ''; ?>>
-                                    <option value="">-- Select Department --</option>
-                                    <?php foreach ($departments as $dept): ?>
-                                        <option value="<?php echo (int)$dept['department_id']; ?>">
-                                            <?php echo e($dept['department_name']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <div class="form-text text-muted"><i class="fas fa-info-circle me-1"></i>Select a department to load employees and valid positions.</div>
+                        <!-- Step 1: Target Selection -->
+                        <div class="mb-4 p-3 rounded-3" style="background:#fafdfa;border:1px solid rgba(8,46,6,0.08);">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width:26px;height:26px;background:#082E06;color:#CBA135;font-size:.8rem;font-weight:700;">1</span>
+                                <h6 class="fw-bold mb-0 text-dark" style="letter-spacing:-0.2px;">Target Employee Selection</h6>
                             </div>
+                            <div class="row g-3">
+                                <!-- Department -->
+                                <div class="col-lg-6">
+                                    <label class="form-label fw-semibold text-secondary small">Filter Employee by Department <span class="text-muted small">(optional)</span></label>
+                                    <select class="form-select shadow-sm" name="department_id" id="supDeptSelect" <?php echo !$movement_ready ? 'disabled' : ''; ?> style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="all">-- All Departments --</option>
+                                        <?php foreach ($departments as $dept): ?>
+                                            <option value="<?php echo (int)$dept['department_id']; ?>">
+                                                <?php echo e($dept['department_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="form-text text-muted small"><i class="fas fa-info-circle me-1" style="color:#082E06;"></i>Select department filter or pick employee directly.</div>
+                                </div>
 
-                            <!-- Employee -->
-                            <div class="col-lg-6">
-                                <label class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
-                                <select class="form-select" name="employee_id" id="supEmpSelect" required disabled <?php echo !$movement_ready ? 'disabled' : ''; ?>>
-                                    <option value="">-- Select Department First --</option>
-                                </select>
-                            </div>
+                                <!-- Employee -->
+                                <div class="col-lg-6">
+                                    <label class="form-label fw-semibold text-secondary small">Select Employee <span class="text-danger">*</span></label>
+                                    <select class="form-select shadow-sm" name="employee_id" id="supEmpSelect" required <?php echo !$movement_ready ? 'disabled' : ''; ?> style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="">-- Choose Employee --</option>
+                                    </select>
+                                </div>
 
-                            <!-- Current Assignment Preview -->
-                            <div class="col-12" id="supAssignmentPreview" style="display:none;">
-                                <div class="p-3 rounded-3 border" style="background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%); border-color:#bae6fd !important;">
-                                    <div class="d-flex flex-wrap gap-4">
-                                        <div>
-                                            <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Current Department</div>
-                                            <div class="fw-bold" id="supPreviewDept">—</div>
+                                <!-- Raquel HRIS Branded Employee Profile Card -->
+                                <div class="col-12" id="supAssignmentPreview" style="display:none;">
+                                    <div class="p-3.5 rounded-3 shadow-sm position-relative overflow-hidden" style="background:linear-gradient(135deg, #082E06 0%, #163e12 100%); border:1px solid rgba(203, 161, 53, 0.45);">
+                                        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                                            <div id="supEmpAvatar" style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#BD9414,#f0c040);display:flex;align-items:center;justify-content:center;font-size:1.35rem;font-weight:800;color:#082E06;flex-shrink:0;box-shadow:0 0 0 3px rgba(203, 161, 53, 0.4);">?</div>
+                                            <div class="flex-grow-1" style="min-width:180px;">
+                                                <div class="fw-bold text-white fs-6" id="supPreviewName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                    <span class="badge" style="background:rgba(203, 161, 53, 0.22);color:#f0c040;border:1px solid rgba(203, 161, 53, 0.4);font-size:.72rem;" id="supPreviewCode">—</span>
+                                                    <span class="badge" style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:.68rem;"><i class="fas fa-user-check text-success me-1"></i>Active Staff</span>
+                                                </div>
+                                            </div>
+                                            <div class="ms-auto text-end">
+                                                <span class="badge rounded-pill px-3 py-1.5" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.22);font-size:.72rem;"><i class="fas fa-id-card me-1" style="color:#CBA135;"></i>Current Profile</span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Current Position</div>
-                                            <div class="fw-bold" id="supPreviewPos">—</div>
-                                        </div>
-                                        <div>
-                                            <div class="text-muted" style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">Current Branch</div>
-                                            <div class="fw-bold" id="supPreviewBranch">—</div>
+                                        <div class="row g-2 pt-2" style="border-top:1px solid rgba(255,255,255,0.12);">
+                                            <div class="col-4">
+                                                <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,0.6);"><i class="fas fa-sitemap me-1" style="color:#CBA135;"></i>Department</div>
+                                                <div class="fw-semibold text-white small" id="supPreviewDept">—</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,0.6);"><i class="fas fa-user-tie me-1" style="color:#CBA135;"></i>Position</div>
+                                                <div class="fw-semibold text-white small" id="supPreviewPos">—</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,0.6);"><i class="fas fa-store me-1" style="color:#CBA135;"></i>Branch</div>
+                                                <div class="fw-semibold text-white small" id="supPreviewBranch">—</div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Movement Type -->
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Movement Type <span class="text-danger">*</span></label>
-                                <select class="form-select" name="movement_type" id="supMovTypeSelect" required <?php echo !$movement_ready ? 'disabled' : ''; ?>>
-                                    <option value="">-- Select type --</option>
-                                    <option value="Transfer">Transfer</option>
-                                    <option value="Promotion">Promotion</option>
-                                    <option value="Demotion">Demotion</option>
-                                    <option value="Role Change">Role Change</option>
-                                </select>
-                            </div>
-
-                            <!-- New Position (dynamic dropdown) -->
-                            <div class="col-md-4" id="supPositionWrapper">
-                                <label class="form-label fw-semibold" id="supPositionLabel">New Position <span class="text-danger" id="supPositionAsterisk">*</span></label>
-                                <select class="form-select" name="new_position" id="supPositionSelect" required disabled <?php echo !$movement_ready ? 'disabled' : ''; ?>>
-                                    <option value="">-- Select Department First --</option>
-                                </select>
-                                <div class="form-text text-muted" id="supPositionHint">Only valid positions for the selected department are shown.</div>
-                            </div>
-
-                            <!-- New Branch -->
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold" id="supBranchLabel">New Branch</label>
-                                <select class="form-select" name="new_branch_id" id="supBranchSelect" <?php echo !$movement_ready ? 'disabled' : ''; ?>>
-                                    <option value="">No branch change</option>
-                                    <?php foreach ($branches as $br): ?>
-                                        <option value="<?php echo (int)$br['branch_id']; ?>"><?php echo e($br['branch_name']); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <div class="form-text text-muted" id="supBranchHint"></div>
-                            </div>
-
-                            <!-- Effective Date -->
-                            <div class="col-md-4">
-                                <label class="form-label fw-semibold">Effective Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" name="effective_date" required <?php echo !$movement_ready ? 'disabled' : ''; ?>>
-                            </div>
-
-                            <!-- Reason -->
-                            <div class="col-md-8">
-                                <label class="form-label fw-semibold">Reason <span class="text-danger">*</span></label>
-                                <textarea class="form-control" name="reason" rows="3" placeholder="Enter the justification for this career movement." required <?php echo !$movement_ready ? 'disabled' : ''; ?>></textarea>
-                            </div>
-
                         </div>
-                        <div class="d-flex justify-content-end mt-4">
-                            <button type="submit" class="btn btn-primary px-4" <?php echo !$movement_ready ? 'disabled' : ''; ?>>
-                                <i class="fas fa-paper-plane me-1"></i>Submit for Review
+
+                        <!-- Step 2: Movement Details -->
+                        <div class="mb-4 p-3 rounded-3" style="background:#fafdfa;border:1px solid rgba(8,46,6,0.08);">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width:26px;height:26px;background:#082E06;color:#CBA135;font-size:.8rem;font-weight:700;">2</span>
+                                <h6 class="fw-bold mb-0 text-dark" style="letter-spacing:-0.2px;">Movement Action Details</h6>
+                            </div>
+                            <div class="row g-3">
+                                <!-- Movement Type -->
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary small">Movement Type <span class="text-danger">*</span></label>
+                                    <select class="form-select shadow-sm" name="movement_type" id="supMovTypeSelect" required <?php echo !$movement_ready ? 'disabled' : ''; ?> style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="">-- Select type --</option>
+                                        <option value="Transfer">Transfer</option>
+                                        <option value="Promotion">Promotion</option>
+                                        <option value="Demotion">Demotion</option>
+                                        <option value="Role Change">Role Change</option>
+                                    </select>
+                                </div>
+
+                                <!-- Target / New Department -->
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary small">Target Department <span class="text-danger">*</span></label>
+                                    <select class="form-select shadow-sm" name="new_department_id" id="supNewDeptSelect" required <?php echo !$movement_ready ? 'disabled' : ''; ?> style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="">-- Target Department --</option>
+                                        <?php foreach ($departments as $dept): ?>
+                                            <option value="<?php echo (int)$dept['department_id']; ?>">
+                                                <?php echo e($dept['department_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="form-text text-muted small"><i class="fas fa-sitemap me-1" style="color:#082E06;"></i>Employee can be moved to another department.</div>
+                                </div>
+
+                                <!-- New Position (dynamic dropdown) -->
+                                <div class="col-md-3" id="supPositionWrapper">
+                                    <label class="form-label fw-semibold text-secondary small" id="supPositionLabel">New Position <span class="text-danger" id="supPositionAsterisk">*</span></label>
+                                    <select class="form-select shadow-sm" name="new_position" id="supPositionSelect" required disabled <?php echo !$movement_ready ? 'disabled' : ''; ?> style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="">-- Select Target Dept First --</option>
+                                    </select>
+                                    <div class="form-text text-muted small" id="supPositionHint">Positions for target department are shown.</div>
+                                </div>
+
+                                <!-- New Branch -->
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold text-secondary small" id="supBranchLabel">New Branch</label>
+                                    <select class="form-select shadow-sm" name="new_branch_id" id="supBranchSelect" <?php echo !$movement_ready ? 'disabled' : ''; ?> style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="">No branch change</option>
+                                        <?php foreach ($branches as $br): ?>
+                                            <option value="<?php echo (int)$br['branch_id']; ?>"><?php echo e($br['branch_name']); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="form-text text-muted small" id="supBranchHint"></div>
+                                </div>
+
+                                <!-- Raquel HRIS Brand Aligned Before vs. After Impact Preview Component -->
+                                <div class="col-12" id="supImpactPreview" style="display:none;">
+                                    <div class="rounded-3 overflow-hidden shadow-sm" style="border:1px solid rgba(8, 46, 6, 0.18);">
+                                        <div class="px-3.5 py-2.5 d-flex align-items-center justify-content-between" style="background:linear-gradient(135deg, #082E06 0%, #153e12 100%);">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="fas fa-exchange-alt" style="color:#CBA135;"></i>
+                                                <span style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#ffffff;">Career Movement Impact Preview</span>
+                                            </div>
+                                            <span class="badge px-3 py-1 shadow-sm" id="supImpactTypeBadge" style="font-size:.7rem;border-radius:12px;"></span>
+                                        </div>
+                                        <div class="d-flex flex-column flex-md-row align-items-stretch">
+                                            <!-- BEFORE -->
+                                            <div class="p-3.5 flex-grow-1" style="min-width:0;background:#f8fcf8;border-right:1px solid rgba(0,0,0,0.06);">
+                                                <div class="mb-2 d-flex align-items-center gap-1.5" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#60735f;">
+                                                    <i class="fas fa-circle me-1" style="font-size:.5rem;color:#889987;"></i>Current Status
+                                                </div>
+                                                <div class="fw-bold text-dark fs-6" id="supImpactOldPos">—</div>
+                                                <div class="text-muted mt-1 small" id="supImpactOldBranch"><i class="fas fa-store me-1 text-muted"></i>—</div>
+                                            </div>
+                                            <!-- CONNECTOR ARROW -->
+                                            <div class="d-flex align-items-center justify-content-center px-3 py-2" style="background:#ffffff;border-left:1px solid rgba(0,0,0,0.04);border-right:1px solid rgba(0,0,0,0.04);">
+                                                <div class="shadow-sm rounded-circle d-flex align-items-center justify-content-center" style="width:38px;height:38px;background:#082E06;color:#CBA135;border:1.5px solid #CBA135;">
+                                                    <i class="fas fa-arrow-right fs-6 d-none d-md-block"></i>
+                                                    <i class="fas fa-arrow-down fs-6 d-block d-md-none"></i>
+                                                </div>
+                                            </div>
+                                            <!-- AFTER -->
+                                            <div class="p-3.5 flex-grow-1" style="min-width:0;background:linear-gradient(135deg,#edf7ec 0%,#f4fbf3 100%);">
+                                                <div class="mb-2 d-flex align-items-center gap-1.5" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#082E06;">
+                                                    <i class="fas fa-check-circle me-1 text-success"></i>Proposed Assignment
+                                                </div>
+                                                <div class="fw-bold text-success fs-6" id="supImpactNewPos">—</div>
+                                                <div class="text-dark fw-semibold mt-1 small" id="supImpactNewBranch"><i class="fas fa-map-marker-alt me-1 text-danger"></i>—</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Step 3: Justification & Schedule -->
+                        <div class="mb-4 p-3 rounded-3" style="background:#fafdfa;border:1px solid rgba(8,46,6,0.08);">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width:26px;height:26px;background:#082E06;color:#CBA135;font-size:.8rem;font-weight:700;">3</span>
+                                <h6 class="fw-bold mb-0 text-dark" style="letter-spacing:-0.2px;">Schedule & Justification</h6>
+                            </div>
+                            <div class="row g-3">
+                                <!-- Effective Date -->
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold text-secondary small">Effective Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control shadow-sm" name="effective_date" required <?php echo !$movement_ready ? 'disabled' : ''; ?> style="border-radius:10px;border-color:#d0d7ce;">
+                                </div>
+
+                                <!-- Reason -->
+                                <div class="col-md-8">
+                                    <label class="form-label fw-semibold text-secondary small">Reason & Justification <span class="text-danger">*</span></label>
+                                    <textarea class="form-control shadow-sm" name="reason" rows="3" placeholder="Provide clear justification for this request..." required <?php echo !$movement_ready ? 'disabled' : ''; ?> style="border-radius:10px;border-color:#d0d7ce;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between pt-3 border-top pb-5">
+                            <span class="text-muted small"><i class="fas fa-shield-alt text-success me-1"></i>Submits request for HR Manager review.</span>
+                            <button type="submit" class="btn px-4 py-2.5 fw-semibold shadow-sm text-white" <?php echo !$movement_ready ? 'disabled' : ''; ?> style="background:linear-gradient(135deg, #082E06 0%, #163e12 100%);border:1px solid #CBA135;border-radius:10px;">
+                                <i class="fas fa-paper-plane me-2" style="color:#CBA135;"></i>Submit for Review
                             </button>
                         </div>
                     </form>
@@ -804,74 +906,213 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── Elements ──────────────────────────────────────────────────────────────
     const deptSel    = document.getElementById('supDeptSelect');
     const empSel     = document.getElementById('supEmpSelect');
+    const newDeptSel = document.getElementById('supNewDeptSelect');
     const posSel     = document.getElementById('supPositionSelect');
     const preview    = document.getElementById('supAssignmentPreview');
     const prevDept   = document.getElementById('supPreviewDept');
     const prevPos    = document.getElementById('supPreviewPos');
     const prevBranch = document.getElementById('supPreviewBranch');
 
-    // ── Department change → cascade employees & positions ────────────────────
+    // ── Rank calculation helper for filtering Demotion / Promotion ─────────────
+    function parseSubRankScore(title) {
+        if (!title) return 1;
+        const t = title.trim();
+        if (/probation|training|trainee/i.test(t)) return 0;
+
+        const romanMatch = t.match(/\s+(VII|VI|V|IV|III|II|I)$/i);
+        if (romanMatch) {
+            const r = romanMatch[1].toUpperCase();
+            const map = { 'VII': 7, 'VI': 6, 'V': 5, 'IV': 4, 'III': 3, 'II': 2, 'I': 1 };
+            return map[r] || 1;
+        }
+
+        const numMatch = t.match(/\s+(\d+)$/);
+        if (numMatch) {
+            return parseInt(numMatch[1], 10);
+        }
+
+        return 1;
+    }
+
+    function getPositionRankScore(title, levelOrder) {
+        const lOrder = parseInt(levelOrder, 10) || 5;
+        // 1 = Executive, 2 = Mgmt, 3 = Manager, 4 = Supervisor, 5 = R&F
+        const categoryWeight = (10 - lOrder) * 100;
+        const subRank = parseSubRankScore(title);
+        return categoryWeight + subRank;
+    }
+
+    function updateFilteredPositions() {
+        const targetDid = (newDeptSel && newDeptSel.value) ? newDeptSel.value : (deptSel ? deptSel.value : '');
+        if (!targetDid || targetDid === 'all') {
+            posSel.innerHTML = '<option value="">-- Select Target Dept First --</option>';
+            posSel.disabled = true;
+            return;
+        }
+
+        const rawPositions = deptPositions[targetDid] || [];
+        if (rawPositions.length === 0) {
+            posSel.innerHTML = '<option value="">No positions defined for target department</option>';
+            posSel.disabled = true;
+            return;
+        }
+
+        const movType  = movTypeSel ? movTypeSel.value : '';
+        const empOpt   = empSel.options[empSel.selectedIndex];
+        const empTitle = (empOpt && empOpt.value) ? (empOpt.dataset.jobtitle || '') : '';
+        const empLOrder= (empOpt && empOpt.value) ? (empOpt.dataset.levelorder || 5) : 5;
+
+        const empScore = (empOpt && empOpt.value) ? getPositionRankScore(empTitle, empLOrder) : null;
+        const prevSelectedVal = posSel.value;
+
+        let validPositions = rawPositions.filter(pos => {
+            if (!empScore || !movType) return true;
+            const pScore = getPositionRankScore(pos.title, pos.level_order);
+            if (movType === 'Demotion') {
+                return pScore < empScore; // Demotion: ONLY LOWER RANKS
+            }
+            if (movType === 'Promotion') {
+                return pScore > empScore; // Promotion: ONLY HIGHER RANKS
+            }
+            return true;
+        });
+
+        posSel.innerHTML = '<option value="">-- Select New Position --</option>';
+
+        if (validPositions.length === 0) {
+            if (movType === 'Demotion') {
+                posSel.innerHTML = '<option value="">No lower rank positions available in target department</option>';
+            } else if (movType === 'Promotion') {
+                posSel.innerHTML = '<option value="">No higher rank positions available in target department</option>';
+            } else {
+                posSel.innerHTML = '<option value="">No valid positions found</option>';
+            }
+            posSel.disabled = true;
+            return;
+        }
+
+        let isStillValid = false;
+        validPositions.forEach(pos => {
+            const opt = document.createElement('option');
+            opt.value = pos.title;
+            opt.textContent = pos.title;
+            if (pos.title === prevSelectedVal) {
+                opt.selected = true;
+                isStillValid = true;
+            }
+            posSel.appendChild(opt);
+        });
+
+        if (!isStillValid && prevSelectedVal) {
+            posSel.value = '';
+        }
+
+        posSel.disabled = false;
+    }
+
+    // ── Department filter change → load employees ────────────────────────────
     deptSel.addEventListener('change', function () {
         const did = this.value;
 
-        // Reset employee dropdown
-        empSel.innerHTML = '<option value="">-- Select Employee --</option>';
-        empSel.disabled  = !did;
-
-        // Reset position dropdown
-        posSel.innerHTML = '<option value="">-- Select New Position --</option>';
-        posSel.disabled  = !did;
-
-        // Hide preview
+        empSel.innerHTML = '<option value="">-- Choose Employee --</option>';
         preview.style.display = 'none';
 
-        if (!did) return;
-
-        // Load employees
-        const emps = deptEmployees[did] || [];
-        if (emps.length === 0) {
-            empSel.innerHTML = '<option value="">No employees found in this department</option>';
+        let empsToRender = [];
+        if (!did || did === 'all') {
+            Object.keys(deptEmployees).forEach(dId => {
+                empsToRender = empsToRender.concat(deptEmployees[dId] || []);
+            });
+            empsToRender.sort((a, b) => (a.last_name + a.first_name).localeCompare(b.last_name + b.first_name));
         } else {
-            emps.forEach(function (emp) {
+            empsToRender = deptEmployees[did] || [];
+        }
+
+        if (empsToRender.length === 0) {
+            empSel.innerHTML = '<option value="">No employees found</option>';
+            empSel.disabled  = true;
+        } else {
+            empsToRender.forEach(function (emp) {
                 const opt = document.createElement('option');
                 opt.value              = emp.employee_id;
                 const rank             = emp.rank_name ? ' [' + emp.rank_name + ']' : '';
-                opt.textContent        = emp.last_name + ', ' + emp.first_name + rank + ' – ' + (emp.employee_code || emp.employee_id);
+                const deptBadge        = (!did || did === 'all') ? ' (' + (emp.department_name || 'Dept #' + emp.department_id) + ')' : '';
+                opt.textContent        = emp.last_name + ', ' + emp.first_name + rank + deptBadge + ' – ' + (emp.employee_code || emp.employee_id);
                 opt.dataset.jobtitle   = emp.job_title || '';
+                opt.dataset.levelorder = emp.level_order || 5;
+                opt.dataset.deptid     = emp.department_id || '';
                 opt.dataset.branch     = emp.branch_id || '';
                 opt.dataset.branchname = emp.branch_name || '';
                 opt.dataset.deptname   = emp.department_name || '';
                 empSel.appendChild(opt);
             });
+            empSel.disabled = false;
         }
 
-        // Load positions
-        const positions = deptPositions[did] || [];
-        if (positions.length === 0) {
-            posSel.innerHTML = '<option value="">No positions defined for this department</option>';
-        } else {
-            positions.forEach(function (pos) {
-                const opt = document.createElement('option');
-                opt.value       = pos.title;
-                opt.textContent = pos.title;
-                posSel.appendChild(opt);
-            });
-            posSel.disabled = false;
-        }
+        updateFilteredPositions();
     });
 
-    // ── Employee change → preview card ────────────────────────────────────────
+    // ── Avatar color palette (initials-based) ─────────────────────────────────
+    const avatarGradients = [
+        ['#BD9414','#f0c040'], ['#1565c0','#42a5f5'], ['#6a1b9a','#ab47bc'],
+        ['#b71c1c','#ef5350'], ['#2e7d32','#66bb6a'], ['#e65100','#ffa726'],
+        ['#00695c','#26a69a'], ['#4527a0','#7c4dff']
+    ];
+    function empAvatarGradient(name) {
+        if (!name) return ['#BD9414','#f0c040'];
+        const code = name.charCodeAt(0) % avatarGradients.length;
+        return avatarGradients[code];
+    }
+
+    // ── Employee change → preview card & set target department ────────────────
+    const empAvatarEl   = document.getElementById('supEmpAvatar');
+    const empNameEl     = document.getElementById('supPreviewName');
+    const empCodeEl     = document.getElementById('supPreviewCode');
+
     empSel.addEventListener('change', function () {
         const opt = this.options[this.selectedIndex];
         if (!opt.value) {
             preview.style.display = 'none';
+            updateFilteredPositions();
+            updateImpactPreview();
             return;
         }
+        // Build initials
+        const parts    = opt.textContent.split('–')[0].trim().split(',');
+        const lastName = parts[0] ? parts[0].trim() : '';
+        const firstName= parts[1] ? parts[1].trim().split(' ')[0] : '';
+        const initials = (lastName.charAt(0) + (firstName.charAt(0)||'')).toUpperCase() || '?';
+        const [c1, c2] = empAvatarGradient(lastName);
+        if (empAvatarEl) {
+            empAvatarEl.textContent = initials;
+            empAvatarEl.style.background = `linear-gradient(135deg,${c1},${c2})`;
+        }
+        // Full name display
+        if (empNameEl) empNameEl.textContent = (lastName && firstName) ? `${firstName} ${lastName}` : opt.textContent.split('–')[0].trim();
+        // Code (after the dash)
+        const codePart = opt.textContent.split('–')[1];
+        if (empCodeEl) empCodeEl.textContent = codePart ? codePart.trim() : (opt.dataset.jobtitle || '');
+
         prevDept.textContent   = opt.dataset.deptname   || '—';
         prevPos.textContent    = opt.dataset.jobtitle   || '—';
         prevBranch.textContent = opt.dataset.branchname || branchNames[opt.dataset.branch] || '—';
         preview.style.display  = 'block';
+
+        // Default Target Department in Step 2 to match employee's current department
+        if (newDeptSel && opt.dataset.deptid) {
+            newDeptSel.value = opt.dataset.deptid;
+        }
+
+        updateFilteredPositions();
+        updateImpactPreview();
     });
+
+    // ── Target Department change handler ──────────────────────────────────────
+    if (newDeptSel) {
+        newDeptSel.addEventListener('change', function() {
+            updateFilteredPositions();
+            updateImpactPreview();
+        });
+    }
 
     // ── Movement Type change → toggle Position required / Branch required ──────
     const movTypeSel     = document.getElementById('supMovTypeSelect');
@@ -895,7 +1136,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 posSel.setAttribute('required', 'required');
             }
             posAsterisk.style.display = '';
-            posHint.textContent = 'Only valid positions for the selected department are shown.';
+            posHint.textContent = 'Positions for target department are shown.';
         }
 
         // New Branch: required for Transfer
@@ -911,8 +1152,71 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (movTypeSel) {
-        movTypeSel.addEventListener('change', applyMovTypeRules);
+        movTypeSel.addEventListener('change', function() {
+            applyMovTypeRules();
+            updateFilteredPositions();
+            updateImpactPreview();
+        });
     }
+
+    // ── Before vs. After impact preview ──────────────────────────────────────
+    const impactPanel    = document.getElementById('supImpactPreview');
+    const impactOldPos   = document.getElementById('supImpactOldPos');
+    const impactOldBr    = document.getElementById('supImpactOldBranch');
+    const impactNewPos   = document.getElementById('supImpactNewPos');
+    const impactNewBr    = document.getElementById('supImpactNewBranch');
+    const impactTypeBadge= document.getElementById('supImpactTypeBadge');
+
+    const movTypeBadgeStyles = {
+        'Promotion'  : 'background:rgba(40,167,69,0.22);color:#2ebd59;border:1px solid rgba(40,167,69,0.45);font-weight:700;',
+        'Transfer'   : 'background:rgba(13,202,240,0.22);color:#2cd5f6;border:1px solid rgba(13,202,240,0.45);font-weight:700;',
+        'Demotion'   : 'background:rgba(220,53,69,0.22);color:#ff7878;border:1px solid rgba(220,53,69,0.45);font-weight:700;',
+        'Role Change': 'background:rgba(203,161,53,0.25);color:#f0c040;border:1px solid rgba(203,161,53,0.5);font-weight:700;',
+    };
+
+    function updateImpactPreview() {
+        const empOpt = empSel.options[empSel.selectedIndex];
+        const movType = movTypeSel ? movTypeSel.value : '';
+        const newPos  = posSel  ? posSel.value  : '';
+        const newBrId = branchSel ? branchSel.value : '';
+        const newDeptOpt = newDeptSel ? newDeptSel.options[newDeptSel.selectedIndex] : null;
+
+        // Only show panel when an employee is selected AND at least one change is selected
+        if (!empOpt || !empOpt.value || !movType || (!newPos && !newBrId && (!newDeptOpt || !newDeptOpt.value))) {
+            if (impactPanel) impactPanel.style.display = 'none';
+            return;
+        }
+
+        const currentPos    = empOpt.dataset.jobtitle   || '—';
+        const currentBranch = empOpt.dataset.branchname || branchNames[empOpt.dataset.branch] || '—';
+        const currentDept   = empOpt.dataset.deptname   || '—';
+
+        const targetDeptName = (newDeptOpt && newDeptOpt.value) ? newDeptOpt.textContent.trim() : currentDept;
+        const isCrossDept    = newDeptOpt && newDeptOpt.value && (String(newDeptOpt.value) !== String(empOpt.dataset.deptid));
+
+        const afterPos      = newPos   || currentPos;
+        const afterBranch   = newBrId  ? (branchNames[newBrId] || 'Branch #' + newBrId) : currentBranch;
+
+        if (impactOldPos)  impactOldPos.textContent  = currentPos;
+        if (impactOldBr)   impactOldBr.innerHTML   = `<i class="fas fa-store me-1 text-muted"></i>${currentBranch} <span class="text-muted small">(${currentDept})</span>`;
+        if (impactNewPos)  impactNewPos.textContent  = afterPos;
+        if (impactNewBr) {
+            const crossBadge = isCrossDept ? ` <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;"><i class="fas fa-random me-1"></i>Cross-Dept</span>` : '';
+            impactNewBr.innerHTML = `<i class="fas fa-map-marker-alt me-1 text-danger"></i>${afterBranch} <span class="text-muted small">(${targetDeptName})</span>${crossBadge}`;
+        }
+
+        if (impactTypeBadge) {
+            const style = movTypeBadgeStyles[movType] || 'background:#e2e3e5;color:#383d41;border:1px solid #d6d8db;';
+            impactTypeBadge.setAttribute('style', 'font-size:.68rem;' + style);
+            impactTypeBadge.textContent = movType;
+        }
+
+        if (impactPanel) impactPanel.style.display = 'block';
+    }
+
+    // Wire position and branch changes to impact preview
+    if (posSel)    posSel.addEventListener('change',    updateImpactPreview);
+    if (branchSel) branchSel.addEventListener('change', updateImpactPreview);
 
     // ── Search ────────────────────────────────────────────────────────────────
     const searchInput = document.getElementById('supMovSearch');
