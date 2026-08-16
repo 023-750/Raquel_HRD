@@ -84,12 +84,13 @@ require_once '../includes/header.php';
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-0 gap-4">
         <div class="d-flex align-items-center gap-4 flex-wrap">
-            <img src="<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>?v=<?php echo time(); ?>"
+            <img src="<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>"
                 onclick="viewFullImage('<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>', '<?php echo e(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? '')); ?>')"
-                class="cursor-pointer"
+                class="cursor-pointer emp-portal-avatar"
                 loading="lazy"
                 alt="Profile photo of <?php echo e(trim(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? ''))); ?>"
-                style="width:100px;height:100px;border-radius:50%;object-fit:cover;border:4px solid rgba(255,255,255,.3); box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; background-color: #ffffff;">
+                style="width:76px;height:76px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.3); box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: transform 0.2s; background-color: #ffffff; flex-shrink:0;">
+
             <div>
                 <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">
                     Employee Portal · Welcome Back</div>

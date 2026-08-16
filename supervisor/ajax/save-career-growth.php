@@ -40,8 +40,8 @@ $rank_category_id = (int)$eval['rank_category_id'];
 
 
 
-// Check if the evaluation is in Pending Supervisor state
-if ($eval['status'] !== 'Pending Supervisor') {
+// Check if the evaluation is in a pending review state for supervisor
+if (!in_array($eval['status'], ['Pending Supervisor', 'Pending HR Consolidation'], true)) {
     echo json_encode(['success' => false, 'message' => 'Evaluation details can only be edited for records pending your review.']);
     exit;
 }

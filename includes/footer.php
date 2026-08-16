@@ -129,7 +129,17 @@ if (in_array($_ft_role, ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin'])):
     $_ft_sup_pending = 0;
     if ($conn) {
         try {
-            $r = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE status IN ('Pending Dept Supervisor','Pending Supervisor') AND deleted_at IS NULL");
+            $r = $conn->query("
+                SELECT COUNT(*) as c
+                FROM evaluations ev
+                INNER JOIN employees e ON ev.employee_id = e.employee_id
+                WHERE ev.status IN ('Pending Supervisor', 'Pending HR Consolidation')
+                  AND ev.deleted_at IS NULL
+                  AND e.is_active = 1
+                  AND e.employee_id NOT IN (
+                      SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL
+                  )
+            ");
             if ($r) $_ft_sup_pending = (int)($r->fetch_assoc()['c'] ?? 0);
         } catch (Exception $e) {}
     }

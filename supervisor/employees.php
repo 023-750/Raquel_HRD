@@ -47,6 +47,20 @@ while ($r = $branches_res->fetch_assoc()) {
     $branches[] = $r['branch_name'];
 }
 
+// Build department → job titles map for dynamic front-end filtering
+$dept_job_map_res = $conn->query("
+    SELECT DISTINCT d.department_name, e.job_title
+    FROM employees e
+    LEFT JOIN departments d ON e.department_id = d.department_id
+    WHERE e.job_title IS NOT NULL AND e.job_title != ''
+      AND d.department_name IS NOT NULL
+    ORDER BY d.department_name, e.job_title
+");
+$dept_job_map = [];
+while ($r = $dept_job_map_res->fetch_assoc()) {
+    $dept_job_map[$r['department_name']][] = $r['job_title'];
+}
+
 $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
 ?>
 
@@ -546,6 +560,37 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
             link.href = link.dataset.baseHref + '&return=' + encodeURIComponent(returnUrl);
         });
     }
+
+    const DEPT_JOB_MAP = <?php echo json_encode($dept_job_map ?? []); ?>;
+    const ALL_JOB_TITLES = <?php echo json_encode($job_titles ?? []); ?>;
+
+    function updateJobTitleDropdown(selectedDept) {
+        const jtSelect = document.getElementById('filterJobTitle');
+        const currentVal = jtSelect.value;
+        jtSelect.innerHTML = '<option value="">All Titles</option>';
+
+        let validTitles = ALL_JOB_TITLES;
+        if (selectedDept && DEPT_JOB_MAP[selectedDept]) {
+            validTitles = DEPT_JOB_MAP[selectedDept];
+        }
+
+        validTitles.forEach(function (jt) {
+            const opt = document.createElement('option');
+            opt.value = jt;
+            opt.textContent = jt;
+            if (jt === currentVal) opt.selected = true;
+            jtSelect.appendChild(opt);
+        });
+
+        if (currentVal && !validTitles.includes(currentVal)) {
+            jtSelect.value = '';
+            jtSelect.classList.remove('active-filter');
+        }
+    }
+
+    document.getElementById('filterDepartment').addEventListener('change', function () {
+        updateJobTitleDropdown(this.value);
+    });
 
     filterSelects.forEach(id => {
         document.getElementById(id).addEventListener('change', function () {

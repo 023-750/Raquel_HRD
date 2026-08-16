@@ -289,10 +289,24 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
                 String url = req.getUrl().toString();
-                if (url.contains("ngrok-free.dev") || url.contains("ngrok.io") || url.contains("localhost")) {
-                    return false; // Keep navigation inside the WebView app
+                // Keep all internal app URLs (ngrok, localhost, local IP, or relative paths) inside WebView
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    Uri uri = req.getUrl();
+                    String host = uri.getHost();
+                    if (host != null && (
+                        host.contains("ngrok") ||
+                        host.contains("localhost") ||
+                        host.startsWith("192.168.") ||
+                        host.startsWith("10.") ||
+                        host.startsWith("127.")
+                    )) {
+                        return false; // Load inside WebView
+                    }
                 }
-                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                // External links (e.g. maps, external PDFs) open in browser
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                } catch (Exception e) {}
                 return true;
             }
         });

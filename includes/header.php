@@ -426,10 +426,70 @@ switch ($effective_role) {
 
 <body class="<?php echo ($current_dir === 'admin' ? 'admin-area' : '') . ($effective_role === 'Employee' ? ' role-employee' : ''); ?>">
 
+    <!-- ── Network Offline Banner ─────────────────────────────────────────────
+         Shows when device loses connectivity (APK WebView + browser).
+         Prevents white-screen freeze; auto-hides on reconnect.
+    ──────────────────────────────────────────────────────────────────────── -->
+    <div id="networkOfflineBanner" style="
+        display:none;
+        position:fixed;
+        top:0;left:0;right:0;
+        z-index:99999;
+        background:#1a1a2e;
+        color:#fff;
+        padding:10px 16px;
+        font-size:0.82rem;
+        font-family:'Inter',sans-serif;
+        font-weight:600;
+        text-align:center;
+        box-shadow:0 2px 12px rgba(0,0,0,.45);
+        letter-spacing:.3px;
+        align-items:center;
+        justify-content:center;
+        gap:10px;
+        flex-wrap:wrap;
+    ">
+        <span id="networkOfflineIcon" style="font-size:1rem;">📵</span>
+        <span id="networkOfflineMsg">No internet connection. Waiting to reconnect…</span>
+        <button onclick="location.reload()" style="
+            background:rgba(255,255,255,.15);
+            border:1px solid rgba(255,255,255,.3);
+            color:#fff;
+            border-radius:20px;
+            padding:4px 14px;
+            font-size:0.78rem;
+            font-weight:700;
+            cursor:pointer;
+        ">Retry</button>
+    </div>
+    <script>
+    (function(){
+        var banner = document.getElementById('networkOfflineBanner');
+        var msg    = document.getElementById('networkOfflineMsg');
+        var icon   = document.getElementById('networkOfflineIcon');
+        function showOffline(){
+            if(!banner) return;
+            banner.style.display = 'flex';
+            msg.textContent  = 'No internet connection. Waiting to reconnect…';
+            icon.textContent = '📵';
+        }
+        function showOnline(){
+            if(!banner) return;
+            icon.textContent = '✅';
+            msg.textContent  = 'Connection restored! Reloading…';
+            setTimeout(function(){ banner.style.display='none'; }, 2000);
+        }
+        window.addEventListener('offline', showOffline);
+        window.addEventListener('online',  showOnline);
+        if(!navigator.onLine){ showOffline(); }
+    })();
+    </script>
+
     <?php if ($effective_role === 'Employee'): ?>
     <!-- Skip Navigation for accessibility (WCAG AAA) -->
     <a href="#main-content" class="skip-navigation">Skip to main content</a>
     <?php endif; ?>
+
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">

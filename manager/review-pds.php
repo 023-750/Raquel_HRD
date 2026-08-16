@@ -388,7 +388,7 @@ require_once '../includes/header.php';
       <div class="card-header"><h5><i class="fas fa-id-badge me-2"></i>Employee Details</h5></div>
       <div class="card-body">
         <div class="text-center mb-3">
-          <img src="<?php echo getEmployeeAvatar($sub['profile_picture']??''); ?>?v=<?php echo time();?>"
+          <img src="<?php echo getEmployeeAvatar($sub['profile_picture']??''); ?>"
                style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid #dee2e6;">
           <div class="mt-2 fw-bold"><?php echo e($sub['first_name'].' '.$sub['last_name']); ?></div>
           <small class="text-muted"><?php echo e($sub['job_title']??'—'); ?></small>

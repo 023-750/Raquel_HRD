@@ -270,6 +270,29 @@ $queue_employee_count = count($pending_groups);
         color: var(--primary-blue);
     }
 
+    @media (max-width: 576px) {
+        /* Stat cards — 2 per row on small mobile */
+        .supervisor-dashboard .stat-card {
+            padding: 12px 10px;
+        }
+        .supervisor-dashboard .stat-card .stat-value {
+            font-size: 1.5rem;
+        }
+        .supervisor-dashboard .stat-card .stat-label {
+            font-size: 0.65rem;
+        }
+        .supervisor-dashboard .stat-card .stat-icon {
+            font-size: 1.2rem;
+        }
+        /* Hero header quick actions stacked */
+        .supervisor-dashboard .page-hero .d-flex.flex-column.align-items-end {
+            align-items: stretch !important;
+        }
+        .supervisor-dashboard .page-hero .d-flex.gap-2.flex-wrap.justify-content-end {
+            justify-content: flex-start !important;
+        }
+    }
+
     @media (max-width: 768px) {
         .supervisor-dashboard .approval-item,
         .supervisor-dashboard .approval-group-header {
@@ -292,8 +315,42 @@ $queue_employee_count = count($pending_groups);
             flex-direction: column;
             align-items: stretch;
         }
+
+        /* Score meter visible on mobile too */
+        .supervisor-dashboard .approval-item .score-meter {
+            display: block !important;
+            width: 100%;
+        }
+
+        /* Group chevron always visible */
+        .supervisor-dashboard .group-chevron {
+            display: inline-block !important;
+        }
     }
 </style>
+
+<script>
+// Supervisor Dashboard — Queue Group Accordion: Update Show/Hide label
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.supervisor-dashboard .approval-group-wrap').forEach(function (wrap) {
+        const collapseEl = wrap.querySelector('.collapse');
+        const btn = wrap.querySelector('[data-bs-toggle="collapse"].btn-review');
+        if (!collapseEl || !btn) return;
+        collapseEl.addEventListener('show.bs.collapse', function () {
+            btn.querySelector('i').className = 'fas fa-chevron-up group-chevron me-1';
+            const label = btn.querySelector('span.toggle-label') || btn;
+            if (label !== btn) label.textContent = 'Hide';
+            else btn.textContent = btn.textContent.replace('Show', 'Hide');
+        });
+        collapseEl.addEventListener('hide.bs.collapse', function () {
+            btn.querySelector('i').className = 'fas fa-chevron-down group-chevron me-1';
+            const label = btn.querySelector('span.toggle-label') || btn;
+            if (label !== btn) label.textContent = 'Show';
+            else btn.textContent = btn.textContent.replace('Hide', 'Show');
+        });
+    });
+});
+</script>
 
 <div class="supervisor-dashboard">
 <div class="page-hero fadeup">

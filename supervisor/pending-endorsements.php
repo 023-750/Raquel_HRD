@@ -1114,17 +1114,11 @@ require_once '../includes/header.php';
                             <?php if ($groupCount === 1): ?>
                                 <?php supervisorPendingRenderEvaluationRow($groupEvaluations[0], 'full'); ?>
                             <?php else: ?>
-                                <tr class="pending-group-row <?php echo e($groupRowClass); ?>"
-                                    role="button"
-                                    tabindex="0"
-                                    data-bs-toggle="collapse"
-                                    data-bs-target="#<?php echo e($groupCollapseId); ?>"
-                                    aria-expanded="false"
-                                    aria-controls="<?php echo e($groupCollapseId); ?>">
+                                <tr class="pending-group-row <?php echo e($groupRowClass); ?>">
                                     <td class="ps-3 pending-primary" data-label="Employee">
                                         <div class="d-flex align-items-center gap-3">
                                             <div class="pending-avatar">
-                                                <img src="<?php echo e($avatar_url); ?>?v=<?php echo time(); ?>" alt="<?php echo e($group['employee_name']); ?> profile picture">
+                                                <img src="<?php echo e($avatar_url); ?>" alt="<?php echo e($group['employee_name']); ?> profile picture">
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="fw-bold"><?php echo e($group['employee_name']); ?></div>
@@ -1157,7 +1151,7 @@ require_once '../includes/header.php';
                                         <span class="pending-age-badge <?php echo e($groupAgeClass); ?>"><i class="fas fa-clock"></i><?php echo e($groupAgeLabel); ?> oldest</span>
                                     </td>
                                     <td class="text-end pe-3" data-label="Actions">
-                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" data-bs-toggle="collapse" data-bs-target="#<?php echo e($groupCollapseId); ?>" aria-expanded="false" aria-controls="<?php echo e($groupCollapseId); ?>" onclick="event.stopPropagation();">
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm group-toggle-btn" data-bs-toggle="collapse" data-bs-target="#<?php echo e($groupCollapseId); ?>" aria-expanded="false" aria-controls="<?php echo e($groupCollapseId); ?>">
                                             <i class="fas fa-chevron-down group-toggle-icon me-1"></i><span class="group-toggle-label">Show</span>
                                         </button>
                                     </td>
@@ -2171,6 +2165,28 @@ function saveDevPlan(evalId) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Dynamic Show/Hide button label toggle for grouped pending evaluations
+    document.querySelectorAll('.pending-group-collapse').forEach(function(collapseEl) {
+        const groupRow = collapseEl.previousElementSibling;
+        if (!groupRow) return;
+        const btn = groupRow.querySelector('.group-toggle-btn');
+        if (!btn) return;
+
+        collapseEl.addEventListener('show.bs.collapse', function() {
+            const icon = btn.querySelector('.group-toggle-icon');
+            const label = btn.querySelector('.group-toggle-label');
+            if (icon) icon.className = 'fas fa-chevron-up group-toggle-icon me-1';
+            if (label) label.textContent = 'Hide';
+        });
+
+        collapseEl.addEventListener('hide.bs.collapse', function() {
+            const icon = btn.querySelector('.group-toggle-icon');
+            const label = btn.querySelector('.group-toggle-label');
+            if (icon) icon.className = 'fas fa-chevron-down group-toggle-icon me-1';
+            if (label) label.textContent = 'Show';
+        });
+    });
+
     const openEvalId = sessionStorage.getItem('open_evaluation_modal');
     if (openEvalId) {
         sessionStorage.removeItem('open_evaluation_modal');
@@ -2184,5 +2200,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
 
 <?php require_once '../includes/footer.php'; ?>
