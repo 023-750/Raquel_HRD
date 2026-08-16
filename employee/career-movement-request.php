@@ -75,30 +75,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken();
 
     if ($is_branch_supervisor && !$no_employees_in_branch) {
-        $employee_id    = (int)   ($_POST['employee_id']    ?? 0);
-        $movement_type  = trim(    $_POST['movement_type']   ?? '');
-        $new_position   = trim(    $_POST['new_position']    ?? '');
-        $new_branch_id  = !empty($_POST['new_branch_id']) ? (int) $_POST['new_branch_id'] : null;
-        $effective_date = trim(    $_POST['effective_date']  ?? '');
-        $reason         = trim(    $_POST['reason']          ?? '');
+        $employee_id       = (int)   ($_POST['employee_id']        ?? 0);
+        $movement_type     = trim(    $_POST['movement_type']       ?? 'Transfer');
+        $new_position      = trim(    $_POST['new_position']        ?? '');
+        $new_branch_id     = !empty($_POST['new_branch_id']) ? (int) $_POST['new_branch_id'] : null;
+        $new_department_id = !empty($_POST['new_department_id']) ? (int) $_POST['new_department_id'] : null;
+        $effective_date    = trim(    $_POST['effective_date']      ?? '');
+        $reason            = trim(    $_POST['reason']              ?? '');
+        $allowed_types     = ['Promotion', 'Transfer', 'Demotion', 'Role Change'];
 
-        // Hard-enforce Transfer only (requirement 1.2)
-        if ($movement_type !== 'Transfer') {
-            $errors[] = 'Only Transfer requests may be submitted through the Employee Portal.';
+        if (!in_array($movement_type, $allowed_types, true)) {
+            $movement_type = 'Transfer';
         }
 
-        // Require destination branch
-        if (empty($new_branch_id)) {
-            $errors[] = 'A different destination branch must be selected.';
+        if ($movement_type === 'Transfer') {
+            if (empty($new_branch_id) && empty($new_position)) {
+                $errors[] = 'Destination Branch or New Position is required for a Transfer.';
+            }
+        } else {
+            if ($new_position === '') {
+                $errors[] = 'New Position is required for ' . $movement_type . '.';
+            }
         }
 
-        // Require effective date
+        // Require effective date & reason
         if (empty($effective_date)) {
             $errors[] = 'Please enter an effective date.';
         }
+        if (empty($reason)) {
+            $errors[] = 'Please enter a justification for this request.';
+        }
 
         // Run the business validation function
-        if (empty($errors)) {
+        if (empty($errors) && $movement_type === 'Transfer' && !empty($new_branch_id)) {
             $validation_error = validateTransferSubmission(
                 $conn,
                 $supervisor_branch_id,
@@ -117,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Fetch target employee's current position and branch
             $emp_stmt = $conn->prepare(
-                "SELECT job_title, branch_id FROM employees WHERE employee_id = ? LIMIT 1"
+                "SELECT job_title, branch_id, department_id FROM employees WHERE employee_id = ? LIMIT 1"
             );
             $emp_stmt->bind_param("i", $employee_id);
             $emp_stmt->execute();
@@ -164,12 +173,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                      logged_by, initiated_by_name, initiated_by_role,
                      request_source, approval_status, portal_workflow_stage,
                      created_at)
-                 VALUES (?, 'Transfer', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Employee Portal', 'Pending',
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Employee Portal', 'Pending',
                          ?, NOW())"
             );
             $insert->bind_param(
-                "issiississs",
+                "isssiississs",
                 $employee_id,        // i - int
+                $movement_type,      // s - string
                 $previous_position,  // s - string
                 $new_position,       // s - string
                 $previous_branch_id, // i - int
@@ -203,8 +213,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     createNotification(
                         $conn,
                         $bm_user_id,
-                        'Transfer Request Pending Your Approval',
-                        $initiated_by_name . ' has submitted a Transfer request for ' . $target_emp_name . '.',
+                        'Career Movement Request Pending Your Approval',
+                        $initiated_by_name . ' has submitted a ' . $movement_type . ' request for ' . $target_emp_name . '.',
                         BASE_URL . '/employee/branch-manager-approvals.php'
                     );
                 } else {
@@ -217,17 +227,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             createNotification(
                                 $conn,
                                 (int) $hr_row['user_id'],
-                                'Transfer Request Pending Your Approval',
-                                $initiated_by_name . ' submitted a Transfer request for ' .
+                                'Career Movement Request Pending Your Approval',
+                                $initiated_by_name . ' submitted a ' . $movement_type . ' request for ' .
                                     $target_emp_name . ' (no Branch Manager found for branch).',
                                 BASE_URL . '/supervisor/career-movements.php'
                             );
                         }
                         $hr_sup_res->free();
-                    } else {
-                        error_log(
-                            "Career movement notification skipped: no active HR Supervisor users found."
-                        );
                     }
                 }
 
@@ -238,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'CREATE',
                     'Career Movement',
                     $movement_id,
-                    'Portal Transfer request submitted for employee_id=' . $employee_id . ' (Initial Stage: ' . $initial_stage . ')',
+                    'Portal ' . $movement_type . ' request submitted for employee_id=' . $employee_id . ' (Initial Stage: ' . $initial_stage . ')',
                     ['module' => 'Career Progression', 'target_employee_id' => $employee_id,
                      'branch_id' => $supervisor_branch_id]
                 );
@@ -248,7 +254,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'ref'       => str_pad($movement_id, 6, '0', STR_PAD_LEFT),
                     'employee'  => $target_emp_name,
                     'effective' => $effective_date,
-                    'type'      => 'Transfer',
+                    'type'      => $movement_type,
                 ];
 
                 header('Location: ' . $_SERVER['PHP_SELF']);
@@ -270,19 +276,37 @@ if (!empty($_SESSION['career_confirmation'])) {
     unset($_SESSION['career_confirmation']);
 }
 
-// ── Load active job titles for the New Position dropdown ─────────────────────
-$active_positions = [];
-$pos_res = $conn->query(
-    "SELECT job_title FROM job_titles WHERE is_active = 1 ORDER BY job_title ASC"
-);
-if ($pos_res) {
-    while ($pos_row = $pos_res->fetch_assoc()) {
-        $active_positions[] = $pos_row['job_title'];
-    }
-    $pos_res->free();
+// ── Load active departments ───────────────────────────────────────────
+$dept_res = $conn->query("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name ASC");
+$departments = [];
+if ($dept_res) {
+    while ($dr = $dept_res->fetch_assoc()) $departments[] = $dr;
+    $dept_res->free();
 }
 
-// ── Task 4.4 — Load active branches (excluding supervisor's own branch) ──────
+// ── Load active job titles grouped by department with rank levels ──────
+$jt_res = $conn->query("
+    SELECT jt.job_title_id, jt.job_title, jt.department_id, jt.rank_category_id, rc.level_order
+    FROM job_titles jt
+    LEFT JOIN rank_categories rc ON jt.rank_category_id = rc.rank_category_id
+    WHERE jt.is_active = 1
+    ORDER BY jt.department_id, rc.level_order ASC, jt.job_title ASC
+");
+$dept_positions = [];
+$active_positions = [];
+if ($jt_res) {
+    while ($row = $jt_res->fetch_assoc()) {
+        $active_positions[] = $row['job_title'];
+        $dept_positions[$row['department_id']][] = [
+            'id'          => $row['job_title_id'],
+            'title'       => $row['job_title'],
+            'level_order' => (int)($row['level_order'] ?? 5)
+        ];
+    }
+    $jt_res->free();
+}
+
+// ── Load active branches (excluding supervisor's own branch) ──────
 $dest_branches = [];
 $br_stmt = $conn->prepare(
     "SELECT branch_id, branch_name FROM branches
@@ -296,6 +320,22 @@ while ($br_row = $br_res->fetch_assoc()) {
     $dest_branches[] = $br_row;
 }
 $br_stmt->close();
+
+// ── Load all branch names mapping for JS ──────────────────────────────
+$branch_names = [];
+$all_br_res = $conn->query("SELECT branch_id, branch_name FROM branches ORDER BY branch_name");
+if ($all_br_res) {
+    while ($br_row = $all_br_res->fetch_assoc()) {
+        $branch_names[(string)$br_row['branch_id']] = $br_row['branch_name'];
+    }
+    $all_br_res->free();
+}
+
+// ── Map branch employees by ID for JS preview ─────────────────────────
+$branch_emp_map = [];
+foreach ($branch_employees as $be) {
+    $branch_emp_map[$be['employee_id']] = $be;
+}
 
 // ── Task 4.8 — Status table query ────────────────────────────────────────────
 $my_requests = [];
@@ -439,14 +479,14 @@ require_once '../includes/header.php';
     <div class="row g-4">
 
         <!-- ── Submission Form ─────────────────────────────────────────────── -->
-        <div class="col-12 col-xl-5">
+        <div class="col-12 col-xl-6">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-header bg-white border-bottom py-3">
-                    <h6 class="mb-0 fw-semibold text-dark">
-                        <i class="fas fa-paper-plane me-2 text-primary"></i>Submit Transfer Request
+                <div class="card-header border-bottom py-3" style="background:linear-gradient(135deg, #082E06 0%, #163e12 100%);">
+                    <h6 class="mb-0 fw-semibold text-white">
+                        <i class="fas fa-paper-plane me-2" style="color:#CBA135;"></i>File Career Movement Request
                     </h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
 
                     <?php if (!empty($errors)): ?>
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -460,82 +500,194 @@ require_once '../includes/header.php';
                     </div>
                     <?php endif; ?>
 
-                    <form method="POST" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>"
-                          novalidate>
+                    <form method="POST" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" id="portalMovementForm" novalidate>
                         <?php echo csrfField(); ?>
 
-                        <!-- Task 4.2: Transfer-only movement type (hidden, fixed) -->
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Movement Type</label>
-                            <select name="movement_type" class="form-select" required aria-required="true">
-                                <option value="Transfer" selected>Transfer</option>
-                            </select>
+                        <!-- Step 1: Target Employee Selection -->
+                        <div class="mb-4 p-3 rounded-3" style="background:#fafdfa;border:1px solid rgba(8,46,6,0.08);">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width:26px;height:26px;background:#082E06;color:#CBA135;font-size:.8rem;font-weight:700;">1</span>
+                                <h6 class="fw-bold mb-0 text-dark" style="letter-spacing:-0.2px;">Target Branch Employee</h6>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="employee_id" class="form-label fw-semibold text-secondary small">Select Branch Employee <span class="text-danger">*</span></label>
+                                <select name="employee_id" id="employee_id" class="form-select shadow-sm" required style="border-radius:10px;border-color:#d0d7ce;">
+                                    <option value="">— Choose Employee —</option>
+                                    <?php foreach ($branch_employees as $be): ?>
+                                        <option value="<?php echo (int) $be['employee_id']; ?>"
+                                            <?php echo (isset($_POST['employee_id']) && (int) $_POST['employee_id'] === (int) $be['employee_id']) ? 'selected' : ''; ?>>
+                                            <?php echo e($be['last_name'] . ', ' . $be['first_name'] . ' — ' . ($be['job_title'] ?? '')); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+
+                            <!-- Raquel HRIS Branded Employee Profile Card -->
+                            <div id="assignmentPreview" style="display:none;">
+                                <div class="p-3.5 rounded-3 shadow-sm position-relative overflow-hidden" style="background:linear-gradient(135deg, #082E06 0%, #163e12 100%); border:1px solid rgba(203, 161, 53, 0.45);">
+                                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                                        <div id="empAvatar" style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#BD9414,#f0c040);display:flex;align-items:center;justify-content:center;font-size:1.35rem;font-weight:800;color:#082E06;flex-shrink:0;box-shadow:0 0 0 3px rgba(203, 161, 53, 0.4);">?</div>
+                                        <div class="flex-grow-1" style="min-width:180px;">
+                                            <div class="fw-bold text-white fs-6" id="previewName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+                                            <div class="d-flex align-items-center gap-2 mt-1">
+                                                <span class="badge" style="background:rgba(203, 161, 53, 0.22);color:#f0c040;border:1px solid rgba(203, 161, 53, 0.4);font-size:.72rem;" id="previewCode">—</span>
+                                                <span class="badge" style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);font-size:.68rem;"><i class="fas fa-user-check text-success me-1"></i>Active Staff</span>
+                                            </div>
+                                        </div>
+                                        <div class="ms-auto text-end">
+                                            <span class="badge rounded-pill px-3 py-1.5" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.22);font-size:.72rem;"><i class="fas fa-id-card me-1" style="color:#CBA135;"></i>Current Profile</span>
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 pt-2" style="border-top:1px solid rgba(255,255,255,0.12);">
+                                        <div class="col-4">
+                                            <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,0.6);"><i class="fas fa-sitemap me-1" style="color:#CBA135;"></i>Department</div>
+                                            <div class="fw-semibold text-white small" id="previewDept">—</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,0.6);"><i class="fas fa-user-tie me-1" style="color:#CBA135;"></i>Position</div>
+                                            <div class="fw-semibold text-white small" id="previewPos">—</div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,0.6);"><i class="fas fa-store me-1" style="color:#CBA135;"></i>Branch</div>
+                                            <div class="fw-semibold text-white small" id="previewBranch">—</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Task 4.3: Branch-scoped employee dropdown -->
-                        <div class="mb-3">
-                            <label for="employee_id" class="form-label fw-semibold">Employee <span class="text-danger">*</span></label>
-                            <select name="employee_id" id="employee_id" class="form-select" required aria-required="true">
-                                <option value="">— Select Employee —</option>
-                                <?php foreach ($branch_employees as $be): ?>
-                                    <option value="<?php echo (int) $be['employee_id']; ?>"
-                                        <?php echo (isset($_POST['employee_id']) && (int) $_POST['employee_id'] === (int) $be['employee_id']) ? 'selected' : ''; ?>>
-                                        <?php echo e($be['last_name'] . ', ' . $be['first_name'] . ' — ' . ($be['job_title'] ?? '')); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                        <!-- Step 2: Movement Details -->
+                        <div class="mb-4 p-3 rounded-3" style="background:#fafdfa;border:1px solid rgba(8,46,6,0.08);">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width:26px;height:26px;background:#082E06;color:#CBA135;font-size:.8rem;font-weight:700;">2</span>
+                                <h6 class="fw-bold mb-0 text-dark" style="letter-spacing:-0.2px;">Movement Action Details</h6>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <!-- Movement Type -->
+                                <div class="col-md-6">
+                                    <label for="movement_type" class="form-label fw-semibold text-secondary small">Movement Type <span class="text-danger">*</span></label>
+                                    <select name="movement_type" id="movement_type" class="form-select shadow-sm" required style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="Transfer" <?php echo (($_POST['movement_type'] ?? '') === 'Transfer') ? 'selected' : ''; ?>>Transfer</option>
+                                        <option value="Promotion" <?php echo (($_POST['movement_type'] ?? '') === 'Promotion') ? 'selected' : ''; ?>>Promotion</option>
+                                        <option value="Demotion" <?php echo (($_POST['movement_type'] ?? '') === 'Demotion') ? 'selected' : ''; ?>>Demotion</option>
+                                        <option value="Role Change" <?php echo (($_POST['movement_type'] ?? '') === 'Role Change') ? 'selected' : ''; ?>>Role Change</option>
+                                    </select>
+                                </div>
+
+                                <!-- Destination Branch -->
+                                <div class="col-md-6">
+                                    <label for="new_branch_id" class="form-label fw-semibold text-secondary small" id="branchLabel">Destination Branch</label>
+                                    <select name="new_branch_id" id="new_branch_id" class="form-select shadow-sm" style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="">Same branch / No branch change</option>
+                                        <?php foreach ($dest_branches as $db): ?>
+                                            <option value="<?php echo (int) $db['branch_id']; ?>"
+                                                <?php echo (isset($_POST['new_branch_id']) && (int) $_POST['new_branch_id'] === (int) $db['branch_id']) ? 'selected' : ''; ?>>
+                                                <?php echo e($db['branch_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="form-text text-muted small" id="branchHint">The employee's current branch is excluded.</div>
+                                </div>
+
+                                <!-- Target Department -->
+                                <div class="col-md-6">
+                                    <label for="new_department_id" class="form-label fw-semibold text-secondary small">Target Department</label>
+                                    <select name="new_department_id" id="new_department_id" class="form-select shadow-sm" style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="">Same Department</option>
+                                        <?php foreach ($departments as $dept): ?>
+                                            <option value="<?php echo (int)$dept['department_id']; ?>" <?php echo (isset($_POST['new_department_id']) && (int)$_POST['new_department_id'] === (int)$dept['department_id']) ? 'selected' : ''; ?>>
+                                                <?php echo e($dept['department_name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="form-text text-muted small"><i class="fas fa-sitemap me-1" style="color:#082E06;"></i>Employee can be moved to another department.</div>
+                                </div>
+
+                                <!-- New Position -->
+                                <div class="col-md-6">
+                                    <label for="new_position" class="form-label fw-semibold text-secondary small" id="positionLabel">New Position / Role <span class="text-danger" id="positionAsterisk">*</span></label>
+                                    <select name="new_position" id="new_position" class="form-select shadow-sm" style="border-radius:10px;border-color:#d0d7ce;">
+                                        <option value="">-- Select New Position --</option>
+                                        <?php foreach ($active_positions as $pos): ?>
+                                            <option value="<?php echo e($pos); ?>"
+                                                <?php echo (isset($_POST['new_position']) && $_POST['new_position'] === $pos) ? 'selected' : ''; ?>>
+                                                <?php echo e($pos); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <div class="form-text text-muted small" id="positionHint">Valid positions for target department are shown.</div>
+                                </div>
+                            </div>
+
+                            <!-- Raquel HRIS Brand Aligned Before vs. After Impact Preview Component -->
+                            <div id="impactPreview" style="display:none;">
+                                <div class="rounded-3 overflow-hidden shadow-sm" style="border:1px solid rgba(8, 46, 6, 0.18);">
+                                    <div class="px-3.5 py-2.5 d-flex align-items-center justify-content-between" style="background:linear-gradient(135deg, #082E06 0%, #153e12 100%);">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fas fa-exchange-alt" style="color:#CBA135;"></i>
+                                            <span style="font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#ffffff;">Career Movement Impact Preview</span>
+                                        </div>
+                                        <span class="badge px-3 py-1 shadow-sm" id="impactTypeBadge" style="font-size:.7rem;border-radius:12px;"></span>
+                                    </div>
+                                    <div class="d-flex flex-column flex-md-row align-items-stretch">
+                                        <!-- BEFORE -->
+                                        <div class="p-3.5 flex-grow-1" style="min-width:0;background:#f8fcf8;border-right:1px solid rgba(0,0,0,0.06);">
+                                            <div class="mb-2 d-flex align-items-center gap-1.5" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#60735f;">
+                                                <i class="fas fa-circle me-1" style="font-size:.5rem;color:#889987;"></i>Current Status
+                                            </div>
+                                            <div class="fw-bold text-dark fs-6" id="impactOldPos">—</div>
+                                            <div class="text-muted mt-1 small" id="impactOldBranch"><i class="fas fa-store me-1 text-muted"></i>—</div>
+                                        </div>
+                                        <!-- CONNECTOR ARROW -->
+                                        <div class="d-flex align-items-center justify-content-center px-3 py-2" style="background:#ffffff;border-left:1px solid rgba(0,0,0,0.04);border-right:1px solid rgba(0,0,0,0.04);">
+                                            <div class="shadow-sm rounded-circle d-flex align-items-center justify-content-center" style="width:38px;height:38px;background:#082E06;color:#CBA135;border:1.5px solid #CBA135;">
+                                                <i class="fas fa-arrow-right fs-6 d-none d-md-block"></i>
+                                                <i class="fas fa-arrow-down fs-6 d-block d-md-none"></i>
+                                            </div>
+                                        </div>
+                                        <!-- AFTER -->
+                                        <div class="p-3.5 flex-grow-1" style="min-width:0;background:linear-gradient(135deg,#edf7ec 0%,#f4fbf3 100%);">
+                                            <div class="mb-2 d-flex align-items-center gap-1.5" style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#082E06;">
+                                                <i class="fas fa-check-circle me-1 text-success"></i>Proposed Assignment
+                                            </div>
+                                            <div class="fw-bold text-success fs-6" id="impactNewPos">—</div>
+                                            <div class="text-dark fw-semibold mt-1 small" id="impactNewBranch"><i class="fas fa-map-marker-alt me-1 text-danger"></i>—</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Task 4.4: Destination Branch (required) -->
-                        <div class="mb-3">
-                            <label for="new_branch_id" class="form-label fw-semibold">Destination Branch <span class="text-danger">*</span></label>
-                            <select name="new_branch_id" id="new_branch_id" class="form-select" required aria-required="true">
-                                <option value="">— Select Destination Branch —</option>
-                                <?php foreach ($dest_branches as $db): ?>
-                                    <option value="<?php echo (int) $db['branch_id']; ?>"
-                                        <?php echo (isset($_POST['new_branch_id']) && (int) $_POST['new_branch_id'] === (int) $db['branch_id']) ? 'selected' : ''; ?>>
-                                        <?php echo e($db['branch_name']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="form-text">The employee's current branch is excluded.</div>
-                        </div>
+                        <!-- Step 3: Justification & Schedule -->
+                        <div class="mb-4 p-3 rounded-3" style="background:#fafdfa;border:1px solid rgba(8,46,6,0.08);">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <span class="badge rounded-circle d-inline-flex align-items-center justify-content-center shadow-sm" style="width:26px;height:26px;background:#082E06;color:#CBA135;font-size:.8rem;font-weight:700;">3</span>
+                                <h6 class="fw-bold mb-0 text-dark" style="letter-spacing:-0.2px;">Schedule & Justification</h6>
+                            </div>
 
-                        <!-- New Position (optional dropdown) -->
-                        <div class="mb-3">
-                            <label for="new_position" class="form-label fw-semibold">New Position / Role <span class="text-muted fw-normal">(optional)</span></label>
-                            <select name="new_position" id="new_position" class="form-select">
-                                <option value="">— Keep current position —</option>
-                                <?php foreach ($active_positions as $pos): ?>
-                                    <option value="<?php echo e($pos); ?>"
-                                        <?php echo (isset($_POST['new_position']) && $_POST['new_position'] === $pos) ? 'selected' : ''; ?>>
-                                        <?php echo e($pos); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="form-text">Leave blank if the position stays the same after transfer.</div>
-                        </div>
+                            <!-- Effective Date -->
+                            <div class="mb-3">
+                                <label for="effective_date" class="form-label fw-semibold text-secondary small">Effective Date <span class="text-danger">*</span></label>
+                                <input type="date" name="effective_date" id="effective_date"
+                                       class="form-control shadow-sm" required
+                                       min="<?php echo date('Y-m-d'); ?>"
+                                       value="<?php echo e($_POST['effective_date'] ?? ''); ?>" style="border-radius:10px;border-color:#d0d7ce;">
+                            </div>
 
-                        <!-- Effective Date -->
-                        <div class="mb-3">
-                            <label for="effective_date" class="form-label fw-semibold">Effective Date <span class="text-danger">*</span></label>
-                            <input type="date" name="effective_date" id="effective_date"
-                                   class="form-control" required aria-required="true"
-                                   min="<?php echo date('Y-m-d'); ?>"
-                                   value="<?php echo e($_POST['effective_date'] ?? ''); ?>">
-                        </div>
-
-                        <!-- Reason -->
-                        <div class="mb-4">
-                            <label for="reason" class="form-label fw-semibold">Reason / Justification <span class="text-muted fw-normal">(optional)</span></label>
-                            <textarea name="reason" id="reason" class="form-control" rows="3"
-                                      maxlength="1000"
-                                      placeholder="Briefly explain the reason for this transfer…"><?php echo e($_POST['reason'] ?? ''); ?></textarea>
+                            <!-- Reason -->
+                            <div class="mb-2">
+                                <label for="reason" class="form-label fw-semibold text-secondary small">Reason / Justification <span class="text-danger">*</span></label>
+                                <textarea name="reason" id="reason" class="form-control shadow-sm" rows="3"
+                                          maxlength="1000" required
+                                          placeholder="Explain the reason for this career movement..." style="border-radius:10px;border-color:#d0d7ce;"><?php echo e($_POST['reason'] ?? ''); ?></textarea>
+                            </div>
                         </div>
 
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary fw-semibold">
-                                <i class="fas fa-paper-plane me-2"></i>Submit Transfer Request
+                            <button type="submit" class="btn text-white fw-semibold py-2.5 shadow-sm" style="background:linear-gradient(135deg, #082E06 0%, #163e12 100%);border:1px solid #CBA135;border-radius:10px;">
+                                <i class="fas fa-paper-plane me-2" style="color:#CBA135;"></i>Submit Movement Request
                             </button>
                         </div>
                     </form>
@@ -545,8 +697,8 @@ require_once '../includes/header.php';
         </div><!-- /.col (form) -->
 
         <!-- ── Task 4.8: Status table ────────────────────────────────────────── -->
-        <div class="col-12 col-xl-7">
-            <div class="card shadow-sm border-0">
+        <div class="col-12 col-xl-6">
+            <div class="card shadow-sm border-0 h-100">
                 <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
                     <h6 class="mb-0 fw-semibold text-dark">
                         <i class="fas fa-list-alt me-2 text-primary"></i>My Submitted Requests
@@ -577,7 +729,6 @@ require_once '../includes/header.php';
                             <tbody>
                             <?php foreach ($my_requests as $req): ?>
                                 <?php
-                                // Distinct Badge CSS and Icons for each stage
                                 $stage = $req['portal_workflow_stage'] ?? '';
                                 $badge_class = match($stage) {
                                     'Pending_Branch_Manager' => 'badge bg-warning text-dark',
@@ -596,7 +747,6 @@ require_once '../includes/header.php';
                                     default                  => 'fa-clock',
                                 };
 
-                                // Rejection reason: first non-null of bm, hr_sup, manager comments
                                 $rejection_reason = null;
                                 if ($stage === 'Rejected') {
                                     foreach (['branch_manager_comments', 'hr_supervisor_comments', 'manager_comments'] as $fld) {
@@ -649,5 +799,249 @@ require_once '../includes/header.php';
     <?php endif; // end $is_branch_supervisor && !$no_employees_in_branch ?>
 
 </div><!-- /.container-fluid -->
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const branchEmployeesMap = <?php echo json_encode($branch_emp_map, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_QUOT); ?>;
+    const deptPositions      = <?php echo json_encode($dept_positions, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_QUOT); ?>;
+    const branchNames        = <?php echo json_encode($branch_names, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_QUOT); ?>;
+
+    const empSel       = document.getElementById('employee_id');
+    const movTypeSel   = document.getElementById('movement_type');
+    const branchSel    = document.getElementById('new_branch_id');
+    const newDeptSel   = document.getElementById('new_department_id');
+    const posSel       = document.getElementById('new_position');
+
+    const preview      = document.getElementById('assignmentPreview');
+    const empAvatarEl  = document.getElementById('empAvatar');
+    const empNameEl    = document.getElementById('previewName');
+    const empCodeEl    = document.getElementById('previewCode');
+    const prevDept     = document.getElementById('previewDept');
+    const prevPos      = document.getElementById('previewPos');
+    const prevBranch   = document.getElementById('previewBranch');
+
+    const impactPanel  = document.getElementById('impactPreview');
+    const impactOldPos = document.getElementById('impactOldPos');
+    const impactOldBr  = document.getElementById('impactOldBranch');
+    const impactNewPos = document.getElementById('impactNewPos');
+    const impactNewBr  = document.getElementById('impactNewBranch');
+    const impactTypeBadge = document.getElementById('impactTypeBadge');
+
+    const movTypeBadgeStyles = {
+        'Promotion'  : 'background:rgba(40,167,69,0.22);color:#2ebd59;border:1px solid rgba(40,167,69,0.45);font-weight:700;',
+        'Transfer'   : 'background:rgba(13,202,240,0.22);color:#2cd5f6;border:1px solid rgba(13,202,240,0.45);font-weight:700;',
+        'Demotion'   : 'background:rgba(220,53,69,0.22);color:#ff7878;border:1px solid rgba(220,53,69,0.45);font-weight:700;',
+        'Role Change': 'background:rgba(203,161,53,0.25);color:#f0c040;border:1px solid rgba(203,161,53,0.5);font-weight:700;',
+    };
+
+    const avatarGradients = [
+        ['#BD9414','#f0c040'], ['#1565c0','#42a5f5'], ['#6a1b9a','#ab47bc'],
+        ['#b71c1c','#ef5350'], ['#2e7d32','#66bb6a'], ['#e65100','#ffa726'],
+        ['#00695c','#26a69a'], ['#4527a0','#7c4dff']
+    ];
+    function empAvatarGradient(name) {
+        if (!name) return ['#BD9414','#f0c040'];
+        const code = name.charCodeAt(0) % avatarGradients.length;
+        return avatarGradients[code];
+    }
+
+    function parseSubRankScore(title) {
+        if (!title) return 1;
+        const t = title.trim();
+        if (/probation|training|trainee/i.test(t)) return 0;
+        const romanMatch = t.match(/\s+(VII|VI|V|IV|III|II|I)$/i);
+        if (romanMatch) {
+            const r = romanMatch[1].toUpperCase();
+            const map = { 'VII': 7, 'VI': 6, 'V': 5, 'IV': 4, 'III': 3, 'II': 2, 'I': 1 };
+            return map[r] || 1;
+        }
+        const numMatch = t.match(/\s+(\d+)$/);
+        return numMatch ? parseInt(numMatch[1], 10) : 1;
+    }
+
+    function getPositionRankScore(title, levelOrder) {
+        const lOrder = parseInt(levelOrder, 10) || 5;
+        const categoryWeight = (10 - lOrder) * 100;
+        return categoryWeight + parseSubRankScore(title);
+    }
+
+    function updateFilteredPositions() {
+        if (!empSel || !posSel) return;
+        const empId = empSel.value;
+        const emp = branchEmployeesMap[empId] || null;
+        const targetDid = (newDeptSel && newDeptSel.value) ? newDeptSel.value : (emp ? emp.department_id : '');
+
+        if (!targetDid) {
+            posSel.innerHTML = '<option value="">-- Select Target Dept First --</option>';
+            posSel.disabled = true;
+            return;
+        }
+
+        const rawPositions = deptPositions[targetDid] || [];
+        if (rawPositions.length === 0) {
+            posSel.innerHTML = '<option value="">No positions defined for target department</option>';
+            posSel.disabled = true;
+            return;
+        }
+
+        const movType  = movTypeSel ? movTypeSel.value : '';
+        const empTitle = emp ? (emp.job_title || '') : '';
+        const empLOrder= emp ? (emp.level_order || 5) : 5;
+        const empScore = emp ? getPositionRankScore(empTitle, empLOrder) : null;
+        const prevSelectedVal = posSel.value;
+
+        let validPositions = rawPositions.filter(pos => {
+            if (!empScore || !movType) return true;
+            const pScore = getPositionRankScore(pos.title, pos.level_order);
+            if (movType === 'Demotion') return pScore < empScore;
+            if (movType === 'Promotion') return pScore > empScore;
+            return true;
+        });
+
+        posSel.innerHTML = '<option value="">-- Select New Position --</option>';
+
+        if (validPositions.length === 0) {
+            if (movType === 'Demotion') {
+                posSel.innerHTML = '<option value="">No lower rank positions available in target department</option>';
+            } else if (movType === 'Promotion') {
+                posSel.innerHTML = '<option value="">No higher rank positions available in target department</option>';
+            } else {
+                posSel.innerHTML = '<option value="">No valid positions found</option>';
+            }
+            posSel.disabled = true;
+            return;
+        }
+
+        let isStillValid = false;
+        validPositions.forEach(pos => {
+            const opt = document.createElement('option');
+            opt.value = pos.title;
+            opt.textContent = pos.title;
+            if (pos.title === prevSelectedVal) {
+                opt.selected = true;
+                isStillValid = true;
+            }
+            posSel.appendChild(opt);
+        });
+
+        if (!isStillValid && prevSelectedVal) posSel.value = '';
+        posSel.disabled = false;
+    }
+
+    function updateImpactPreview() {
+        if (!empSel) return;
+        const empId = empSel.value;
+        const emp   = branchEmployeesMap[empId] || null;
+        const movType = movTypeSel ? movTypeSel.value : '';
+        const newPos  = posSel  ? posSel.value  : '';
+        const newBrId = branchSel ? branchSel.value : '';
+        const newDeptOpt = newDeptSel ? newDeptSel.options[newDeptSel.selectedIndex] : null;
+
+        if (!emp || !movType || (!newPos && !newBrId && (!newDeptOpt || !newDeptOpt.value))) {
+            if (impactPanel) impactPanel.style.display = 'none';
+            return;
+        }
+
+        const currentPos    = emp.job_title || '—';
+        const currentBranch = emp.branch_name || branchNames[emp.branch_id] || '—';
+        const currentDept   = emp.department_name || '—';
+
+        const targetDeptName = (newDeptOpt && newDeptOpt.value) ? newDeptOpt.textContent.trim() : currentDept;
+        const isCrossDept    = newDeptOpt && newDeptOpt.value && (String(newDeptOpt.value) !== String(emp.department_id));
+
+        const afterPos      = newPos   || currentPos;
+        const afterBranch   = newBrId  ? (branchNames[newBrId] || 'Branch #' + newBrId) : currentBranch;
+
+        if (impactOldPos)  impactOldPos.textContent  = currentPos;
+        if (impactOldBr)   impactOldBr.innerHTML   = `<i class="fas fa-store me-1 text-muted"></i>${currentBranch} <span class="text-muted small">(${currentDept})</span>`;
+        if (impactNewPos)  impactNewPos.textContent  = afterPos;
+        if (impactNewBr) {
+            const crossBadge = isCrossDept ? ` <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;"><i class="fas fa-random me-1"></i>Cross-Dept</span>` : '';
+            impactNewBr.innerHTML = `<i class="fas fa-map-marker-alt me-1 text-danger"></i>${afterBranch} <span class="text-muted small">(${targetDeptName})</span>${crossBadge}`;
+        }
+
+        if (impactTypeBadge) {
+            const style = movTypeBadgeStyles[movType] || 'background:#e2e3e5;color:#383d41;border:1px solid #d6d8db;';
+            impactTypeBadge.setAttribute('style', 'font-size:.68rem;' + style);
+            impactTypeBadge.textContent = movType;
+        }
+
+        if (impactPanel) impactPanel.style.display = 'block';
+    }
+
+    if (empSel) {
+        empSel.addEventListener('change', function () {
+            const empId = this.value;
+            const emp   = branchEmployeesMap[empId] || null;
+            if (!emp) {
+                if (preview) preview.style.display = 'none';
+                updateFilteredPositions();
+                updateImpactPreview();
+                return;
+            }
+
+            const initials = ((emp.first_name ? emp.first_name.charAt(0) : '') + (emp.last_name ? emp.last_name.charAt(0) : '')).toUpperCase() || '?';
+            const [c1, c2] = empAvatarGradient(emp.last_name || '');
+            if (empAvatarEl) {
+                empAvatarEl.textContent = initials;
+                empAvatarEl.style.background = `linear-gradient(135deg,${c1},${c2})`;
+            }
+
+            if (empNameEl) empNameEl.textContent = (emp.first_name && emp.last_name) ? `${emp.first_name} ${emp.last_name}` : '—';
+            if (empCodeEl) empCodeEl.textContent = emp.employee_code || ('ID #' + emp.employee_id);
+
+            if (prevDept)   prevDept.textContent   = emp.department_name || '—';
+            if (prevPos)    prevPos.textContent    = emp.job_title || '—';
+            if (prevBranch) prevBranch.textContent = emp.branch_name || branchNames[emp.branch_id] || '—';
+            if (preview)    preview.style.display  = 'block';
+
+            if (newDeptSel && emp.department_id) {
+                newDeptSel.value = emp.department_id;
+            }
+
+            updateFilteredPositions();
+            updateImpactPreview();
+        });
+    }
+
+    if (movTypeSel) {
+        movTypeSel.addEventListener('change', function () {
+            const isTransfer = this.value === 'Transfer';
+            const posAsterisk = document.getElementById('positionAsterisk');
+            const posHint     = document.getElementById('positionHint');
+            const branchLabel = document.getElementById('branchLabel');
+            const branchHint  = document.getElementById('branchHint');
+
+            if (isTransfer) {
+                if (posSel) posSel.removeAttribute('required');
+                if (posAsterisk) posAsterisk.style.display = 'none';
+                if (posHint) posHint.textContent = 'Optional for Transfer — leave blank to keep current position.';
+                if (branchSel) branchSel.setAttribute('required', 'required');
+                if (branchLabel) branchLabel.innerHTML = 'Destination Branch <span class="text-danger">*</span>';
+                if (branchHint) branchHint.textContent = 'Destination branch is required for a Transfer.';
+            } else {
+                if (posSel) posSel.setAttribute('required', 'required');
+                if (posAsterisk) posAsterisk.style.display = '';
+                if (posHint) posHint.textContent = 'Positions for target department are shown.';
+                if (branchSel) branchSel.removeAttribute('required');
+                if (branchLabel) branchLabel.innerHTML = 'Destination Branch';
+                if (branchHint) branchHint.textContent = 'Optional branch change.';
+            }
+
+            updateFilteredPositions();
+            updateImpactPreview();
+        });
+    }
+
+    if (newDeptSel) newDeptSel.addEventListener('change', function () { updateFilteredPositions(); updateImpactPreview(); });
+    if (posSel)     posSel.addEventListener('change', updateImpactPreview);
+    if (branchSel)  branchSel.addEventListener('change', updateImpactPreview);
+
+    // Initial trigger if POST values pre-selected
+    if (empSel && empSel.value) {
+        empSel.dispatchEvent(new Event('change'));
+    }
+});
+</script>
 
 <?php require_once '../includes/footer.php'; ?>
