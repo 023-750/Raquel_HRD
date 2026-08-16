@@ -10,47 +10,14 @@ if ($conn->connect_error) {
 
 echo "Successfully connected to MySQL/TiDB!\n";
 
-$sql_files = [
-    __DIR__ . '/database/1st_schema_tables.sql',
-    __DIR__ . '/database/2nd_seed_organization.sql',
-    __DIR__ . '/database/3rd_seed_HR_accounts_.sql'
-];
+// Set admin password to 'password123'
+$new_hash = password_hash('password123', PASSWORD_BCRYPT);
+$conn->query("UPDATE users SET password_hash = '$new_hash' WHERE username = 'admin'");
+echo "Admin user password updated to 'password123'\n";
 
-$conn->query("SET FOREIGN_KEY_CHECKS = 0;");
+// Set all HR employee user passwords to 'password123' as well
+$conn->query("UPDATE users SET password_hash = '$new_hash'");
+echo "All user accounts updated with password 'password123'\n";
 
-foreach ($sql_files as $file) {
-    if (!file_exists($file)) {
-        echo "File not found: " . basename($file) . "\n";
-        continue;
-    }
-    
-    echo "Running " . basename($file) . "...\n";
-    $sql_content = file_get_contents($file);
-    
-    // Replace USE raquel_hris; with USE current_database;
-    $sql_content = preg_replace('/USE\s+[`\w\-]+;/i', 'USE `' . DB_NAME . '`;', $sql_content);
-    $sql_content = preg_replace('/DROP\s+DATABASE\s+IF\s+EXISTS\s+[`\w\-]+;/i', '', $sql_content);
-    $sql_content = preg_replace('/CREATE\s+DATABASE\s+IF\s+NOT\s+EXISTS\s+[`\w\-]+;/i', '', $sql_content);
-
-    // Split statements using regex
-    $queries = preg_split('/;\s*[\r\n]+/', $sql_content);
-    $success_count = 0;
-    
-    foreach ($queries as $query) {
-        $trimmed = trim($query);
-        if (!empty($trimmed) && strpos($trimmed, '--') !== 0) {
-            try {
-                if ($conn->query($trimmed) === TRUE) {
-                    $success_count++;
-                }
-            } catch (Exception $e) {
-                echo "Error in query: " . substr($trimmed, 0, 50) . "... -> " . $e->getMessage() . "\n";
-            }
-        }
-    }
-    echo "Executed $success_count queries from " . basename($file) . ".\n";
-}
-
-$conn->query("SET FOREIGN_KEY_CHECKS = 1;");
-echo "\nMigration completed successfully! All tables and seed data are populated.\n";
+echo "Migration & Password Sync Completed Successfully!\n";
 ?>
