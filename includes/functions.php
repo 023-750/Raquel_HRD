@@ -3870,5 +3870,3 @@ function formatPHMobileNumber($number): string
     // Otherwise return cleaned digits or string
     return $digits;
 }
-?>
-
