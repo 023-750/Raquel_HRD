@@ -39,7 +39,7 @@ This guide provides an end-to-end, zero-error reference for packaging the **Raqu
    ```powershell
    ngrok http 80
    ```
-4. Copy the **HTTPS** URL generated under `Forwarding` (e.g. `https://german-subaxillary-elina.ngrok-free.dev`).
+4. Copy the **HTTPS** URL generated under `Forwarding` (e.g. `https://pull-numerator-unfounded.ngrok-free.dev`).
 
 ### 1.3 Test Tunnel in Mobile Browser
 Open the following URL on your phone's browser to ensure your local server is publicly reachable:
@@ -177,7 +177,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 public class MainActivity extends AppCompatActivity {
 
     // ─── CONFIGURE TUNNEL URL HERE ──────────────────────────────────────────
-    private static final String BASE_URL  = "https://german-subaxillary-elina.ngrok-free.dev/FINAL_RAQUEL_PAWNSHOP_HRD";
+    private static final String BASE_URL  = "https://pull-numerator-unfounded.ngrok-free.dev/FINAL_RAQUEL_PAWNSHOP_HRD";
     // Direct launch into the Employee Portal login screen
     private static final String START_URL = BASE_URL + "/employee/index.php";
     // ────────────────────────────────────────────────────────────────────────
