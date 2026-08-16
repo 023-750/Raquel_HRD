@@ -1,7 +1,28 @@
 {
   "functions": {
-    "**/*.php": {
-      "runtime": "vercel-php@0.7.0"
+    "*.php": {
+      "runtime": "vercel-php@0.6.0"
+    },
+    "admin/*.php": {
+      "runtime": "vercel-php@0.6.0"
+    },
+    "employee/*.php": {
+      "runtime": "vercel-php@0.6.0"
+    },
+    "manager/*.php": {
+      "runtime": "vercel-php@0.6.0"
+    },
+    "supervisor/*.php": {
+      "runtime": "vercel-php@0.6.0"
+    },
+    "staff/*.php": {
+      "runtime": "vercel-php@0.6.0"
+    },
+    "config/*.php": {
+      "runtime": "vercel-php@0.6.0"
+    },
+    "includes/*.php": {
+      "runtime": "vercel-php@0.6.0"
     }
   },
   "routes": [
