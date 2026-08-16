@@ -9,7 +9,10 @@ define('DB_SSL', getenv('DB_SSL') === 'true' || getenv('DB_SSL') === '1');
 // Raquel Pawnshop operates on Philippine time. All scheduled tasks use this clock.
 date_default_timezone_set('Asia/Manila');
 
-define('BASE_URL', isset($_SERVER['HTTP_HOST']) ? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] : '/' . basename(dirname(__DIR__)));
+$is_https = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || 
+            (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+$protocol = $is_https ? 'https://' : 'http://';
+define('BASE_URL', isset($_SERVER['HTTP_HOST']) ? $protocol . $_SERVER['HTTP_HOST'] : '');
 
 $is_remote = (DB_HOST !== 'localhost' && DB_HOST !== '127.0.0.1');
 
