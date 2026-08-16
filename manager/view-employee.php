@@ -1611,11 +1611,7 @@ $discList = [
     </div>
 </div>
 
-<div class="d-flex justify-content-center mt-4 mb-2">
-    <button type="button" class="btn btn-outline-secondary px-4" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });" aria-label="Back to the top of Employee Information">
-        <i class="fas fa-arrow-up me-2" aria-hidden="true"></i>Back to Top
-    </button>
-</div>
+
 
 <!-- Full Image View Modal -->
 <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">

@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', () => new bootstrap.Modal(document
 <div class="page-hero fadeup">
     <div class="d-flex align-items-center gap-4 flex-wrap">
         <div class="epu-avatar-wrap">
-            <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>?v=<?php echo time(); ?>"
+            <img src="<?php echo getEmployeeAvatar($user['profile_picture']); ?>"
                  alt="Profile" class="epu-avatar">
             <span class="epu-avatar-dot <?php echo !empty($user['is_active']) ? 'online' : 'offline'; ?>"></span>
         </div>

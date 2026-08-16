@@ -246,11 +246,12 @@ function movementIcon(string $type): string {
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-4">
         <div class="d-flex align-items-center gap-4 flex-wrap">
-            <img src="<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>?v=<?php echo time(); ?>"
+            <img src="<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>"
                  onclick="viewFullImage('<?php echo getEmployeeAvatar($emp['profile_picture'] ?? ''); ?>', '<?php echo e(($emp['first_name'] ?? '') . ' ' . ($emp['last_name'] ?? '')); ?>')"
-                 class="cursor-pointer"
+                 class="cursor-pointer emp-portal-avatar"
                  loading="lazy"
-                 style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.35);box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .2s;background-color:#ffffff;">
+                 style="width:76px;height:76px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.35);box-shadow:0 6px 20px rgba(0,0,0,.25);transition:transform .2s;background-color:#ffffff;flex-shrink:0;">
+
             <div>
                 <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.55);">Employee Portal · Welcome Back</div>
                 <h2 class="text-white fw-bold mb-1 mt-1" style="font-size:1.6rem;">
@@ -679,7 +680,6 @@ function movementIcon(string $type): string {
                     <i class="fas fa-route" aria-hidden="true"></i>
                     Career Timeline
                 </h2>
-                <a href="<?php echo BASE_URL; ?>/employee/career-movement-request.php" class="btn btn-sm btn-outline-primary">Request Movement</a>
             </div>
             <div class="content-card-body">
                 <?php if (!empty($career_movements)): ?>

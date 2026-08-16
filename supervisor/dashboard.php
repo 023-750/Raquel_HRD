@@ -270,6 +270,29 @@ $queue_employee_count = count($pending_groups);
         color: var(--primary-blue);
     }
 
+    @media (max-width: 576px) {
+        /* Stat cards — 2 per row on small mobile */
+        .supervisor-dashboard .stat-card {
+            padding: 12px 10px;
+        }
+        .supervisor-dashboard .stat-card .stat-value {
+            font-size: 1.5rem;
+        }
+        .supervisor-dashboard .stat-card .stat-label {
+            font-size: 0.65rem;
+        }
+        .supervisor-dashboard .stat-card .stat-icon {
+            font-size: 1.2rem;
+        }
+        /* Hero header quick actions stacked */
+        .supervisor-dashboard .page-hero .d-flex.flex-column.align-items-end {
+            align-items: stretch !important;
+        }
+        .supervisor-dashboard .page-hero .d-flex.gap-2.flex-wrap.justify-content-end {
+            justify-content: flex-start !important;
+        }
+    }
+
     @media (max-width: 768px) {
         .supervisor-dashboard .approval-item,
         .supervisor-dashboard .approval-group-header {
@@ -292,8 +315,42 @@ $queue_employee_count = count($pending_groups);
             flex-direction: column;
             align-items: stretch;
         }
+
+        /* Score meter visible on mobile too */
+        .supervisor-dashboard .approval-item .score-meter {
+            display: block !important;
+            width: 100%;
+        }
+
+        /* Group chevron always visible */
+        .supervisor-dashboard .group-chevron {
+            display: inline-block !important;
+        }
     }
 </style>
+
+<script>
+// Supervisor Dashboard — Queue Group Accordion: Update Show/Hide label
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.supervisor-dashboard .approval-group-wrap').forEach(function (wrap) {
+        const collapseEl = wrap.querySelector('.collapse');
+        const btn = wrap.querySelector('[data-bs-toggle="collapse"].btn-review');
+        if (!collapseEl || !btn) return;
+        collapseEl.addEventListener('show.bs.collapse', function () {
+            btn.querySelector('i').className = 'fas fa-chevron-up group-chevron me-1';
+            const label = btn.querySelector('span.toggle-label') || btn;
+            if (label !== btn) label.textContent = 'Hide';
+            else btn.textContent = btn.textContent.replace('Show', 'Hide');
+        });
+        collapseEl.addEventListener('hide.bs.collapse', function () {
+            btn.querySelector('i').className = 'fas fa-chevron-down group-chevron me-1';
+            const label = btn.querySelector('span.toggle-label') || btn;
+            if (label !== btn) label.textContent = 'Show';
+            else btn.textContent = btn.textContent.replace('Hide', 'Show');
+        });
+    });
+});
+</script>
 
 <div class="supervisor-dashboard">
 <div class="page-hero fadeup">
@@ -555,7 +612,6 @@ $queue_employee_count = count($pending_groups);
                         <div class="fw-bold">Forward to HR Manager</div>
                         <small class="text-muted">Approved validations move to manager review.</small>
                     </div>
-                </div>
                 <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-primary w-100 rounded-pill mt-3">
                     <i class="fas fa-clipboard-check me-2"></i>Open Queue
                 </a>
@@ -567,154 +623,214 @@ $queue_employee_count = count($pending_groups);
 
 <?php /* ── Non-Regular Personnel Watchlist (Supervisor) ── */ ?>
 <style>
-    .watchlist-card 
-    { border-radius: 16px; 
-        border: none; 
-        overflow: hidden; 
-        margin-bottom: 24px; 
+    /* ── Watchlist Card ─────────────────────────────────────────── */
+    .watchlist-card {
+        border-radius: 16px;
+        border: none;
+        overflow: visible; /* must NOT clip — dropdown menus escape the card */
+        margin-bottom: 24px;
+        box-shadow: 0 4px 20px rgba(4,61,7,.10);
     }
-    .watchlist-header { 
-        background: linear-gradient(135deg, #043d07ff 0%, #074604ff 100%); 
-        color: #fff; 
-        padding: 20px 24px; 
-        display: flex; 
-        align-items: center; 
-        justify-content: space-between; 
-        flex-wrap: wrap; gap: 12px; 
+    .watchlist-header {
+        background: linear-gradient(135deg, #043d07 0%, #074604 100%);
+        color: #fff;
+        padding: 18px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-radius: 16px 16px 0 0;
     }
-    .watchlist-header h5 { 
-        margin: 0; 
-        font-weight: 700; 
-        font-size: 1rem; 
+    .watchlist-body {
+        background: #fff;
+        border-radius: 0 0 16px 16px;
+        overflow: visible;
     }
-    .watchlist-badge-pill { 
-        display: inline-flex; 
-        align-items: center; 
-        gap: 6px; 
-        padding: 4px 12px; 
-        border-radius: 20px; 
-        font-size: 0.75rem; 
-        font-weight: 700; 
+    .watchlist-header-left {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-width: 0;
     }
-    .wb-overdue  { 
-        background: rgba(220,53,69,.25);
-        color: #ff6b7a; 
-        border: 1px solid rgba(220,53,69,.4); 
+    .watchlist-header h5 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1rem;
+        white-space: nowrap;
     }
-    .wb-critical { 
-        background: rgba(255,152,0,.2); 
-        color: #ffb74d; 
-        border: 1px solid rgba(255,152,0,.4); 
+    .watchlist-badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        white-space: nowrap;
     }
-    .wb-ok       { 
-        background: rgba(40,167,69,.15); 
-        color: #66bb6a; 
-        border: 1px solid rgba(40,167,69,.3); 
+    .wb-overdue  { background: rgba(220,53,69,.25);  color: #ff6b7a; border: 1px solid rgba(220,53,69,.4); }
+    .wb-critical { background: rgba(255,152,0,.2);   color: #ffb74d; border: 1px solid rgba(255,152,0,.4); }
+    .wb-ok       { background: rgba(40,167,69,.15);  color: #66bb6a; border: 1px solid rgba(40,167,69,.3); }
+    .watchlist-view-btn {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #fff;
+        background: rgba(255,255,255,.15);
+        border: 1px solid rgba(255,255,255,.25);
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background .15s;
     }
-    .watchlist-body { 
-        background: #fff; 
+    .watchlist-view-btn:hover { background: rgba(255,255,255,.25); color: #fff; }
+    .watchlist-empty {
+        padding: 52px 24px;
+        text-align: center;
+        color: #8094ae;
     }
-    .watchlist-empty { 
-        padding: 48px 24px; 
-        text-align: center; 
-        color: #8094ae; 
+    .watchlist-empty i {
+        font-size: 2.5rem;
+        color: #d1fae5;
+        margin-bottom: 12px;
+        display: block;
     }
-    .watchlist-empty i { 
-        font-size: 2.5rem; 
-        color: #d1fae5; 
-        margin-bottom: 12px; 
-        display: block; 
+
+    /* ── Desktop Row ────────────────────────────────────────────── */
+    .wl-row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 20px;
+        border-bottom: 1px solid #f0f3f8;
+        transition: background .15s;
+        position: relative;
+        z-index: 1;
     }
-    .wl-row { 
-        display: flex; 
-        align-items: center; 
-        gap: 14px; 
-        padding: 14px 20px; 
-        border-bottom: 1px solid #f0f3f8; 
-        transition: background .15s; 
-    }
-    .wl-row:last-child { 
-        border-bottom: none; 
-    }
-    .wl-row:hover { 
-        background: #f8faff; 
-    }
-    .wl-avatar { 
-        width: 40px; 
-        height: 40px; 
-        border-radius: 50%; 
-        object-fit: cover; 
-        flex-shrink: 0; 
-    }
-    .wl-info { 
-        flex: 1; 
-        min-width: 0; 
-    }
-    .wl-name { 
-        font-weight: 700; 
-        font-size: 0.88rem; 
-        color: #1e2d40; 
-        white-space: nowrap; 
-        overflow: hidden; 
-        text-overflow: ellipsis; 
-    }
-    .wl-sub  { 
-        font-size: 0.73rem; 
-        color: #8094ae; 
-        white-space: nowrap; 
-        overflow: hidden; 
-        text-overflow: ellipsis; 
-    }
-    .wl-countdown { 
-        flex-shrink: 0; 
-        text-align: right; 
-    }
-    .wl-days { 
-        display: inline-flex; 
-        align-items: center; 
-        gap: 5px; 
-        padding: 4px 10px; 
-        border-radius: 20px; 
-        font-size: 0.73rem; 
-        font-weight: 700; 
-        white-space: nowrap; 
-    }
-    .wl-overdue  { 
-        background: #fff1f2; 
-        color: #dc3545; 
-        border: 1px solid #f8c4c8; 
-    }
-    .wl-critical { 
-        background: #fff8e1; 
-        color: #e65100; 
-        border: 1px solid #ffe0b2; 
-    }
-    .wl-warning  { 
-        background: #fffbeb; 
-        color: #b45309; 
-        border: 1px solid #fde68a; 
-    }
-    .wl-upcoming { 
-        background: #f0fdf4; 
-        color: #15803d; 
-        border: 1px solid #bbf7d0; 
-    }
-    .wl-status-tag { 
-        display: inline-block; 
-        padding: 2px 8px; 
-        border-radius: 10px; 
-        font-size: 0.68rem; 
-        font-weight: 700; 
-        background: #eef4ff; 
-        color: #3b5bdb; 
-    }
-    .wl-actions { 
-        flex-shrink: 0; 
+    .wl-row:last-child { border-bottom: none; }
+    .wl-row:hover, .wl-row:focus-within { background: #f8faff; z-index: 100; }
+    .wl-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .wl-info { flex: 1; min-width: 0; }
+    .wl-name { font-weight: 700; font-size: 0.88rem; color: #1e2d40; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .wl-sub  { font-size: 0.73rem; color: #8094ae; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .wl-countdown { flex-shrink: 0; text-align: right; }
+    .wl-days { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 0.73rem; font-weight: 700; white-space: nowrap; }
+    .wl-overdue  { background: #fff1f2; color: #dc3545; border: 1px solid #f8c4c8; }
+    .wl-critical { background: #fff8e1; color: #e65100; border: 1px solid #ffe0b2; }
+    .wl-warning  { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .wl-upcoming { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .wl-actions { flex-shrink: 0; position: relative; }
+
+    /* Mobile card sections — hidden on desktop */
+    .wl-row-top    { display: none; }
+    .wl-row-footer { display: none; }
+
+    /* ── Mobile Card Layout (≤ 767px) ──────────────────────────── */
+    @media (max-width: 767.98px) {
+        .watchlist-header {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 14px 16px;
+            gap: 10px;
+        }
+        .watchlist-header-left { gap: 6px; }
+        .watchlist-header h5   { font-size: 0.9rem; white-space: normal; }
+        .watchlist-view-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 9px 14px;
+            font-size: 0.82rem;
+            border-radius: 10px;
+        }
+        .watchlist-empty { padding: 36px 16px; }
+
+        .watchlist-body { background: #f5f7f5; padding: 12px; overflow: visible; }
+
+        .wl-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
+            padding: 0;
+            border-bottom: none;
+            border-radius: 14px;
+            background: #fff;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(4,61,7,.07);
+            overflow: visible;
+            position: relative;
+            z-index: 1;
+            transition: box-shadow .18s;
+        }
+        .wl-row:last-child { margin-bottom: 0; }
+        .wl-row:hover, .wl-row:focus-within { background: #fff; box-shadow: 0 4px 16px rgba(4,61,7,.13); z-index: 1050 !important; }
+        
+        .wl-row-top {
+            display: flex;
+            border-radius: 14px 14px 0 0;
+            overflow: hidden;
+            align-items: center;
+            gap: 12px;
+            padding: 13px 14px 10px;
+        }
+        .wl-row-footer {
+            display: flex;
+            border-radius: 0 0 14px 14px;
+            overflow: visible;
+            position: relative;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 14px 12px;
+            gap: 8px;
+            border-top: 1px solid #f0f3f0;
+            background: #fafcfa;
+        }
+        .wl-row-footer .dropdown { position: relative; }
+        .wl-row-footer .dropdown-menu { z-index: 1060 !important; margin-top: 4px; }
+
+        .wl-row > .wl-avatar,
+        .wl-row > .wl-info,
+        .wl-row > .wl-countdown,
+        .wl-row > .wl-actions { display: none !important; }
+
+        .wl-row-top .wl-avatar {
+            display: block;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            border: 2px solid #e3ede3;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        .wl-row-top .wl-info { display: block; flex: 1; min-width: 0; }
+        .wl-row-top .wl-name {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #1e2d40;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .wl-row-top .wl-sub {
+            font-size: 0.72rem;
+            color: #8094ae;
+            white-space: normal;
+            line-height: 1.45;
+            margin-top: 3px;
+        }
+
+        .wl-row-footer .wl-countdown { text-align: left; flex: 1; min-width: 0; }
+        .wl-row-footer .wl-days      { font-size: 0.72rem; padding: 4px 10px; }
+        .wl-row-footer .wl-actions   { flex-shrink: 0; }
     }
 </style>
 <div class="watchlist-card">
     <div class="watchlist-header">
-        <div class="d-flex align-items-center gap-3 flex-wrap">
+        <div class="watchlist-header-left">
             <h5><i class="fas fa-exclamation-triangle me-2" style="color:#FFD97D"></i>Non-Regular Personnel Watchlist</h5>
             <?php if ($overdue_count_watchlist > 0): ?>
                 <span class="watchlist-badge-pill wb-overdue"><i class="fas fa-times-circle"></i><?php echo $overdue_count_watchlist; ?> Overdue</span>
@@ -726,8 +842,8 @@ $queue_employee_count = count($pending_groups);
                 <span class="watchlist-badge-pill wb-ok"><i class="fas fa-check-circle"></i>All Clear</span>
             <?php endif; ?>
         </div>
-        <a href="<?php echo BASE_URL; ?>/supervisor/employees.php" class="btn btn-sm" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;">
-            <i class="fas fa-users me-1"></i>View All Employees
+        <a href="<?php echo BASE_URL; ?>/supervisor/employees.php" class="watchlist-view-btn">
+            <i class="fas fa-users"></i>View All Employees
         </a>
     </div>
     <div class="watchlist-body">
@@ -766,13 +882,44 @@ $queue_employee_count = count($pending_groups);
                     </div>
                     <div class="wl-actions">
                         <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" style="border-radius:8px;font-size:0.75rem;">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" style="border-radius:8px;font-size:0.75rem;">
                                 <i class="fas fa-bolt me-1"></i>Action
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm">
                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $ws['employee_id']; ?>"><i class="fas fa-eye me-2 text-info"></i>View Profile</a></li>
                                 <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $ws['employee_id']; ?>"><i class="fas fa-edit me-2 text-primary"></i>Edit Record</a></li>
                             </ul>
+                        </div>
+                    </div>
+                    <div class="wl-row-top">
+                        <img src="<?php echo getEmployeeAvatar($ws['profile_picture']); ?>" class="wl-avatar" alt="Avatar">
+                        <div class="wl-info">
+                            <div class="wl-name"><?php echo e($ws['last_name'] . ', ' . $ws['first_name']); ?></div>
+                            <div class="wl-sub">
+                                <?php echo renderEmploymentStatusBadge($ws['employment_status']); ?>
+                                <?php echo e($ws['job_title'] ?? 'N/A'); ?>
+                                <?php if (!empty($ws['branch_name'])): ?>
+                                    &nbsp;·&nbsp;<?php echo e($ws['branch_name']); ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wl-row-footer">
+                        <div class="wl-countdown">
+                            <span class="wl-days <?php echo $dayClass; ?>">
+                                <i class="fas <?php echo $icon; ?>"></i><?php echo $dayLabel; ?>
+                            </span>
+                        </div>
+                        <div class="wl-actions">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-display="static" style="border-radius:8px;font-size:0.75rem;">
+                                    <i class="fas fa-bolt me-1"></i>Action
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/supervisor/view-employee.php?id=<?php echo $ws['employee_id']; ?>"><i class="fas fa-eye me-2 text-info"></i>View Profile</a></li>
+                                    <li><a class="dropdown-item" href="<?php echo BASE_URL; ?>/supervisor/edit-employee.php?id=<?php echo $ws['employee_id']; ?>"><i class="fas fa-edit me-2 text-primary"></i>Edit Record</a></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>

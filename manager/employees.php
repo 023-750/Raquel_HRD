@@ -1051,14 +1051,22 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
     }
 
     // --- Department Filter Handler (syncs both desktop & mobile job title optgroups) ---
-    function handleDepartmentChange(selectedDept) {
+    function handleDepartmentChange(selectedDept, sourceId) {
         filterJobTitleOptgroups(selectedDept);
 
-        // Reset job title selections
+        // Sync department select values between desktop & mobile
+        const mainDept = document.getElementById('filterDepartment');
+        const mobDept = document.getElementById('mobileFilterDepartment');
+        if (mainDept && sourceId !== 'filterDepartment') mainDept.value = selectedDept;
+        if (mobDept && sourceId !== 'mobileFilterDepartment') mobDept.value = selectedDept;
+
+        if (mainDept) mainDept.classList.toggle('active-filter', mainDept.value !== '');
+
+        // Reset job title selections if current selection is not in the filtered optgroups
         const mainJT = document.getElementById('filterJobTitle');
         const mobJT = document.getElementById('mobileFilterJobTitle');
-        if (mainJT) { mainJT.value = ''; mainJT.classList.remove('active-filter'); }
-        if (mobJT)  { mobJT.value = ''; }
+        if (mainJT && mainJT.selectedIndex === -1) { mainJT.value = ''; mainJT.classList.remove('active-filter'); }
+        if (mobJT && mobJT.selectedIndex === -1) { mobJT.value = ''; }
 
         currentPage = 1;
         syncFiltersToUrl();
@@ -1067,14 +1075,13 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
     }
 
     document.getElementById('filterDepartment')?.addEventListener('change', function () {
-        handleDepartmentChange(this.value);
+        handleDepartmentChange(this.value, 'filterDepartment');
     });
 
     document.getElementById('mobileFilterDepartment')?.addEventListener('change', function () {
-        filterJobTitleOptgroups(this.value);
-        const mobJT = document.getElementById('mobileFilterJobTitle');
-        if (mobJT) mobJT.value = '';
+        handleDepartmentChange(this.value, 'mobileFilterDepartment');
     });
+
 
     // Regular handlers for other filters
     ['filterJobTitle', 'filterBranch', 'filterStatus'].forEach(id => {

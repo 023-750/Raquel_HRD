@@ -274,6 +274,24 @@ a {
     100% { transform: rotate(360deg) scale(1); }
 }
 
+/* ===== Mobile Gear Settings Dropdown Styling ===== */
+#mobileGearDropdown {
+    max-width: calc(100vw - 24px) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+}
+
+#mobileGearDropdown .dropdown-item {
+    font-size: 0.82rem !important;
+    padding: 6px 10px !important;
+    border-radius: 8px !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+}
+
+#mobileGearDropdown .dropdown-item:hover,
+#mobileGearDropdown .dropdown-item:active {
+    background-color: rgba(7, 75, 2, 0.08) !important;
+}
+
 /* ===== Header Bell Icon Ring Animation ===== */
 #notificationBtn,
 .notification-btn {

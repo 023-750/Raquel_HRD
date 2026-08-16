@@ -192,7 +192,7 @@ render_login:
   <title>Login - Raquel Pawnshop HRIS</title>
   <meta name="description" content="Login to Raquel Pawnshop Human Resource Information System">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/raquel-hris-login.css">
+  <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/raquel-hris-login.css?v=<?php echo filemtime(__DIR__ . '/assets/css/raquel-hris-login.css'); ?>">
   <noscript>
     <style>
       body::before {
@@ -252,15 +252,17 @@ render_login:
           </div>
         </div>
 
+        <!-- Mobile Tab Switcher (Floating in the middle section) -->
+        <div class="mob-tabs-wrapper">
+          <div class="mob-tabs">
+            <button class="mob-tab active-gold" id="mobTabHRIS" onclick="showHRIS()">HRIS Portal</button>
+            <button class="mob-tab" id="mobTabESS" onclick="showESS()">Employee Portal</button>
+          </div>
+        </div>
+
         <div class="form-panel">
           <!-- ── HRIS Login Card ── -->
           <div class="form-inner hris" id="hrisCard">
-            <!-- Mobile tabs -->
-            <div class="mob-tabs">
-              <button class="mob-tab active-gold" id="mobTabHRIS" onclick="showHRIS()">HRIS Portal</button>
-              <button class="mob-tab" id="mobTabESS" onclick="showESS()">Employee Portal</button>
-            </div>
-
             <p class="eyebrow ey-gold"><i class="ti ti-briefcase" aria-hidden="true"></i> HRIS Portal</p>
             <h2 class="form-title">Welcome Back!</h2>
             <p class="form-sub">Login to access your HR management account</p>
@@ -315,11 +317,6 @@ render_login:
 
           <!-- ── ESS Login Card ── -->
           <div class="form-inner essf">
-            <!-- Mobile tabs -->
-            <div class="mob-tabs">
-              <button class="mob-tab" id="mobTabHRIS2" onclick="showHRIS()">HRIS Portal</button>
-              <button class="mob-tab active-green" id="mobTabESS2" onclick="showESS()">Employee Portal</button>
-            </div>
             <p class="eyebrow ey-green"><i class="ti ti-user-circle" aria-hidden="true"></i> Employee Portal</p>
             <h2 class="form-title">Welcome Back!</h2>
             <p class="form-sub">Login to access your employee account</p>

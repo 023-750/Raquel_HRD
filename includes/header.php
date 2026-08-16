@@ -407,8 +407,10 @@ switch ($effective_role) {
     <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-ratings.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-progress.css?v=<?php echo time(); ?>" rel="stylesheet">
     <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-notifications.css?v=<?php echo time(); ?>" rel="stylesheet">
-    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-feedback.css?v=<?php echo time(); ?>" rel="stylesheet">
     <?php endif; ?>
+    <!-- Feedback & Sound Effects System CSS — loaded for all roles -->
+    <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-feedback.css?v=<?php echo time(); ?>" rel="stylesheet">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <script src="<?php echo BASE_URL; ?>/assets/js/pjax.js?v=<?php echo time(); ?>" defer></script>
     <script>
@@ -424,10 +426,70 @@ switch ($effective_role) {
 
 <body class="<?php echo ($current_dir === 'admin' ? 'admin-area' : '') . ($effective_role === 'Employee' ? ' role-employee' : ''); ?>">
 
+    <!-- ── Network Offline Banner ─────────────────────────────────────────────
+         Shows when device loses connectivity (APK WebView + browser).
+         Prevents white-screen freeze; auto-hides on reconnect.
+    ──────────────────────────────────────────────────────────────────────── -->
+    <div id="networkOfflineBanner" style="
+        display:none;
+        position:fixed;
+        top:0;left:0;right:0;
+        z-index:99999;
+        background:#1a1a2e;
+        color:#fff;
+        padding:10px 16px;
+        font-size:0.82rem;
+        font-family:'Inter',sans-serif;
+        font-weight:600;
+        text-align:center;
+        box-shadow:0 2px 12px rgba(0,0,0,.45);
+        letter-spacing:.3px;
+        align-items:center;
+        justify-content:center;
+        gap:10px;
+        flex-wrap:wrap;
+    ">
+        <span id="networkOfflineIcon" style="font-size:1rem;">📵</span>
+        <span id="networkOfflineMsg">No internet connection. Waiting to reconnect…</span>
+        <button onclick="location.reload()" style="
+            background:rgba(255,255,255,.15);
+            border:1px solid rgba(255,255,255,.3);
+            color:#fff;
+            border-radius:20px;
+            padding:4px 14px;
+            font-size:0.78rem;
+            font-weight:700;
+            cursor:pointer;
+        ">Retry</button>
+    </div>
+    <script>
+    (function(){
+        var banner = document.getElementById('networkOfflineBanner');
+        var msg    = document.getElementById('networkOfflineMsg');
+        var icon   = document.getElementById('networkOfflineIcon');
+        function showOffline(){
+            if(!banner) return;
+            banner.style.display = 'flex';
+            msg.textContent  = 'No internet connection. Waiting to reconnect…';
+            icon.textContent = '📵';
+        }
+        function showOnline(){
+            if(!banner) return;
+            icon.textContent = '✅';
+            msg.textContent  = 'Connection restored! Reloading…';
+            setTimeout(function(){ banner.style.display='none'; }, 2000);
+        }
+        window.addEventListener('offline', showOffline);
+        window.addEventListener('online',  showOnline);
+        if(!navigator.onLine){ showOffline(); }
+    })();
+    </script>
+
     <?php if ($effective_role === 'Employee'): ?>
     <!-- Skip Navigation for accessibility (WCAG AAA) -->
     <a href="#main-content" class="skip-navigation">Skip to main content</a>
     <?php endif; ?>
+
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -606,53 +668,140 @@ switch ($effective_role) {
                     <button class="notification-btn" data-bs-toggle="dropdown" aria-expanded="false" id="mobileGearBtn" style="color: #074B02;">
                         <i class="fas fa-cog"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); min-width: 210px;">
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" id="mobileGearDropdown" style="border-radius: 14px; border: 1px solid rgba(0,0,0,0.08); min-width: 200px; max-width: calc(100vw - 24px); font-size: 0.84rem; padding: 6px;">
                         <li>
-                            <span class="dropdown-item-text fw-bold d-flex align-items-center" style="font-size:0.85rem;color:var(--text-muted); white-space: nowrap;">
+                            <span class="dropdown-item-text fw-bold d-flex align-items-center" style="font-size:0.8rem;color:var(--text-muted); padding: 6px 10px;">
                                 <i class="fas fa-user-circle me-2"></i><?php echo e($_SESSION['full_name']); ?>
                             </span>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <li><hr class="dropdown-divider my-1"></li>
                         <li>
-                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/dashboard.php" style="white-space: nowrap;">
-                                <i class="fas fa-tachometer-alt me-2" style="width: 20px; text-align: center;"></i>Dashboard
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/dashboard.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                <i class="fas fa-tachometer-alt me-2" style="width: 18px; text-align: center;"></i>Dashboard
                             </a>
                         </li>
-                        <?php if (isset($_SESSION['employee_id']) && $conn && isDeptManagerRole($conn, (int)$_SESSION['employee_id'])): ?>
+                        <?php
+                        $_g_emp_id = (int)($_SESSION['employee_id'] ?? 0);
+                        $_g_is_dept_mgr = false;
+                        if ($_g_emp_id > 0 && $conn) {
+                            $_g_is_dept_mgr = isDeptManagerRole($conn, $_g_emp_id);
+                        }
+                        if ($_g_is_dept_mgr):
+                            $_g_dept_pending = $m_dept_review_count ?? 0;
+                            if (!isset($m_dept_review_count) && $conn) {
+                                $_g_dept_stmt = $conn->prepare("
+                                    SELECT e.evaluation_id, e.employee_id
+                                    FROM evaluations e
+                                    JOIN employees emp ON e.employee_id = emp.employee_id
+                                    WHERE e.status = 'Pending Dept Manager'
+                                      AND e.deleted_at IS NULL
+                                      AND emp.is_active = 1
+                                      AND emp.deleted_at IS NULL
+                                ");
+                                if ($_g_dept_stmt) {
+                                    $_g_dept_stmt->execute();
+                                    $_g_pending_rows = $_g_dept_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                                    $_g_dept_stmt->close();
+                                    foreach ($_g_pending_rows as $_g_pending) {
+                                        if (isDeptManagerOfEmployee($conn, (int)$_SESSION['user_id'], (int)$_g_pending['employee_id'])) {
+                                            $_g_dept_pending++;
+                                        }
+                                    }
+                                }
+                            }
+                        ?>
                             <li>
-                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" style="white-space: nowrap;">
-                                    <i class="fas fa-user-shield me-2" style="width: 20px; text-align: center;"></i>Dept Manager Review
+                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                    <span><i class="fas fa-user-shield me-2" style="width: 18px; text-align: center;"></i>Dept Manager Review</span>
+                                    <?php if ($_g_dept_pending > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-2"><?php echo $_g_dept_pending > 9 ? '9+' : $_g_dept_pending; ?></span>
+                                    <?php endif; ?>
                                 </a>
                             </li>
                         <?php endif; ?>
                         <?php
-                        // My Team — for supervisors/managers excluding Human Resources dept
-                        if (isset($_SESSION['employee_id']) && $conn) {
-                            $_gear_sup_id = (int)$_SESSION['employee_id'];
-                            if (hasSupervisorPrivileges($conn, $_gear_sup_id)) {
-                                $_gear_dep = $conn->query("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = $_gear_sup_id LIMIT 1");
-                                $_gear_dept_name = $_gear_dep ? ($_gear_dep->fetch_assoc()['department_name'] ?? '') : '';
-                                if ($_gear_dept_name !== 'Human Resources'):
-                        ?>
-                            <li>
-                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/team-list.php" style="white-space: nowrap;">
-                                    <i class="fas fa-users me-2" style="width: 20px; text-align: center;"></i>My Team
-                                </a>
-                            </li>
-                        <?php
-                                endif;
+                        // Confirm Rating — for immediate heads outside HR department
+                        $_g_is_sup = false;
+                        $_g_dept_name = '';
+                        if ($_g_emp_id > 0 && $conn) {
+                            $_g_is_sup = hasSupervisorPrivileges($conn, $_g_emp_id);
+                            if ($_g_is_sup) {
+                                $_g_dep_r = $conn->query("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = $_g_emp_id LIMIT 1");
+                                if ($_g_dep_r) {
+                                    $_g_dept_name = $_g_dep_r->fetch_assoc()['department_name'] ?? '';
+                                }
                             }
                         }
+                        if ($_g_is_sup && !$_g_is_dept_mgr && $_g_dept_name !== 'Human Resources'):
+                            $_g_confirm_pending = $m_confirm_rating_count ?? 0;
+                            if (!isset($m_confirm_rating_count) && $conn) {
+                                $_g_c_stmt = $conn->prepare("
+                                    SELECT ev.evaluation_id, ev.employee_id
+                                    FROM evaluations ev
+                                    JOIN employees e ON ev.employee_id = e.employee_id
+                                    WHERE e.employee_id <> ?
+                                      AND ev.status IN ('Pending Dept Supervisor','Pending Supervisor')
+                                      AND ev.deleted_at IS NULL
+                                      AND e.is_active = 1
+                                      AND e.deleted_at IS NULL
+                                ");
+                                if ($_g_c_stmt) {
+                                    $_g_c_stmt->bind_param('i', $_g_emp_id);
+                                    $_g_c_stmt->execute();
+                                    $_g_confirm_rows = $_g_c_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+                                    $_g_c_stmt->close();
+                                    foreach ($_g_confirm_rows as $_g_confirm_row) {
+                                        if (isSupervisorOfEmployee($conn, (int)$_SESSION['user_id'], (int)$_g_confirm_row['employee_id'])) {
+                                            $_g_confirm_pending++;
+                                        }
+                                    }
+                                }
+                            }
                         ?>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                    <span><i class="fas fa-user-check me-2" style="width: 18px; text-align: center;"></i>Confirm Rating</span>
+                                    <?php if ($_g_confirm_pending > 0): ?>
+                                        <span class="badge bg-danger rounded-pill ms-2"><?php echo $_g_confirm_pending > 9 ? '9+' : $_g_confirm_pending; ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        <?php endif; ?>
                         <li>
-                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/profile-settings.php" style="white-space: nowrap;">
-                                <i class="fas fa-user-cog me-2" style="width: 20px; text-align: center;"></i>Change Password
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/my-performance.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                <i class="fas fa-chart-line me-2" style="width: 18px; text-align: center;"></i>My Performance
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
+                        <?php
+                        // My Team & Movement Requests — for supervisors/managers excluding Human Resources dept
+                        if ($_g_is_sup && $_g_dept_name !== 'Human Resources'):
+                        ?>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/team-list.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                    <i class="fas fa-users me-2" style="width: 18px; text-align: center;"></i>My Team
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/career-movement-request.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                    <i class="fas fa-route me-2" style="width: 18px; text-align: center;"></i>Movement Requests
+                                </a>
+                            </li>
+                        <?php endif; ?>
                         <li>
-                            <a class="dropdown-item text-danger d-flex align-items-center" href="<?php echo BASE_URL; ?>/logout.php" style="white-space: nowrap;">
-                                <i class="fas fa-sign-out-alt me-2" style="width: 20px; text-align: center;"></i>Logout
+                            <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/profile-settings.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                <i class="fas fa-user-cog me-2" style="width: 18px; text-align: center;"></i>Change Password
+                            </a>
+                        </li>
+                        <li>
+                            <button type="button" class="dropdown-item d-flex align-items-center justify-content-between w-100 border-0 bg-transparent sound-toggle-btn" id="soundToggleBtn" onclick="if(window.toggleUiSound) window.toggleUiSound();" style="font-size:0.82rem; padding: 6px 10px; cursor: pointer;">
+                                <span><i class="fas fa-volume-up me-2 sound-icon text-success" style="width: 18px; text-align: center;"></i>Sound Effects</span>
+                                <span class="badge bg-success sound-status-badge" style="font-size:0.7rem;">ON</span>
+                            </button>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <a class="dropdown-item text-danger d-flex align-items-center" href="<?php echo BASE_URL; ?>/logout.php" style="font-size:0.82rem; padding: 6px 10px;">
+                                <i class="fas fa-sign-out-alt me-2" style="width: 18px; text-align: center;"></i>Logout
                             </a>
                         </li>
                     </ul>

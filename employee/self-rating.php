@@ -312,19 +312,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Evaluation Period Start must be before the End date.';
         }
 
-        // Validate that no KRA score is zero (all questions must be answered)
-        $all_submitted_scores = array_merge((array)$kra_scores, (array)$beh_scores);
-        $has_zero_score = false;
-        foreach ($all_submitted_scores as $score_val) {
-            if ((float)$score_val <= 0) {
-                $has_zero_score = true;
-                break;
+        // Validate that EVERY criterion in the template has a rating selected (1 to 4)
+        $req_criteria = $conn->query("SELECT criterion_id FROM evaluation_criteria WHERE template_id = $template_id");
+        $missing_count = 0;
+        while ($cr = $req_criteria->fetch_assoc()) {
+            $cid = (int)$cr['criterion_id'];
+            $val = (float)($kra_scores[$cid] ?? ($beh_scores[$cid] ?? 0));
+            if ($val <= 0) {
+                $missing_count++;
             }
         }
-        if ($has_zero_score || empty($all_submitted_scores)) {
-            $errors[] = 'All evaluation criteria must have a rating greater than 0 before submitting. Please fill in all fields.';
+        if ($missing_count > 0) {
+            $errors[] = 'All evaluation criteria must have a rating selected (1 to 4) before submitting. Please complete all questions.';
         }
     }
+
 
 
     if (!empty($errors)) {
@@ -2294,7 +2296,39 @@ function confirmFinalSubmit() {
         form.submit();
     }, 600);
 }
+
+// ── Auto-Scroll on Self-Rating Choice Selection ──────────────────────────────
+document.addEventListener('change', function (e) {
+    if (!e.target || !e.target.classList.contains('rating-input')) return;
+
+    const currentItem = e.target.closest('.rating-item');
+    if (!currentItem) return;
+
+    // Find all rating items in order
+    const allItems = Array.from(document.querySelectorAll('.rating-item'));
+    const currentIndex = allItems.indexOf(currentItem);
+
+    if (currentIndex !== -1 && currentIndex < allItems.length - 1) {
+        const nextItem = allItems[currentIndex + 1];
+        setTimeout(() => {
+            nextItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Add a brief subtle pulse outline highlight to signal active focus
+            nextItem.style.transition = 'box-shadow 0.3s ease';
+            nextItem.style.boxShadow = '0 0 0 3px rgba(4, 61, 7, 0.2)';
+            setTimeout(() => { nextItem.style.boxShadow = ''; }, 1200);
+        }, 150);
+    } else {
+        // Last question reached — scroll smoothly to the comments / submit section
+        const actionsDiv = document.querySelector('.self-rating-actions') || document.querySelector('textarea[name="self_comments"]');
+        if (actionsDiv) {
+            setTimeout(() => {
+                actionsDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 150);
+        }
+    }
+});
 </script>
+
 
 <script>
 (function() {

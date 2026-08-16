@@ -1311,10 +1311,7 @@ $stepLabels = [
 
 <script src="<?php echo BASE_URL; ?>/assets/js/employee-form.js?v=<?php echo time(); ?>"></script>
 
-<!-- Back to Top Button -->
-<button type="button" id="backToTop" onclick="scrollToTop()" title="Back to Top">
-    <i class="fas fa-chevron-up"></i>
-</button>
+
 
 <?php require_once '../includes/footer.php'; ?>
 

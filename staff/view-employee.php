@@ -781,11 +781,7 @@ $permAddr = trim(implode(', ', array_filter([$emp['perm_house_no'], $emp['perm_s
             <?php require_once '../includes/employee-edit-history-card.php'; ?>
         </div>
     </div>
-    <div class="d-flex justify-content-center mt-4 mb-2">
-        <button type="button" class="btn btn-outline-secondary px-4" onclick="window.scrollTo({ top: 0, behavior: 'smooth' });" aria-label="Back to the top of Employee Information">
-            <i class="fas fa-arrow-up me-2" aria-hidden="true"></i>Back to Top
-        </button>
-    </div>
+
 <script>
     let govIdsVisible = false;
     function toggleGovIds() {

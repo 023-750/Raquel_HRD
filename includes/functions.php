@@ -3251,18 +3251,26 @@ function getBranchEmployeesForDropdown($conn, $sup_employee_id, $branch_id, int 
 
     if ($department_id > 0) {
         $stmt = $conn->prepare(
-            "SELECT employee_id, first_name, last_name, job_title
-             FROM employees
-             WHERE branch_id = ? AND department_id = ? AND is_active = 1 AND employee_id != ?
-             ORDER BY last_name, first_name"
+            "SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.branch_id, e.department_id,
+                    b.branch_name, d.department_name, rc.rank_name, rc.level_order
+             FROM employees e
+             LEFT JOIN branches b ON e.branch_id = b.branch_id
+             LEFT JOIN departments d ON e.department_id = d.department_id
+             LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
+             WHERE e.branch_id = ? AND e.department_id = ? AND e.is_active = 1 AND e.employee_id != ?
+             ORDER BY e.last_name, e.first_name"
         );
         $stmt->bind_param("iii", $branch_id, $department_id, $sup_employee_id);
     } else {
         $stmt = $conn->prepare(
-            "SELECT employee_id, first_name, last_name, job_title
-             FROM employees
-             WHERE branch_id = ? AND is_active = 1 AND employee_id != ?
-             ORDER BY last_name, first_name"
+            "SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.branch_id, e.department_id,
+                    b.branch_name, d.department_name, rc.rank_name, rc.level_order
+             FROM employees e
+             LEFT JOIN branches b ON e.branch_id = b.branch_id
+             LEFT JOIN departments d ON e.department_id = d.department_id
+             LEFT JOIN rank_categories rc ON e.rank_category_id = rc.rank_category_id
+             WHERE e.branch_id = ? AND e.is_active = 1 AND e.employee_id != ?
+             ORDER BY e.last_name, e.first_name"
         );
         $stmt->bind_param("ii", $branch_id, $sup_employee_id);
     }

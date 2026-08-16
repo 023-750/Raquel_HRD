@@ -34,8 +34,8 @@ if (!$eval_q || $eval_q->num_rows === 0) {
 
 $eval = $eval_q->fetch_assoc();
 
-// Check if the evaluation is in Pending Manager state
-if ($eval['status'] !== 'Pending Manager') {
+// Check if the evaluation is in a pending review state for manager
+if (!in_array($eval['status'], ['Pending Manager', 'Pending HR Consolidation', 'Pending Dept Manager'], true)) {
     echo json_encode(['success' => false, 'message' => 'Developmental plan can only be edited for evaluations pending your review.']);
     exit;
 }

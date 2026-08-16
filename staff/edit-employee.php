@@ -423,8 +423,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<button type="button" id="backToTop" onclick="scrollToTop()" title="Back to Top">
-    <i class="fas fa-chevron-up"></i>
-</button>
+
 
 <?php require_once '../includes/footer.php'; ?>
