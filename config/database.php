@@ -11,11 +11,13 @@ date_default_timezone_set('Asia/Manila');
 
 define('BASE_URL', isset($_SERVER['HTTP_HOST']) ? (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] : '/' . basename(dirname(__DIR__)));
 
+$is_remote = (DB_HOST !== 'localhost' && DB_HOST !== '127.0.0.1');
+
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 $conn = mysqli_init();
-if (DB_SSL) {
-    // TiDB Cloud Serverless requires SSL connection
+if ($is_remote || DB_SSL) {
+    // TiDB Cloud / Remote Cloud MySQL requires SSL connection
     $conn->ssl_set(NULL, NULL, NULL, NULL, NULL);
     $conn->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, true);
     $conn->real_connect(DB_HOST, DB_USER, DB_PASS, DB_NAME, (int)DB_PORT, NULL, MYSQLI_CLIENT_SSL);
