@@ -476,23 +476,24 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
     <div class="alert alert-danger">Career Movements could not be initialized.</div>
 <?php endif; ?>
 
-<div class="chart-card fadeup">
-    <div class="cc-header d-flex flex-wrap align-items-center justify-content-between gap-3">
-        <ul class="nav nav-tabs cc-header-tabs" role="tablist">
+<div class="chart-card fadeup shadow-sm border-0 rounded-3 overflow-hidden">
+    <div class="cc-header d-flex flex-wrap align-items-center justify-content-between gap-3 p-3" style="background:#ffffff;border-bottom:2px solid #082E06;">
+        <ul class="nav nav-tabs cc-header-tabs border-0" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#supListTab" type="button" role="tab">
-                    <i class="fas fa-list me-1"></i>All Movements
+                <button class="nav-link active fw-bold px-3 py-2 border-0" data-bs-toggle="tab" data-bs-target="#supListTab" type="button" role="tab" style="border-radius:8px;font-size:.85rem;">
+                    <i class="fas fa-list me-2" style="color:#082E06;"></i>All Movements
+                    <span class="badge rounded-pill ms-2" style="background:#082E06;color:#CBA135;"><?php echo count($movements); ?></span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#supCreateTab" type="button" role="tab" id="supCreateTabBtn">
-                    <i class="fas fa-plus me-1"></i>Create Movement
+                <button class="nav-link fw-bold px-3 py-2 border-0" data-bs-toggle="tab" data-bs-target="#supCreateTab" type="button" role="tab" id="supCreateTabBtn" style="border-radius:8px;font-size:.85rem;">
+                    <i class="fas fa-plus me-2" style="color:#CBA135;"></i>File New Movement
                 </button>
             </li>
         </ul>
-        <div class="search-box">
-            <i class="fas fa-search search-icon"></i>
-            <input type="text" class="form-control form-control-sm" id="supMovSearch" placeholder="Search movements...">
+        <div class="search-box position-relative" style="min-width:260px;">
+            <i class="fas fa-search search-icon text-muted" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:.82rem;"></i>
+            <input type="text" class="form-control form-control-sm ps-4" id="supMovSearch" placeholder="Search employee, position, status..." style="border-radius:20px;border-color:rgba(203,161,53,0.4);font-size:.82rem;">
         </div>
     </div>
 
@@ -501,23 +502,26 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
 
             <!-- LIST TAB -->
             <div class="tab-pane fade show active" id="supListTab" role="tabpanel">
-                <div class="table-responsive">
-                    <table class="table modern-table align-middle mb-0" id="supMovTable">
+                <div class="table-responsive" style="overflow-x:auto;">
+                    <table class="table align-middle mb-0" id="supMovTable" style="font-size:.84rem;width:100%;table-layout:auto;">
                         <thead>
-                            <tr>
-                                <th>Employee</th>
-                                <th>Type</th>
-                                <th>Position Change</th>
-                                <th>Branch Change</th>
-                                <th>Effective</th>
-                                <th>Source</th>
-                                <th>Status</th>
-                                <th class="text-end">Actions</th>
+                            <tr style="background:#082E06;color:#ffffff;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;">
+                                <th class="py-3 ps-3" style="min-width:210px;">Employee & Source</th>
+                                <th class="py-3" style="min-width:240px;">Movement & Transition</th>
+                                <th class="py-3" style="width:110px;">Effective</th>
+                                <th class="py-3" style="min-width:160px;">Workflow Status</th>
+                                <th class="py-3 text-end pe-3" style="width:140px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($movements)): ?>
-                                <tr><td colspan="8" class="text-center py-5 text-muted"><i class="fas fa-route d-block mb-2" style="font-size:2rem;opacity:.2;"></i>No career movements yet.</td></tr>
+                                <tr>
+                                    <td colspan="5" class="text-center py-5 text-muted">
+                                        <i class="fas fa-route d-block mb-3" style="font-size:2.5rem;color:#082E06;opacity:.25;"></i>
+                                        <div class="fw-bold fs-6 text-dark mb-1">No Career Movements Found</div>
+                                        <p class="mb-0 small text-muted">Career progression & transfer requests will appear here.</p>
+                                    </td>
+                                </tr>
                             <?php else: ?>
                                 <?php foreach ($movements as $mv):
                                     $is_mine        = (int)($mv['logged_by']??0) === $current_user_id;
@@ -525,143 +529,242 @@ function supCmStatusClass($s){return match($s){'Approved'=>'bg-success','Rejecte
                                     $is_pending     = $mv['approval_status'] === 'Pending';
                                     $is_hr_staff_req = ($mv['request_source']==='HR Portal' && ($mv['initiated_by_role']??'')==='HR Staff');
 
-                                    // Authorize HR Supervisor actions only when it is at Pending_HR_Supervisor stage (for portal requests) or Pending (for HR direct requests)
+                                    // Authorize HR Supervisor actions
                                     $can_sup_act = false;
                                     if ($is_portal_req) {
                                         $can_sup_act = ($mv['portal_workflow_stage'] === 'Pending_HR_Supervisor' && !$is_mine);
                                     } else {
                                         $can_sup_act = ($is_pending && !$is_mine);
                                     }
+
+                                    // Initials for avatar
+                                    $emp_name_parts = explode(',', $mv['employee_name']);
+                                    $l_name = trim($emp_name_parts[0] ?? '');
+                                    $f_name = trim($emp_name_parts[1] ?? '');
+                                    $initials = strtoupper(substr($f_name, 0, 1) . substr($l_name, 0, 1)) ?: 'EM';
+
+                                    // Movement Type Badge styling
+                                    $type_style = match($mv['movement_type']) {
+                                        'Promotion'   => 'background:rgba(40,167,69,0.15);color:#198754;border:1px solid rgba(40,167,69,0.35);',
+                                        'Transfer'    => 'background:rgba(13,202,240,0.15);color:#087990;border:1px solid rgba(13,202,240,0.35);',
+                                        'Demotion'    => 'background:rgba(220,53,69,0.15);color:#dc3545;border:1px solid rgba(220,53,69,0.35);',
+                                        'Role Change' => 'background:rgba(203,161,53,0.18);color:#b38615;border:1px solid rgba(203,161,53,0.4);',
+                                        default       => 'background:#e2e3e5;color:#383d41;border:1px solid #d6d8db;',
+                                    };
+                                    $type_icon = match($mv['movement_type']) {
+                                        'Promotion'   => 'fa-arrow-up',
+                                        'Transfer'    => 'fa-random',
+                                        'Demotion'    => 'fa-arrow-down',
+                                        'Role Change' => 'fa-sync-alt',
+                                        default       => 'fa-exchange-alt',
+                                    };
                                 ?>
-                                <tr>
-                                    <td>
-                                        <div class="fw-bold"><?php echo e($mv['employee_name']); ?></div>
-                                        <small class="text-muted"><?php echo e(getEmployeeDisplayId($mv)); ?> &middot; <?php echo e($mv['current_job_title']); ?></small>
-                                        <?php if (!empty($mv['department_name'])): ?>
-                                            <div><span class="badge bg-light text-dark border" style="font-size:.68rem;"><?php echo e($mv['department_name']); ?></span></div>
-                                        <?php endif; ?>
+                                <tr class="border-bottom" style="background:#ffffff;transition:background 0.15s ease-in-out;">
+                                    <!-- Column 1: Employee & Source -->
+                                    <td class="py-3 ps-3">
+                                        <div class="d-flex align-items-center gap-2.5">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width:36px;height:36px;background:linear-gradient(135deg, #082E06 0%, #163e12 100%);color:#CBA135;font-size:.8rem;flex-shrink:0;border:1px solid #CBA135;">
+                                                <?php echo e($initials); ?>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold" style="color:#082E06;font-size:.86rem;line-height:1.2;"><?php echo e($mv['employee_name']); ?></div>
+                                                <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                                                    <span class="badge" style="background:rgba(8,46,6,0.08);color:#082E06;font-size:.65rem;font-weight:600;"><?php echo e(getEmployeeDisplayId($mv)); ?></span>
+                                                    <?php if (!empty($mv['department_name'])): ?>
+                                                        <span class="badge bg-light text-secondary border" style="font-size:.65rem;"><?php echo e($mv['department_name']); ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div class="mt-1" style="font-size:.68rem;">
+                                                    <?php if ($is_hr_staff_req): ?>
+                                                        <span class="text-warning fw-semibold"><i class="fas fa-user-shield me-1"></i>HR Staff Requisition</span>
+                                                    <?php elseif ($mv['request_source']==='Employee Portal'): ?>
+                                                        <span class="text-info fw-semibold"><i class="fas fa-user-tie me-1"></i>Branch Head Requisition</span>
+                                                        <?php if (!empty($mv['initiated_by_name'])): ?>
+                                                            <span class="text-muted">by <?php echo e($mv['initiated_by_name']); ?></span>
+                                                        <?php endif; ?>
+                                                    <?php else: ?>
+                                                        <span class="text-secondary fw-semibold"><i class="fas fa-building me-1"></i>HR Portal</span>
+                                                        <span class="text-muted">by <?php echo e($mv['logged_by_name']?:'HRD'); ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
-                                    <td><span class="badge <?php echo supCmTypeClass($mv['movement_type']); ?>"><?php echo e($mv['movement_type']); ?></span></td>
-                                    <td>
-                                        <div class="small text-muted"><?php echo e($mv['previous_position'] ?: $mv['current_job_title'] ?: '—'); ?></div>
-                                        <div class="fw-semibold"><i class="fas fa-arrow-right text-success me-1" style="font-size:.75rem;"></i><?php echo e($mv['new_position']); ?></div>
-                                    </td>
-                                    <td>
+
+                                    <!-- Column 2: Movement & Transition Details -->
+                                    <td class="py-3">
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="badge px-2 py-1 rounded-pill fw-bold" style="<?php echo $type_style; ?>font-size:.7rem;">
+                                                <i class="fas <?php echo $type_icon; ?> me-1"></i><?php echo e($mv['movement_type']); ?>
+                                            </span>
+                                        </div>
+                                        <div class="fw-bold text-dark" style="font-size:.82rem;">
+                                            <span class="text-muted fw-normal" style="font-size:.76rem;"><?php echo e($mv['previous_position'] ?: $mv['current_job_title'] ?: '—'); ?></span>
+                                            <i class="fas fa-long-arrow-alt-right mx-1" style="color:#CBA135;"></i>
+                                            <span style="color:#082E06;"><?php echo e($mv['new_position']); ?></span>
+                                        </div>
                                         <?php if (!empty($mv['new_branch_id'])): ?>
-                                            <div class="small text-muted"><?php echo e($mv['previous_branch_name']?:'N/A'); ?></div>
-                                            <div class="fw-semibold"><?php echo e($mv['new_branch_name']?:'N/A'); ?></div>
+                                            <div class="small text-muted mt-0.5" style="font-size:.72rem;">
+                                                <i class="fas fa-store me-1"></i><?php echo e($mv['previous_branch_name']?:'Current Branch'); ?>
+                                                <i class="fas fa-arrow-right mx-1 text-danger"></i>
+                                                <strong class="text-dark"><?php echo e($mv['new_branch_name']?:'N/A'); ?></strong>
+                                            </div>
                                         <?php else: ?>
-                                            <span class="text-muted small">No branch change</span>
+                                            <div class="text-muted small mt-0.5" style="font-size:.7rem;"><i class="fas fa-minus me-1"></i>No branch change</div>
                                         <?php endif; ?>
                                     </td>
-                                    <td><span class="small"><?php echo formatDate($mv['effective_date']); ?></span></td>
-                                    <td>
-                                        <?php if ($is_hr_staff_req): ?>
-                                            <span class="badge bg-warning text-dark"><i class="fas fa-user-shield me-1"></i>HR Staff Requisition</span>
-                                            <div class="small text-muted mt-1">Leaderless Branch</div>
-                                        <?php elseif ($mv['request_source']==='Employee Portal'): ?>
-                                            <span class="badge bg-info text-dark"><i class="fas fa-user-tie me-1"></i>Branch Head Requisition</span>
-                                            <?php if (!empty($mv['initiated_by_name'])): ?>
-                                                <div class="small text-muted mt-1">by <?php echo e($mv['initiated_by_name']); ?></div>
-                                            <?php endif; ?>
-                                        <?php else: ?>
-                                            <span class="badge bg-secondary"><i class="fas fa-building me-1"></i>HR Portal</span>
-                                            <div class="small text-muted mt-1">by <?php echo e($mv['logged_by_name']?:'HRD'); ?></div>
-                                        <?php endif; ?>
+
+                                    <!-- Column 3: Effective Date -->
+                                    <td class="py-3">
+                                        <span class="badge bg-light text-dark border px-2 py-1" style="font-size:.72rem;font-weight:600;">
+                                            <i class="fas fa-calendar-alt me-1 text-secondary"></i><?php echo formatDate($mv['effective_date']); ?>
+                                        </span>
                                     </td>
-                                    <td>
+
+                                    <!-- Column 4: Workflow Status -->
+                                    <td class="py-3">
                                         <?php if ($is_portal_req): ?>
                                             <?php
                                             $p_stage = $mv['portal_workflow_stage'];
                                             if ($p_stage === 'Pending_Branch_Manager'): ?>
-                                                <span class="badge bg-warning text-dark"><i class="fas fa-user-tie me-1"></i>Pending Branch Manager</span>
+                                                <span class="badge rounded-pill bg-warning text-dark px-2.5 py-1" style="font-size:.7rem;"><i class="fas fa-user-tie me-1"></i>Pending BM</span>
                                             <?php elseif ($p_stage === 'Pending_HR_Supervisor'): ?>
-                                                <span class="badge bg-primary text-white"><i class="fas fa-user-shield me-1"></i>Pending HR Supervisor</span>
+                                                <span class="badge rounded-pill px-2.5 py-1 text-white shadow-sm" style="background:linear-gradient(135deg, #082E06, #163e12);border:1px solid #CBA135;font-size:.7rem;"><i class="fas fa-user-shield me-1" style="color:#CBA135;"></i>Pending HR Sup</span>
                                             <?php elseif ($p_stage === 'Pending_HR_Manager'): ?>
-                                                <span class="badge bg-info text-dark"><i class="fas fa-paper-plane me-1"></i>Endorsed to HR Manager</span>
+                                                <span class="badge rounded-pill bg-info text-dark px-2.5 py-1" style="font-size:.7rem;"><i class="fas fa-paper-plane me-1"></i>Endorsed HR Mgr</span>
                                             <?php elseif ($p_stage === 'Approved' || $mv['approval_status'] === 'Approved'): ?>
-                                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Approved</span>
+                                                <span class="badge rounded-pill bg-success px-2.5 py-1" style="font-size:.7rem;"><i class="fas fa-check-circle me-1"></i>Approved</span>
                                                 <?php if ((int)($mv['is_applied']??0) === 1): ?>
-                                                    <span class="badge bg-success ms-1">Applied</span>
+                                                    <span class="badge rounded-pill bg-success ms-1" style="font-size:.62rem;">Applied</span>
                                                 <?php else: ?>
-                                                    <span class="badge bg-secondary ms-1">Scheduled</span>
+                                                    <span class="badge rounded-pill bg-secondary ms-1" style="font-size:.62rem;">Scheduled</span>
                                                 <?php endif; ?>
                                             <?php elseif ($p_stage === 'Rejected' || $mv['approval_status'] === 'Rejected'): ?>
-                                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Rejected</span>
+                                                <span class="badge rounded-pill bg-danger px-2.5 py-1" style="font-size:.7rem;"><i class="fas fa-times-circle me-1"></i>Rejected</span>
                                             <?php else: ?>
-                                                <span class="badge bg-secondary"><?php echo e($mv['approval_status']); ?></span>
+                                                <span class="badge rounded-pill bg-secondary px-2.5 py-1" style="font-size:.7rem;"><?php echo e($mv['approval_status']); ?></span>
                                             <?php endif; ?>
                                         <?php else: ?>
-                                            <span class="badge <?php echo supCmStatusClass($mv['approval_status']); ?>"><?php echo e($mv['approval_status']); ?></span>
+                                            <span class="badge rounded-pill <?php echo supCmStatusClass($mv['approval_status']); ?> px-2.5 py-1" style="font-size:.7rem;"><?php echo e($mv['approval_status']); ?></span>
                                             <?php if ($mv['approval_status']==='Approved' && (int)$mv['is_applied']===1): ?>
-                                                <span class="badge bg-success ms-1">Applied</span>
+                                                <span class="badge rounded-pill bg-success ms-1" style="font-size:.62rem;">Applied</span>
                                             <?php elseif ($mv['approval_status']==='Approved'): ?>
-                                                <span class="badge bg-secondary ms-1">Scheduled</span>
+                                                <span class="badge rounded-pill bg-secondary ms-1" style="font-size:.62rem;">Scheduled</span>
                                             <?php endif; ?>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="text-end">
+
+                                    <!-- Column 5: Actions -->
+                                    <td class="py-3 text-end pe-3">
                                         <?php if ($can_sup_act): ?>
-                                            <form method="POST" class="d-inline">
-                                                <?php echo csrfField(); ?>
-                                                <input type="hidden" name="movement_id" value="<?php echo (int)$mv['movement_id']; ?>">
-                                                <input type="hidden" name="movement_action" value="Approve">
-                                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('<?php echo $is_portal_req ? 'Approve and endorse this transfer request to HR Manager?' : 'Approve this career movement?'; ?>');">
-                                                    <i class="fas fa-check me-1"></i><?php echo $is_portal_req ? 'Endorse' : 'Approve'; ?>
+                                            <div class="d-inline-flex gap-1">
+                                                <form method="POST" class="d-inline">
+                                                    <?php echo csrfField(); ?>
+                                                    <input type="hidden" name="movement_id" value="<?php echo (int)$mv['movement_id']; ?>">
+                                                    <input type="hidden" name="movement_action" value="Approve">
+                                                    <button type="submit" class="btn btn-sm text-white fw-bold px-2.5 shadow-sm" style="background:linear-gradient(135deg, #082E06 0%, #163e12 100%);border:1px solid #CBA135;border-radius:6px;font-size:.72rem;" onclick="return confirm('<?php echo $is_portal_req ? 'Approve and endorse this transfer request to HR Manager?' : 'Approve this career movement?'; ?>');">
+                                                        <i class="fas fa-check me-1" style="color:#CBA135;"></i><?php echo $is_portal_req ? 'Endorse' : 'Approve'; ?>
+                                                    </button>
+                                                </form>
+                                                <button class="btn btn-sm btn-outline-danger fw-semibold px-2" style="border-radius:6px;font-size:.72rem;"
+                                                    data-bs-toggle="modal" data-bs-target="#supRejectModal"
+                                                    data-mvid="<?php echo (int)$mv['movement_id']; ?>"
+                                                    data-empname="<?php echo e($mv['employee_name']); ?>">
+                                                    <i class="fas fa-times me-1"></i>Reject
                                                 </button>
-                                            </form>
-                                            <button class="btn btn-sm btn-outline-danger ms-1"
-                                                data-bs-toggle="modal" data-bs-target="#supRejectModal"
-                                                data-mvid="<?php echo (int)$mv['movement_id']; ?>"
-                                                data-empname="<?php echo e($mv['employee_name']); ?>">
-                                                <i class="fas fa-times me-1"></i>Reject
-                                            </button>
+                                            </div>
                                         <?php elseif ($is_portal_req && $mv['portal_workflow_stage'] === 'Pending_HR_Manager'): ?>
-                                            <span class="small text-muted"><i class="fas fa-check text-success me-1"></i>Endorsed &middot; Awaiting HR Manager</span>
+                                            <span class="small fw-semibold text-success" style="font-size:.72rem;"><i class="fas fa-check-double me-1"></i>Endorsed</span>
                                         <?php elseif ($is_portal_req && $mv['portal_workflow_stage'] === 'Pending_Branch_Manager'): ?>
-                                            <span class="small text-muted fst-italic">Awaiting Branch Manager</span>
+                                            <span class="small text-muted fst-italic" style="font-size:.72rem;">Awaiting BM</span>
                                         <?php elseif ($is_pending && $is_mine): ?>
-                                            <span class="badge bg-light text-dark border" title="You submitted this request — awaiting HR Manager approval."><i class="fas fa-clock me-1"></i>Awaiting Review</span>
+                                            <span class="badge bg-light text-dark border px-2 py-1" style="font-size:.68rem;" title="You submitted this request — awaiting HR Manager approval."><i class="fas fa-clock me-1 text-warning"></i>Awaiting Review</span>
                                         <?php else: ?>
-                                            <span class="small text-muted"><?php echo e($mv['approved_by_name']?:'Processed'); ?></span>
+                                            <span class="small text-muted" style="font-size:.72rem;"><?php echo e($mv['approved_by_name']?:'Processed'); ?></span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
-                                <?php if (!empty($mv['reason'])||!empty($mv['manager_comments'])): ?>
-                                <tr class="bg-light">
-                                    <td colspan="8" class="small text-muted py-2">
-                                        <?php if (!empty($mv['reason'])): ?><span class="fw-semibold">Reason:</span> <?php echo e($mv['reason']); ?><?php endif; ?>
-                                        <?php if (!empty($mv['manager_comments'])): ?><span class="ms-3 fw-semibold">Decision Notes:</span> <?php echo e($mv['manager_comments']); ?><?php endif; ?>
+
+                                <!-- Sub-row: Justification & Visual Approval Timeline Stepper -->
+                                <tr style="background:#fafdfa;border-bottom:1px solid rgba(8,46,6,0.08);">
+                                    <td colspan="5" class="p-2.5 ps-3 pe-3">
+                                        <div class="p-2.5 rounded-3 shadow-sm" style="background:#ffffff;border:1px solid rgba(8,46,6,0.1);">
+                                            <div class="row g-2 align-items-center">
+                                                <!-- Reason Quote Box -->
+                                                <div class="col-12 col-md-6">
+                                                    <div class="p-2 rounded-2" style="background:#f4fbf3;border-left:3px solid #082E06;">
+                                                        <div class="d-flex align-items-center gap-1 mb-0.5" style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#082E06;">
+                                                            <i class="fas fa-comment-dots" style="color:#CBA135;"></i>Requisition Justification
+                                                        </div>
+                                                        <div class="text-dark small" style="font-style:italic;font-size:.78rem;">
+                                                            "<?php echo e($mv['reason'] ?: 'No justification recorded.'); ?>"
+                                                        </div>
+                                                        <?php if (!empty($mv['manager_comments'])): ?>
+                                                            <div class="mt-1 text-danger small pt-1" style="border-top:1px dashed rgba(220,53,69,0.3);font-size:.75rem;">
+                                                                <strong>Decision Note:</strong> <?php echo e($mv['manager_comments']); ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Approval Stepper Timeline -->
+                                                <div class="col-12 col-md-6">
+                                                    <div class="d-flex align-items-center justify-content-between position-relative px-2">
+                                                        <!-- Line Connector -->
+                                                        <div style="position:absolute;top:13px;left:30px;right:30px;height:2px;background:#e2e8e1;z-index:1;"></div>
+
+                                                        <!-- Node 1: Branch Manager -->
+                                                        <div class="text-center position-relative" style="z-index:2;">
+                                                            <?php if (!empty($mv['branch_manager_approved_by'])): ?>
+                                                                <div class="rounded-circle shadow-sm mx-auto d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#198754;color:#fff;font-size:.7rem;"><i class="fas fa-check"></i></div>
+                                                                <div class="fw-bold mt-1 text-dark" style="font-size:.66rem;">Branch Mgr</div>
+                                                                <div class="text-muted" style="font-size:.6rem;"><?php echo e($mv['bm_approver_name'] ?? 'Approved'); ?></div>
+                                                            <?php else: ?>
+                                                                <div class="rounded-circle shadow-sm mx-auto d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#e9ecef;color:#6c757d;font-size:.7rem;"><i class="fas fa-minus"></i></div>
+                                                                <div class="fw-bold mt-1 text-secondary" style="font-size:.66rem;">Branch Mgr</div>
+                                                                <div class="text-muted fst-italic" style="font-size:.6rem;">Bypassed / N/A</div>
+                                                            <?php endif; ?>
+                                                        </div>
+
+                                                        <!-- Node 2: HR Supervisor -->
+                                                        <div class="text-center position-relative" style="z-index:2;">
+                                                            <?php if (!empty($mv['hr_supervisor_approved_by'])): ?>
+                                                                <div class="rounded-circle shadow-sm mx-auto d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#198754;color:#fff;font-size:.7rem;"><i class="fas fa-check"></i></div>
+                                                                <div class="fw-bold mt-1 text-dark" style="font-size:.66rem;">HR Sup</div>
+                                                                <div class="text-muted" style="font-size:.6rem;"><?php echo e($mv['hrs_approver_name'] ?? 'Endorsed'); ?></div>
+                                                            <?php elseif ($mv['portal_workflow_stage'] === 'Pending_HR_Supervisor'): ?>
+                                                                <div class="rounded-circle shadow-sm mx-auto d-flex align-items-center justify-content-center pulse-animation" style="width:26px;height:26px;background:#082E06;color:#CBA135;border:2px solid #CBA135;font-size:.7rem;"><i class="fas fa-user-shield"></i></div>
+                                                                <div class="fw-bold mt-1" style="color:#082E06;font-size:.66rem;">HR Sup</div>
+                                                                <div class="badge rounded-pill bg-warning text-dark" style="font-size:.58rem;">Pending</div>
+                                                            <?php else: ?>
+                                                                <div class="rounded-circle shadow-sm mx-auto d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#e9ecef;color:#6c757d;font-size:.7rem;"><i class="fas fa-clock"></i></div>
+                                                                <div class="fw-bold mt-1 text-secondary" style="font-size:.66rem;">HR Sup</div>
+                                                                <div class="text-muted" style="font-size:.6rem;">Waiting</div>
+                                                            <?php endif; ?>
+                                                        </div>
+
+                                                        <!-- Node 3: HR Manager -->
+                                                        <div class="text-center position-relative" style="z-index:2;">
+                                                            <?php if ($mv['approval_status'] === 'Approved'): ?>
+                                                                <div class="rounded-circle shadow-sm mx-auto d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#198754;color:#fff;font-size:.7rem;"><i class="fas fa-check-double"></i></div>
+                                                                <div class="fw-bold mt-1 text-success" style="font-size:.66rem;">HR Mgr</div>
+                                                                <div class="text-success fw-semibold" style="font-size:.6rem;">Approved</div>
+                                                            <?php elseif ($mv['approval_status'] === 'Rejected'): ?>
+                                                                <div class="rounded-circle shadow-sm mx-auto d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#dc3545;color:#fff;font-size:.7rem;"><i class="fas fa-times"></i></div>
+                                                                <div class="fw-bold mt-1 text-danger" style="font-size:.66rem;">HR Mgr</div>
+                                                                <div class="text-danger fw-semibold" style="font-size:.6rem;">Rejected</div>
+                                                            <?php else: ?>
+                                                                <div class="rounded-circle shadow-sm mx-auto d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#e9ecef;color:#6c757d;font-size:.7rem;"><i class="fas fa-flag-checkered"></i></div>
+                                                                <div class="fw-bold mt-1 text-secondary" style="font-size:.66rem;">HR Mgr</div>
+                                                                <div class="text-muted" style="font-size:.6rem;">Final</div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
-                                <?php endif; ?>
-                                <?php if ($is_portal_req): ?>
-                                <tr class="bg-light border-top-0">
-                                    <td colspan="8" class="small py-2 ps-4">
-                                        <span class="fw-semibold text-muted me-3">Approval Chain:</span>
-                                        <span class="me-3">
-                                            <i class="fas fa-user-tie me-1 text-muted"></i>
-                                            <strong>Branch Manager:</strong>
-                                            <?php if (!empty($mv['branch_manager_approved_by'])): ?>
-                                                <?php echo e($mv['bm_approver_name'] ?? 'Approved'); ?>
-                                                &middot; <?php echo formatDate($mv['branch_manager_decision_date'] ?? '', 'M d, Y'); ?>
-                                            <?php else: ?>
-                                                <span class="fst-italic text-muted">Branch Manager step bypassed</span>
-                                            <?php endif; ?>
-                                        </span>
-                                        <span>
-                                            <i class="fas fa-user-shield me-1 text-muted"></i>
-                                            <strong>HR Supervisor:</strong>
-                                            <?php if (!empty($mv['hr_supervisor_approved_by'])): ?>
-                                                <?php echo e($mv['hrs_approver_name'] ?? 'Approved'); ?>
-                                                &middot; <?php echo formatDate($mv['hr_supervisor_decision_date'] ?? '', 'M d, Y'); ?>
-                                            <?php else: ?>
-                                                <span class="fst-italic text-muted">Pending Review</span>
-                                            <?php endif; ?>
-                                        </span>
-                                    </td>
-                                </tr>
-                                <?php endif; ?>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
