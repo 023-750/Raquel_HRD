@@ -32,19 +32,19 @@ foreach ($sql_files as $file) {
     $sql_content = preg_replace('/DROP\s+DATABASE\s+IF\s+EXISTS\s+[`\w\-]+;/i', '', $sql_content);
     $sql_content = preg_replace('/CREATE\s+DATABASE\s+IF\s+NOT\s+EXISTS\s+[`\w\-]+;/i', '', $sql_content);
 
-    // Split statements
-    $queries = explode(";\n", $sql_content);
+    // Split statements using regex
+    $queries = preg_split('/;\s*[\r\n]+/', $sql_content);
     $success_count = 0;
     
     foreach ($queries as $query) {
         $trimmed = trim($query);
-        if (!empty($trimmed)) {
+        if (!empty($trimmed) && strpos($trimmed, '--') !== 0) {
             try {
                 if ($conn->query($trimmed) === TRUE) {
                     $success_count++;
                 }
             } catch (Exception $e) {
-                // Ignore small non-fatal errors during batch run
+                echo "Error in query: " . substr($trimmed, 0, 50) . "... -> " . $e->getMessage() . "\n";
             }
         }
     }
