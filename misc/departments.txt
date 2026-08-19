@@ -105,7 +105,7 @@ Department (12)
 > VP for General Services (Executives)
 > Warehouse Staff I (R&F)
 
--Human resources- ✔ 15
+-Human resources- ✔ 16
 > HR Manager I (Manager)
 > HR Manager II (Manager)
 > HR Manager III (Manager)
@@ -113,6 +113,7 @@ Department (12)
 > HR Manager V (Manager)
 > HR Staff I (R&F)
 > HR Staff II (R&F)
+> HR Staff III (R&F)
 > HR Staff IV (R&F)
 > HR Staff V (R&F)
 > HR Staff on Probation (R&F)
