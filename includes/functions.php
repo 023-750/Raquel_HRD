@@ -3827,8 +3827,8 @@ function getEvaluationScoreCirclesHtml($conn, $evaluation_id, $current_score)
     }
 }
 /**
- * Returns active non-regular employees (OJT, Trainee, Probationary, Project Based)
- * whose contract/probation is expiring within $daysThreshold days or already overdue.
+ * Returns every active non-regular employee (OJT, Trainee, Probationary,
+ * Project Based), regardless of when their contract or probation ends.
  * Each row includes a calculated `days_remaining` (negative = overdue) and `urgency`
  * (overdue | critical | warning | upcoming).
  */
@@ -3857,15 +3857,19 @@ function getExpiringNonRegularEmployees($conn, $daysThreshold = 60)
           AND e.employee_id NOT IN (
               SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL
           )
-        HAVING days_remaining IS NOT NULL AND days_remaining <= {$daysThreshold}
-        ORDER BY days_remaining ASC
+        ORDER BY
+            CASE WHEN days_remaining IS NULL THEN 1 ELSE 0 END,
+            days_remaining ASC,
+            e.last_name ASC,
+            e.first_name ASC
     ");
 
     $rows = [];
     if ($result) {
         while ($row = $result->fetch_assoc()) {
-            $d = (int)$row['days_remaining'];
-            if ($d < 0)         $row['urgency'] = 'overdue';
+            $d = $row['days_remaining'] !== null ? (int)$row['days_remaining'] : null;
+            if ($d === null)    $row['urgency'] = 'unscheduled';
+            elseif ($d < 0)     $row['urgency'] = 'overdue';
             elseif ($d <= 14)   $row['urgency'] = 'critical';
             elseif ($d <= 30)   $row['urgency'] = 'warning';
             else                $row['urgency'] = 'upcoming';
