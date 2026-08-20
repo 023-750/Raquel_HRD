@@ -5,17 +5,12 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ====================================
 -- 1. EMPLOYEES (Office of the President Team)
 -- ====================================
-REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middle_name, hire_date, date_of_birth, place_of_birth, gender, civil_status, job_title_id, job_title, department_id, rank_category_id, branch_id, employment_status, employment_type, profile_picture) VALUES
-(10001, 'OP-001', 'Bernadette', 'Salvador', 'Mendoza', '2018-07-18', '1979-06-07', 'Lucena City, Quezon', 'Female', 'Widowed', 1100, 'President and CEO', 10, 1, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
-(10002, 'OP-002', 'Ricardo', 'Gonzales', 'Santos', '2022-04-11', '2002-01-16', 'Lucena City, Quezon', 'Male', 'Widowed', 1101, 'Executive Assistant I', 10, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
-(10003, 'OP-003', 'Susan', 'Cruz', 'Ocampo', '2024-04-12', '2004-11-10', 'Lucena City, Quezon', 'Female', 'Married', 1102, 'Executive Assistant II', 10, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
-(10004, 'OP-004', 'Arthur', 'Salvador', 'Gonzales', '2022-07-12', '1993-01-23', 'Lucena City, Quezon', 'Male', 'Separated', 1103, 'Executive Assistant III', 10, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
-(999, 'JUICE-999', 'Jarad', 'Higgins', 'Anthony', '2017-01-01', '1990-01-01', 'Lucena City, Quezon', 'Male', 'Married', 1103, 'Executive Assistant III', 10, 5, 102, 'Regular', 'Full-time', 'juice.png');
-
--- President is the final employee-portal reviewer for department packages.
-UPDATE employees SET reports_to = NULL WHERE employee_code = 'OP-001';
-UPDATE employees SET reports_to = 10001
-WHERE employee_code IN ('OP-002', 'OP-003', 'OP-004', 'JUICE-999');
+REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middle_name, hire_date, date_of_birth, place_of_birth, gender, civil_status, job_title_id, job_title, department_id, rank_category_id, branch_id, employment_status, employment_type, profile_picture, reports_to) VALUES
+(10001, 'OP-001', 'Bernadette', 'Salvador', 'Mendoza', '2018-07-18', '1979-06-07', 'Lucena City, Quezon', 'Female', 'Widowed', 1100, 'President and CEO', 10, 1, 102, 'Regular', 'Full-time', 'avatar_f.jpg', NULL),
+(10002, 'OP-002', 'Ricardo', 'Gonzales', 'Santos', '2022-04-11', '2002-01-16', 'Lucena City, Quezon', 'Male', 'Widowed', 1101, 'Executive Assistant I', 10, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 10001),
+(10003, 'OP-003', 'Susan', 'Cruz', 'Ocampo', '2024-04-12', '2004-11-10', 'Lucena City, Quezon', 'Female', 'Married', 1102, 'Executive Assistant II', 10, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg', 10001),
+(10004, 'OP-004', 'Arthur', 'Salvador', 'Gonzales', '2022-07-12', '1993-01-23', 'Lucena City, Quezon', 'Male', 'Separated', 1103, 'Executive Assistant III', 10, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 10001),
+(999, 'JUICE-999', 'Jarad', 'Higgins', 'Anthony', '2017-01-01', '1990-01-01', 'Lucena City, Quezon', 'Male', 'Married', 1103, 'Executive Assistant III', 10, 5, 102, 'Regular', 'Full-time', 'juice.png', 10001);
 
 REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, telephone_number) VALUES
 (10001, 'bernadette.salvador@example.com', '09178333427', '888-10001'),
