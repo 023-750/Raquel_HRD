@@ -5,25 +5,38 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ====================================
 -- 1. EMPLOYEES (Acquired Properties Team)
 -- ====================================
-REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middle_name, hire_date, date_of_birth, place_of_birth, gender, civil_status, job_title_id, job_title, department_id, rank_category_id, branch_id, employment_status, employment_type, profile_picture, reports_to, contract_start_date, contract_end_date) VALUES
-(1001, 'AP-001', 'Eduardo', 'Aquino', 'Villanueva', '2011-09-03', '1979-11-24', 'Lucena City, Quezon', 'Male', 'Single', 100, 'VP for Acquired Properties', 1, 1, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 10001, null, null),
-(1002, 'AP-002', 'Christopher', 'Tolentino', 'Gomez', '2016-01-22', '1983-12-03', 'Lucena City, Quezon', 'Male', 'Widowed', 101, 'AP Manager I', 1, 3, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 1001, null, null),
-(1003, 'AP-003', 'Angelica', 'Reyes', 'Del Rosario', '2016-07-21', '1976-11-16', 'Lucena City, Quezon', 'Female', 'Separated', 102, 'AP Manager II', 1, 3, 102, 'Regular', 'Full-time', 'avatar_f.jpg', 1001, null, null),
-(1004, 'AP-004', 'Michelle', 'Lopez', 'Aquino', '2020-09-25', '1980-12-09', 'Lucena City, Quezon', 'Female', 'Single', 103, 'AP Manager III', 1, 3, 102, 'Regular', 'Full-time', 'avatar_f.jpg', 1001, null, null),
-(1005, 'AP-005', 'Joseph', 'Gomez', 'Gomez', '2019-04-23', '1981-12-23', 'Lucena City, Quezon', 'Male', 'Widowed', 104, 'AP Manager IV', 1, 3, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 1001, null, null),
-(1006, 'AP-006', 'Ronald', 'Lopez', 'Del Rosario', '2023-07-14', '1996-07-12', 'Lucena City, Quezon', 'Male', 'Separated', 105, 'AP Supervisor I', 1, 4, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 1002, null, null),
-(1007, 'AP-007', 'Virginia', 'Bautista', 'Cruz', '2018-08-10', '1994-07-09', 'Lucena City, Quezon', 'Female', 'Married', 106, 'AP Supervisor II', 1, 4, 102, 'Regular', 'Full-time', 'avatar_f.jpg', 1002, null, null),
-(1008, 'AP-008', 'Edward', 'Madrigal', 'Soriano', '2019-06-08', '1989-11-23', 'Lucena City, Quezon', 'Male', 'Separated', 107, 'AP Supervisor III', 1, 4, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 1002, null, null),
-(1009, 'AP-009', 'Danilo', 'Castillo', 'Bautista', '2026-01-18', '1994-05-10', 'Lucena City, Quezon', 'Male', 'Widowed', 108, 'AP Staff on Probation', 1, 5, 102, 'Probationary', 'Full-time', 'avatar_m.jpg', 1006, '2026-01-18', '2026-11-19'),
-(1010, 'AP-010', 'Leonora', 'Gomez', 'Cruz', '2022-06-25', '2000-11-04', 'Lucena City, Quezon', 'Female', 'Widowed', 109, 'AP Staff I', 1, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg', 1006, null, null),
-(1011, 'AP-011', 'Mark', 'Tolentino', 'Ocampo', '2025-02-09', '1999-06-01', 'Lucena City, Quezon', 'Male', 'Widowed', 110, 'AP Staff II', 1, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 1006, null, null),
-(1012, 'AP-012', 'Carmelita', 'Garcia', 'Salvador', '2024-11-24', '2003-11-13', 'Lucena City, Quezon', 'Female', 'Separated', 111, 'AP Staff III', 1, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg', 1006, null, null),
-(1013, 'AP-013', 'Michael', 'Villanueva', 'Gomez', '2024-10-07', '1993-07-21', 'Lucena City, Quezon', 'Male', 'Single', 112, 'AP Staff IV', 1, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 1006, null, null),
-(1014, 'AP-014', 'Elena', 'De Leon', 'Mendoza', '2023-02-05', '2002-06-18', 'Lucena City, Quezon', 'Female', 'Married', 113, 'AP Staff V', 1, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg', 1006, null, null),
-(1015, 'AP-015', 'Josefina', 'Evangelista', 'Perez', '2026-01-18', '1994-03-20', 'Lucena City, Quezon', 'Female', 'Widowed', 114, 'Sales Associate on Probation', 1, 5, 102, 'Probationary', 'Full-time', 'avatar_f.jpg',1006, '2026-01-18', '2026-11-19'),
-(1016, 'AP-016', 'Santiago', 'Mendoza', 'Villanueva', '2021-08-23', '2003-10-07', 'Lucena City, Quezon', 'Male', 'Single', 115, 'Sales Associate I', 1, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 1006, null, null),
-(1017, 'AP-017', 'Christopher', 'Villanueva', 'Bautista', '2024-07-06', '1999-12-05', 'Lucena City, Quezon', 'Male', 'Separated', 116, 'Sales Associate II', 1, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg', 1006, null, null);
+REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middle_name, hire_date, date_of_birth, place_of_birth, gender, civil_status, job_title_id, job_title, department_id, rank_category_id, branch_id, employment_status, employment_type, reports_to, contract_start_date, contract_end_date, profile_picture) VALUES
+(1001, 'AP-001', 'Eduardo', 'Aquino', 'Villanueva', '2011-09-03', '1979-11-24', 'Lucena City, Quezon', 'Male', 'Single', 100, 'VP for Acquired Properties', 1, 1, 102, 'Regular', 'Full-time', 10001, null, null, 'avatar_m.jpg'),
+(1002, 'AP-002', 'Christopher', 'Tolentino', 'Gomez', '2016-01-22', '1983-12-03', 'Lucena City, Quezon', 'Male', 'Widowed', 101, 'AP Manager I', 1, 3, 102, 'Regular', 'Full-time', 1001, null, null, 'avatar_m.jpg'),
+(1003, 'AP-003', 'Angelica', 'Reyes', 'Del Rosario', '2016-07-21', '1976-11-16', 'Lucena City, Quezon', 'Female', 'Separated', 102, 'AP Manager II', 1, 3, 102, 'Regular', 'Full-time', 1001, null, null, 'avatar_f.jpg'),
+(1004, 'AP-004', 'Michelle', 'Lopez', 'Aquino', '2020-09-25', '1980-12-09', 'Lucena City, Quezon', 'Female', 'Single', 103, 'AP Manager III', 1, 3, 102, 'Regular', 'Full-time', 1001, null, null,'avatar_f.jpg'),
+(1005, 'AP-005', 'Joseph', 'Gomez', 'Gomez', '2019-04-23', '1981-12-23', 'Lucena City, Quezon', 'Male', 'Widowed', 104, 'AP Manager IV', 1, 3, 102, 'Regular', 'Full-time', 1001, null, null, 'avatar_m.jpg'),
+(1006, 'AP-006', 'Ronald', 'Lopez', 'Del Rosario', '2023-07-14', '1996-07-12', 'Lucena City, Quezon', 'Male', 'Separated', 105, 'AP Supervisor I', 1, 4, 102, 'Regular', 'Full-time', 1002, null, null, 'avatar_m.jpg'),
+(1007, 'AP-007', 'Virginia', 'Bautista', 'Cruz', '2018-08-10', '1994-07-09', 'Lucena City, Quezon', 'Female', 'Married', 106, 'AP Supervisor II', 1, 4, 102, 'Regular', 'Full-time', 1002, null, null, 'avatar_f.jpg'),
+(1008, 'AP-008', 'Edward', 'Madrigal', 'Soriano', '2019-06-08', '1989-11-23', 'Lucena City, Quezon', 'Male', 'Separated', 107, 'AP Supervisor III', 1, 4, 102, 'Regular', 'Full-time', 1002, null, null, 'avatar_m.jpg'),
+(1010, 'AP-010', 'Leonora', 'Gomez', 'Cruz', '2022-06-25', '2000-11-04', 'Lucena City, Quezon', 'Female', 'Widowed', 109, 'AP Staff I', 1, 5, 102, 'Regular', 'Full-time', 1006, null, null, 'avatar_f.jpg'),
+(1011, 'AP-011', 'Mark', 'Tolentino', 'Ocampo', '2025-02-09', '1999-06-01', 'Lucena City, Quezon', 'Male', 'Widowed', 110, 'AP Staff II', 1, 5, 102, 'Regular', 'Full-time', 1006, null, null, 'avatar_m.jpg'),
+(1012, 'AP-012', 'Carmelita', 'Garcia', 'Salvador', '2024-11-24', '2003-11-13', 'Lucena City, Quezon', 'Female', 'Separated', 111, 'AP Staff III', 1, 5, 102, 'Regular', 'Full-time', 1006, null, null, 'avatar_f.jpg'),
+(1013, 'AP-013', 'Michael', 'Villanueva', 'Gomez', '2024-10-07', '1993-07-21', 'Lucena City, Quezon', 'Male', 'Single', 112, 'AP Staff IV', 1, 5, 102, 'Regular', 'Full-time', 1006, null, null, 'avatar_m.jpg'),
+(1014, 'AP-014', 'Elena', 'De Leon', 'Mendoza', '2023-02-05', '2002-06-18', 'Lucena City, Quezon', 'Female', 'Married', 113, 'AP Staff V', 1, 5, 102, 'Regular', 'Full-time', 1006, null, null, 'avatar_f.jpg'),
+(1016, 'AP-016', 'Santiago', 'Mendoza', 'Villanueva', '2021-08-23', '2003-10-07', 'Lucena City, Quezon', 'Male', 'Single', 115, 'Sales Associate I', 1, 5, 102, 'Regular', 'Full-time', 1006, null, null, 'avatar_m.jpg'),
+(1017, 'AP-017', 'Christopher', 'Villanueva', 'Bautista', '2024-07-06', '1999-12-05', 'Lucena City, Quezon', 'Male', 'Separated', 116, 'Sales Associate II', 1, 5, 102, 'Regular', 'Full-time', 1006, null, null, 'avatar_m.jpg'),
 
+-- Probationary
+(1009, 'AP-009', 'Danilo', 'Castillo', 'Bautista', '2026-01-18', '1994-05-10', 'Lucena City, Quezon', 'Male', 'Widowed', 108, 'AP Staff on Probation', 1, 5, 102, 'Probationary', 'Full-time', 1006, '2026-01-18', '2026-11-19', 'avatar_m.jpg'),
+(1015, 'AP-015', 'Josefina', 'Evangelista', 'Perez', '2026-01-18', '1994-03-20', 'Lucena City, Quezon', 'Female', 'Widowed', 114, 'Sales Associate on Probation', 1, 5, 102, 'Probationary', 'Full-time', 1006, '2026-01-18', '2026-11-19', 'avatar_f.jpg'),
+
+-- OJT
+(1018, 'AP-018', 'Andrea', 'Santos', 'Reyes', '2026-08-01', '2004-03-12', 'Lucena City, Quezon', 'Female', 'Single', 109, 'AP Staff I', 1, 5, 102, 'OJT', 'Full-time', 1006, '2026-08-01', '2026-09-30', 'avatar_f.jpg'),
+(1019, 'AP-019', 'Miguel', 'Dela Cruz', 'Ramos', '2026-08-05', '2003-10-21', 'Tayabas City, Quezon', 'Male', 'Single', 109, 'AP Staff I', 1, 5, 102, 'OJT', 'Full-time', 1006, '2026-08-05', '2026-10-04', 'avatar_m.jpg'),
+
+-- Trainee
+(1020, 'AP-020', 'Carla', 'Mendoza', 'Lopez', '2026-07-15', '2001-06-18', 'Pagbilao, Quezon', 'Female', 'Single', 109, 'AP Staff I', 1, 5, 102, 'Trainee', 'Full-time', 1006, '2026-07-15', '2026-09-13', 'avatar_f.jpg'),
+(1021, 'AP-021', 'Joshua', 'Garcia', 'Torres', '2026-08-10', '2000-12-08', 'Lucena City, Quezon', 'Male', 'Single', 109, 'AP Staff I', 1, 5, 102, 'Trainee', 'Full-time', 1006, '2026-08-10', '2026-10-09', 'avatar_m.jpg'),
+ 
+ -- Project Based
+(1022, 'AP-022', 'Rhea', 'Bautista', 'Castillo', '2026-06-01', '1998-05-26', 'Sariaya, Quezon', 'Female', 'Married', 109, 'AP Staff I', 1, 5, 102, 'Project Based', 'Full-time', 1006, '2026-06-01', '2026-11-30', 'avatar_f.jpg'),
+(1023, 'AP-023', 'Kevin', 'Villanueva', 'Santos', '2026-08-01', '1999-09-14', 'Lucena City, Quezon', 'Male', 'Single', 109, 'AP Staff I', 1, 5, 102, 'Project Based', 'Full-time', 1006, '2026-08-01', '2027-01-31', 'avatar_m.jpg');
 
 REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, telephone_number) VALUES
 (1001, 'eduardo.aquino@example.com', '09178078673', '888-1001'),
@@ -42,7 +55,13 @@ REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, tele
 (1014, 'elena.deleon@example.com', '09173530518', '888-1014'),
 (1015, 'josefina.evangelista@example.com', '09177610562', '888-1015'),
 (1016, 'santiago.mendoza@example.com', '09175299055', '888-1016'),
-(1017, 'christopher.villanueva@example.com', '09179753457', '888-1017');
+(1017, 'christopher.villanueva@example.com', '09179753457', '888-1017'),
+(1018, 'andrea.santos@example.com', '09171234018', '888-1018'),
+(1019, 'miguel.delacruz@example.com', '09171234019', '888-1019'),
+(1020, 'carla.mendoza@example.com', '09171234020', '888-1020'),
+(1021, 'joshua.garcia@example.com', '09171234021', '888-1021'),
+(1022, 'rhea.bautista@example.com', '09171234022', '888-1022'),
+(1023, 'kevin.villanueva@example.com', '09171234023', '888-1023');
 
 REPLACE INTO employee_details (employee_id, height_m, weight_kg, blood_type, citizenship) VALUES
 (1001, 1.53, 51.2, 'A+', 'Filipino'),
@@ -61,7 +80,13 @@ REPLACE INTO employee_details (employee_id, height_m, weight_kg, blood_type, cit
 (1014, 1.59, 71.6, 'A-', 'Filipino'),
 (1015, 1.7, 70.5, 'O+', 'Filipino'),
 (1016, 1.76, 53.7, 'O-', 'Filipino'),
-(1017, 1.82, 57.2, 'O-', 'Filipino');
+(1017, 1.82, 57.2, 'O-', 'Filipino'),
+(1018, 1.60, 52.4, 'A+', 'Filipino'),
+(1019, 1.72, 68.1, 'O+', 'Filipino'),
+(1020, 1.58, 54.6, 'B+', 'Filipino'),
+(1021, 1.75, 70.3, 'A-', 'Filipino'),
+(1022, 1.62, 58.7, 'O+', 'Filipino'),
+(1023, 1.78, 75.2, 'B+', 'Filipino');
 
 REPLACE INTO employee_family (employee_id, member_type, surname, first_name, middle_name, occupation) VALUES
 (1001, 'Father', 'Sarmiento', 'Joseph', 'Santos', 'Retired'),
@@ -99,7 +124,19 @@ REPLACE INTO employee_family (employee_id, member_type, surname, first_name, mid
 (1016, 'Father', 'De Leon', 'Eduardo', 'Bautista', 'Retired'),
 (1016, 'Mother', 'Soriano', 'Rosario', 'Aquino', 'Homemaker'),
 (1017, 'Father', 'Villanueva', 'George', 'Torres', 'Retired'),
-(1017, 'Mother', 'Soriano', 'Bernadette', 'Soriano', 'Homemaker');
+(1017, 'Mother', 'Soriano', 'Bernadette', 'Soriano', 'Homemaker'),
+(1018, 'Father', 'Santos', 'Ricardo', 'Reyes', 'Driver'),
+(1018, 'Mother', 'Reyes', 'Lorna', 'Garcia', 'Homemaker'),
+(1019, 'Father', 'Dela Cruz', 'Manuel', 'Ramos', 'Farmer'),
+(1019, 'Mother', 'Ramos', 'Evelyn', 'Torres', 'Vendor'),
+(1020, 'Father', 'Mendoza', 'Rogelio', 'Lopez', 'Security Guard'),
+(1020, 'Mother', 'Lopez', 'Marites', 'Santos', 'Homemaker'),
+(1021, 'Father', 'Garcia', 'Alfredo', 'Torres', 'Mechanic'),
+(1021, 'Mother', 'Torres', 'Luz', 'Mendoza', 'Vendor'),
+(1022, 'Spouse', 'Bautista', 'Noel', 'Castillo', 'Construction Worker'),
+(1022, 'Mother', 'Castillo', 'Erlinda', 'Reyes', 'Homemaker'),
+(1023, 'Father', 'Villanueva', 'Ramon', 'Santos', 'Driver'),
+(1023, 'Mother', 'Santos', 'Celia', 'Garcia', 'Homemaker');
 
 REPLACE INTO employee_education (employee_id, education_level, school_name, degree_course, year_graduated) VALUES
 (1001, 'College', 'Mapua University', 'BS Computer Science', '2000'),
@@ -118,7 +155,13 @@ REPLACE INTO employee_education (employee_id, education_level, school_name, degr
 (1014, 'College', 'University of Santo Tomas', 'BS Accountancy', '2023'),
 (1015, 'College', 'University of the Philippines', 'BS Civil Engineering', '2015'),
 (1016, 'College', 'Polytechnic University of the Philippines', 'BS Business Administration', '2024'),
-(1017, 'College', 'Polytechnic University of the Philippines', 'BS Hotel and Restaurant Management', '2020');
+(1017, 'College', 'Polytechnic University of the Philippines', 'BS Hotel and Restaurant Management', '2020'),
+(1018, 'College', 'Manuel S. Enverga University Foundation', 'BS Business Administration', 'Present'),
+(1019, 'College', 'Southern Luzon State University', 'BS Information Technology', 'Present'),
+(1020, 'College', 'University of the Philippines', 'BS Business Administration', '2025'),
+(1021, 'College', 'Polytechnic University of the Philippines', 'BS Management', '2025'),
+(1022, 'College', 'Manuel S. Enverga University Foundation', 'BS Accountancy', '2020'),
+(1023, 'College', 'Southern Luzon State University', 'BS Business Administration', '2021');
 
 REPLACE INTO employee_work_experience (employee_id, date_from, date_to, job_title, company_name, monthly_salary) VALUES
 (1001, '2007-01-15', '2010-12-15', 'Previous Properties Role', 'United Services Group', 37309),
@@ -137,7 +180,13 @@ REPLACE INTO employee_work_experience (employee_id, date_from, date_to, job_titl
 (1014, '2019-01-15', '2022-12-15', 'Previous V Role', 'Pacific Marketing Group', 43224),
 (1015, '2020-01-15', '2023-12-15', 'Previous Probation Role', 'Pacific Marketing Group', 28726),
 (1016, '2017-01-15', '2020-12-15', 'Previous I Role', 'BPO Solutions Inc.', 28222),
-(1017, '2020-01-15', '2023-12-15', 'Previous II Role', 'Secure Tech Philippines', 20839);
+(1017, '2020-01-15', '2023-12-15', 'Previous II Role', 'Secure Tech Philippines', 20839),
+(1018, '2025-06-01', '2026-07-15', 'Sales Assistant', 'Local Retail Store', 12000),
+(1019, '2025-05-01', '2026-07-30', 'Service Crew', 'Food Service Group', 12500),
+(1020, '2025-08-01', '2026-06-30', 'Customer Service Associate', 'Retail Solutions Inc.', 15500),
+(1021, '2025-07-01', '2026-07-31', 'Administrative Assistant', 'Local Business Center', 16000),
+(1022, '2021-01-01', '2026-05-15', 'Sales Associate', 'Community Lending Corp.', 18000),
+(1023, '2022-02-01', '2026-07-15', 'Warehouse Clerk', 'Prime Logistics Co.', 18500);
 
 REPLACE INTO employee_trainings (employee_id, training_title, conducted_by, no_of_hours) VALUES
 (1001, 'Financial Management and Tax Audits', 'Corporate Training Dept', 16.0),
@@ -156,7 +205,13 @@ REPLACE INTO employee_trainings (employee_id, training_title, conducted_by, no_o
 (1014, 'Advanced Management & Leadership', 'Corporate Training Dept', 16.0),
 (1015, 'IT Infrastructure and Security', 'Corporate Training Dept', 16.0),
 (1016, 'Occupational Safety and Health', 'Corporate Training Dept', 16.0),
-(1017, 'Financial Management and Tax Audits', 'Corporate Training Dept', 16.0);
+(1017, 'Financial Management and Tax Audits', 'Corporate Training Dept', 16.0),
+(1018, 'Workplace Orientation', 'Corporate Training Dept', 8.0),
+(1019, 'Workplace Orientation', 'Corporate Training Dept', 8.0),
+(1020, 'Customer Service Excellence', 'Corporate Training Dept', 16.0),
+(1021, 'Basic Records Management', 'Corporate Training Dept', 16.0),
+(1022, 'Customer Service Excellence', 'Corporate Training Dept', 16.0),
+(1023, 'Inventory and Records Management', 'Corporate Training Dept', 16.0);
 
 REPLACE INTO employee_disclosures (employee_id, is_related_to_company, has_admin_offense, has_criminal_charge) VALUES
 (1001, 0, 0, 0),
@@ -175,7 +230,13 @@ REPLACE INTO employee_disclosures (employee_id, is_related_to_company, has_admin
 (1014, 0, 0, 0),
 (1015, 0, 0, 0),
 (1016, 0, 0, 0),
-(1017, 0, 0, 0);
+(1017, 0, 0, 0),
+(1018, 0, 0, 0),
+(1019, 0, 0, 0),
+(1020, 0, 0, 0),
+(1021, 0, 0, 0),
+(1022, 0, 0, 0),
+(1023, 0, 0, 0);
 
 REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number, pagibig_number, tin_number) VALUES
 (1001, '10-3678638-6', '53-398362082-2', '4527-6514-2674', '194-489-199-000'),
@@ -194,7 +255,13 @@ REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number
 (1014, '83-7381734-7', '10-477698143-4', '7389-7865-9818', '865-852-659-000'),
 (1015, '68-6483562-5', '58-398775766-6', '5133-2341-8705', '119-867-652-000'),
 (1016, '60-4327421-1', '85-841541582-3', '2669-5941-2983', '915-679-901-000'),
-(1017, '67-5091349-7', '82-755338677-6', '6511-1470-9098', '971-432-286-000');
+(1017, '67-5091349-7', '82-755338677-6', '6511-1470-9098', '971-432-286-000'),
+(1018, '31-6842197-5', '20-418563927-1', '6204-9351-7482', '251-684-319-000'),
+(1019, '46-7953148-2', '31-729684150-6', '7315-8462-9517', '362-795-420-000'),
+(1020, '57-8264193-8', '42-850317264-9', '8426-1573-0628', '473-826-531-000'),
+(1021, '68-9375204-1', '53-961428375-2', '9537-2684-1739', '584-937-642-000'),
+(1022, '79-1486315-6', '64-172539486-5', '1648-3795-2840', '695-148-753-000'),
+(1023, '80-2597426-3', '75-283640597-8', '2759-4806-3951', '706-259-864-000');
 
 REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, city, province) VALUES
 (1001, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 6', 'Sariaya', 'Quezon'),
@@ -230,7 +297,19 @@ REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, ci
 (1016, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 1', 'Sariaya', 'Quezon'),
 (1016, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 1', 'Sariaya', 'Quezon'),
 (1017, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Tayabas City', 'Quezon'),
-(1017, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Tayabas City', 'Quezon');
+(1017, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Tayabas City', 'Quezon'),
+(1018, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 5', 'Lucena City', 'Quezon'),
+(1018, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 5', 'Lucena City', 'Quezon'),
+(1019, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 3', 'Tayabas City', 'Quezon'),
+(1019, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 3', 'Tayabas City', 'Quezon'),
+(1020, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 7', 'Pagbilao', 'Quezon'),
+(1020, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 7', 'Pagbilao', 'Quezon'),
+(1021, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Lucena City', 'Quezon'),
+(1021, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Lucena City', 'Quezon'),
+(1022, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 4', 'Sariaya', 'Quezon'),
+(1022, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 4', 'Sariaya', 'Quezon'),
+(1023, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 11', 'Lucena City', 'Quezon'),
+(1023, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 11', 'Lucena City', 'Quezon');
 
 REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES
 (1001, 'Joseph Sarmiento', 'Father', '09185437923'),
@@ -249,7 +328,13 @@ REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationshi
 (1014, 'Robert Reyes', 'Father', '09184700025'),
 (1015, 'Albert Lopez', 'Father', '09184761823'),
 (1016, 'Eduardo De Leon', 'Father', '09189937982'),
-(1017, 'George Villanueva', 'Father', '09186952975');
+(1017, 'George Villanueva', 'Father', '09186952975'),
+(1018, 'Ricardo Santos', 'Father', '09181234018'),
+(1019, 'Manuel Dela Cruz', 'Father', '09181234019'),
+(1020, 'Rogelio Mendoza', 'Father', '09181234020'),
+(1021, 'Alfredo Garcia', 'Father', '09181234021'),
+(1022, 'Noel Bautista', 'Spouse', '09181234022'),
+(1023, 'Ramon Villanueva', 'Father', '09181234023');
 
 REPLACE INTO employee_real_properties (employee_id, description, kind, acquisition_cost) VALUES
 (1001, 'Residential House and Lot', 'Building and Land', 3192670.00),
@@ -268,7 +353,13 @@ REPLACE INTO employee_real_properties (employee_id, description, kind, acquisiti
 (1014, 'Residential House and Lot', 'Building and Land', 2523891.00),
 (1015, 'Residential House and Lot', 'Building and Land', 2863450.00),
 (1016, 'Residential House and Lot', 'Building and Land', 2398373.00),
-(1017, 'Residential House and Lot', 'Building and Land', 3173175.00);
+(1017, 'Residential House and Lot', 'Building and Land', 3173175.00),
+(1018, 'Family Residence Share', 'Building and Land', 250000.00),
+(1019, 'Family Residence Share', 'Building and Land', 250000.00),
+(1020, 'Family Residence Share', 'Building and Land', 300000.00),
+(1021, 'Family Residence Share', 'Building and Land', 300000.00),
+(1022, 'Residential House and Lot', 'Building and Land', 1450000.00),
+(1023, 'Family Residence Share', 'Building and Land', 350000.00);
 
 REPLACE INTO employee_personal_properties (employee_id, description, acquisition_cost) VALUES
 (1001, 'Personal Effects and Savings', 122780.00),
@@ -287,7 +378,13 @@ REPLACE INTO employee_personal_properties (employee_id, description, acquisition
 (1014, 'Personal Effects and Savings', 215040.00),
 (1015, 'Personal Effects and Savings', 135975.00),
 (1016, 'Personal Effects and Savings', 446827.00),
-(1017, 'Personal Effects and Savings', 235451.00);
+(1017, 'Personal Effects and Savings', 235451.00),
+(1018, 'Personal Effects and Savings', 15000.00),
+(1019, 'Personal Effects and Savings', 18000.00),
+(1020, 'Personal Effects and Savings', 45000.00),
+(1021, 'Personal Effects and Savings', 50000.00),
+(1022, 'Personal Effects and Savings', 95000.00),
+(1023, 'Personal Effects and Savings', 85000.00);
 
 REPLACE INTO employee_liabilities (employee_id, nature_of_liability, creditor_name, outstanding_balance) VALUES
 (1001, 'Personal Loan', 'Bank', 130435.00),
@@ -306,7 +403,13 @@ REPLACE INTO employee_liabilities (employee_id, nature_of_liability, creditor_na
 (1014, 'Personal Loan', 'Bank', 81548.00),
 (1015, 'Personal Loan', 'Bank', 20553.00),
 (1016, 'Personal Loan', 'Bank', 107142.00),
-(1017, 'Personal Loan', 'Bank', 99217.00);
+(1017, 'Personal Loan', 'Bank', 99217.00),
+(1018, 'Educational Loan', 'Family Loan', 10000.00),
+(1019, 'Educational Loan', 'Family Loan', 12000.00),
+(1020, 'Personal Loan', 'Bank', 20000.00),
+(1021, 'Personal Loan', 'Bank', 25000.00),
+(1022, 'Housing Loan', 'Bank', 150000.00),
+(1023, 'Personal Loan', 'Bank', 40000.00);
 
 REPLACE INTO employee_references (employee_id, reference_name, reference_address, reference_telephone) VALUES
 (1001, 'Reference Arthur Diaz', 'Quezon Province', '09207350753'),
@@ -325,6 +428,12 @@ REPLACE INTO employee_references (employee_id, reference_name, reference_address
 (1014, 'Reference Francis Villanueva', 'Quezon Province', '09201486955'),
 (1015, 'Reference George Dela Cruz', 'Quezon Province', '09205148725'),
 (1016, 'Reference Manuel Fernandez', 'Quezon Province', '09206724909'),
-(1017, 'Reference Angelo Castillo', 'Quezon Province', '09205635017');
+(1017, 'Reference Angelo Castillo', 'Quezon Province', '09205635017'),
+(1018, 'Reference Maria Reyes', 'Lucena City, Quezon', '09201234018'),
+(1019, 'Reference Joel Ramos', 'Tayabas City, Quezon', '09201234019'),
+(1020, 'Reference Liza Lopez', 'Pagbilao, Quezon', '09201234020'),
+(1021, 'Reference Marvin Torres', 'Lucena City, Quezon', '09201234021'),
+(1022, 'Reference Grace Castillo', 'Sariaya, Quezon', '09201234022'),
+(1023, 'Reference Allan Santos', 'Lucena City, Quezon', '09201234023');
 
 SET FOREIGN_KEY_CHECKS = 1;

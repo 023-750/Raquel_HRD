@@ -6,18 +6,34 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 1. EMPLOYEES (Audit Team)
 -- ====================================
 REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middle_name, hire_date, date_of_birth, place_of_birth, gender, civil_status, job_title_id, job_title, department_id, rank_category_id, branch_id, employment_status, employment_type, profile_picture) VALUES
+
 (2001, 'AUD-001', 'Manuel', 'Ramos', 'Rivera', '2021-08-21', '1979-04-23', 'Lucena City, Quezon', 'Male', 'Married', 200, 'Audit Manager I', 2, 3, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
 (2002, 'AUD-002', 'Aurora', 'Santiago', 'Mendoza', '2016-12-18', '1987-05-01', 'Lucena City, Quezon', 'Female', 'Single', 201, 'Audit Manager II', 2, 3, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
 (2003, 'AUD-003', 'Rosario', 'Fernandez', 'Perez', '2017-05-19', '1980-10-14', 'Lucena City, Quezon', 'Female', 'Married', 202, 'Audit Manager III', 2, 3, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
 (2004, 'AUD-004', 'Jose', 'Perez', 'Mendoza', '2018-05-23', '1990-08-23', 'Lucena City, Quezon', 'Male', 'Single', 203, 'Audit Supervisor I', 2, 4, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
 (2005, 'AUD-005', 'Francis', 'De Leon', 'Pascual', '2022-02-11', '1990-01-15', 'Lucena City, Quezon', 'Male', 'Widowed', 204, 'Audit Supervisor II', 2, 4, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
 (2006, 'AUD-006', 'Christopher', 'Valenzuela', 'Bautista', '2023-12-10', '1985-03-16', 'Lucena City, Quezon', 'Male', 'Married', 205, 'Audit Supervisor III', 2, 4, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
-(2007, 'AUD-007', 'Jose', 'Torres', 'Pascual', '2024-11-05', '1994-11-26', 'Lucena City, Quezon', 'Male', 'Separated', 206, 'Auditor on Probation', 2, 5, 102, 'Probationary', 'Full-time', 'avatar_m.jpg'),
 (2008, 'AUD-008', 'Albert', 'Evangelista', 'Mendoza', '2021-11-23', '2002-07-04', 'Lucena City, Quezon', 'Male', 'Married', 207, 'Auditor I', 2, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
 (2009, 'AUD-009', 'Carmelita', 'Aquino', 'Torres', '2024-04-13', '2001-08-04', 'Lucena City, Quezon', 'Female', 'Separated', 208, 'Auditor II', 2, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
 (2010, 'AUD-010', 'Elizabeth', 'Santiago', 'Ocampo', '2023-05-27', '1993-09-17', 'Lucena City, Quezon', 'Female', 'Separated', 209, 'Auditor III', 2, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
 (2011, 'AUD-011', 'Gloria', 'Castillo', 'Salvador', '2022-11-27', '2000-11-03', 'Lucena City, Quezon', 'Female', 'Single', 210, 'Auditor IV', 2, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
-(2012, 'AUD-012', 'Sarah', 'Gomez', 'Gonzales', '2023-06-02', '2004-09-21', 'Lucena City, Quezon', 'Female', 'Separated', 211, 'Auditor V', 2, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg');
+(2012, 'AUD-012', 'Sarah', 'Gomez', 'Gonzales', '2023-06-02', '2004-09-21', 'Lucena City, Quezon', 'Female', 'Separated', 211, 'Auditor V', 2, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
+
+-- Probationary
+(2007, 'AUD-007', 'Jose', 'Torres', 'Pascual', '2024-11-05', '1994-11-26', 'Lucena City, Quezon', 'Male', 'Separated', 206, 'Auditor on Probation', 2, 5, 102, 'Probationary', 'Full-time', 'avatar_m.jpg'),
+(2017, 'AUD-017', 'Leonora', 'Lopez', 'Garcia', '2026-01-18', '1997-06-25', 'Lucena City, Quezon', 'Female', 'Married', 206, 'Auditor on Probation', 2, 5, 102, 'Probationary', 'Full-time', 'avatar_f.jpg'),
+
+-- OJT
+(2013, 'AUD-013', 'Ramon', 'Salvador', 'Aquino', '2026-08-01', '1998-03-24', 'Lucena City, Quezon', 'Male', 'Married', 207, 'Auditor I', 2, 5, 102, 'OJT', 'Full-time', 'avatar_m.jpg'),
+(2014, 'AUD-014', 'Mark', 'Castillo', 'Garcia', '2026-08-01', '1995-12-15', 'Lucena City, Quezon', 'Male', 'Separated', 207, 'Auditor I', 2, 5, 102, 'OJT', 'Full-time', 'avatar_m.jpg'),
+
+-- Trainee
+(2015, 'AUD-015', 'Miguel', 'Salvador', 'Santos', '2026-08-10', '2002-07-09', 'Lucena City, Quezon', 'Male', 'Married', 207, 'Auditor I', 2, 5, 102, 'Trainee', 'Full-time', 'avatar_m.jpg'),
+(2016, 'AUD-016', 'Gloria', 'Santos', 'De Leon', '2026-08-10', '1996-01-28', 'Lucena City, Quezon', 'Female', 'Widowed', 207, 'Auditor I', 2, 5, 102, 'Trainee', 'Full-time', 'avatar_f.jpg'),
+
+-- Project Based
+(2018, 'AUD-018', 'Aurora', 'Cruz', 'Torres', '2026-08-01', '2002-09-15', 'Lucena City, Quezon', 'Female', 'Separated', 207, 'Auditor I', 2, 5, 102, 'Project Based', 'Full-time', 'avatar_f.jpg'),
+(2019, 'AUD-019', 'Kenneth', 'Perez', 'Cruz', '2026-08-01', '2000-07-14', 'Lucena City, Quezon', 'Male', 'Widowed', 207, 'Auditor I', 2, 5, 102, 'Project Based', 'Full-time', 'avatar_m.jpg');
 
 REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, telephone_number) VALUES
 (2001, 'manuel.ramos@example.com', '09179234615', '888-2001'),
@@ -31,7 +47,14 @@ REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, tele
 (2009, 'carmelita.aquino@example.com', '09177022335', '888-2009'),
 (2010, 'elizabeth.santiago@example.com', '09173760597', '888-2010'),
 (2011, 'gloria.castillo@example.com', '09178789116', '888-2011'),
-(2012, 'sarah.gomez@example.com', '09177679674', '888-2012');
+(2012, 'sarah.gomez@example.com', '09177679674', '888-2012'),
+(2013, 'ramon.salvador@example.com', '09178078673', '888-2013'),
+(2014, 'mark.castillo@example.com', '09172322047', '888-2014'),
+(2015, 'miguel.salvador@example.com', '09176440561', '888-2015'),
+(2016, 'gloria.santos@example.com', '09172065818', '888-2016'),
+(2017, 'leonora.lopez@example.com', '09176438436', '888-2017'),
+(2018, 'aurora.cruz@example.com', '09171352896', '888-2018'),
+(2019, 'kenneth.perez@example.com', '09172016911', '888-2019');
 
 REPLACE INTO employee_details (employee_id, height_m, weight_kg, blood_type, citizenship) VALUES
 (2001, 1.66, 48.6, 'B+', 'Filipino'),
@@ -45,7 +68,14 @@ REPLACE INTO employee_details (employee_id, height_m, weight_kg, blood_type, cit
 (2009, 1.7, 81.8, 'B+', 'Filipino'),
 (2010, 1.6, 76.0, 'AB+', 'Filipino'),
 (2011, 1.8, 58.3, 'AB+', 'Filipino'),
-(2012, 1.61, 80.9, 'AB+', 'Filipino');
+(2012, 1.61, 80.9, 'AB+', 'Filipino'),
+(2013, 1.54, 74.6, 'B+', 'Filipino'),
+(2014, 1.69, 83.9, 'O-', 'Filipino'),
+(2015, 1.85, 70.6, 'AB+', 'Filipino'),
+(2016, 1.54, 70.1, 'O-', 'Filipino'),
+(2017, 1.56, 83.1, 'A+', 'Filipino'),
+(2018, 1.54, 54.0, 'B-', 'Filipino'),
+(2019, 1.66, 74.2, 'B+', 'Filipino');
 
 REPLACE INTO employee_family (employee_id, member_type, surname, first_name, middle_name, occupation) VALUES
 (2001, 'Father', 'Bautista', 'Michael', 'Villanueva', 'Retired'),
@@ -75,7 +105,21 @@ REPLACE INTO employee_family (employee_id, member_type, surname, first_name, mid
 (2011, 'Father', 'Mendoza', 'Danilo', 'Cruz', 'Retired'),
 (2011, 'Mother', 'Garcia', 'Ana', 'Pascual', 'Homemaker'),
 (2012, 'Father', 'Evangelista', 'Manuel', 'Del Rosario', 'Retired'),
-(2012, 'Mother', 'Tolentino', 'Lourdes', 'Gomez', 'Homemaker');
+(2012, 'Mother', 'Tolentino', 'Lourdes', 'Gomez', 'Homemaker'),
+(2013, 'Father', 'Fernandez', 'Ramon', 'Evangelista', 'Retired'),
+(2013, 'Mother', 'Garcia', 'Danilo', 'Ramos', 'Homemaker'),
+(2014, 'Father', 'Garcia', 'Leonora', 'Castillo', 'Retired'),
+(2014, 'Mother', 'Fernandez', 'Emilio', 'Santiago', 'Homemaker'),
+(2015, 'Father', 'Santiago', 'David', 'Pascual', 'Retired'),
+(2015, 'Mother', 'Aquino', 'Aurora', 'Fernandez', 'Homemaker'),
+(2016, 'Father', 'Garcia', 'Aurora', 'Tolentino', 'Retired'),
+(2016, 'Mother', 'Ramos', 'Michelle', 'Cruz', 'Homemaker'),
+(2017, 'Father', 'Perez', 'Rose', 'Castillo', 'Retired'),
+(2017, 'Mother', 'Santiago', 'Sarah', 'Santos', 'Homemaker'),
+(2018, 'Father', 'Santos', 'Joshua', 'Ramos', 'Retired'),
+(2018, 'Mother', 'Torres', 'Emilio', 'Santiago', 'Homemaker'),
+(2019, 'Father', 'Gonzales', 'Carla', 'Pascual', 'Retired'),
+(2019, 'Mother', 'Evangelista', 'David', 'Evangelista', 'Homemaker');
 
 REPLACE INTO employee_education (employee_id, education_level, school_name, degree_course, year_graduated) VALUES
 (2001, 'College', 'Southern Luzon State University', 'BS Hotel and Restaurant Management', '2000'),
@@ -89,7 +133,14 @@ REPLACE INTO employee_education (employee_id, education_level, school_name, degr
 (2009, 'College', 'University of the Philippines', 'BS Management', '2022'),
 (2010, 'College', 'Ateneo de Manila University', 'BS Information Technology', '2014'),
 (2011, 'College', 'Ateneo de Manila University', 'BS Business Administration', '2021'),
-(2012, 'College', 'University of the Philippines', 'BS Psychology', '2025');
+(2012, 'College', 'University of the Philippines', 'BS Psychology', '2025'),
+(2013, 'College', 'Southern Luzon State University', 'BS Business Administration', 'Present'),
+(2014, 'College', 'Southern Luzon State University', 'BS Business Administration', 'Present'),
+(2015, 'College', 'Southern Luzon State University', 'BS Business Administration', 'Present'),
+(2016, 'College', 'Southern Luzon State University', 'BS Business Administration', 'Present'),
+(2017, 'College', 'Southern Luzon State University', 'BS Business Administration', '2024'),
+(2018, 'College', 'Southern Luzon State University', 'BS Business Administration', '2018'),
+(2019, 'College', 'Southern Luzon State University', 'BS Business Administration', '2023');
 
 REPLACE INTO employee_work_experience (employee_id, date_from, date_to, job_title, company_name, monthly_salary) VALUES
 (2001, '2017-01-15', '2020-12-15', 'Previous I Role', 'Pacific Marketing Group', 42442),
@@ -103,7 +154,14 @@ REPLACE INTO employee_work_experience (employee_id, date_from, date_to, job_titl
 (2009, '2020-01-15', '2023-12-15', 'Previous II Role', 'United Services Group', 27378),
 (2010, '2019-01-15', '2022-12-15', 'Previous III Role', 'Secure Tech Philippines', 40161),
 (2011, '2018-01-15', '2021-12-15', 'Previous IV Role', 'Secure Tech Philippines', 35614),
-(2012, '2019-01-15', '2022-12-15', 'Previous V Role', 'Metro Finance and Accounting', 25981);
+(2012, '2019-01-15', '2022-12-15', 'Previous V Role', 'Metro Finance and Accounting', 25981),
+(2013, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 21195),
+(2014, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 22834),
+(2015, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 15456),
+(2016, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 23808),
+(2017, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 13290),
+(2018, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 13104),
+(2019, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 19350);
 
 REPLACE INTO employee_trainings (employee_id, training_title, conducted_by, no_of_hours) VALUES
 (2001, 'Customer Service Excellence', 'Corporate Training Dept', 16.0),
@@ -117,7 +175,14 @@ REPLACE INTO employee_trainings (employee_id, training_title, conducted_by, no_o
 (2009, 'IT Infrastructure and Security', 'Corporate Training Dept', 16.0),
 (2010, 'Occupational Safety and Health', 'Corporate Training Dept', 16.0),
 (2011, 'ISO 9001:2015 Quality Management', 'Corporate Training Dept', 16.0),
-(2012, 'ISO 9001:2015 Quality Management', 'Corporate Training Dept', 16.0);
+(2012, 'ISO 9001:2015 Quality Management', 'Corporate Training Dept', 16.0),
+(2013, 'Workplace Orientation', 'Corporate Training Dept', 8.0),
+(2014, 'Workplace Orientation', 'Corporate Training Dept', 8.0),
+(2015, 'Workplace Orientation', 'Corporate Training Dept', 16.0),
+(2016, 'Workplace Orientation', 'Corporate Training Dept', 16.0),
+(2017, 'Workplace Orientation', 'Corporate Training Dept', 16.0),
+(2018, 'Workplace Orientation', 'Corporate Training Dept', 16.0),
+(2019, 'Workplace Orientation', 'Corporate Training Dept', 16.0);
 
 REPLACE INTO employee_disclosures (employee_id, is_related_to_company, has_admin_offense, has_criminal_charge) VALUES
 (2001, 0, 0, 0),
@@ -131,7 +196,14 @@ REPLACE INTO employee_disclosures (employee_id, is_related_to_company, has_admin
 (2009, 0, 0, 0),
 (2010, 0, 0, 0),
 (2011, 0, 0, 0),
-(2012, 0, 0, 0);
+(2012, 0, 0, 0),
+(2013, 0, 0, 0),
+(2014, 0, 0, 0),
+(2015, 0, 0, 0),
+(2016, 0, 0, 0),
+(2017, 0, 0, 0),
+(2018, 0, 0, 0),
+(2019, 0, 0, 0);
 
 REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number, pagibig_number, tin_number) VALUES
 (2001, '55-8612582-4', '49-369942642-3', '2976-4155-6169', '222-860-648-000'),
@@ -145,7 +217,14 @@ REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number
 (2009, '87-6910964-3', '91-304152670-9', '5106-3240-2591', '742-761-140-000'),
 (2010, '81-7136687-1', '60-114945047-4', '9791-3024-8451', '477-788-866-000'),
 (2011, '59-8610879-5', '95-897940629-8', '7866-3531-7797', '770-201-953-000'),
-(2012, '82-4442778-1', '80-322433532-9', '4538-4817-6383', '892-251-907-000');
+(2012, '82-4442778-1', '80-322433532-9', '4538-4817-6383', '892-251-907-000'),
+(2013, '35-8038374-3', '67-732719211-4', '1106-3615-7924', '448-384-259-000'),
+(2014, '39-5855124-1', '39-208449460-6', '5554-8428-6977', '266-479-463-000'),
+(2015, '82-6279418-3', '93-636045484-6', '8517-3340-5339', '242-352-862-000'),
+(2016, '24-5476583-5', '24-415143362-6', '3591-8433-1053', '839-996-836-000'),
+(2017, '20-9153566-1', '78-922308461-2', '3103-8787-3705', '371-640-993-000'),
+(2018, '14-6543670-1', '75-355555531-4', '8953-4510-9834', '235-840-684-000'),
+(2019, '27-8077999-2', '45-596743109-3', '2235-8260-2604', '151-767-653-000');
 
 REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, city, province) VALUES
 (2001, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 13', 'Tayabas City', 'Quezon'),
@@ -171,7 +250,21 @@ REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, ci
 (2011, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Pagbilao', 'Quezon'),
 (2011, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Pagbilao', 'Quezon'),
 (2012, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 15', 'Pagbilao', 'Quezon'),
-(2012, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 15', 'Pagbilao', 'Quezon');
+(2012, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 15', 'Pagbilao', 'Quezon'),
+(2013, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 4', 'Sariaya', 'Quezon'),
+(2013, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 4', 'Sariaya', 'Quezon'),
+(2014, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 4', 'Sariaya', 'Quezon'),
+(2014, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 4', 'Sariaya', 'Quezon'),
+(2015, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 9', 'Candelaria', 'Quezon'),
+(2015, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 9', 'Candelaria', 'Quezon'),
+(2016, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 5', 'Candelaria', 'Quezon'),
+(2016, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 5', 'Candelaria', 'Quezon'),
+(2017, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Pagbilao', 'Quezon'),
+(2017, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Pagbilao', 'Quezon'),
+(2018, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Pagbilao', 'Quezon'),
+(2018, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Pagbilao', 'Quezon'),
+(2019, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 14', 'Lucena City', 'Quezon'),
+(2019, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 14', 'Lucena City', 'Quezon');
 
 REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES
 (2001, 'Michael Bautista', 'Father', '09184213524'),
@@ -185,7 +278,14 @@ REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationshi
 (2009, 'Juan Soriano', 'Father', '09181559763'),
 (2010, 'Ronald Garcia', 'Father', '09187392547'),
 (2011, 'Danilo Mendoza', 'Father', '09187847048'),
-(2012, 'Manuel Evangelista', 'Father', '09181047572');
+(2012, 'Manuel Evangelista', 'Father', '09181047572'),
+(2013, 'Ramon Fernandez', 'Father', '09178078673'),
+(2014, 'Leonora Garcia', 'Father', '09172322047'),
+(2015, 'David Santiago', 'Father', '09176440561'),
+(2016, 'Aurora Garcia', 'Father', '09172065818'),
+(2017, 'Rose Perez', 'Father', '09176438436'),
+(2018, 'Joshua Santos', 'Father', '09171352896'),
+(2019, 'Carla Gonzales', 'Father', '09172016911');
 
 REPLACE INTO employee_real_properties (employee_id, description, kind, acquisition_cost) VALUES
 (2001, 'Residential House and Lot', 'Building and Land', 1953791.00),
@@ -199,7 +299,14 @@ REPLACE INTO employee_real_properties (employee_id, description, kind, acquisiti
 (2009, 'Residential House and Lot', 'Building and Land', 2715454.00),
 (2010, 'Residential House and Lot', 'Building and Land', 3224734.00),
 (2011, 'Residential House and Lot', 'Building and Land', 3469337.00),
-(2012, 'Residential House and Lot', 'Building and Land', 2081487.00);
+(2012, 'Residential House and Lot', 'Building and Land', 2081487.00),
+(2013, 'Family Residence Share', 'Building and Land', 250000.0),
+(2014, 'Residential House and Lot', 'Building and Land', 1500000.0),
+(2015, 'Family Residence Share', 'Building and Land', 300000.0),
+(2016, 'Family Residence Share', 'Building and Land', 250000.0),
+(2017, 'Family Residence Share', 'Building and Land', 250000.0),
+(2018, 'Family Residence Share', 'Building and Land', 250000.0),
+(2019, 'Family Residence Share', 'Building and Land', 250000.0);
 
 REPLACE INTO employee_personal_properties (employee_id, description, acquisition_cost) VALUES
 (2001, 'Personal Effects and Savings', 487241.00),
@@ -213,7 +320,14 @@ REPLACE INTO employee_personal_properties (employee_id, description, acquisition
 (2009, 'Personal Effects and Savings', 291292.00),
 (2010, 'Personal Effects and Savings', 434783.00),
 (2011, 'Personal Effects and Savings', 246664.00),
-(2012, 'Personal Effects and Savings', 175858.00);
+(2012, 'Personal Effects and Savings', 175858.00),
+(2013, 'Personal Effects and Savings', 27156),
+(2014, 'Personal Effects and Savings', 99939),
+(2015, 'Personal Effects and Savings', 91622),
+(2016, 'Personal Effects and Savings', 81542),
+(2017, 'Personal Effects and Savings', 85686),
+(2018, 'Personal Effects and Savings', 76993),
+(2019, 'Personal Effects and Savings', 45982);
 
 REPLACE INTO employee_liabilities (employee_id, nature_of_liability, creditor_name, outstanding_balance) VALUES
 (2001, 'Personal Loan', 'Bank', 136929.00),
@@ -227,7 +341,14 @@ REPLACE INTO employee_liabilities (employee_id, nature_of_liability, creditor_na
 (2009, 'Personal Loan', 'Bank', 44448.00),
 (2010, 'Personal Loan', 'Bank', 107379.00),
 (2011, 'Personal Loan', 'Bank', 18576.00),
-(2012, 'Personal Loan', 'Bank', 44076.00);
+(2012, 'Personal Loan', 'Bank', 44076.00),
+(2013, 'Personal Loan', 'Bank', 29898),
+(2014, 'Personal Loan', 'Bank', 9679),
+(2015, 'Personal Loan', 'Bank', 33077),
+(2016, 'Personal Loan', 'Bank', 11973),
+(2017, 'Personal Loan', 'Bank', 18182),
+(2018, 'Personal Loan', 'Bank', 31677),
+(2019, 'Personal Loan', 'Bank', 15899);
 
 REPLACE INTO employee_references (employee_id, reference_name, reference_address, reference_telephone) VALUES
 (2001, 'Reference Angelo Pascual', 'Quezon Province', '09209801946'),
@@ -241,6 +362,13 @@ REPLACE INTO employee_references (employee_id, reference_name, reference_address
 (2009, 'Reference Manuel Valenzuela', 'Quezon Province', '09205951131'),
 (2010, 'Reference Danilo Evangelista', 'Quezon Province', '09204922880'),
 (2011, 'Reference Ricardo Flores', 'Quezon Province', '09204645180'),
-(2012, 'Reference Arthur Aquino', 'Quezon Province', '09203927575');
+(2012, 'Reference Arthur Aquino', 'Quezon Province', '09203927575'),
+(2013, 'Reference Ramon Fernandez', 'Quezon Province', '09178078673'),
+(2014, 'Reference Leonora Garcia', 'Quezon Province', '09172322047'),
+(2015, 'Reference David Santiago', 'Quezon Province', '09176440561'),
+(2016, 'Reference Aurora Garcia', 'Quezon Province', '09172065818'),
+(2017, 'Reference Rose Perez', 'Quezon Province', '09176438436'),
+(2018, 'Reference Joshua Santos', 'Quezon Province', '09171352896'),
+(2019, 'Reference Carla Gonzales', 'Quezon Province', '09172016911');
 
 SET FOREIGN_KEY_CHECKS = 1;

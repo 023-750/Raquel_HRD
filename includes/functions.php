@@ -3832,11 +3832,13 @@ function getEvaluationScoreCirclesHtml($conn, $evaluation_id, $current_score)
  * Each row includes a calculated `days_remaining` (negative = overdue) and `urgency`
  * (overdue | critical | warning | upcoming).
  */
-function getExpiringNonRegularEmployees($conn, $daysThreshold = 60)
+function getExpiringNonRegularEmployees($conn, $daysThreshold = 60, $departmentId = 0)
 {
     $nonRegularStatuses = "('OJT','Trainee','Probationary','Project Based','Project-Based')";
+    $departmentId = (int) $departmentId;
+    $departmentClause = $departmentId > 0 ? " AND e.department_id = {$departmentId}" : '';
     $result = $conn->query("
-        SELECT e.employee_id, e.first_name, e.last_name, e.profile_picture,
+        SELECT e.employee_id, e.department_id, e.first_name, e.last_name, e.profile_picture,
                e.job_title, e.employment_status, e.hire_date,
                e.contract_start_date, e.contract_end_date,
                b.branch_name, d.department_name,
@@ -3857,6 +3859,7 @@ function getExpiringNonRegularEmployees($conn, $daysThreshold = 60)
           AND e.employee_id NOT IN (
               SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL
           )
+          {$departmentClause}
         ORDER BY
             CASE WHEN days_remaining IS NULL THEN 1 ELSE 0 END,
             days_remaining ASC,

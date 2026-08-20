@@ -176,7 +176,7 @@ $branches = [];
 while ($r = $branches_res->fetch_assoc())
     $branches[] = $r['branch_name'];
 
-$statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
+$statuses = ['OJT', 'Probationary', 'Project Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause'];
 $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
 ?>
 

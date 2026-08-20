@@ -42,6 +42,7 @@ $oldest_days = (int)($conn->query("SELECT COALESCE(MAX(DATEDIFF(CURRENT_DATE(), 
 $validated_total = $conn->query("SELECT COUNT(*) as c FROM evaluations WHERE endorsed_by = {$_SESSION['user_id']}")->fetch_assoc()['c'];
 
 // ── Non-Regular Watchlist ────────────────────────────────────────────────────
+$watchlist_departments = $conn->query("SELECT department_id, department_name FROM departments WHERE is_active = 1 AND deleted_at IS NULL ORDER BY department_name");
 $expiring_staff = getExpiringNonRegularEmployees($conn, 60);
 $expiring_count = count($expiring_staff);
 $overdue_count_watchlist  = count(array_filter($expiring_staff, fn($r) => $r['urgency'] === 'overdue'));
@@ -689,6 +690,7 @@ document.addEventListener('DOMContentLoaded', function () {
         transition: background .15s;
     }
     .watchlist-view-btn:hover { background: rgba(255,255,255,.25); color: #fff; }
+    .watchlist-department-select { width: min(100%, 260px); }
     .watchlist-empty {
         padding: 52px 24px;
         text-align: center;
@@ -846,12 +848,23 @@ document.addEventListener('DOMContentLoaded', function () {
             <i class="fas fa-users"></i>View All Employees
         </a>
     </div>
+    <div class="px-3 py-2 border-bottom bg-light d-flex flex-wrap align-items-center gap-2">
+        <label for="watchlist_department_filter" class="small fw-semibold text-muted mb-0">Department</label>
+        <select id="watchlist_department_filter" class="form-select form-select-sm watchlist-department-select">
+            <option value="0">All departments</option>
+            <?php if ($watchlist_departments): while ($watchlist_department = $watchlist_departments->fetch_assoc()): ?>
+                <option value="<?php echo (int) $watchlist_department['department_id']; ?>">
+                    <?php echo e($watchlist_department['department_name']); ?>
+                </option>
+            <?php endwhile; endif; ?>
+        </select>
+    </div>
     <div class="watchlist-body">
         <?php if ($expiring_count === 0): ?>
             <div class="watchlist-empty">
                 <i class="fas fa-shield-alt"></i>
-                <div class="fw-bold mb-1" style="color:#1e2d40;">No Contracts Expiring Soon</div>
-                <small>All non-regular personnel have arrangements with more than 60 days remaining.</small>
+                <div class="fw-bold mb-1" style="color:#1e2d40;">No Non-Regular Personnel Found</div>
+                <small>No active non-regular personnel match the selected department.</small>
             </div>
         <?php else: ?>
             <?php foreach ($expiring_staff as $ws): ?>
@@ -863,7 +876,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     elseif ($d <= 30) { $dayLabel = 'Ends in ' . $d . 'd';         $dayClass = 'wl-warning';  $icon = 'fa-exclamation-triangle'; }
                     else              { $dayLabel = 'Ends in ' . $d . 'd';          $dayClass = 'wl-upcoming'; $icon = 'fa-calendar-alt'; }
                 ?>
-                <div class="wl-row">
+                <div class="wl-row" data-watchlist-department="<?php echo (int) ($ws['department_id'] ?? 0); ?>">
                     <img src="<?php echo getEmployeeAvatar($ws['profile_picture']); ?>" class="wl-avatar" alt="Avatar">
                     <div class="wl-info">
                         <div class="wl-name"><?php echo e($ws['last_name'] . ', ' . $ws['first_name']); ?></div>
@@ -924,8 +937,122 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                 </div>
             <?php endforeach; ?>
+            <div id="watchlist_filter_empty" class="watchlist-empty d-none">
+                <i class="fas fa-filter"></i>
+                <div class="fw-bold mb-1" style="color:#1e2d40;">No Matching Personnel</div>
+                <small>No active non-regular personnel are assigned to this department.</small>
+            </div>
         <?php endif; ?>
     </div>
+    <!-- Pagination Container -->
+    <div id="watchlist_pagination" class="d-flex justify-content-between align-items-center px-4 py-3 border-top bg-light d-none" style="border-radius: 0 0 16px 16px;">
+        <div class="small fw-semibold text-muted" id="watchlist_page_info"></div>
+        <div class="d-flex gap-2">
+            <button id="watchlist_prev_btn" class="btn btn-sm btn-outline-success" style="border-radius: 8px; font-weight: 600; padding: 5px 12px; font-size: 0.78rem;">
+                <i class="fas fa-chevron-left me-1"></i>Prev
+            </button>
+            <button id="watchlist_next_btn" class="btn btn-sm btn-outline-success" style="border-radius: 8px; font-weight: 600; padding: 5px 12px; font-size: 0.78rem;">
+                Next<i class="fas fa-chevron-right ms-1"></i>
+            </button>
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const departmentFilter = document.getElementById('watchlist_department_filter');
+    const prevBtn = document.getElementById('watchlist_prev_btn');
+    const nextBtn = document.getElementById('watchlist_next_btn');
+    
+    if (!departmentFilter) return;
+
+    let currentWatchlistPage = 1;
+    const itemsPerPage = 8;
+
+    function updateWatchlistPagination() {
+        const selectedDepartment = departmentFilter.value;
+        const allRows = Array.from(document.querySelectorAll('.wl-row[data-watchlist-department]'));
+        
+        // Filter rows based on department selection
+        const matchingRows = allRows.filter(row => {
+            return selectedDepartment === '0' || row.dataset.watchlistDepartment === selectedDepartment;
+        });
+
+        const totalMatching = matchingRows.length;
+        const paginationContainer = document.getElementById('watchlist_pagination');
+        const emptyState = document.getElementById('watchlist_filter_empty');
+        
+        if (emptyState) {
+            emptyState.classList.toggle('d-none', totalMatching > 0);
+        }
+        
+        if (totalMatching === 0) {
+            allRows.forEach(row => row.hidden = true);
+            if (paginationContainer) paginationContainer.classList.add('d-none');
+            return;
+        }
+        
+        const totalPages = Math.ceil(totalMatching / itemsPerPage);
+        
+        if (currentWatchlistPage > totalPages) {
+            currentWatchlistPage = totalPages;
+        }
+        if (currentWatchlistPage < 1) {
+            currentWatchlistPage = 1;
+        }
+        
+        const startIndex = (currentWatchlistPage - 1) * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, totalMatching);
+        
+        allRows.forEach(row => row.hidden = true);
+        
+        matchingRows.forEach((row, index) => {
+            if (index >= startIndex && index < endIndex) {
+                row.hidden = false;
+            }
+        });
+        
+        if (paginationContainer) {
+            if (totalMatching <= itemsPerPage) {
+                paginationContainer.classList.add('d-none');
+            } else {
+                paginationContainer.classList.remove('d-none');
+                
+                const pageInfo = document.getElementById('watchlist_page_info');
+                if (pageInfo) {
+                    pageInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalMatching}`;
+                }
+                
+                if (prevBtn) prevBtn.disabled = (currentWatchlistPage === 1);
+                if (nextBtn) nextBtn.disabled = (currentWatchlistPage === totalPages);
+            }
+        }
+    }
+
+    departmentFilter.addEventListener('change', function () {
+        currentWatchlistPage = 1;
+        updateWatchlistPagination();
+    });
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function () {
+            if (currentWatchlistPage > 1) {
+                currentWatchlistPage--;
+                updateWatchlistPagination();
+            }
+        });
+    }
+
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function () {
+            currentWatchlistPage++;
+            updateWatchlistPagination();
+        });
+    }
+
+    // Run initial pagination
+    updateWatchlistPagination();
+});
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

@@ -6,6 +6,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- 1. EMPLOYEES (General Services Team)
 -- ====================================
 REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middle_name, hire_date, date_of_birth, place_of_birth, gender, civil_status, job_title_id, job_title, department_id, rank_category_id, branch_id, employment_status, employment_type, profile_picture) VALUES
+
 (6001, 'GS-001', 'Paul', 'Valenzuela', 'Villanueva', '2014-09-21', '1969-07-15', 'Lucena City, Quezon', 'Male', 'Married', 600, 'VP for General Services', 6, 1, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
 (6002, 'GS-002', 'Elizabeth', 'Pascual', 'Gonzales', '2020-03-18', '1989-09-16', 'Lucena City, Quezon', 'Female', 'Separated', 601, 'GS Manager I', 6, 3, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
 (6003, 'GS-003', 'Patricia', 'Valenzuela', 'Bautista', '2016-09-09', '1978-04-20', 'Lucena City, Quezon', 'Female', 'Married', 602, 'GS Manager II', 6, 3, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
@@ -29,7 +30,23 @@ REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middl
 (6021, 'GS-021', 'Francis', 'Evangelista', 'Ocampo', '2023-07-23', '2002-06-26', 'Lucena City, Quezon', 'Male', 'Single', 620, 'Facilities Maintenance Staff III', 6, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
 (6022, 'GS-022', 'Corazon', 'Santos', 'Mendoza', '2021-08-18', '2001-07-28', 'Lucena City, Quezon', 'Female', 'Separated', 621, 'Warehouse Staff I', 6, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
 (6023, 'GS-023', 'Maria', 'Bautista', 'Rivera', '2022-05-15', '2003-03-09', 'Lucena City, Quezon', 'Female', 'Separated', 622, 'Messenger I', 6, 5, 102, 'Regular', 'Full-time', 'avatar_f.jpg'),
-(6024, 'GS-024', 'John', 'Sarmiento', 'Villanueva', '2021-06-25', '2005-08-17', 'Lucena City, Quezon', 'Male', 'Single', 623, 'Messenger II', 6, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg');
+(6024, 'GS-024', 'John', 'Sarmiento', 'Villanueva', '2021-06-25', '2005-08-17', 'Lucena City, Quezon', 'Male', 'Single', 623, 'Messenger II', 6, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
+
+-- Probationary
+(6029, 'GS-029', 'Leonora', 'Castillo', 'Perez', '2026-01-18', '2002-01-20', 'Lucena City, Quezon', 'Female', 'Married', 621, 'Warehouse Staff I', 6, 5, 102, 'Probationary', 'Full-time', 'avatar_f.jpg'),
+(6030, 'GS-030', 'Edward', 'Garcia', 'Sarmiento', '2026-01-18', '1995-12-12', 'Lucena City, Quezon', 'Male', 'Separated', 621, 'Warehouse Staff I', 6, 5, 102, 'Probationary', 'Full-time', 'avatar_m.jpg'),
+
+-- OJT
+(6025, 'GS-025', 'Leonora', 'Fernandez', 'Gonzales', '2026-08-01', '2000-11-23', 'Lucena City, Quezon', 'Female', 'Widowed', 621, 'Warehouse Staff I', 6, 5, 102, 'OJT', 'Full-time', 'avatar_f.jpg'),
+(6026, 'GS-026', 'Angelica', 'Cruz', 'Pascual', '2026-08-01', '1997-03-03', 'Lucena City, Quezon', 'Female', 'Married', 621, 'Warehouse Staff I', 6, 5, 102, 'OJT', 'Full-time', 'avatar_f.jpg'),
+
+-- Trainee
+(6027, 'GS-027', 'David', 'Mendoza', 'Soriano', '2026-08-10', '2004-05-23', 'Lucena City, Quezon', 'Male', 'Separated', 621, 'Warehouse Staff I', 6, 5, 102, 'Trainee', 'Full-time', 'avatar_m.jpg'),
+(6028, 'GS-028', 'Jose', 'Gomez', 'Gonzales', '2026-08-10', '1997-04-05', 'Lucena City, Quezon', 'Male', 'Widowed', 621, 'Warehouse Staff I', 6, 5, 102, 'Trainee', 'Full-time', 'avatar_m.jpg'),
+
+-- Project Based
+(6031, 'GS-031', 'David', 'Gonzales', 'Rivera', '2026-08-01', '2004-01-09', 'Lucena City, Quezon', 'Male', 'Married', 621, 'Warehouse Staff I', 6, 5, 102, 'Project Based', 'Full-time', 'avatar_m.jpg'),
+(6032, 'GS-032', 'Elena', 'Santos', 'Garcia', '2026-08-01', '2005-09-10', 'Lucena City, Quezon', 'Female', 'Single', 621, 'Warehouse Staff I', 6, 5, 102, 'Project Based', 'Full-time', 'avatar_f.jpg');
 
 REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, telephone_number) VALUES
 (6001, 'paul.valenzuela@example.com', '09177027375', '888-6001'),
@@ -55,7 +72,15 @@ REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, tele
 (6021, 'francis.evangelista@example.com', '09176473593', '888-6021'),
 (6022, 'corazon.santos@example.com', '09175191831', '888-6022'),
 (6023, 'maria.bautista@example.com', '09173493621', '888-6023'),
-(6024, 'john.sarmiento@example.com', '09174905100', '888-6024');
+(6024, 'john.sarmiento@example.com', '09174905100', '888-6024'),
+(6025, 'leonora.fernandez@example.com', '09172147909', '888-6025'),
+(6026, 'angelica.cruz@example.com', '09179349470', '888-6026'),
+(6027, 'david.mendoza@example.com', '09175605016', '888-6027'),
+(6028, 'jose.gomez@example.com', '09179906224', '888-6028'),
+(6029, 'leonora.castillo@example.com', '09172060605', '888-6029'),
+(6030, 'edward.garcia@example.com', '09177084862', '888-6030'),
+(6031, 'david.gonzales@example.com', '09175205279', '888-6031'),
+(6032, 'elena.santos@example.com', '09179035982', '888-6032');
 
 REPLACE INTO employee_details (employee_id, height_m, weight_kg, blood_type, citizenship) VALUES
 (6001, 1.62, 60.2, 'AB+', 'Filipino'),
@@ -81,7 +106,15 @@ REPLACE INTO employee_details (employee_id, height_m, weight_kg, blood_type, cit
 (6021, 1.62, 57.2, 'O+', 'Filipino'),
 (6022, 1.55, 51.5, 'A+', 'Filipino'),
 (6023, 1.53, 69.1, 'A+', 'Filipino'),
-(6024, 1.82, 51.4, 'A-', 'Filipino');
+(6024, 1.82, 51.4, 'A-', 'Filipino'),
+(6025, 1.81, 64.5, 'A+', 'Filipino'),
+(6026, 1.71, 60.3, 'AB+', 'Filipino'),
+(6027, 1.6, 84.1, 'O-', 'Filipino'),
+(6028, 1.78, 80.1, 'B-', 'Filipino'),
+(6029, 1.81, 67.5, 'AB+', 'Filipino'),
+(6030, 1.58, 62.8, 'AB+', 'Filipino'),
+(6031, 1.8, 50.8, 'O+', 'Filipino'),
+(6032, 1.66, 83.6, 'A+', 'Filipino');
 
 REPLACE INTO employee_family (employee_id, member_type, surname, first_name, middle_name, occupation) VALUES
 (6001, 'Father', 'Diaz', 'David', 'Pascual', 'Retired'),
@@ -136,7 +169,23 @@ REPLACE INTO employee_family (employee_id, member_type, surname, first_name, mid
 (6023, 'Father', 'Garcia', 'Albert', 'Pascual', 'Retired'),
 (6023, 'Mother', 'Castillo', 'Bernadette', 'Salvador', 'Homemaker'),
 (6024, 'Father', 'Aquino', 'Michael', 'Salvador', 'Retired'),
-(6024, 'Mother', 'Salvador', 'Aurora', 'Cruz', 'Homemaker');
+(6024, 'Mother', 'Salvador', 'Aurora', 'Cruz', 'Homemaker'),
+(6025, 'Father', 'Cruz', 'Angelo', 'Gomez', 'Retired'),
+(6025, 'Mother', 'Fernandez', 'Robert', 'Sarmiento', 'Homemaker'),
+(6026, 'Father', 'Tolentino', 'David', 'Torres', 'Retired'),
+(6026, 'Mother', 'Aquino', 'Corazon', 'Cruz', 'Homemaker'),
+(6027, 'Father', 'Cruz', 'Joshua', 'Rivera', 'Retired'),
+(6027, 'Mother', 'Salvador', 'Kevin', 'Del Rosario', 'Homemaker'),
+(6028, 'Father', 'Aquino', 'Jessica', 'Del Rosario', 'Retired'),
+(6028, 'Mother', 'Gonzales', 'Carla', 'Pascual', 'Homemaker'),
+(6029, 'Father', 'Gomez', 'Andrea', 'Torres', 'Retired'),
+(6029, 'Mother', 'De Leon', 'Susan', 'Santiago', 'Homemaker'),
+(6030, 'Father', 'Castillo', 'Santiago', 'Bautista', 'Retired'),
+(6030, 'Mother', 'Mendoza', 'Elizabeth', 'Aquino', 'Homemaker'),
+(6031, 'Father', 'Cruz', 'Kenneth', 'Ramos', 'Retired'),
+(6031, 'Mother', 'Castillo', 'Ramon', 'Pascual', 'Homemaker'),
+(6032, 'Father', 'Cruz', 'Divina', 'Perez', 'Retired'),
+(6032, 'Mother', 'Tolentino', 'Andrea', 'Fernandez', 'Homemaker');
 
 REPLACE INTO employee_education (employee_id, education_level, school_name, degree_course, year_graduated) VALUES
 (6001, 'College', 'University of the Philippines', 'BS Management', '1990'),
@@ -162,7 +211,15 @@ REPLACE INTO employee_education (employee_id, education_level, school_name, degr
 (6021, 'College', 'De La Salle University', 'AB Communication', '2023'),
 (6022, 'College', 'De La Salle University', 'BS Computer Science', '2022'),
 (6023, 'College', 'Pamantasan ng Lungsod ng Maynila', 'BS Psychology', '2024'),
-(6024, 'College', 'University of Santo Tomas', 'BS Management', '2026');
+(6024, 'College', 'University of Santo Tomas', 'BS Management', '2026'),
+(6025, 'College', 'Southern Luzon State University', 'BS Business Administration', 'Present'),
+(6026, 'College', 'Southern Luzon State University', 'BS Business Administration', 'Present'),
+(6027, 'College', 'Southern Luzon State University', 'BS Business Administration', 'Present'),
+(6028, 'College', 'Southern Luzon State University', 'BS Business Administration', 'Present'),
+(6029, 'College', 'Southern Luzon State University', 'BS Business Administration', '2015'),
+(6030, 'College', 'Southern Luzon State University', 'BS Business Administration', '2018'),
+(6031, 'College', 'Southern Luzon State University', 'BS Business Administration', '2018'),
+(6032, 'College', 'Southern Luzon State University', 'BS Business Administration', '2016');
 
 REPLACE INTO employee_work_experience (employee_id, date_from, date_to, job_title, company_name, monthly_salary) VALUES
 (6001, '2010-01-15', '2013-12-15', 'Previous Services Role', 'Secure Tech Philippines', 42289),
@@ -188,7 +245,15 @@ REPLACE INTO employee_work_experience (employee_id, date_from, date_to, job_titl
 (6021, '2019-01-15', '2022-12-15', 'Previous III Role', 'United Services Group', 28290),
 (6022, '2017-01-15', '2020-12-15', 'Previous I Role', 'Pacific Marketing Group', 30197),
 (6023, '2018-01-15', '2021-12-15', 'Previous I Role', 'Prime Logistics Co.', 27167),
-(6024, '2017-01-15', '2020-12-15', 'Previous II Role', 'Pacific Marketing Group', 29626);
+(6024, '2017-01-15', '2020-12-15', 'Previous II Role', 'Pacific Marketing Group', 29626),
+(6025, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 13612),
+(6026, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 12153),
+(6027, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 16689),
+(6028, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 13886),
+(6029, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 16986),
+(6030, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 14001),
+(6031, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 21647),
+(6032, '2024-01-15', '2025-12-15', 'Previous Assistant', 'Local Retail Corp.', 17277);
 
 REPLACE INTO employee_trainings (employee_id, training_title, conducted_by, no_of_hours) VALUES
 (6001, 'ISO 9001:2015 Quality Management', 'Corporate Training Dept', 16.0),
@@ -214,7 +279,15 @@ REPLACE INTO employee_trainings (employee_id, training_title, conducted_by, no_o
 (6021, 'Occupational Safety and Health', 'Corporate Training Dept', 16.0),
 (6022, 'Professional Ethics in Workplace', 'Corporate Training Dept', 16.0),
 (6023, 'Occupational Safety and Health', 'Corporate Training Dept', 16.0),
-(6024, 'ISO 9001:2015 Quality Management', 'Corporate Training Dept', 16.0);
+(6024, 'ISO 9001:2015 Quality Management', 'Corporate Training Dept', 16.0),
+(6025, 'Workplace Orientation', 'Corporate Training Dept', 8.0),
+(6026, 'Workplace Orientation', 'Corporate Training Dept', 8.0),
+(6027, 'Workplace Orientation', 'Corporate Training Dept', 16.0),
+(6028, 'Workplace Orientation', 'Corporate Training Dept', 16.0),
+(6029, 'Workplace Orientation', 'Corporate Training Dept', 16.0),
+(6030, 'Workplace Orientation', 'Corporate Training Dept', 16.0),
+(6031, 'Workplace Orientation', 'Corporate Training Dept', 16.0),
+(6032, 'Workplace Orientation', 'Corporate Training Dept', 16.0);
 
 REPLACE INTO employee_disclosures (employee_id, is_related_to_company, has_admin_offense, has_criminal_charge) VALUES
 (6001, 0, 0, 0),
@@ -240,7 +313,15 @@ REPLACE INTO employee_disclosures (employee_id, is_related_to_company, has_admin
 (6021, 0, 0, 0),
 (6022, 0, 0, 0),
 (6023, 0, 0, 0),
-(6024, 0, 0, 0);
+(6024, 0, 0, 0),
+(6025, 0, 0, 0),
+(6026, 0, 0, 0),
+(6027, 0, 0, 0),
+(6028, 0, 0, 0),
+(6029, 0, 0, 0),
+(6030, 0, 0, 0),
+(6031, 0, 0, 0),
+(6032, 0, 0, 0);
 
 REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number, pagibig_number, tin_number) VALUES
 (6001, '12-5375063-8', '84-721849977-6', '5836-3497-4214', '437-335-488-000'),
@@ -266,7 +347,15 @@ REPLACE INTO employee_government_ids (employee_id, sss_number, philhealth_number
 (6021, '25-9991321-5', '36-585242269-4', '8591-5341-2964', '192-261-926-000'),
 (6022, '84-5342289-1', '12-169226321-3', '8265-3110-2506', '967-949-928-000'),
 (6023, '27-8033593-3', '92-955984774-8', '5082-9907-1319', '491-900-830-000'),
-(6024, '32-4968669-9', '50-965661638-5', '1462-6761-3328', '676-292-956-000');
+(6024, '32-4968669-9', '50-965661638-5', '1462-6761-3328', '676-292-956-000'),
+(6025, '91-2686231-7', '31-845178074-4', '1474-1753-6314', '915-157-400-000'),
+(6026, '69-5825658-8', '30-179308612-7', '6661-5901-7951', '806-356-567-000'),
+(6027, '39-6910964-3', '91-304152670-9', '5106-3240-2591', '742-761-140-000'),
+(6028, '69-2263313-2', '38-826197069-6', '6992-2479-7464', '114-370-649-000'),
+(6029, '73-2948178-1', '40-677186272-2', '7367-8432-7078', '786-860-813-000'),
+(6030, '68-2538024-3', '92-786650291-9', '1349-1828-6464', '349-228-905-000'),
+(6031, '51-1264762-2', '43-156263020-2', '7897-9619-2862', '863-165-587-000'),
+(6032, '87-3488628-1', '26-395296179-9', '9984-6327-7240', '711-643-401-000');
 
 REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, city, province) VALUES
 (6001, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Tayabas City', 'Quezon'),
@@ -316,7 +405,23 @@ REPLACE INTO employee_addresses (employee_id, address_type, region, barangay, ci
 (6023, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 6', 'Candelaria', 'Quezon'),
 (6023, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 6', 'Candelaria', 'Quezon'),
 (6024, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 13', 'Candelaria', 'Quezon'),
-(6024, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 13', 'Candelaria', 'Quezon');
+(6024, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 13', 'Candelaria', 'Quezon'),
+(6025, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 6', 'Sariaya', 'Quezon'),
+(6025, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 6', 'Sariaya', 'Quezon'),
+(6026, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 14', 'Sariaya', 'Quezon'),
+(6026, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 14', 'Sariaya', 'Quezon'),
+(6027, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 5', 'Pagbilao', 'Quezon'),
+(6027, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 5', 'Pagbilao', 'Quezon'),
+(6028, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 2', 'Pagbilao', 'Quezon'),
+(6028, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 2', 'Pagbilao', 'Quezon'),
+(6029, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 9', 'Pagbilao', 'Quezon'),
+(6029, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 9', 'Pagbilao', 'Quezon'),
+(6030, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Tayabas City', 'Quezon'),
+(6030, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 10', 'Tayabas City', 'Quezon'),
+(6031, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Sariaya', 'Quezon'),
+(6031, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Sariaya', 'Quezon'),
+(6032, 'Residential', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Candelaria', 'Quezon'),
+(6032, 'Permanent', 'Region IV-A (CALABARZON)', 'Barangay 8', 'Candelaria', 'Quezon');
 
 REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationship, contact_number) VALUES
 (6001, 'David Diaz', 'Father', '09189376888'),
@@ -342,7 +447,15 @@ REPLACE INTO employee_emergency_contacts (employee_id, contact_name, relationshi
 (6021, 'Robert Mendoza', 'Father', '09181676621'),
 (6022, 'Danilo Dela Cruz', 'Father', '09181716325'),
 (6023, 'Albert Garcia', 'Father', '09189131572'),
-(6024, 'Michael Aquino', 'Father', '09186185050');
+(6024, 'Michael Aquino', 'Father', '09186185050'),
+(6025, 'Angelo Cruz', 'Father', '09172147909'),
+(6026, 'David Tolentino', 'Father', '09179349470'),
+(6027, 'Joshua Cruz', 'Father', '09175605016'),
+(6028, 'Jessica Aquino', 'Father', '09179906224'),
+(6029, 'Andrea Gomez', 'Father', '09172060605'),
+(6030, 'Santiago Castillo', 'Father', '09177084862'),
+(6031, 'Kenneth Cruz', 'Father', '09175205279'),
+(6032, 'Divina Cruz', 'Father', '09179035982');
 
 REPLACE INTO employee_real_properties (employee_id, description, kind, acquisition_cost) VALUES
 (6001, 'Residential House and Lot', 'Building and Land', 2654781.00),
@@ -368,7 +481,15 @@ REPLACE INTO employee_real_properties (employee_id, description, kind, acquisiti
 (6021, 'Residential House and Lot', 'Building and Land', 1950931.00),
 (6022, 'Residential House and Lot', 'Building and Land', 3476105.00),
 (6023, 'Residential House and Lot', 'Building and Land', 2221491.00),
-(6024, 'Residential House and Lot', 'Building and Land', 1868169.00);
+(6024, 'Residential House and Lot', 'Building and Land', 1868169.00),
+(6025, 'Family Residence Share', 'Building and Land', 300000.0),
+(6026, 'Family Residence Share', 'Building and Land', 250000.0),
+(6027, 'Family Residence Share', 'Building and Land', 250000.0),
+(6028, 'Family Residence Share', 'Building and Land', 300000.0),
+(6029, 'Residential House and Lot', 'Building and Land', 1500000.0),
+(6030, 'Family Residence Share', 'Building and Land', 250000.0),
+(6031, 'Residential House and Lot', 'Building and Land', 1500000.0),
+(6032, 'Residential House and Lot', 'Building and Land', 1500000.0);
 
 REPLACE INTO employee_personal_properties (employee_id, description, acquisition_cost) VALUES
 (6001, 'Personal Effects and Savings', 443203.00),
@@ -394,7 +515,15 @@ REPLACE INTO employee_personal_properties (employee_id, description, acquisition
 (6021, 'Personal Effects and Savings', 271858.00),
 (6022, 'Personal Effects and Savings', 341694.00),
 (6023, 'Personal Effects and Savings', 396564.00),
-(6024, 'Personal Effects and Savings', 357129.00);
+(6024, 'Personal Effects and Savings', 357129.00),
+(6025, 'Personal Effects and Savings', 34080),
+(6026, 'Personal Effects and Savings', 65422),
+(6027, 'Personal Effects and Savings', 90965),
+(6028, 'Personal Effects and Savings', 49362),
+(6029, 'Personal Effects and Savings', 35253),
+(6030, 'Personal Effects and Savings', 87641),
+(6031, 'Personal Effects and Savings', 92812),
+(6032, 'Personal Effects and Savings', 71387);
 
 REPLACE INTO employee_liabilities (employee_id, nature_of_liability, creditor_name, outstanding_balance) VALUES
 (6001, 'Personal Loan', 'Bank', 98490.00),
@@ -420,7 +549,15 @@ REPLACE INTO employee_liabilities (employee_id, nature_of_liability, creditor_na
 (6021, 'Personal Loan', 'Bank', 48882.00),
 (6022, 'Personal Loan', 'Bank', 23274.00),
 (6023, 'Personal Loan', 'Bank', 141699.00),
-(6024, 'Personal Loan', 'Bank', 19951.00);
+(6024, 'Personal Loan', 'Bank', 19951.00),
+(6025, 'Personal Loan', 'Bank', 21003),
+(6026, 'Personal Loan', 'Bank', 36667),
+(6027, 'Personal Loan', 'Bank', 28911),
+(6028, 'Personal Loan', 'Bank', 43309),
+(6029, 'Personal Loan', 'Bank', 32189),
+(6030, 'Personal Loan', 'Bank', 18576),
+(6031, 'Personal Loan', 'Bank', 12146),
+(6032, 'Personal Loan', 'Bank', 11499);
 
 REPLACE INTO employee_references (employee_id, reference_name, reference_address, reference_telephone) VALUES
 (6001, 'Reference Angelo Ocampo', 'Quezon Province', '09209197701'),
@@ -446,6 +583,14 @@ REPLACE INTO employee_references (employee_id, reference_name, reference_address
 (6021, 'Reference Manuel De Leon', 'Quezon Province', '09205164420'),
 (6022, 'Reference Ramon Valenzuela', 'Quezon Province', '09208267158'),
 (6023, 'Reference John Bautista', 'Quezon Province', '09205537157'),
-(6024, 'Reference Manuel Santos', 'Quezon Province', '09204902772');
+(6024, 'Reference Manuel Santos', 'Quezon Province', '09204902772'),
+(6025, 'Reference Angelo Cruz', 'Quezon Province', '09172147909'),
+(6026, 'Reference David Tolentino', 'Quezon Province', '09179349470'),
+(6027, 'Reference Joshua Cruz', 'Quezon Province', '09175605016'),
+(6028, 'Reference Jessica Aquino', 'Quezon Province', '09179906224'),
+(6029, 'Reference Andrea Gomez', 'Quezon Province', '09172060605'),
+(6030, 'Reference Santiago Castillo', 'Quezon Province', '09177084862'),
+(6031, 'Reference Kenneth Cruz', 'Quezon Province', '09175205279'),
+(6032, 'Reference Divina Cruz', 'Quezon Province', '09179035982');
 
 SET FOREIGN_KEY_CHECKS = 1;
