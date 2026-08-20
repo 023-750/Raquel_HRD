@@ -12,6 +12,11 @@ REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middl
 (10004, 'OP-004', 'Arthur', 'Salvador', 'Gonzales', '2022-07-12', '1993-01-23', 'Lucena City, Quezon', 'Male', 'Separated', 1103, 'Executive Assistant III', 10, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
 (999, 'JUICE-999', 'Jarad', 'Higgins', 'Anthony', '2017-01-01', '1990-01-01', 'Lucena City, Quezon', 'Male', 'Married', 1103, 'Executive Assistant III', 10, 5, 102, 'Regular', 'Full-time', 'juice.png');
 
+-- President is the final employee-portal reviewer for department packages.
+UPDATE employees SET reports_to = NULL WHERE employee_code = 'OP-001';
+UPDATE employees SET reports_to = 10001
+WHERE employee_code IN ('OP-002', 'OP-003', 'OP-004', 'JUICE-999');
+
 REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, telephone_number) VALUES
 (10001, 'bernadette.salvador@example.com', '09178333427', '888-10001'),
 (10002, 'ricardo.gonzales@example.com', '09178050508', '888-10002'),

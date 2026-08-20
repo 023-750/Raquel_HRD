@@ -194,7 +194,7 @@ REPLACE INTO departments (department_id, department_name, description, is_active
 -- ============================================
 REPLACE INTO job_titles (job_title_id, job_title, rank_category_id, department_id, is_active, is_head, reports_to, created_at, updated_at) VALUES
 -- Acquired Properties (100-119)
-(100, 'VP for Acquired Properties', 1, 1, 1, 0, NULL, NOW(), NOW()),
+(100, 'VP for Acquired Properties', 1, 1, 1, 1, NULL, NOW(), NOW()),
 (101, 'AP Manager I', 3, 1, 1, 1, 100, NOW(), NOW()),
 (102, 'AP Manager II', 3, 1, 1, 1, 100, NOW(), NOW()),
 (103, 'AP Manager III', 3, 1, 1, 1, 100, NOW(), NOW()),

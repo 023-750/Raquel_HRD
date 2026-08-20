@@ -2,6 +2,10 @@
 USE raquel_hris;
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- Link the AP position tree to the President position after all standard
+-- positions have been created by 2nd_seed_organization.sql.
+UPDATE job_titles SET reports_to = 1100 WHERE job_title_id = 100;
+
 -- ====================================
 -- 1. EMPLOYEES (Acquired Properties Team)
 -- ====================================
@@ -23,6 +27,31 @@ REPLACE INTO employees (employee_id, employee_code, first_name, last_name, middl
 (1015, 'AP-015', 'Josefina', 'Evangelista', 'Perez', '2024-09-01', '1994-03-20', 'Lucena City, Quezon', 'Female', 'Widowed', 114, 'Sales Associate on Probation', 1, 5, 102, 'Probationary', 'Full-time', 'avatar_f.jpg'),
 (1016, 'AP-016', 'Santiago', 'Mendoza', 'Villanueva', '2021-08-23', '2003-10-07', 'Lucena City, Quezon', 'Male', 'Single', 115, 'Sales Associate I', 1, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg'),
 (1017, 'AP-017', 'Christopher', 'Villanueva', 'Bautista', '2024-07-06', '1999-12-05', 'Lucena City, Quezon', 'Male', 'Separated', 116, 'Sales Associate II', 1, 5, 102, 'Regular', 'Full-time', 'avatar_m.jpg');
+
+-- Organization-driven evaluation hierarchy for every seeded AP employee.
+-- xPortal_accounts.sql creates an Employee account for each employee code,
+-- so every active AP employee is included in the department package.
+UPDATE employees SET reports_to = CASE employee_code
+    WHEN 'AP-001' THEN 10001 -- VP -> President and CEO
+    WHEN 'AP-002' THEN 1001  -- AP Manager I -> VP
+    WHEN 'AP-003' THEN 1001  -- AP Manager II -> VP
+    WHEN 'AP-004' THEN 1001  -- AP Manager III -> VP
+    WHEN 'AP-005' THEN 1001  -- AP Manager IV -> VP
+    WHEN 'AP-006' THEN 1002  -- AP Supervisor I -> AP Manager I
+    WHEN 'AP-007' THEN 1002  -- AP Supervisor II -> AP Manager I
+    WHEN 'AP-008' THEN 1002  -- AP Supervisor III -> AP Manager I
+    WHEN 'AP-009' THEN 1006  -- AP Staff on Probation -> AP Supervisor I
+    WHEN 'AP-010' THEN 1006  -- AP Staff I -> AP Supervisor I
+    WHEN 'AP-011' THEN 1006  -- AP Staff II -> AP Supervisor I
+    WHEN 'AP-012' THEN 1006  -- AP Staff III -> AP Supervisor I
+    WHEN 'AP-013' THEN 1006  -- AP Staff IV -> AP Supervisor I
+    WHEN 'AP-014' THEN 1006  -- AP Staff V -> AP Supervisor I
+    WHEN 'AP-015' THEN 1006  -- Sales Associate on Probation -> AP Supervisor I
+    WHEN 'AP-016' THEN 1006  -- Sales Associate I -> AP Supervisor I
+    WHEN 'AP-017' THEN 1006  -- Sales Associate II -> AP Supervisor I
+    ELSE reports_to
+END
+WHERE employee_code BETWEEN 'AP-001' AND 'AP-017';
 
 REPLACE INTO employee_contacts (employee_id, personal_email, mobile_number, telephone_number) VALUES
 (1001, 'eduardo.aquino@example.com', '09178078673', '888-1001'),

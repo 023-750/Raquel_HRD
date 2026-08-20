@@ -88,10 +88,12 @@ switch ($effective_role) {
                 ['icon' => 'fas fa-building', 'label' => 'Branches', 'url' => BASE_URL . '/manager/branches.php', 'page' => 'branches.php'],
                 ['icon' => 'fas fa-sitemap', 'label' => 'Departments', 'url' => BASE_URL . '/manager/departments.php', 'page' => 'departments.php'],
                 ['icon' => 'fas fa-briefcase', 'label' => 'Positions', 'url' => BASE_URL . '/manager/positions.php', 'page' => 'positions.php'],
+                ['icon' => 'fas fa-landmark', 'label' => 'Evaluation Governance', 'url' => BASE_URL . '/manager/evaluation-governance.php', 'page' => 'evaluation-governance.php'],
                 // ['icon' => 'fas fa-project-diagram', 'label' => 'Operation Management', 'url' => BASE_URL . '/manager/operation-management.php', 'page' => 'operation-management.php'],
             ],
             'EVALUATIONS' => [
                 ['icon' => 'fas fa-file-alt', 'label' => 'Templates', 'url' => BASE_URL . '/manager/templates.php', 'page' => 'templates.php'],
+                ['icon' => 'fas fa-layer-group', 'label' => 'Team Evaluation Packages', 'url' => BASE_URL . '/employee/team-evaluation-packages.php', 'page' => 'team-evaluation-packages.php'],
                 ['icon' => 'fas fa-check-double', 'label' => 'Pending Approvals', 'url' => BASE_URL . '/manager/pending-approvals.php', 'page' => 'pending-approvals.php',
                  'badge' => (function() use ($conn) {
                      try { $r = $conn->query("SELECT COUNT(*) as c FROM employee_change_requests WHERE status='Pending'"); return $r ? (int)($r->fetch_assoc()['c'] ?? 0) : 0; } catch(Exception $e){ return 0; }
@@ -309,20 +311,15 @@ switch ($effective_role) {
             ['icon' => 'fas fa-briefcase', 'label' => 'My Employment', 'url' => BASE_URL . '/employee/my-employment.php', 'page' => 'my-employment.php'],
             ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php', 'badge' => $m_pending_template_count],
             ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php', 'badge' => $m_eval_status_count],
+            ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/employee/evaluation-history.php', 'page' => 'evaluation-history.php'],
             ['icon' => 'fas fa-chart-line', 'label' => 'My Performance', 'url' => BASE_URL . '/employee/my-performance.php', 'page' => 'my-performance.php'],
         ];
 
-        // Add department manager links
-        if ($is_dept_manager_menu) {
-            $self_service_menu[] = ['icon' => 'fas fa-user-shield', 'label' => 'Dept Manager Review', 'url' => BASE_URL . '/employee/dept-manager-review.php', 'page' => 'dept-manager-review.php', 'badge' => $m_dept_review_count];
-        }
-
         // Add My Team link for supervisors/managers — excluding Human Resources department
         if ($is_supervisor_menu && $hdr_sup_dept_name !== 'Human Resources') {
-            if (!$is_dept_manager_menu) {
-                $self_service_menu[] = ['icon' => 'fas fa-user-check', 'label' => 'Confirm Self-Rating', 'url' => BASE_URL . '/employee/confirm-rating.php', 'page' => 'confirm-rating.php', 'badge' => $m_confirm_rating_count];
-            }
             $self_service_menu[] = ['icon' => 'fas fa-users', 'label' => 'My Team', 'url' => BASE_URL . '/employee/team-list.php', 'page' => 'team-list.php'];
+            $self_service_menu[] = ['icon' => 'fas fa-layer-group', 'label' => 'Team Evaluation Packages', 'url' => BASE_URL . '/employee/team-evaluation-packages.php', 'page' => 'team-evaluation-packages.php'];
+            $self_service_menu[] = ['icon' => 'fas fa-history', 'label' => 'Team Evaluation History', 'url' => BASE_URL . '/employee/team-evaluation-history.php', 'page' => 'team-evaluation-history.php'];
         }
 
         // Career movement links based on rank
@@ -410,6 +407,7 @@ switch ($effective_role) {
     <?php endif; ?>
     <!-- Feedback & Sound Effects System CSS — loaded for all roles -->
     <link href="<?php echo BASE_URL; ?>/assets/css/employee-portal-feedback.css?v=<?php echo time(); ?>" rel="stylesheet">
+    <link href="<?php echo BASE_URL; ?>/assets/css/evaluation-packages.css?v=<?php echo time(); ?>" rel="stylesheet">
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
     <script src="<?php echo BASE_URL; ?>/assets/js/pjax.js?v=<?php echo time(); ?>" defer></script>
@@ -710,14 +708,6 @@ switch ($effective_role) {
                                 }
                             }
                         ?>
-                            <li>
-                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/dept-manager-review.php" style="font-size:0.82rem; padding: 6px 10px;">
-                                    <span><i class="fas fa-user-shield me-2" style="width: 18px; text-align: center;"></i>Dept Manager Review</span>
-                                    <?php if ($_g_dept_pending > 0): ?>
-                                        <span class="badge bg-danger rounded-pill ms-2"><?php echo $_g_dept_pending > 9 ? '9+' : $_g_dept_pending; ?></span>
-                                    <?php endif; ?>
-                                </a>
-                            </li>
                         <?php endif; ?>
                         <?php
                         // Confirm Rating — for immediate heads outside HR department
@@ -758,14 +748,6 @@ switch ($effective_role) {
                                 }
                             }
                         ?>
-                            <li>
-                                <a class="dropdown-item d-flex align-items-center justify-content-between" href="<?php echo BASE_URL; ?>/employee/confirm-rating.php" style="font-size:0.82rem; padding: 6px 10px;">
-                                    <span><i class="fas fa-user-check me-2" style="width: 18px; text-align: center;"></i>Confirm Rating</span>
-                                    <?php if ($_g_confirm_pending > 0): ?>
-                                        <span class="badge bg-danger rounded-pill ms-2"><?php echo $_g_confirm_pending > 9 ? '9+' : $_g_confirm_pending; ?></span>
-                                    <?php endif; ?>
-                                </a>
-                            </li>
                         <?php endif; ?>
                         <li>
                             <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/my-performance.php" style="font-size:0.82rem; padding: 6px 10px;">

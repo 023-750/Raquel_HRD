@@ -111,6 +111,7 @@ CREATE TABLE employees (
     department_id INT NULL,
     rank_category_id INT NULL,
     branch_id INT NULL,
+    reports_to INT NULL,
     employment_status ENUM('OJT', 'Probationary', 'Project Based', 'Regular', 'Separated', 'Trainee', 'AWOL', 'Retirement', 'Death', 'Permanent of Total Disability', 'Resignation', 'Failed in Training', 'Termination for Cause') DEFAULT 'Regular',
     employment_type ENUM('Full-time', 'Part-time') DEFAULT 'Full-time',
     contract_start_date DATE NULL,
@@ -128,6 +129,7 @@ CREATE TABLE employees (
     CONSTRAINT fk_employees_rank_category FOREIGN KEY (rank_category_id) REFERENCES rank_categories(rank_category_id) ON DELETE SET NULL,
     INDEX idx_employee_names (last_name, first_name),
     INDEX idx_employee_dept (department_id, branch_id),
+    INDEX idx_employee_reports_to (reports_to),
     INDEX idx_employee_employment_status (employment_status, is_active, deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

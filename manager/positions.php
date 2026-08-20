@@ -20,6 +20,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             redirectWith(BASE_URL . '/manager/positions.php', 'danger', 'Position name is required.');
         }
 
+        $position_id = $action === 'edit_position' ? (int) ($_POST['position_id'] ?? 0) : 0;
+        if ($position_id > 0 && positionReportsToWouldCreateCycle($conn, $position_id, (int) $reports_to)) {
+            redirectWith(BASE_URL . '/manager/positions.php', 'danger', 'This reporting line would create a circular organization structure.');
+        }
+
         $dupSql = "SELECT job_title_id FROM job_titles WHERE job_title = ? AND ";
         $dupSql .= $department_id === null ? "department_id IS NULL" : "department_id = ?";
         if ($action === 'edit_position') {
@@ -27,12 +32,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         $dupStmt = $conn->prepare($dupSql);
         if ($department_id === null && $action === 'edit_position') {
-            $position_id = (int) ($_POST['position_id'] ?? 0);
             $dupStmt->bind_param("si", $position_name, $position_id);
         } elseif ($department_id === null) {
             $dupStmt->bind_param("s", $position_name);
         } elseif ($action === 'edit_position') {
-            $position_id = (int) ($_POST['position_id'] ?? 0);
             $dupStmt->bind_param("sii", $position_name, $department_id, $position_id);
         } else {
             $dupStmt->bind_param("si", $position_name, $department_id);
@@ -54,7 +57,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             redirectWith(BASE_URL . '/manager/positions.php', 'success', "Position \"$position_name\" added successfully.");
         }
 
-        $position_id = (int) ($_POST['position_id'] ?? 0);
         if ($position_id <= 0) {
             redirectWith(BASE_URL . '/manager/positions.php', 'danger', 'Invalid position selected.');
         }
@@ -717,15 +719,9 @@ $employeesWithManagedPositions = (int) $conn->query("SELECT COUNT(*) AS cnt FROM
                 return;
             }
 
-            const optDept = option.getAttribute('data-department');
-            if (selectedDept === "" || optDept === selectedDept) {
-                option.style.display = "";
-            } else {
-                option.style.display = "none";
-                if (reportsToSelect.value === option.value) {
-                    reportsToSelect.value = "";
-                }
-            }
+            // A reporting line can legitimately cross departments (for example,
+            // IT Manager -> VP Operations). Keep every active position available.
+            option.style.display = "";
         });
     }
 

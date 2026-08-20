@@ -417,6 +417,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $status = $is_assigned_submission ? 'Pending Self-Rating' : 'Draft';
     }
+
+    // New organization-driven packages own the approval route. Legacy individual
+    // confirmation pages must not receive newly submitted package evaluations.
+    $uses_organization_package_flow = ($action === 'submit') && ensureOrganizationEvaluationPackageSchema($conn);
+    if ($uses_organization_package_flow) {
+        $status = 'Pending Team Consolidation';
+    }
     $submitted_date = ($action === 'submit') ? date('Y-m-d H:i:s') : null;
 
     if ($editing_id > 0) {
@@ -469,6 +476,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $score_stmt->close();
 
     if ($action === 'submit') {
+        $package_id = syncEvaluationToOrganizationPackage($conn, $eval_id);
+        if ($uses_organization_package_flow && $package_id) {
+            logAudit($conn, $user_id, 'CREATE', 'Evaluation', $eval_id, 'Submitted self-rating to organization evaluation package');
+            redirectWith(BASE_URL . '/employee/self-rating.php', 'success', 'Your self-rating was submitted to the team evaluation package. The package will open for consolidation after every required team member submits.');
+        }
         $employee_name = trim(($employee['first_name'] ?? '') . ' ' . ($employee['last_name'] ?? ''));
 
         // Check if employee has an HR role
@@ -571,7 +583,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             (int)$sup_row['user_id'],
                             'Self-Rating Pending Confirmation',
                             $employee_name . ' (Branch Manager) submitted a self-rating awaiting your confirmation.',
-                            BASE_URL . '/employee/confirm-rating.php?evaluation_id=' . $eval_id
+                            BASE_URL . '/employee/team-evaluation-packages.php'
                         );
                         $supervisor_notified = true;
                     }
@@ -1208,15 +1220,15 @@ require_once '../includes/header.php';
                                         $badge_html = '';
                                         if ($dept_mgr_override !== null) {
                                             $effective_score = $dept_mgr_override;
-                                            $badge_html = ' <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-tie me-1"></i>Adjusted by Dept Manager</span>';
+                                            $badge_html = ' <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-pen me-1"></i>Adjusted during review</span>';
                                         }
                                         if ($supervisor_override !== null) {
                                             $effective_score = $supervisor_override;
-                                            $badge_html = ' <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-shield me-1"></i>Adjusted by Supervisor</span>';
+                                            $badge_html = ' <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-pen me-1"></i>Adjusted during review</span>';
                                         }
                                         if ($manager_override !== null) {
                                             $effective_score = $manager_override;
-                                            $badge_html = ' <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-check me-1"></i>Adjusted by Manager</span>';
+                                            $badge_html = ' <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-pen me-1"></i>Adjusted during review</span>';
                                         }
                                         ?>
                                         <tr>
@@ -1265,15 +1277,15 @@ require_once '../includes/header.php';
                                         $badge_html = '';
                                         if ($dept_mgr_override !== null) {
                                             $effective_score = $dept_mgr_override;
-                                            $badge_html = ' <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-tie me-1"></i>Adjusted by Dept Manager</span>';
+                                            $badge_html = ' <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-pen me-1"></i>Adjusted during review</span>';
                                         }
                                         if ($supervisor_override !== null) {
                                             $effective_score = $supervisor_override;
-                                            $badge_html = ' <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-shield me-1"></i>Adjusted by Supervisor</span>';
+                                            $badge_html = ' <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-pen me-1"></i>Adjusted during review</span>';
                                         }
                                         if ($manager_override !== null) {
                                             $effective_score = $manager_override;
-                                            $badge_html = ' <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-user-check me-1"></i>Adjusted by Manager</span>';
+                                            $badge_html = ' <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 ms-2 rounded-pill small fw-semibold" style="font-size: 0.65rem;" title="Original Self-Rating: ' . number_format($original_score, 2) . '"><i class="fas fa-pen me-1"></i>Adjusted during review</span>';
                                         }
                                         ?>
                                         <tr>
@@ -2017,8 +2029,8 @@ require_once '../includes/header.php';
                                     <?php endif; ?>
                                 </div>
                                 <div class="mt-2">
-                                    <a href="<?php echo BASE_URL; ?>/employee/confirm-rating.php?evaluation_id=<?php echo (int)$appr['evaluation_id']; ?>" class="btn btn-sm btn-outline-secondary rounded-pill w-100" style="font-size:0.72rem;">
-                                        <i class="fas fa-eye me-1"></i>View Confirmed Evaluation
+                                    <a href="<?php echo BASE_URL; ?>/employee/evaluation-history.php" class="btn btn-sm btn-outline-secondary rounded-pill w-100" style="font-size:0.72rem;">
+                                        <i class="fas fa-history me-1"></i>View Evaluation History
                                     </a>
                                 </div>
                             </div>

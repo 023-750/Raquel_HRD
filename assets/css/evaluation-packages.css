@@ -1,0 +1,46 @@
+.evaluation-packages .package-hero {
+    background: #123b69;
+    border-radius: 14px;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+}
+
+.evaluation-packages .package-card {
+    background: #fff;
+    border: 1px solid #dfe7ef;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.evaluation-packages .package-card__header {
+    align-items: center;
+    background: #f7fafc;
+    border-bottom: 1px solid #dfe7ef;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+}
+
+.evaluation-packages .package-card__body { padding: 1.25rem; }
+.evaluation-packages .package-stat { color: #52616f; font-size: .875rem; }
+.evaluation-packages .package-stat strong { color: #182b3d; display: block; font-size: 1.15rem; }
+.evaluation-packages .package-status { border-radius: 999px; font-size: .75rem; font-weight: 700; padding: .35rem .65rem; white-space: nowrap; }
+.evaluation-packages .package-status--waiting { background: #fff3cd; color: #7a5700; }
+.evaluation-packages .package-status--review { background: #dbeafe; color: #174ea6; }
+.evaluation-packages .package-status--complete { background: #d1fae5; color: #086b43; }
+.evaluation-packages .package-table th { background: #f1f5f9; font-size: .78rem; text-transform: uppercase; }
+.evaluation-packages .package-timeline { border-left: 2px solid #d5dee8; list-style: none; margin: 0; padding-left: 1.1rem; }
+.evaluation-packages .package-timeline li { margin-bottom: .8rem; position: relative; }
+.evaluation-packages .package-timeline li::before { background: #fff; border: 2px solid #2f6fad; border-radius: 50%; content: ''; height: .65rem; left: -1.48rem; position: absolute; top: .23rem; width: .65rem; }
+.evaluation-packages .package-action-panel { background: #f8fbfe; border: 1px solid #cfe0ef; border-radius: 10px; padding: 1rem; }
+.evaluation-packages .package-empty { background: #fff; border: 1px dashed #b7c5d2; border-radius: 12px; color: #52616f; padding: 2rem; text-align: center; }
+.evaluation-packages .history-back-link { color: #fff; display: inline-block; font-size: .875rem; margin-bottom: .8rem; text-decoration: none; }
+.evaluation-packages .history-back-link:hover { color: #fff; text-decoration: underline; }
+.evaluation-packages .package-note { background: #edf6ff; border-left: 3px solid #2f6fad; border-radius: 4px; color: #24425d; padding: .75rem 1rem; }
+.evaluation-packages .history-adjusted { color: #816100; font-size: .75rem; font-weight: 600; margin-top: .25rem; }
+.evaluation-packages .history-remarks p { margin-bottom: 1rem; white-space: pre-wrap; }
+.evaluation-packages .history-remarks p:last-child { margin-bottom: 0; }
+@media (max-width: 768px) { .evaluation-packages .package-card__header { align-items: flex-start; flex-direction: column; } }
