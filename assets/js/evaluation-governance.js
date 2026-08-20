@@ -6,10 +6,35 @@ document.addEventListener('DOMContentLoaded', function () {
     function filterAuthorizedUsers() {
         var selectedDepartment = department.value;
         user.value = '';
-        Array.prototype.forEach.call(user.options, function (option) {
-            if (!option.value) return;
-            option.hidden = selectedDepartment !== '0' && option.dataset.departmentId !== selectedDepartment;
+
+        var options = Array.prototype.slice.call(user.options);
+        var currentHeader = null;
+        var currentHeaderHasVisible = false;
+
+        options.forEach(function (option) {
+            // Skip the placeholder "Select user" option
+            if (!option.value && !option.disabled) return;
+
+            if (option.disabled) {
+                // This is a rank group header — finalize the previous header visibility
+                if (currentHeader) {
+                    currentHeader.hidden = !currentHeaderHasVisible;
+                }
+                // Start tracking a new group
+                currentHeader = option;
+                currentHeaderHasVisible = false;
+            } else {
+                // Regular user option
+                var isVisible = selectedDepartment === '0' || option.dataset.departmentId === selectedDepartment;
+                option.hidden = !isVisible;
+                if (isVisible) currentHeaderHasVisible = true;
+            }
         });
+
+        // Finalize the last group
+        if (currentHeader) {
+            currentHeader.hidden = !currentHeaderHasVisible;
+        }
     }
 
     department.addEventListener('change', filterAuthorizedUsers);

@@ -11,16 +11,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $reviewer_user_id = (int) ($_POST['reviewer_user_id'] ?? 0);
     $department_id = (int) ($_POST['department_id'] ?? 0);
     if (!in_array($type, ['Board of Directors', 'Audit Committee'], true) || $reviewer_user_id <= 0) {
-        redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'danger', 'Choose a governance group and an active Manager-level user.');
+        redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'danger', 'Choose a governance group and an active user.');
     }
     $eligible_stmt = $conn->prepare("SELECT u.user_id FROM users u JOIN employees e ON e.employee_id = u.employee_id
         WHERE u.user_id = ? AND u.is_active = 1 AND e.is_active = 1 AND e.deleted_at IS NULL
-          AND e.rank_category_id IS NOT NULL AND e.rank_category_id <= 3
           AND (? = 0 OR e.department_id = ?) LIMIT 1");
     $eligible_stmt->bind_param('iii', $reviewer_user_id, $department_id, $department_id); $eligible_stmt->execute();
     $eligible = $eligible_stmt->get_result()->fetch_assoc(); $eligible_stmt->close();
     if (!$eligible) {
-        redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'danger', 'Authorized users must hold a Manager rank or higher.');
+        redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'danger', 'Selected user is not an active employee.');
     }
     if ($type === 'Board of Directors') {
         $employee_stmt = $conn->prepare('SELECT employee_id FROM users WHERE user_id = ? LIMIT 1');
@@ -45,16 +44,19 @@ if (isset($_GET['disable']) && is_numeric($_GET['disable'])) {
 
 require_once '../includes/header.php';
 $users = $conn->query("SELECT u.user_id, u.full_name, u.role, e.job_title, e.rank_category_id
-    , e.department_id FROM users u JOIN employees e ON e.employee_id = u.employee_id
+    , e.department_id, rc.rank_name, rc.level_order
+    FROM users u
+    JOIN employees e ON e.employee_id = u.employee_id
+    LEFT JOIN rank_categories rc ON rc.rank_category_id = e.rank_category_id
     WHERE u.is_active = 1 AND e.is_active = 1 AND e.deleted_at IS NULL
-      AND e.rank_category_id IS NOT NULL AND e.rank_category_id <= 3
-    ORDER BY u.full_name")->fetch_all(MYSQLI_ASSOC);
+    ORDER BY COALESCE(rc.level_order, 99), u.full_name")->fetch_all(MYSQLI_ASSOC);
 $departments = $conn->query("SELECT department_id, department_name FROM departments WHERE is_active = 1 ORDER BY department_name")->fetch_all(MYSQLI_ASSOC);
 $approvers = $conn->query("SELECT ega.*, u.full_name, u.role, e.job_title FROM evaluation_governance_approvers ega JOIN users u ON u.user_id = ega.user_id LEFT JOIN employees e ON e.employee_id = u.employee_id ORDER BY ega.governance_type, u.full_name")->fetch_all(MYSQLI_ASSOC);
 ?>
 <main class="evaluation-packages container-fluid py-4">
-    <section class="package-hero"><p class="mb-1 small">Organization-driven evaluation workflow</p><h1 class="h4 mb-2">Evaluation Governance</h1><p class="mb-0">Assign a Manager-level or higher authorized user to perform Board of Directors or Audit Committee approval.</p></section>
-    <section class="package-card"><div class="package-card__body"><form method="post" class="row g-3 align-items-end"><?php echo csrfField(); ?><div class="col-md-3"><label class="form-label" for="governance-type">Governance group</label><select class="form-select" id="governance-type" name="governance_type" required><option value="">Select group</option><option>Board of Directors</option><option>Audit Committee</option></select></div><div class="col-md-3"><label class="form-label" for="governance-department">Department</label><select class="form-select" id="governance-department" name="department_id"><option value="0">All departments</option><?php foreach ($departments as $department): ?><option value="<?php echo (int)$department['department_id']; ?>"><?php echo e($department['department_name']); ?></option><?php endforeach; ?></select></div><div class="col-md-4"><label class="form-label" for="governance-user">Authorized user</label><select class="form-select" id="governance-user" name="reviewer_user_id" required><option value="">Select Manager-level user</option><?php foreach ($users as $user): ?><option value="<?php echo (int)$user['user_id']; ?>" data-department-id="<?php echo (int)$user['department_id']; ?>"><?php echo e($user['full_name'] . ' — ' . ($user['job_title'] ?: $user['role'])); ?></option><?php endforeach; ?></select></div><div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Assign approver</button></div></form></div></section>
+    <section class="package-hero"><p class="mb-1 small">Organization-driven evaluation workflow</p><h1 class="h4 mb-2">Evaluation Governance</h1><p class="mb-0">Assign an authorized user to perform Board of Directors or Audit Committee approval.</p></section>
+    <section class="package-card"><div class="package-card__body"><form method="post" class="row g-3 align-items-end"><?php echo csrfField(); ?><div class="col-md-3"><label class="form-label" for="governance-type">Governance group</label><select class="form-select" id="governance-type" name="governance_type" required><option value="">Select group</option><option>Board of Directors</option><option>Audit Committee</option></select></div><div class="col-md-3"><label class="form-label" for="governance-department">Department</label><select class="form-select" id="governance-department" name="department_id"><option value="0">All departments</option><?php foreach ($departments as $department): ?><option value="<?php echo (int)$department['department_id']; ?>"><?php echo e($department['department_name']); ?></option><?php endforeach; ?></select></div><div class="col-md-4"><label class="form-label" for="governance-user">Authorized user</label><select class="form-select" id="governance-user" name="reviewer_user_id" required><option value="">Select user</option><?php $prevRank = null; foreach ($users as $user): $rankLabel = $user['rank_name'] ?? 'Unclassified'; if ($rankLabel !== $prevRank): ?><option disabled style="font-weight:600;color:#6c757d;background:#f8f9fa;">── <?php echo e($rankLabel); ?> ──</option><?php $prevRank = $rankLabel; endif; ?><option value="<?php echo (int)$user['user_id']; ?>" data-department-id="<?php echo (int)$user['department_id']; ?>" data-rank="<?php echo e($rankLabel); ?>"><?php echo e($user['full_name'] . ' — ' . ($user['job_title'] ?: $user['role'])); ?></option><?php endforeach; ?></select></div><div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Assign approver</button></div></form></div></section>
+
     <section class="package-card"><header class="package-card__header"><h2 class="h5 mb-0">Configured approvers</h2></header><div class="package-card__body"><div class="table-responsive"><table class="table package-table align-middle mb-0"><thead><tr><th>Group</th><th>User</th><th>Position / role</th><th>Status</th><th>Action</th></tr></thead><tbody><?php foreach ($approvers as $approver): ?><tr><td><?php echo e($approver['governance_type']); ?></td><td><?php echo e($approver['full_name']); ?></td><td><?php echo e($approver['job_title'] ?: $approver['role']); ?></td><td><?php echo $approver['is_active'] ? 'Active' : 'Disabled'; ?></td><td><?php if ($approver['is_active']): ?><a class="btn btn-sm btn-outline-secondary" href="?disable=<?php echo (int)$approver['governance_approver_id']; ?>">Disable</a><?php endif; ?></td></tr><?php endforeach; ?></tbody></table></div></div></section>
 </main>
 <script src="<?php echo BASE_URL; ?>/assets/js/evaluation-governance.js"></script>
