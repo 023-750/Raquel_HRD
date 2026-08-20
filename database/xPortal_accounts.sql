@@ -2,6 +2,12 @@
 USE raquel_hris;
 SET FOREIGN_KEY_CHECKS = 0;
 
+-- Clean up Employee-portal duplicates left by older versions of this seed.
+-- These three employees use the dedicated HRIS accounts defined below.
+DELETE FROM users
+WHERE employee_id IN (101, 301, 302)
+  AND role = 'Employee';
+
 -- =============================================
 --              Employee Accounts
 -- =============================================
@@ -32,6 +38,9 @@ SELECT
 FROM employees e
 WHERE e.employee_code IS NOT NULL
   AND TRIM(e.employee_code) <> ''
+  -- These employees receive their dedicated HRIS accounts below. Excluding
+  -- them here prevents duplicate Employee and HRIS accounts for one person.
+  AND e.employee_id NOT IN (101, 301, 302)
   AND (
       NOT EXISTS (
           SELECT 1

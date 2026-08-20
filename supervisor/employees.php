@@ -311,8 +311,8 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
             <h5 class="d-none d-md-block"><i class="fas fa-users me-2"></i>All Employees</h5>
             <div class="search-box">
                 <i class="fas fa-search search-icon"></i>
-                <input type="text" class="form-control form-control-sm" id="customSearchEmp"
-                    placeholder="Search employees...">
+                <input type="search" class="form-control form-control-sm" id="customSearchEmp"
+                    placeholder="Search by name, employee ID, position, or department" aria-label="Search employees by name, employee ID, position, or department" title="Search by name, employee ID, position, or department">
             </div>
         </div>
 
@@ -393,6 +393,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                                     data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                                     data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                                     data-status="<?php echo e($emp['employment_status']); ?>"
+                                    data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                                     data-active="<?php echo $emp['is_active'] ? '1' : '0'; ?>"
                                     style="display: none;">
                                     <td data-label="#"><strong><?php echo $count++; ?></strong></td>
@@ -471,6 +472,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
                          data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                          data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                          data-status="<?php echo e($emp['employment_status']); ?>"
+                         data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                          style="display: none;">
                         <div class="student-avatar">
                             <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="avatar-img">
@@ -668,7 +670,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         allRows.forEach(row => {
             const cells = Array.from(row.querySelectorAll("td"));
             if (cells.length > 1) {
-                const rowText = cells.slice(0, 6).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ').toLowerCase();
+                const rowText = (row.dataset.search || cells.slice(0, 6).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ')).toLowerCase();
                 const textMatch = filterInput === "" || rowText.includes(filterInput);
                 const dropdownMatch =
                     (fJobTitle === '' || row.dataset.jobtitle === fJobTitle) &&
@@ -689,7 +691,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Regular',
         // Filter mobile cards (mirrors desktop) and gather visible ones
         let visibleCards = [];
         allCards.forEach(card => {
-            const cardText = card.textContent.toLowerCase();
+            const cardText = (card.dataset.search || card.textContent).toLowerCase();
             const textMatch = filterInput === "" || cardText.includes(filterInput);
             const dropdownMatch =
                 (fJobTitle === '' || card.dataset.jobtitle === fJobTitle) &&

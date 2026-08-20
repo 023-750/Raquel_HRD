@@ -429,7 +429,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
     <div class="hr-mobile-search-bar d-md-none px-3 pt-3 pb-1">
         <div class="hr-search-input-wrap">
             <i class="fas fa-search hr-search-icon"></i>
-            <input type="text" class="hr-search-input" id="mobileSearchEmp" placeholder="Search employees...">
+            <input type="search" class="hr-search-input" id="mobileSearchEmp" placeholder="Search by name, employee ID, position, or department" aria-label="Search employees by name, employee ID, position, or department" title="Search by name, employee ID, position, or department">
         </div>
         <button type="button" class="hr-filter-btn" id="mobileFilterOpenBtn" data-hr-filter-open>
             <i class="fas fa-sliders-h"></i> Filters
@@ -441,8 +441,8 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         <h5 class="d-none d-md-block"><i class="fas fa-users me-2"></i>All Employees</h5>
         <div class="search-box">
             <i class="fas fa-search search-icon"></i>
-            <input type="text" class="form-control form-control-sm" id="customSearchEmp"
-                placeholder="Search employees...">
+            <input type="search" class="form-control form-control-sm" id="customSearchEmp"
+                placeholder="Search by name, employee ID, position, or department" aria-label="Search employees by name, employee ID, position, or department" title="Search by name, employee ID, position, or department">
         </div>
     </div>
 
@@ -546,6 +546,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                             data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                             data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                             data-status="<?php echo e($emp['employment_status']); ?>"
+                            data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                             data-active="<?php echo $emp['is_active'] ? '1' : '0'; ?>"
                             style="display: none;">
                             <td data-label="#"><strong><?php echo $count++; ?></strong></td>
@@ -628,6 +629,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                      data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                      data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                      data-status="<?php echo e($emp['employment_status']); ?>"
+                     data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                      style="display: none; flex-direction: column; align-items: stretch; width: 100%; box-sizing: border-box;">
 
                     <!-- Top Header Bar: Status Badge on left + Actions Menu Button on right -->
@@ -1207,7 +1209,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
             const cells = Array.from(row.querySelectorAll("td"));
             if (cells.length > 1) {
                 // Text search
-                const rowText = cells.slice(0, 6).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ').toLowerCase();
+                const rowText = (row.dataset.search || cells.slice(0, 6).map(td => td.textContent.trim().replace(/\s+/g, ' ')).join(' ')).toLowerCase();
                 const textMatch = filterInput === "" || rowText.includes(filterInput);
 
                 // Dropdown filters
@@ -1232,7 +1234,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
         const allCards = mobileList ? Array.from(mobileList.querySelectorAll(".student-item")) : [];
         let visibleCards = [];
         allCards.forEach(card => {
-            const cardText = card.textContent.toLowerCase();
+            const cardText = (card.dataset.search || card.textContent).toLowerCase();
             const textMatch = filterInput === "" || cardText.includes(filterInput);
             const dropdownMatch =
                 (normFJobTitle === '' || normText(card.dataset.jobtitle) === normFJobTitle) &&
