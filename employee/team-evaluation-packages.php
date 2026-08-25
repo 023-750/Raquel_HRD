@@ -70,27 +70,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ((int)$step['step_order'] !== 1) {
             redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'danger', 'Only the initial consolidator can cancel or drop an evaluation package.');
         }
+
+        // 1. Fetch affected members FIRST before any DELETE so we can notify them
+        $member_users_rs = $conn->query("
+            SELECT DISTINCT u.user_id, e.evaluation_id,
+                   CONCAT(emp.first_name, ' ', emp.last_name) AS emp_name
+            FROM evaluation_package_members pm
+            JOIN evaluations e ON e.evaluation_id = pm.evaluation_id
+            JOIN employees emp ON emp.employee_id = e.employee_id
+            JOIN users u ON u.employee_id = emp.employee_id
+            WHERE pm.package_id = $package_id
+        ");
+        $member_users = $member_users_rs ? $member_users_rs->fetch_all(MYSQLI_ASSOC) : [];
+
+        // Also fetch supervisor name for the notification message
+        $supervisor_row = $conn->query("SELECT CONCAT(e.first_name, ' ', e.last_name) AS sup_name FROM users u JOIN employees e ON e.employee_id = u.employee_id WHERE u.user_id = $user_id LIMIT 1")->fetch_assoc();
+        $supervisor_name = $supervisor_row ? $supervisor_row['sup_name'] : 'Your supervisor';
+        $drop_reason = $comments ?: 'No reason provided.';
+        $dept_name = $step['department_name'] ?? 'your department';
+
+        // 2. Cancel package and route steps
         $conn->query("UPDATE evaluation_packages SET status = 'Cancelled', current_step_order = NULL WHERE package_id = $package_id");
         $conn->query("UPDATE evaluation_package_route_steps SET action_status = 'Cancelled' WHERE package_id = $package_id");
 
-        // Reset all member evaluations linked to this package/department back to Pending Self-Rating so employees can access their self-rating template again!
+        // 3. Reset all member evaluations back to Pending Self-Rating
         $conn->query("UPDATE evaluations e JOIN evaluation_package_members pm ON pm.evaluation_id = e.evaluation_id SET e.status = 'Pending Self-Rating', e.submitted_date = NULL WHERE pm.package_id = $package_id");
         $conn->query("UPDATE evaluations e JOIN employees emp ON emp.employee_id = e.employee_id JOIN evaluation_packages ep ON ep.department_id = emp.department_id AND ep.template_id = e.template_id SET e.status = 'Pending Self-Rating', e.submitted_date = NULL WHERE ep.package_id = $package_id AND e.status IN ('Pending Team Consolidation', 'Submitted', 'Pending Supervisor', 'Pending HR Consolidation')");
 
-        // Remove members from package so fresh self-ratings recreate package cleanly
+        // 4. Remove members from package
         $conn->query("DELETE FROM evaluation_package_members WHERE package_id = $package_id");
 
         $audit = $conn->prepare("INSERT INTO evaluation_package_audit (package_id, user_id, action, remarks) VALUES (?, ?, 'CANCELLED', ?)");
-        $audit_remark = 'Consolidator cancelled and dropped evaluation package. Member self-ratings reset to Pending Self-Rating.';
+        $audit_remark = 'Consolidator cancelled and dropped evaluation package. Reason: ' . $drop_reason;
         $audit->bind_param('iis', $package_id, $user_id, $audit_remark);
         $audit->execute();
         $audit->close();
 
+        // 5. Notify each affected employee individually
         foreach ($member_users as $mu) {
-            createNotification($conn, (int)$mu['user_id'], 'Evaluation Package Reset', 'The evaluation package was dropped by your supervisor. Your self-rating form has been reset for revision.', BASE_URL . '/employee/self-rating.php?edit=' . (int)$mu['evaluation_id']);
+            $notif_title = 'Evaluation Package Dropped — Self-Rating Reset';
+            $notif_body = "Your $dept_name evaluation package has been dropped by $supervisor_name. "
+                . "Your self-rating has been reset to Pending and is open for revision. "
+                . "Reason: $drop_reason";
+            createNotification(
+                $conn,
+                (int)$mu['user_id'],
+                $notif_title,
+                $notif_body,
+                BASE_URL . '/employee/self-rating.php?edit=' . (int)$mu['evaluation_id']
+            );
         }
 
-        redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'warning', 'Evaluation package cancelled. All team member self-ratings have been reset to Pending Self-Rating.');
+        redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'warning', 'Evaluation package dropped. All ' . count($member_users) . ' team member(s) have been notified and their self-ratings reset.');
     }
 
     if ($action === 'return') {
@@ -247,7 +278,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 require_once '../includes/header.php';
 
 // Pending packages awaiting this reviewer's action right now
-$packages_stmt = $conn->prepare("SELECT ep.*, d.department_name, et.template_name, rs.package_route_step_id, rs.step_label, rs.step_type, rs.action_status
+$packages_stmt = $conn->prepare("SELECT ep.*, d.department_name, et.template_name, et.kra_weight, et.behavior_weight, rs.package_route_step_id, rs.step_label, rs.step_type, rs.action_status
     FROM evaluation_packages ep
     JOIN evaluation_package_route_steps rs ON rs.package_id = ep.package_id
     JOIN departments d ON d.department_id = ep.department_id
@@ -260,7 +291,7 @@ $packages = $packages_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $packages_stmt->close();
 
 // F2/F8: Waiting packages (strictly step 1 consolidators whose teams are still submitting self-ratings)
-$waiting_stmt = $conn->prepare("SELECT ep.*, d.department_name, et.template_name, rs.step_label
+$waiting_stmt = $conn->prepare("SELECT ep.*, d.department_name, et.template_name, et.kra_weight, et.behavior_weight, rs.step_label
     FROM evaluation_packages ep
     JOIN evaluation_package_route_steps rs ON rs.package_id = ep.package_id AND rs.step_order = 1
     JOIN departments d ON d.department_id = ep.department_id
@@ -423,12 +454,19 @@ $waiting_stmt->close();
                                 <th>Position</th>
                                 <th class="text-end">Individual KRA</th>
                                 <th class="text-end">Self Behavior</th>
+                                <th class="text-end">Total Score</th>
                                 <th>Status</th>
                                 <th class="text-end">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php foreach ($members as $member): ?>
+                                <?php
+                                $kra_w = isset($package['kra_weight']) && (float)$package['kra_weight'] > 0 ? (float)$package['kra_weight'] : 80;
+                                $beh_w = isset($package['behavior_weight']) && (float)$package['behavior_weight'] > 0 ? (float)$package['behavior_weight'] : 20;
+                                $beh_val = (float)$member['behavior_average'];
+                                $total_score_val = calculateEvalTotal((float)$member['kra_subtotal'], $beh_val, $kra_w, $beh_w);
+                                ?>
                                 <tr>
                                     <td>
                                         <div class="fw-bold"><?php echo e($member['first_name'] . ' ' . $member['last_name']); ?></div>
@@ -441,6 +479,7 @@ $waiting_stmt->close();
                                     <td><?php echo e($member['job_title']); ?></td>
                                     <td class="text-end tabular-nums fw-semibold"><?php echo number_format((float)$member['kra_subtotal'], 2); ?></td>
                                     <td class="text-end tabular-nums fw-semibold"><?php echo number_format((float)$member['behavior_average'], 2); ?></td>
+                                    <td class="text-end tabular-nums fw-bold text-success" style="font-size: 1.05rem;"><?php echo number_format($total_score_val, 2); ?></td>
                                     <td>
                                         <span class="badge bg-secondary"><?php echo e($member['status']); ?></span>
                                     </td>

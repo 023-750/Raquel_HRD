@@ -2546,18 +2546,41 @@ function syncEvaluationToOrganizationPackage($conn, $evaluation_id)
     $department_id = (int) $evaluation['department_id'];
     $template_id = (int) $evaluation['template_id'];
     $type = $evaluation['evaluation_type']; $start = $evaluation['evaluation_period_start']; $end = $evaluation['evaluation_period_end'];
-    $find = $conn->prepare('SELECT package_id, consolidator_employee_id FROM evaluation_packages WHERE department_id = ? AND template_id = ? AND period_start = ? AND period_end = ? LIMIT 1');
+    // Look for an existing active (non-cancelled) package first
+    $find = $conn->prepare("SELECT package_id, consolidator_employee_id FROM evaluation_packages WHERE department_id = ? AND template_id = ? AND period_start = ? AND period_end = ? AND status <> 'Cancelled' LIMIT 1");
     $find->bind_param('iiss', $department_id, $template_id, $start, $end); $find->execute();
     $package = $find->get_result()->fetch_assoc(); $find->close();
     if (!$package) {
-        $consolidator = getOrganizationPackageConsolidator($conn, $department_id);
-        $consolidator_id = $consolidator ? (int) $consolidator['employee_id'] : 0;
-        $insert = $conn->prepare('INSERT INTO evaluation_packages (department_id, template_id, evaluation_type, period_start, period_end, consolidator_employee_id) VALUES (?, ?, ?, ?, ?, NULLIF(?, 0))');
-        $insert->bind_param('iisssi', $department_id, $template_id, $type, $start, $end, $consolidator_id); $insert->execute();
-        $package_id = (int) $insert->insert_id; $insert->close();
-        if ($consolidator_id) createOrganizationPackageRoute($conn, $package_id, $consolidator_id);
-        $audit = $conn->prepare("INSERT INTO evaluation_package_audit (package_id, action, remarks) VALUES (?, 'CREATED', 'Created from first submitted self-rating.')");
-        $audit->bind_param('i', $package_id); $audit->execute(); $audit->close();
+        // Check if a cancelled package exists for the same period — reactivate it instead of inserting (avoids UNIQUE KEY duplicate error)
+        $find_cancelled = $conn->prepare("SELECT package_id, consolidator_employee_id FROM evaluation_packages WHERE department_id = ? AND template_id = ? AND period_start = ? AND period_end = ? AND status = 'Cancelled' LIMIT 1");
+        $find_cancelled->bind_param('iiss', $department_id, $template_id, $start, $end); $find_cancelled->execute();
+        $cancelled_pkg = $find_cancelled->get_result()->fetch_assoc(); $find_cancelled->close();
+
+        if ($cancelled_pkg) {
+            // Reactivate the cancelled package
+            $package_id = (int) $cancelled_pkg['package_id'];
+            $consolidator_id = !empty($cancelled_pkg['consolidator_employee_id']) ? (int)$cancelled_pkg['consolidator_employee_id'] : 0;
+            $conn->query("UPDATE evaluation_packages SET status = 'Pending Self-Ratings', current_step_order = NULL WHERE package_id = $package_id");
+            // Reset route steps — handle blank/empty action_status as well as 'Cancelled'
+            $conn->query("UPDATE evaluation_package_route_steps SET action_status = 'Waiting', acted_at = NULL, comments = NULL WHERE package_id = $package_id");
+            // If no route steps exist at all, rebuild them from consolidator
+            $step_count = (int)($conn->query("SELECT COUNT(*) AS c FROM evaluation_package_route_steps WHERE package_id = $package_id")->fetch_assoc()['c'] ?? 0);
+            if ($step_count === 0 && $consolidator_id > 0) {
+                createOrganizationPackageRoute($conn, $package_id, $consolidator_id);
+            }
+            $audit = $conn->prepare("INSERT INTO evaluation_package_audit (package_id, action, remarks) VALUES (?, 'REACTIVATED', 'Package reactivated after cancellation — new self-rating submission received.')");
+            $audit->bind_param('i', $package_id); $audit->execute(); $audit->close();
+        } else {
+            // No package at all — create a fresh one
+            $consolidator = getOrganizationPackageConsolidator($conn, $department_id);
+            $consolidator_id = $consolidator ? (int) $consolidator['employee_id'] : 0;
+            $insert = $conn->prepare('INSERT INTO evaluation_packages (department_id, template_id, evaluation_type, period_start, period_end, consolidator_employee_id) VALUES (?, ?, ?, ?, ?, NULLIF(?, 0))');
+            $insert->bind_param('iisssi', $department_id, $template_id, $type, $start, $end, $consolidator_id); $insert->execute();
+            $package_id = (int) $insert->insert_id; $insert->close();
+            if ($consolidator_id) createOrganizationPackageRoute($conn, $package_id, $consolidator_id);
+            $audit = $conn->prepare("INSERT INTO evaluation_package_audit (package_id, action, remarks) VALUES (?, 'CREATED', 'Created from first submitted self-rating.')");
+            $audit->bind_param('i', $package_id); $audit->execute(); $audit->close();
+        }
     } else {
         $package_id = (int) $package['package_id'];
         $consolidator_id = !empty($package['consolidator_employee_id']) ? (int)$package['consolidator_employee_id'] : 0;

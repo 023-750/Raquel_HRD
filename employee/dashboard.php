@@ -392,7 +392,7 @@ function movementIcon(string $type): string {
                     <a href="<?php echo BASE_URL; ?>/employee/self-rating.php" class="badge bg-warning text-dark text-decoration-none">
                         <i class="fas fa-clock me-1"></i><?php echo $pending_template_count; ?> pending
                     </a>
-                    <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php" class="btn btn-sm btn-outline-primary">View All</a>
+                    <a href="<?php echo BASE_URL; ?>/employee/evaluation-history.php" class="btn btn-sm btn-outline-primary">View History</a>
                 </div>
             </div>
             <div class="content-card-body">

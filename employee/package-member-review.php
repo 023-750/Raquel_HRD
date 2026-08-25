@@ -125,8 +125,8 @@ $dev_plan_stmt->close();
 
 $kra_w = (float)($evaluation['kra_weight'] ?? 80);
 $beh_w = (float)($evaluation['behavior_weight'] ?? 20);
-$shared_beh = $evaluation['shared_behavior_score'] !== null ? (float)$evaluation['shared_behavior_score'] : (float)$evaluation['behavior_average'];
-$est_final_score = calculateEvalTotal((float)$evaluation['kra_subtotal'], $shared_beh, $kra_w, $beh_w);
+$beh_val = (float)$evaluation['behavior_average'];
+$est_final_score = calculateEvalTotal((float)$evaluation['kra_subtotal'], $beh_val, $kra_w, $beh_w);
 $est_perf_level = getPerformanceLevel($est_final_score);
 ?>
 <main class="evaluation-packages container-fluid py-4">
@@ -182,11 +182,11 @@ $est_perf_level = getPerformanceLevel($est_final_score);
             <input type="hidden" name="evaluation_id" value="<?php echo $evaluation_id; ?>">
             <?php echo csrfField(); ?>
 
-            <div class="alert alert-warning border border-warning d-flex align-items-center gap-3 p-3 mb-4 rounded-3 shadow-sm">
-                <i class="fas fa-edit fa-2x text-warning"></i>
+            <div class="alert alert-info border border-info d-flex align-items-center gap-3 p-3 mb-4 rounded-3 shadow-sm">
+                <i class="fas fa-edit fa-2x text-info"></i>
                 <div class="small">
                     <strong class="d-block text-dark mb-1" style="font-size:1rem;">How to Adjust Ratings:</strong>
-                    Type your adjusted rating directly into the box under <strong>Evaluator Adjusted Rating</strong> (or click the quick score buttons: <code>1.0</code>, <code>2.0</code>, <code>3.0</code>, <code>4.0</code>). Subtotals and Estimated Final Score update automatically in real time!
+                    Enter your adjusted rating score directly in the input box under <strong>Evaluator Adjusted Rating</strong> (supports decimal values between 1.00 and 4.00). Subtotals and Estimated Final Score recalculate automatically in real time.
                 </div>
             </div>
 
@@ -232,28 +232,20 @@ $est_perf_level = getPerformanceLevel($est_final_score);
                                         <?php echo number_format((float)$criterion['score_value'], 2); ?>
                                     </td>
                                     <td>
-                                        <div class="d-flex flex-column gap-1" style="max-width: 240px;">
-                                            <div class="input-group input-group-lg border-2 shadow-sm rounded-3 overflow-hidden">
-                                                <input class="form-control fw-bold text-center rating-input"
-                                                       id="rating_<?php echo (int)$criterion['score_id']; ?>"
-                                                       name="rating[<?php echo (int)$criterion['score_id']; ?>]"
-                                                       type="number"
-                                                       min="1.00"
-                                                       max="4.00"
-                                                       step="0.01"
-                                                       data-section="<?php echo e($section); ?>"
-                                                       data-weight="<?php echo (float)$criterion['weight']; ?>"
-                                                       value="<?php echo e(number_format($effective, 2, '.', '')); ?>"
-                                                       style="font-size:1.25rem !important; min-height:48px !important; padding: 0.25rem 0.5rem !important; color: #0f172a !important; background-color: #ffffff !important; border: 2px solid #0f5132 !important; font-family: monospace;"
-                                                       aria-label="Rating for <?php echo e($criterion['criterion_name']); ?>">
-                                                <span class="input-group-text fw-bold text-dark" style="background-color: #e2e8f0 !important; border: 2px solid #0f5132 !important; border-left: none !important; font-size: 0.95rem;">/ 4.00</span>
-                                            </div>
-                                            <div class="btn-group btn-group-sm w-100" role="group" aria-label="Quick rating buttons">
-                                                <button type="button" class="btn btn-outline-secondary btn-quick-score py-1" data-target="rating_<?php echo (int)$criterion['score_id']; ?>" data-val="1.00">1.0</button>
-                                                <button type="button" class="btn btn-outline-secondary btn-quick-score py-1" data-target="rating_<?php echo (int)$criterion['score_id']; ?>" data-val="2.00">2.0</button>
-                                                <button type="button" class="btn btn-outline-secondary btn-quick-score py-1" data-target="rating_<?php echo (int)$criterion['score_id']; ?>" data-val="3.00">3.0</button>
-                                                <button type="button" class="btn btn-outline-secondary btn-quick-score py-1" data-target="rating_<?php echo (int)$criterion['score_id']; ?>" data-val="4.00">4.0</button>
-                                            </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <input class="form-control fw-bold text-center eval-score-input"
+                                                   id="rating_<?php echo (int)$criterion['score_id']; ?>"
+                                                   name="rating[<?php echo (int)$criterion['score_id']; ?>]"
+                                                   type="number"
+                                                   min="1.00"
+                                                   max="4.00"
+                                                   step="0.01"
+                                                   data-section="<?php echo e($section); ?>"
+                                                   data-weight="<?php echo (float)$criterion['weight']; ?>"
+                                                   value="<?php echo e(number_format($effective, 2, '.', '')); ?>"
+                                                   aria-label="Rating for <?php echo e($criterion['criterion_name']); ?>"
+                                                   style="width: 110px !important; height: 44px !important; font-size: 1.25rem !important; font-weight: 700 !important; color: #0f172a !important; background-color: #ffffff !important; border: 2px solid #0f5132 !important; border-radius: 8px !important; display: inline-block !important; opacity: 1 !important; visibility: visible !important;">
+                                            <span class="fw-bold text-secondary" style="font-size: 1rem;">/ 4.00</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -332,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const behWeightPct = <?php echo $beh_w; ?>;
     const sharedBehVal = <?php echo $shared_beh; ?>;
 
-    const ratingInputs = document.querySelectorAll('.rating-input');
+    const ratingInputs = document.querySelectorAll('.eval-score-input');
     const statKraSubtotal = document.getElementById('stat-kra-subtotal');
     const statEstTotal = document.getElementById('stat-est-total-score');
     const statPerfLevel = document.getElementById('stat-perf-level');
@@ -366,20 +358,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     ratingInputs.forEach(function (inp) {
         inp.addEventListener('input', recalcLiveScore);
+        inp.addEventListener('change', recalcLiveScore);
     });
 
-    // Quick score preset buttons
-    document.querySelectorAll('.btn-quick-score').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const targetId = btn.dataset.target;
-            const val = btn.dataset.val;
-            const targetInp = document.getElementById(targetId);
-            if (targetInp) {
-                targetInp.value = val;
-                recalcLiveScore();
-            }
-        });
-    });
 
     // Dev Plan Dynamic Table Rows
     const btnAddDevRow = document.getElementById('btnAddDevRow');

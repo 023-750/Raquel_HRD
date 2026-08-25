@@ -29,17 +29,11 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'Employee'):
             </div>
             <span class="nav-label">Self Rating</span>
         </a>
-        <a href="<?php echo BASE_URL; ?>/employee/completed-ratings.php" class="nav-item <?php echo ($curr_p === 'completed-ratings.php') ? 'active' : ''; ?>">
+        <a href="<?php echo BASE_URL; ?>/employee/evaluation-history.php" class="nav-item <?php echo ($curr_p === 'evaluation-history.php') ? 'active' : ''; ?>">
             <div class="position-relative">
-                <i class="fas fa-list-check nav-icon"></i>
-                <?php
-                    $m_status_count = $m_eval_status_count ?? 0;
-                    if ($m_status_count > 0):
-                ?>
-                    <span class="mobile-notif-badge"><?php echo $m_status_count > 9 ? '9+' : $m_status_count; ?></span>
-                <?php endif; ?>
+                <i class="fas fa-history nav-icon"></i>
             </div>
-            <span class="nav-label">Status</span>
+            <span class="nav-label">History</span>
         </a>
     </nav>
 <?php endif; ?>

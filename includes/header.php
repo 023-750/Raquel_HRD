@@ -313,10 +313,9 @@ switch ($effective_role) {
 
         // ── Section 2: Evaluations ──────────────────────────────────────────
         $menu_evaluations = [
-            ['icon' => 'fas fa-star',            'label' => 'Self Rating',        'url' => BASE_URL . '/employee/self-rating.php',      'page' => 'self-rating.php',      'badge' => $m_pending_template_count],
-            ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status',  'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php', 'badge' => $m_eval_status_count],
-            ['icon' => 'fas fa-history',         'label' => 'Evaluation History', 'url' => BASE_URL . '/employee/evaluation-history.php', 'page' => 'evaluation-history.php'],
-            ['icon' => 'fas fa-chart-line',      'label' => 'My Performance',     'url' => BASE_URL . '/employee/my-performance.php',   'page' => 'my-performance.php'],
+            ['icon' => 'fas fa-star',        'label' => 'Self Rating',        'url' => BASE_URL . '/employee/self-rating.php',      'page' => 'self-rating.php',      'badge' => $m_pending_template_count],
+            ['icon' => 'fas fa-history',     'label' => 'Evaluation History', 'url' => BASE_URL . '/employee/evaluation-history.php', 'page' => 'evaluation-history.php'],
+            ['icon' => 'fas fa-chart-line',  'label' => 'My Performance',     'url' => BASE_URL . '/employee/my-performance.php',   'page' => 'my-performance.php'],
         ];
 
         // ── Section 3: My Team (supervisors/managers & assigned package reviewers) ──
