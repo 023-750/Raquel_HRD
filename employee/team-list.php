@@ -11,6 +11,18 @@ require_once '../includes/functions.php';
 $user_id     = (int)($_SESSION['user_id']     ?? 0);
 $employee_id = (int)($_SESSION['employee_id'] ?? 0);
 
+// Human Resource personnel manage teams and evaluations directly on HRIS
+$emp_dept_stmt = $conn->prepare("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = ? LIMIT 1");
+$emp_dept_stmt->bind_param("i", $employee_id);
+$emp_dept_stmt->execute();
+$emp_dept_name = $emp_dept_stmt->get_result()->fetch_assoc()['department_name'] ?? '';
+$emp_dept_stmt->close();
+$hr_role = getEmployeeHRRole($conn, $employee_id);
+
+if (strcasecmp($emp_dept_name, 'Human Resources') === 0 || !empty($hr_role) || in_array($_SESSION['role'] ?? '', ['HR Manager', 'HR Supervisor', 'HR Staff'], true)) {
+    redirectWith(BASE_URL . '/employee/dashboard.php', 'info', 'Human Resource personnel manage team evaluation features directly on the HRIS portal.');
+}
+
 // Only supervisors / managers may access this page
 if (!hasSupervisorPrivileges($conn, $employee_id)) {
     redirectWith(BASE_URL . '/employee/dashboard.php', 'danger', 'Access Denied: You do not have supervisor or manager privileges.');

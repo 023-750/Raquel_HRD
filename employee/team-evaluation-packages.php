@@ -3,10 +3,18 @@ $page_title = 'Team Evaluation Packages';
 require_once '../includes/session-check.php';
 require_once '../includes/functions.php';
 
-// Allow any authenticated portal role to access packages when assigned to their workflow step
-if (!in_array($_SESSION['role'] ?? '', ['Employee', 'HR Manager', 'HR Supervisor', 'HR Staff', 'Admin'], true)) {
-    header('Location: ' . BASE_URL . '/employee/index.php');
-    exit;
+// HR Manager and HR Supervisor consolidate via HRIS (their sidebar links here directly).
+// Only HR Staff and Employee-role users in HR dept are blocked from team management.
+$_session_role = $_SESSION['role'] ?? '';
+if ($_session_role === 'HR Staff' ||
+    ($_session_role === 'Employee' && (function() use ($conn) {
+        $employee_id = (int)($_SESSION['employee_id'] ?? 0);
+        $s = $conn->prepare("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = ? LIMIT 1");
+        $s->bind_param('i', $employee_id); $s->execute();
+        $dept = $s->get_result()->fetch_assoc()['department_name'] ?? ''; $s->close();
+        return strcasecmp($dept, 'Human Resources') === 0;
+    })())) {
+    redirectWith(BASE_URL . '/employee/dashboard.php', 'info', 'Human Resource personnel perform self-rating only on the Employee Portal. Team management is handled via HRIS.');
 }
 
 ensureOrganizationEvaluationPackageSchema($conn);

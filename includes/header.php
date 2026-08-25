@@ -321,7 +321,10 @@ switch ($effective_role) {
         // ── Section 3: My Team (supervisors/managers & assigned package reviewers) ──
         $m_pending_pkg_count = countPendingOrganizationPackagesForUser($conn, (int)($_SESSION['user_id'] ?? 0));
         $menu_my_team = [];
-        if ($is_supervisor_menu || $m_pending_pkg_count > 0) {
+        $is_hr_personnel = (strcasecmp($_hdr_emp_dept ?? '', 'Human Resources') === 0) 
+                            || !empty($_hdr_viewer_hr_role) 
+                            || in_array($_SESSION['role'] ?? '', ['HR Manager', 'HR Supervisor', 'HR Staff'], true);
+        if (!$is_hr_personnel && ($is_supervisor_menu || $m_pending_pkg_count > 0)) {
             $menu_my_team[] = ['icon' => 'fas fa-users',       'label' => 'My Team',                  'url' => BASE_URL . '/employee/team-list.php',              'page' => 'team-list.php'];
             $menu_my_team[] = ['icon' => 'fas fa-layer-group', 'label' => 'Team Evaluation Packages', 'url' => BASE_URL . '/employee/team-evaluation-packages.php', 'page' => 'team-evaluation-packages.php', 'badge' => $m_pending_pkg_count ?: null, 'badge_class' => 'bg-warning text-dark'];
             $menu_my_team[] = ['icon' => 'fas fa-history',     'label' => 'Team Evaluation History',  'url' => BASE_URL . '/employee/team-evaluation-history.php', 'page' => 'team-evaluation-history.php'];

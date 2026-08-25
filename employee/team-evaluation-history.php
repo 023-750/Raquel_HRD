@@ -3,6 +3,22 @@ $page_title = 'Team Evaluation History';
 require_once '../includes/session-check.php';
 require_once '../includes/functions.php';
 
+// HR Manager and HR Supervisor access evaluation history from HRIS sidebar.
+// Only HR Staff and Employee-role users in the HR dept are blocked here.
+$_session_role = $_SESSION['role'] ?? '';
+if ($_session_role === 'HR Staff') {
+    redirectWith(BASE_URL . '/employee/dashboard.php', 'info', 'Human Resource personnel view evaluation history directly on the HRIS portal.');
+}
+if ($_session_role === 'Employee') {
+    $_hdr_emp_id_hist = (int)($_SESSION['employee_id'] ?? 0);
+    $s = $conn->prepare("SELECT d.department_name FROM employees e LEFT JOIN departments d ON e.department_id = d.department_id WHERE e.employee_id = ? LIMIT 1");
+    $s->bind_param('i', $_hdr_emp_id_hist); $s->execute();
+    $_hdr_dept_hist = $s->get_result()->fetch_assoc()['department_name'] ?? ''; $s->close();
+    if (strcasecmp($_hdr_dept_hist, 'Human Resources') === 0) {
+        redirectWith(BASE_URL . '/employee/dashboard.php', 'info', 'Human Resource personnel view evaluation history directly on the HRIS portal.');
+    }
+}
+
 ensureOrganizationEvaluationPackageSchema($conn);
 $user_id = (int) ($_SESSION['user_id'] ?? 0);
 $reviewer_match = organizationPackageReviewerMatchSql('rs');
