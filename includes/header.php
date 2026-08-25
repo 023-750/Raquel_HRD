@@ -110,7 +110,6 @@ switch ($effective_role) {
             ],
             'ANALYTICS' => [
                 ['icon' => 'fas fa-chart-bar', 'label' => 'Analytics', 'url' => BASE_URL . '/manager/analytics.php', 'page' => 'analytics.php'],
-                ['icon' => 'fas fa-file-pdf', 'label' => 'Reports', 'url' => BASE_URL . '/manager/reports.php', 'page' => 'reports.php'],
                 ['icon' => 'fas fa-clipboard-list', 'label' => 'Audit Trail', 'url' => BASE_URL . '/manager/audit-trail.php', 'page' => 'audit-trail.php'],
             ],
         ];
@@ -148,7 +147,6 @@ switch ($effective_role) {
             ],
             'ANALYTICS' => [
                 ['icon' => 'fas fa-chart-bar', 'label' => 'Branch Analytics', 'url' => BASE_URL . '/supervisor/analytics.php', 'page' => 'analytics.php'],
-                ['icon' => 'fas fa-file-alt', 'label' => 'Reports', 'url' => BASE_URL . '/supervisor/reports.php', 'page' => 'reports.php'],
                 ['icon' => 'fas fa-clipboard-list', 'label' => 'My Audit Trail', 'url' => BASE_URL . '/supervisor/audit-trail.php', 'page' => 'audit-trail.php'],
             ],
         ];

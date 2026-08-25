@@ -545,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 <?php if ($is_waiting): ?>
                                     <a href="<?php echo BASE_URL; ?>/employee/team-evaluation-packages.php" class="btn btn-outline-primary btn-sm px-3">View Progress</a>
                                 <?php else: ?>
-                                    <a href="<?php echo BASE_URL; ?>/employee/package-member-review.php?package_id=<?php echo (int)$pkg['package_id']; ?>" class="btn btn-primary btn-sm btn-review px-3">Review Package</a>
+                                    <a href="<?php echo BASE_URL; ?>/employee/team-evaluation-packages.php" class="btn btn-primary btn-sm btn-review px-3">Review Package</a>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>

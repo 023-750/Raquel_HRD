@@ -1,6 +1,8 @@
 <?php
 $page_title = 'Report Generation';
 require_once '../includes/session-check.php';
+require_once '../includes/functions.php';
+redirectWith(BASE_URL . '/manager/dashboard.php', 'info', 'Reports module is disabled.');
 checkRole(['HR Manager']);
 require_once '../includes/header.php';
 

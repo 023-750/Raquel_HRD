@@ -468,9 +468,7 @@ function getUnreadNotificationCount($conn, $user_id, $context = null)
         $sql .= " AND (link LIKE '%/employee/%' OR link IS NULL OR link = '')";
 
     } elseif ($context === 'hr') {
-
-        $sql .= " AND (link NOT LIKE '%/employee/%' OR link IS NULL OR link = '')";
-
+        $sql .= " AND (link NOT LIKE '%/employee/%' OR link LIKE '%/employee/team-evaluation%' OR link LIKE '%/employee/package-member%' OR link IS NULL OR link = '')";
     }
 
 
@@ -509,9 +507,7 @@ function getRecentNotifications($conn, $user_id, $limit = 5, $context = null)
         $sql .= " AND (link LIKE '%/employee/%' OR link IS NULL OR link = '')";
 
     } elseif ($context === 'hr') {
-
-        $sql .= " AND (link NOT LIKE '%/employee/%' OR link IS NULL OR link = '')";
-
+        $sql .= " AND (link NOT LIKE '%/employee/%' OR link LIKE '%/employee/team-evaluation%' OR link LIKE '%/employee/package-member%' OR link IS NULL OR link = '')";
     }
 
     $sql .= " ORDER BY created_at DESC LIMIT ?";

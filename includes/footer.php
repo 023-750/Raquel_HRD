@@ -109,7 +109,6 @@ if (in_array($_ft_role, ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin'])):
             <a href="<?php echo BASE_URL; ?>/manager/templates.php"><i class="fas fa-file-alt"></i>Templates</a>
             <a href="<?php echo BASE_URL; ?>/manager/career-movements.php"><i class="fas fa-route"></i>Career Movements</a>
             <a href="<?php echo BASE_URL; ?>/manager/evaluation-history.php"><i class="fas fa-history"></i>Eval History</a>
-            <a href="<?php echo BASE_URL; ?>/manager/reports.php"><i class="fas fa-file-pdf"></i>Reports</a>
             <a href="<?php echo BASE_URL; ?>/manager/audit-trail.php"><i class="fas fa-clipboard-list"></i>Audit Trail</a>
             <a href="<?php echo BASE_URL; ?>/manager/add-employee.php"><i class="fas fa-user-plus"></i>Add Employee</a>
             <hr>
@@ -178,7 +177,6 @@ if (in_array($_ft_role, ['HR Manager', 'HR Supervisor', 'HR Staff', 'Admin'])):
         <div class="hr-nav-more-dropdown" id="hrNavMoreMenu" role="menu">
             <a href="<?php echo BASE_URL; ?>/supervisor/evaluation-history.php"><i class="fas fa-history"></i>Eval History</a>
             <a href="<?php echo BASE_URL; ?>/supervisor/analytics.php"><i class="fas fa-chart-bar"></i>Branch Analytics</a>
-            <a href="<?php echo BASE_URL; ?>/supervisor/reports.php"><i class="fas fa-file-alt"></i>Reports</a>
             <a href="<?php echo BASE_URL; ?>/supervisor/audit-trail.php"><i class="fas fa-clipboard-list"></i>My Audit Trail</a>
             <a href="<?php echo BASE_URL; ?>/supervisor/career-progression.php"><i class="fas fa-chart-line"></i>Career Progression</a>
             <hr>

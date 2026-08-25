@@ -3,6 +3,7 @@ $page_title = 'Supervisor Reports';
 require_once '../includes/session-check.php';
 checkRole(['HR Supervisor']);
 require_once '../includes/functions.php';
+redirectWith(BASE_URL . '/supervisor/dashboard.php', 'info', 'Reports module is disabled.');
 
 $supervisor_id = (int) ($_SESSION['user_id'] ?? 0);
 $branch_id = (int) ($_SESSION['branch_id'] ?? 0);
