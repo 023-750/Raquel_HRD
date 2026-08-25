@@ -476,7 +476,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </div>
 
 <div class="row g-4 mb-4">
-    <div class="col-lg-8">
+    <div class="col-12">
         <div class="chart-card h-100">
             <div class="cc-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Validation Queue</h5>
@@ -586,40 +586,6 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         </div>
     </div>
-
-    <div class="col-lg-4">
-        <div class="chart-card workflow-card">
-            <div class="cc-header">
-                <h5 class="mb-0"><i class="fas fa-route me-2"></i>Supervisor Workflow</h5>
-            </div>
-            <div class="cc-body">
-                <div class="workflow-step">
-                    <span class="step-icon"><i class="fas fa-inbox"></i></span>
-                    <div>
-                        <div class="fw-bold">Receive staff submissions</div>
-                        <small class="text-muted">Check self-ratings and supporting details.</small>
-                    </div>
-                </div>
-                <div class="workflow-step">
-                    <span class="step-icon"><i class="fas fa-comments"></i></span>
-                    <div>
-                        <div class="fw-bold">Validate with comments</div>
-                        <small class="text-muted">Endorse clean records or return revisions.</small>
-                    </div>
-                </div>
-                <div class="workflow-step">
-                    <span class="step-icon"><i class="fas fa-share-square"></i></span>
-                    <div>
-                        <div class="fw-bold">Forward to HR Manager</div>
-                        <small class="text-muted">Approved validations move to manager review.</small>
-                    </div>
-                <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-primary w-100 rounded-pill mt-3">
-                    <i class="fas fa-clipboard-check me-2"></i>Open Queue
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
 </div>
 
 <?php /* ── Non-Regular Personnel Watchlist (Supervisor) ── */ ?>
