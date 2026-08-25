@@ -636,16 +636,19 @@ $waiting_stmt->close();
                                         </table>
                                     </div>
 
-                                    <div class="form-check p-3 bg-light rounded border mb-2">
-                                        <input class="form-check-input" type="checkbox" id="chkConfirm-<?php echo (int)$package['package_id']; ?>" required>
-                                        <label class="form-check-label fw-bold text-dark small" for="chkConfirm-<?php echo (int)$package['package_id']; ?>">
-                                            I confirm that I have thoroughly reviewed all ratings, adjustments, and developmental plans for this department before forwarding to <?php echo e($next_reviewer_name); ?>.
-                                        </label>
+                                    <div class="p-3 mb-3 rounded-3 shadow-sm" style="background-color: #fffbeb !important; border: 2px solid #f59e0b !important;">
+                                        <div class="form-check d-flex align-items-start gap-3 ps-2">
+                                            <input class="form-check-input flex-shrink-0 mt-1" type="checkbox" id="chkConfirm-<?php echo (int)$package['package_id']; ?>" style="width: 26px; height: 26px; cursor: pointer; border: 2px solid #d97706 !important;">
+                                            <label class="form-check-label fw-bold text-dark mb-0 ms-2" for="chkConfirm-<?php echo (int)$package['package_id']; ?>" style="font-size: 0.98rem; line-height: 1.4; cursor: pointer;">
+                                                <i class="fas fa-check-square me-1 text-warning fa-lg"></i>
+                                                I confirm that I have thoroughly reviewed all member ratings, evaluator adjustments, and developmental plans for this department before forwarding to <span class="text-decoration-underline text-primary"><?php echo e($next_reviewer_name); ?></span>.
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="modal-footer bg-light">
                                     <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancel</button>
-                                    <button type="submit" class="btn btn-success px-4 fw-bold" onclick="document.getElementById('actionInput-<?php echo (int)$package['package_id']; ?>').value='approve';">
+                                    <button type="button" class="btn btn-success px-4 fw-bold" onclick="submitPackageForm(<?php echo (int)$package['package_id']; ?>);">
                                         <i class="fas fa-paper-plane me-1"></i>Confirm &amp; Forward Package
                                     </button>
                                 </div>
@@ -657,4 +660,24 @@ $waiting_stmt->close();
         </article>
     <?php endforeach; ?>
 </main>
+
+<script>
+function submitPackageForm(packageId) {
+    const chk = document.getElementById('chkConfirm-' + packageId);
+    if (chk && !chk.checked) {
+        alert('Please check the confirmation checkbox below the members summary before forwarding the package.');
+        chk.focus();
+        return false;
+    }
+    const actionInp = document.getElementById('actionInput-' + packageId);
+    if (actionInp) {
+        actionInp.value = 'approve';
+    }
+    const form = document.getElementById('pkgForm-' + packageId);
+    if (form) {
+        form.submit();
+    }
+}
+</script>
+
 <?php require_once '../includes/footer.php'; ?>
