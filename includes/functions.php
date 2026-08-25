@@ -2626,7 +2626,7 @@ function getOrganizationPackageSubmissionSummary($conn, array $package)
     $template_id = (int) ($package['template_id'] ?? 0);
     $start = $package['period_start'] ?? '';
     $end = $package['period_end'] ?? '';
-    $stmt = $conn->prepare("SELECT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) AS employee_name, e.job_title,
+    $stmt = $conn->prepare("SELECT DISTINCT e.employee_id, CONCAT(e.first_name, ' ', e.last_name) AS employee_name, e.job_title,
         EXISTS(SELECT 1 FROM evaluations ev WHERE ev.employee_id = e.employee_id AND ev.template_id = ? AND ev.evaluation_period_start = ? AND ev.evaluation_period_end = ? AND ev.deleted_at IS NULL AND ev.status NOT IN ('Draft','Pending Self-Rating','Returned','Rejected')) AS is_submitted
         FROM employees e JOIN users u ON u.employee_id = e.employee_id AND u.is_active = 1
         WHERE e.department_id = ? AND e.is_active = 1 AND e.deleted_at IS NULL ORDER BY e.last_name, e.first_name");

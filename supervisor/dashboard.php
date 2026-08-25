@@ -84,6 +84,31 @@ foreach ($pending_rows as $row) {
 $pending_groups = array_values($pending_groups);
 $queue_preview_groups = array_slice($pending_groups, 0, 5);
 $queue_employee_count = count($pending_groups);
+
+ensureOrganizationEvaluationPackageSchema($conn);
+$user_id_pkg = (int) ($_SESSION['user_id'] ?? 0);
+$reviewer_match_pkg = organizationPackageReviewerMatchSql('rs');
+
+$pending_packages = [];
+if ($user_id_pkg > 0) {
+    $pkg_stmt = $conn->prepare("SELECT DISTINCT ep.*, d.department_name, et.template_name, rs.package_route_step_id, rs.step_label, rs.step_type, rs.action_status
+        FROM evaluation_packages ep
+        JOIN evaluation_package_route_steps rs ON rs.package_id = ep.package_id
+        JOIN departments d ON d.department_id = ep.department_id
+        JOIN evaluation_templates et ON et.template_id = ep.template_id
+        WHERE $reviewer_match_pkg
+          AND (
+              (rs.step_order = 1 AND rs.action_status IN ('Pending', 'Waiting'))
+              OR (rs.step_order > 1 AND rs.action_status = 'Pending')
+          )
+          AND ep.status <> 'Approved and Applied'
+        ORDER BY ep.updated_at DESC");
+    $pkg_stmt->bind_param('ii', $user_id_pkg, $user_id_pkg);
+    $pkg_stmt->execute();
+    $pending_packages = $pkg_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $pkg_stmt->close();
+}
+$pending_pkg_count = count($pending_packages);
 ?>
 
 <style>
@@ -385,17 +410,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     <!-- Stat Cards Row -->
     <div class="row g-3 mb-3">
-        <!-- Pending Validations -->
+        <!-- Team Evaluation Packages -->
         <div class="col-6 col-md-3">
-            <a href="pending-endorsements.php" class="stat-card text-decoration-none d-block">
+            <a href="<?php echo BASE_URL; ?>/employee/team-evaluation-packages.php" class="stat-card text-decoration-none d-block">
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
-                        <div class="stat-value"><?php echo $pending_validations; ?></div>
-                        <div class="stat-label">Pending Validations</div>
+                        <div class="stat-value"><?php echo $pending_pkg_count > 0 ? $pending_pkg_count : $pending_validations; ?></div>
+                        <div class="stat-label">Team Packages</div>
                     </div>
-                    <i class="fas fa-clipboard-check stat-icon" style="color:#ffc107;"></i>
+                    <i class="fas fa-layer-group stat-icon" style="color:#ffc107;"></i>
                 </div>
-                <?php if ($queue_employee_count > 0): ?>
+                <?php if ($pending_pkg_count > 0): ?>
+                <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
+                    <i class="fas fa-layer-group me-1"></i><?php echo $pending_pkg_count; ?> package<?php echo $pending_pkg_count === 1 ? '' : 's'; ?> awaiting review
+                </div>
+                <?php elseif ($queue_employee_count > 0): ?>
                 <div class="mt-2" style="font-size:.72rem;color:rgba(255,255,255,.55);">
                     <i class="fas fa-users me-1"></i><?php echo $queue_employee_count; ?> employee<?php echo $queue_employee_count === 1 ? '' : 's'; ?> in queue
                 </div>
@@ -479,20 +508,51 @@ document.addEventListener('DOMContentLoaded', function () {
     <div class="col-12">
         <div class="chart-card h-100">
             <div class="cc-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Validation Queue</h5>
+                <h5 class="mb-0"><i class="fas fa-layer-group me-2"></i>Team Evaluation Packages</h5>
                 <div class="d-flex align-items-center gap-2">
-                    <?php if ($queue_employee_count > 0): ?>
+                    <?php if ($pending_pkg_count > 0): ?>
+                        <span class="badge bg-light text-muted border"><?php echo number_format($pending_pkg_count); ?> package<?php echo $pending_pkg_count === 1 ? '' : 's'; ?></span>
+                    <?php elseif ($queue_employee_count > 0): ?>
                         <span class="badge bg-light text-muted border"><?php echo number_format($queue_employee_count); ?> employee<?php echo $queue_employee_count === 1 ? '' : 's'; ?></span>
                     <?php endif; ?>
-                    <a href="<?php echo BASE_URL; ?>/supervisor/pending-endorsements.php" class="btn btn-sm btn-outline-primary rounded-pill px-3">View All</a>
+                    <a href="<?php echo BASE_URL; ?>/employee/team-evaluation-packages.php" class="btn btn-sm btn-outline-primary rounded-pill px-3">View All</a>
                 </div>
             </div>
             <div class="cc-body p-0">
                 <div class="approval-list">
-                    <?php if (empty($queue_preview_groups)): ?>
+                    <?php if (!empty($pending_packages)): ?>
+                        <?php foreach ($pending_packages as $pkg):
+                            $is_waiting = ($pkg['action_status'] === 'Waiting');
+                        ?>
+                            <div class="approval-item">
+                                <div class="emp-info">
+                                    <div class="avatar-circle bg-primary-subtle text-primary fw-bold d-flex align-items-center justify-content-center" style="width:42px;height:42px;border-radius:50%;">
+                                        <i class="fas fa-layer-group"></i>
+                                    </div>
+                                    <div class="details">
+                                        <h6 class="mb-0 fw-bold"><?php echo e($pkg['department_name']); ?> Package</h6>
+                                        <span class="small text-muted"><?php echo e($pkg['template_name']); ?> &middot; Step: <?php echo e($pkg['step_label']); ?></span>
+                                    </div>
+                                </div>
+                                <div class="status-meta d-none d-sm-block text-end">
+                                    <div class="fw-bold text-dark"><?php echo formatDate($pkg['created_at']); ?></div>
+                                    <?php if ($is_waiting): ?>
+                                        <div class="x-small text-secondary fw-bold"><i class="fas fa-user-clock me-1"></i>Waiting for Team Self-Ratings</div>
+                                    <?php else: ?>
+                                        <div class="x-small text-warning fw-bold"><i class="fas fa-clock me-1"></i><?php echo e($pkg['status']); ?></div>
+                                    <?php endif; ?>
+                                </div>
+                                <?php if ($is_waiting): ?>
+                                    <a href="<?php echo BASE_URL; ?>/employee/team-evaluation-packages.php" class="btn btn-outline-primary btn-sm px-3">View Progress</a>
+                                <?php else: ?>
+                                    <a href="<?php echo BASE_URL; ?>/employee/package-member-review.php?package_id=<?php echo (int)$pkg['package_id']; ?>" class="btn btn-primary btn-sm btn-review px-3">Review Package</a>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php elseif (empty($queue_preview_groups)): ?>
                         <div class="empty-state-card">
-                            <i class="fas fa-clipboard-check"></i>
-                            <p class="mb-0">All validations have been processed.</p>
+                            <i class="fas fa-layer-group"></i>
+                            <p class="mb-0">All team evaluation packages have been processed.</p>
                         </div>
                     <?php else: ?>
                         <?php foreach ($queue_preview_groups as $group):
