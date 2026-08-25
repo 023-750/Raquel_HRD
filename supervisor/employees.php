@@ -393,7 +393,7 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Regular', 'Separated', 'Tr
                                     data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                                     data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                                     data-status="<?php echo e($emp['employment_status']); ?>"
-                                    data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
+                                    data-search="<?php echo e($emp['employee_id'] . ' ' . ($emp['employee_code'] ?? '') . ' ' . getEmployeeDisplayId($emp) . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                                     data-active="<?php echo $emp['is_active'] ? '1' : '0'; ?>"
                                     style="display: none;">
                                     <td data-label="#"><strong><?php echo $count++; ?></strong></td>
@@ -402,7 +402,10 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Regular', 'Separated', 'Tr
                                             <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile"
                                                 class="rounded-circle me-2"
                                                 style="width: 32px; height: 32px; object-fit: cover;">
-                                            <strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong>
+                                            <div>
+                                                <strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong>
+                                                <div class="text-muted small">ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span></div>
+                                            </div>
                                         </div>
                                     </td>
                                     <td data-label="Job Title"><?php echo e($emp['job_title']); ?></td>
@@ -472,13 +475,14 @@ $statuses = ['OJT', 'Probationary', 'Project Based', 'Regular', 'Separated', 'Tr
                          data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                          data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                          data-status="<?php echo e($emp['employment_status']); ?>"
-                         data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
+                         data-search="<?php echo e($emp['employee_id'] . ' ' . ($emp['employee_code'] ?? '') . ' ' . getEmployeeDisplayId($emp) . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                          style="display: none;">
                         <div class="student-avatar">
                             <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile" class="avatar-img">
                         </div>
                         <div class="student-info">
                             <div class="student-name"><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></div>
+                            <div class="text-muted small">ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span></div>
                             <div class="student-meta">
                                 <span><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
                                 &bull; <span><?php echo e($emp['department_name'] ?? 'N/A'); ?></span>

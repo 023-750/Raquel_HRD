@@ -7,7 +7,8 @@ require_once '../includes/header.php';
 
 // Fetch evaluation history 
 $history = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.rank_category_id, d.department_name,
-    u.full_name as submitted_by_name, u2.full_name as endorsed_by_name, u3.full_name as approved_by_name, et.template_name
+    u.full_name as submitted_by_name, u2.full_name as endorsed_by_name, u3.full_name as approved_by_name, et.template_name,
+    ep.package_id, ep.status AS package_status
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN departments d ON e.department_id = d.department_id
@@ -15,6 +16,8 @@ $history = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as 
     LEFT JOIN users u2 ON ev.endorsed_by = u2.user_id
     LEFT JOIN users u3 ON ev.approved_by = u3.user_id
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
+    LEFT JOIN evaluation_package_members pm ON pm.evaluation_id = ev.evaluation_id
+    LEFT JOIN evaluation_packages ep ON ep.package_id = pm.package_id
     WHERE ev.status IN ('Approved', 'Rejected', 'Returned')
     ORDER BY ev.updated_at DESC");
 
@@ -154,13 +157,17 @@ while ($row = $history->fetch_assoc()) {
                                     </div>
                                 </td>
                                 <td>
-                                    <?php
-                                    $statusClass = 'bg-secondary';
-                                    if ($row['status'] === 'Approved') $statusClass = 'bg-success';
-                                    if ($row['status'] === 'Rejected') $statusClass = 'bg-danger';
-                                    if ($row['status'] === 'Returned') $statusClass = 'bg-warning';
-                                    ?>
-                                    <span class="badge <?php echo $statusClass; ?> rounded-pill px-2" style="font-size:0.7rem;"><?php echo e($row['status']); ?></span>
+                                    <?php if (!empty($row['package_id'])): ?>
+                                        <?php echo renderOrganizationPipelineBadge($conn, (int)$row['package_id']); ?>
+                                    <?php else: ?>
+                                        <?php
+                                        $statusClass = 'bg-secondary';
+                                        if ($row['status'] === 'Approved') $statusClass = 'bg-success';
+                                        if ($row['status'] === 'Rejected') $statusClass = 'bg-danger';
+                                        if ($row['status'] === 'Returned') $statusClass = 'bg-warning text-dark';
+                                        ?>
+                                        <span class="badge <?php echo $statusClass; ?> rounded-pill px-2" style="font-size:0.7rem;"><?php echo e($row['status']); ?></span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-end pe-3">
                                     <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reviewModal<?php echo $row['evaluation_id']; ?>">

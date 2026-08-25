@@ -449,13 +449,34 @@ a {
 */
 
 .sidebar-nav .nav-label {
-    font-size: 0.78rem; /* slightly larger for readability */
+    font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    color: rgba(255, 255, 255, 0.38);
-    padding: 10px 20px 5px;
-    margin-top: 10px;
+    letter-spacing: 1.2px;
+    color: rgba(255, 255, 255, 0.35);
+    padding: 10px 20px 4px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
+/* Thin divider line preceding each section label (skips the very first) */
+.sidebar-nav .nav-label::before {
+    content: '';
+    display: block;
+    height: 1px;
+    width: 24px;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 1px;
+}
+.sidebar-nav .nav-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 1px;
+}
+
 
 .sidebar-nav a {
     color: rgba(255, 255, 255, 0.74);

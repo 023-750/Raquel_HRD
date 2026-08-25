@@ -1,0 +1,29 @@
+there's no proper indicator for individual employee when viewing its self-rating evaluation like the overall score after adjustments or even not been adjusted on  Organization-Driven Performance Review
+Team Evaluation Packages
+when someone just adjust the score of certain employee there's no total score but there's the following:
+
+3.40
+Current Individual KRA Subtotal
+4.00
+Individual Behavior Rating
+4.00
+Shared Department Behavior Result
+
+
+it should have the final score after adjustment or the current score of the employee.
+
+http://localhost/Raquel_HRD/employee/team-evaluation-history.php
+
+R&F submitts self-rating using different template for evaluation branch supervisor pov sees it which is normal, but the branch manager and the higher official present on the evalaution flow also sees it which is not good
+it should be visible only to the next consolidator which is the branch supervisor until the branch supervisor already submits it to the next one.
+
+http://localhost/Raquel_HRD/employee/team-evaluation-packages.php
+it should have the note before submitting to the next consolidator like pop up and there's a overall summary of all changes and detailes before sending it to the next consolidator.
+
+1. Audit Committee and Board of Director can also adjust ratings not just view only.
+
+the final evaluation package has been successfuly submitted and locked the changes has been applied to HRIS but there's a missing notification for HR Manager that the package has been approved and the changes has been applied.
+
+Developmental Plan is missing during the process of consolidating package it should be include to evalaution process so authorized personnel can put something on it.
+
+Team Evaluation Packages POV of authorized personnel should have drop button if there's something that they want to change, R&F employee sent self-rating evaluation and it lands to its standing branch supervisor the branch supervisor should have at least drop package or return evalaution for error prevention.

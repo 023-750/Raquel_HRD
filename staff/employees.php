@@ -238,7 +238,7 @@ $statuses = ['OJT','Probationary','Project Based','Regular','Separated','Trainee
                             data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                             data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                             data-status="<?php echo e($emp['employment_status']); ?>"
-                            data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
+                            data-search="<?php echo e($emp['employee_id'] . ' ' . ($emp['employee_code'] ?? '') . ' ' . getEmployeeDisplayId($emp) . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                             data-active="<?php echo $emp['is_active'] ? '1' : '0'; ?>"
                             style="display:none;">
                             <td><strong><?php echo $count++; ?></strong></td>
@@ -248,6 +248,7 @@ $statuses = ['OJT','Probationary','Project Based','Regular','Separated','Trainee
                                         class="rounded-circle" style="width:32px;height:32px;object-fit:cover;">
                                     <div>
                                         <strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong>
+                                        <div class="text-muted small">ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span></div>
                                         <?php if ($hasPending): ?>
                                             <span class="pending-badge"><i class="fas fa-clock me-1"></i>Pending</span>
                                         <?php endif; ?>
@@ -303,7 +304,7 @@ $statuses = ['OJT','Probationary','Project Based','Regular','Separated','Trainee
                  data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                  data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                  data-status="<?php echo e($emp['employment_status']); ?>"
-                 data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
+                 data-search="<?php echo e($emp['employee_id'] . ' ' . ($emp['employee_code'] ?? '') . ' ' . getEmployeeDisplayId($emp) . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                  style="display:none;">
                 <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile"
                     class="rounded-circle flex-shrink-0" style="width:44px;height:44px;object-fit:cover;">
@@ -312,6 +313,7 @@ $statuses = ['OJT','Probationary','Project Based','Regular','Separated','Trainee
                         <?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?>
                         <?php if ($hasPending): ?><span class="pending-badge"><i class="fas fa-clock me-1"></i>Pending</span><?php endif; ?>
                     </div>
+                    <div class="text-muted small">ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span></div>
                     <?php $rankId = (int)($emp['rank_category_id'] ?? 0); ?>
                     <span class="job-badge <?php echo staffGetJobTitleBadgeClass($rankId); ?>"><?php echo e($emp['job_title'] ?? 'N/A'); ?></span>
                     <div class="text-muted small mt-1"><?php echo e($emp['branch_name'] ?? 'N/A'); ?> · <?php echo e($emp['department_name'] ?? 'N/A'); ?></div>
@@ -355,6 +357,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const pageControls   = document.getElementById('paginationControls');
     const PAGE_SIZE      = 50;
     let currentPage      = 1;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialSearch = urlParams.get('search');
+    if (initialSearch && !searchInput.value) {
+        searchInput.value = initialSearch;
+    }
 
     function getFilters() {
         return {

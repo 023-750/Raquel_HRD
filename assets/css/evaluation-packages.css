@@ -1,46 +1,465 @@
-.evaluation-packages .package-hero {
-    background: #123b69;
-    border-radius: 14px;
-    color: #fff;
-    margin-bottom: 1.5rem;
-    padding: 1.5rem;
+/**
+ * Raquel Pawnshop HRIS - Evaluation Workflow & Package Stylesheet
+ * Optimized for Senior Accessibility, High Contrast, and Official Brand Palette
+ */
+
+:root {
+    --rp-primary-gold: #BD9414;
+    --rp-primary-gold-dark: #8C6D0D;
+    --rp-primary-gold-light: #F7E9B8;
+    --rp-forest-green: #082E06;
+    --rp-forest-green-dark: #051C04;
+    --rp-forest-green-light: #EBF4E9;
+    --rp-emerald-success: #16A34A;
+    --rp-emerald-light: #DCFCE7;
+    --rp-amber-warning: #D97706;
+    --rp-amber-light: #FEF3C7;
+    --rp-danger-red: #DC2626;
+    --rp-danger-light: #FEE2E2;
+    --rp-info-blue: #1D4ED8;
+    --rp-info-light: #DBEAFE;
+    --rp-text-main: #0F172A;
+    --rp-text-muted: #475569;
+    --rp-border-color: #CBD5E1;
+    --rp-bg-card: #FFFFFF;
+    --rp-bg-muted: #F8FAFC;
 }
 
-.evaluation-packages .package-card {
-    background: #fff;
-    border: 1px solid #dfe7ef;
-    border-radius: 12px;
+/* ── Container & Hero ──────────────────────────────────────────────────────── */
+.evaluation-packages {
+    color: var(--rp-text-main);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.evaluation-packages .package-hero {
+    background: linear-gradient(135deg, var(--rp-forest-green) 0%, #12480E 100%);
+    border-left: 6px solid var(--rp-primary-gold);
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(8, 46, 6, 0.18);
+    color: #FFFFFF;
+    margin-bottom: 2rem;
+    padding: 2rem 2.25rem;
+}
+
+.evaluation-packages .package-hero h1 {
+    color: #FFFFFF;
+    font-size: 1.85rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+}
+
+.evaluation-packages .package-hero p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.05rem;
+    line-height: 1.5;
+    max-width: 900px;
+}
+
+.evaluation-packages .history-back-link {
+    align-items: center;
+    color: var(--rp-primary-gold-light);
+    display: inline-flex;
+    font-size: 0.95rem;
+    font-weight: 700;
+    gap: 0.5rem;
     margin-bottom: 1rem;
+    text-decoration: none;
+    transition: color 0.15s ease-in-out;
+}
+
+.evaluation-packages .history-back-link:hover {
+    color: #FFFFFF;
+    text-decoration: underline;
+}
+
+/* ── Cards & Structure ─────────────────────────────────────────────────────── */
+.evaluation-packages .package-card {
+    background: var(--rp-bg-card);
+    border: 1px solid var(--rp-border-color);
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.05);
+    margin-bottom: 1.75rem;
     overflow: hidden;
 }
 
 .evaluation-packages .package-card__header {
     align-items: center;
-    background: #f7fafc;
-    border-bottom: 1px solid #dfe7ef;
+    background: var(--rp-bg-muted);
+    border-bottom: 1px solid var(--rp-border-color);
     display: flex;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 1.25rem;
     justify-content: space-between;
-    padding: 1rem 1.25rem;
+    padding: 1.25rem 1.75rem;
 }
 
-.evaluation-packages .package-card__body { padding: 1.25rem; }
-.evaluation-packages .package-stat { color: #52616f; font-size: .875rem; }
-.evaluation-packages .package-stat strong { color: #182b3d; display: block; font-size: 1.15rem; }
-.evaluation-packages .package-status { border-radius: 999px; font-size: .75rem; font-weight: 700; padding: .35rem .65rem; white-space: nowrap; }
-.evaluation-packages .package-status--waiting { background: #fff3cd; color: #7a5700; }
-.evaluation-packages .package-status--review { background: #dbeafe; color: #174ea6; }
-.evaluation-packages .package-status--complete { background: #d1fae5; color: #086b43; }
-.evaluation-packages .package-table th { background: #f1f5f9; font-size: .78rem; text-transform: uppercase; }
-.evaluation-packages .package-timeline { border-left: 2px solid #d5dee8; list-style: none; margin: 0; padding-left: 1.1rem; }
-.evaluation-packages .package-timeline li { margin-bottom: .8rem; position: relative; }
-.evaluation-packages .package-timeline li::before { background: #fff; border: 2px solid #2f6fad; border-radius: 50%; content: ''; height: .65rem; left: -1.48rem; position: absolute; top: .23rem; width: .65rem; }
-.evaluation-packages .package-action-panel { background: #f8fbfe; border: 1px solid #cfe0ef; border-radius: 10px; padding: 1rem; }
-.evaluation-packages .package-empty { background: #fff; border: 1px dashed #b7c5d2; border-radius: 12px; color: #52616f; padding: 2rem; text-align: center; }
-.evaluation-packages .history-back-link { color: #fff; display: inline-block; font-size: .875rem; margin-bottom: .8rem; text-decoration: none; }
-.evaluation-packages .history-back-link:hover { color: #fff; text-decoration: underline; }
-.evaluation-packages .package-note { background: #edf6ff; border-left: 3px solid #2f6fad; border-radius: 4px; color: #24425d; padding: .75rem 1rem; }
-.evaluation-packages .history-adjusted { color: #816100; font-size: .75rem; font-weight: 600; margin-top: .25rem; }
-.evaluation-packages .history-remarks p { margin-bottom: 1rem; white-space: pre-wrap; }
-.evaluation-packages .history-remarks p:last-child { margin-bottom: 0; }
-@media (max-width: 768px) { .evaluation-packages .package-card__header { align-items: flex-start; flex-direction: column; } }
+.evaluation-packages .package-card__header h2 {
+    color: var(--rp-text-main);
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.evaluation-packages .package-card__body {
+    padding: 1.75rem;
+}
+
+/* ── Senior Accessibility Stats Box ────────────────────────────────────────── */
+.evaluation-packages .package-stat {
+    background: #F8FAF6;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    color: var(--rp-text-muted);
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 1rem 1.25rem;
+    text-align: left;
+}
+
+.evaluation-packages .package-stat strong {
+    color: var(--rp-forest-green);
+    display: block;
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+}
+
+/* ── Shared Behavior Highlight Box ─────────────────────────────────────────── */
+.evaluation-packages .shared-behavior-banner {
+    background: linear-gradient(135deg, #FAF8F2 0%, #F5EEDB 100%);
+    border: 2px solid var(--rp-primary-gold);
+    border-radius: 12px;
+    color: #4A3A04;
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
+    padding: 1.25rem 1.5rem;
+}
+
+.evaluation-packages .shared-behavior-banner strong {
+    color: var(--rp-primary-gold-dark);
+    font-size: 1.35rem;
+    font-weight: 800;
+}
+
+/* ── Pipeline Status Badges (Req 5) ────────────────────────────────────────── */
+.pipeline-badge {
+    align-items: center;
+    border: 1.5px solid transparent;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.88rem;
+    font-weight: 700;
+    gap: 0.45rem;
+    line-height: 1.3;
+    padding: 0.45rem 1rem;
+    white-space: normal;
+}
+
+.pipeline-badge--pending {
+    background: var(--rp-info-light);
+    border-color: #93C5FD;
+    color: var(--rp-info-blue);
+}
+
+.pipeline-badge--waiting {
+    background: var(--rp-amber-light);
+    border-color: #FCD34D;
+    color: #92400E;
+}
+
+.pipeline-badge--approved {
+    background: var(--rp-emerald-light);
+    border-color: #86EFAC;
+    color: #065F46;
+}
+
+.pipeline-badge--returned {
+    background: var(--rp-danger-light);
+    border-color: #FCA5A5;
+    color: #991B1B;
+}
+
+/* ── Pending Submissions Roster (Req 1) ────────────────────────────────────── */
+.roster-card {
+    background: #FFFDF8;
+    border: 2px solid #F6D884;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(189, 148, 20, 0.08);
+    margin-bottom: 2rem;
+    padding: 1.5rem 1.75rem;
+}
+
+.roster-card__header {
+    align-items: center;
+    border-bottom: 1px solid #EFE4BF;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+}
+
+.roster-card__title {
+    color: #6C5205;
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.roster-card__badge {
+    background: #FEF3C7;
+    border: 1px solid #D97706;
+    border-radius: 999px;
+    color: #92400E;
+    font-size: 0.9rem;
+    font-weight: 800;
+    padding: 0.35rem 0.9rem;
+}
+
+.roster-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.roster-table th {
+    background: #F8F5E9;
+    color: #584406;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    padding: 0.75rem 1rem;
+    text-transform: uppercase;
+}
+
+.roster-table td {
+    border-bottom: 1px solid #F1EAD4;
+    font-size: 0.98rem;
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+}
+
+/* ── Score Circle & Dynamic Badges (Req 2) ─────────────────────────────────── */
+.score-circle {
+    align-items: center;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(8, 46, 6, 0.18);
+    color: #FFFFFF;
+    display: inline-flex;
+    flex-direction: column;
+    font-size: 0.95rem;
+    font-weight: 800;
+    height: 56px;
+    justify-content: center;
+    margin-bottom: 4px;
+    min-height: 56px;
+    min-width: 56px;
+    width: 56px;
+}
+
+.score-circle--submitted {
+    background: linear-gradient(135deg, var(--rp-primary-gold) 0%, #8C6D0D 100%);
+    border: 2px solid #FFFFFF;
+}
+
+.score-circle--approved {
+    background: linear-gradient(135deg, var(--rp-forest-green) 0%, #165B12 100%);
+    border: 2px solid #FFFFFF;
+}
+
+.score-circle.no-score {
+    background: #E2E8F0;
+    box-shadow: none;
+    color: var(--rp-text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+/* ── Tables & Accessible Data Grids ────────────────────────────────────────── */
+.evaluation-packages .package-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.evaluation-packages .package-table th {
+    background: #F1F5F9;
+    border-bottom: 2px solid var(--rp-border-color);
+    color: var(--rp-text-main);
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    padding: 0.9rem 1.1rem;
+    text-transform: uppercase;
+}
+
+.evaluation-packages .package-table td {
+    border-bottom: 1px solid #E2E8F0;
+    color: var(--rp-text-main);
+    font-size: 1rem;
+    padding: 1rem 1.1rem;
+    vertical-align: middle;
+}
+
+.evaluation-packages .package-table tbody tr:hover {
+    background: #F8FAFC;
+}
+
+/* ── Side-by-Side Audit Comparison (Req 4) ─────────────────────────────────── */
+.audit-chip {
+    border-radius: 6px;
+    display: inline-block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-top: 0.35rem;
+    padding: 0.2rem 0.55rem;
+}
+
+.audit-chip--adjusted {
+    background: #FEF3C7;
+    border: 1px solid #F59E0B;
+    color: #92400E;
+}
+
+.audit-chip--same {
+    background: #F1F5F9;
+    border: 1px solid #CBD5E1;
+    color: #64748B;
+}
+
+/* ── Timeline & Approval Path ──────────────────────────────────────────────── */
+.evaluation-packages .package-timeline {
+    border-left: 3px solid #CBD5E1;
+    list-style: none;
+    margin: 0 0 1.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.evaluation-packages .package-timeline li {
+    margin-bottom: 1.25rem;
+    position: relative;
+}
+
+.evaluation-packages .package-timeline li::before {
+    background: #FFFFFF;
+    border: 3px solid var(--rp-forest-green);
+    border-radius: 50%;
+    content: '';
+    height: 1rem;
+    left: -2.05rem;
+    position: absolute;
+    top: 0.25rem;
+    width: 1rem;
+}
+
+.evaluation-packages .package-timeline li.is-approved::before {
+    background: var(--rp-emerald-success);
+    border-color: var(--rp-emerald-success);
+}
+
+.evaluation-packages .package-timeline li.is-returned::before {
+    background: var(--rp-danger-red);
+    border-color: var(--rp-danger-red);
+}
+
+/* ── Action Panel & Senior Buttons (Min 44px) ──────────────────────────────── */
+.evaluation-packages .package-action-panel {
+    background: #F8FAFC;
+    border: 2px solid #CBD5E1;
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.evaluation-packages .btn-action-primary {
+    align-items: center;
+    background: var(--rp-forest-green);
+    border: 2px solid var(--rp-forest-green);
+    border-radius: 8px;
+    color: #FFFFFF;
+    display: inline-flex;
+    font-size: 1rem;
+    font-weight: 700;
+    gap: 0.5rem;
+    justify-content: center;
+    min-height: 46px;
+    padding: 0.65rem 1.5rem;
+    text-decoration: none;
+    transition: all 0.2s ease-in-out;
+}
+
+.evaluation-packages .btn-action-primary:hover {
+    background: #0D470A;
+    border-color: #0D470A;
+    color: #FFFFFF;
+    transform: translateY(-1px);
+}
+
+.evaluation-packages .btn-action-adjust {
+    align-items: center;
+    background: #FFFFFF;
+    border: 2px solid var(--rp-primary-gold);
+    border-radius: 8px;
+    color: var(--rp-primary-gold-dark);
+    display: inline-flex;
+    font-size: 0.95rem;
+    font-weight: 700;
+    gap: 0.4rem;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.55rem 1.25rem;
+    text-decoration: none;
+    transition: all 0.15s ease-in-out;
+}
+
+.evaluation-packages .btn-action-adjust:hover {
+    background: var(--rp-primary-gold);
+    color: #FFFFFF;
+}
+
+.evaluation-packages .btn-action-view {
+    align-items: center;
+    background: #FFFFFF;
+    border: 2px solid #94A3B8;
+    border-radius: 8px;
+    color: var(--rp-text-main);
+    display: inline-flex;
+    font-size: 0.95rem;
+    font-weight: 700;
+    gap: 0.4rem;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.55rem 1.25rem;
+    text-decoration: none;
+    transition: all 0.15s ease-in-out;
+}
+
+.evaluation-packages .btn-action-view:hover {
+    background: #F1F5F9;
+    border-color: #64748B;
+}
+
+.evaluation-packages .package-empty {
+    background: #FFFFFF;
+    border: 2px dashed var(--rp-border-color);
+    border-radius: 14px;
+    color: var(--rp-text-muted);
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .evaluation-packages .package-hero {
+        padding: 1.5rem 1.25rem;
+    }
+    .evaluation-packages .package-card__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .roster-card {
+        padding: 1.25rem 1rem;
+    }
+}

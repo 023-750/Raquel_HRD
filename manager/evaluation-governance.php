@@ -21,18 +21,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$eligible) {
         redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'danger', 'Selected user is not an active employee.');
     }
-    if ($type === 'Board of Directors') {
+    if ($type === 'Board of Directors' || $type === 'Audit Committee') {
         $employee_stmt = $conn->prepare('SELECT employee_id FROM users WHERE user_id = ? LIMIT 1');
         $employee_stmt->bind_param('i', $reviewer_user_id); $employee_stmt->execute();
         $employee = $employee_stmt->get_result()->fetch_assoc(); $employee_stmt->close();
         if (!empty($employee['employee_id']) && isEmployeeInOrganizationReviewHierarchy($conn, (int) $employee['employee_id'])) {
-            redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'danger', 'This user is already part of the employee-portal review hierarchy and cannot also approve as the Board. Choose an independent Manager-level user.');
+            redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'danger', 'This user is already part of the employee-portal review hierarchy and cannot also approve as ' . $type . '. Choose an independent Manager-level user.');
         }
     }
     $stmt = $conn->prepare('INSERT INTO evaluation_governance_approvers (governance_type, user_id, is_active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE is_active = 1');
     $stmt->bind_param('si', $type, $reviewer_user_id); $stmt->execute(); $stmt->close();
     logAudit($conn, (int) $_SESSION['user_id'], 'CREATE', 'Evaluation Governance', $reviewer_user_id, "Assigned $type approver");
-    redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'success', 'Governance approver assigned. New packages will include this approver in their route.');
+    redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'success', 'Governance approver assigned. New packages include Audit (if configured) before Board; Board remains the final lock and apply step.');
 }
 
 if (isset($_GET['disable']) && is_numeric($_GET['disable'])) {
@@ -54,7 +54,7 @@ $departments = $conn->query("SELECT department_id, department_name FROM departme
 $approvers = $conn->query("SELECT ega.*, u.full_name, u.role, e.job_title FROM evaluation_governance_approvers ega JOIN users u ON u.user_id = ega.user_id LEFT JOIN employees e ON e.employee_id = u.employee_id ORDER BY ega.governance_type, u.full_name")->fetch_all(MYSQLI_ASSOC);
 ?>
 <main class="evaluation-packages container-fluid py-4">
-    <section class="package-hero"><p class="mb-1 small">Organization-driven evaluation workflow</p><h1 class="h4 mb-2">Evaluation Governance</h1><p class="mb-0">Assign an authorized user to perform Board of Directors or Audit Committee approval.</p></section>
+    <section class="package-hero"><p class="mb-1 small">Organization-driven evaluation workflow</p><h1 class="h4 mb-2">Evaluation Governance</h1><p class="mb-0">Assign authorized users for Audit Committee and Board of Directors. When both are active, new package routes are: hierarchy reviewers → Audit Committee → Board of Directors (locks and applies). Existing in-progress routes are not rewritten.</p></section>
     <section class="package-card"><div class="package-card__body"><form method="post" class="row g-3 align-items-end"><?php echo csrfField(); ?><div class="col-md-3"><label class="form-label" for="governance-type">Governance group</label><select class="form-select" id="governance-type" name="governance_type" required><option value="">Select group</option><option>Board of Directors</option><option>Audit Committee</option></select></div><div class="col-md-3"><label class="form-label" for="governance-department">Department</label><select class="form-select" id="governance-department" name="department_id"><option value="0">All departments</option><?php foreach ($departments as $department): ?><option value="<?php echo (int)$department['department_id']; ?>"><?php echo e($department['department_name']); ?></option><?php endforeach; ?></select></div><div class="col-md-4"><label class="form-label" for="governance-user">Authorized user</label><select class="form-select" id="governance-user" name="reviewer_user_id" required><option value="">Select user</option><?php $prevRank = null; foreach ($users as $user): $rankLabel = $user['rank_name'] ?? 'Unclassified'; if ($rankLabel !== $prevRank): ?><option disabled style="font-weight:600;color:#6c757d;background:#f8f9fa;">── <?php echo e($rankLabel); ?> ──</option><?php $prevRank = $rankLabel; endif; ?><option value="<?php echo (int)$user['user_id']; ?>" data-department-id="<?php echo (int)$user['department_id']; ?>" data-rank="<?php echo e($rankLabel); ?>"><?php echo e($user['full_name'] . ' — ' . ($user['job_title'] ?: $user['role'])); ?></option><?php endforeach; ?></select></div><div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Assign approver</button></div></form></div></section>
 
     <section class="package-card"><header class="package-card__header"><h2 class="h5 mb-0">Configured approvers</h2></header><div class="package-card__body"><div class="table-responsive"><table class="table package-table align-middle mb-0"><thead><tr><th>Group</th><th>User</th><th>Position / role</th><th>Status</th><th>Action</th></tr></thead><tbody><?php foreach ($approvers as $approver): ?><tr><td><?php echo e($approver['governance_type']); ?></td><td><?php echo e($approver['full_name']); ?></td><td><?php echo e($approver['job_title'] ?: $approver['role']); ?></td><td><?php echo $approver['is_active'] ? 'Active' : 'Disabled'; ?></td><td><?php if ($approver['is_active']): ?><a class="btn btn-sm btn-outline-secondary" href="?disable=<?php echo (int)$approver['governance_approver_id']; ?>">Disable</a><?php endif; ?></td></tr><?php endforeach; ?></tbody></table></div></div></section>

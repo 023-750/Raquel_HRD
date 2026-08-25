@@ -70,21 +70,21 @@ if ($filter === 'direct') {
                 FROM evaluations ev
                 WHERE ev.employee_id = e.employee_id
                   AND ev.deleted_at IS NULL
-                ORDER BY ev.created_at DESC LIMIT 1
+                ORDER BY COALESCE(ev.submitted_date, ev.updated_at, ev.created_at) DESC LIMIT 1
                ) AS latest_eval_status,
                (SELECT ev.total_score
                 FROM evaluations ev
                 WHERE ev.employee_id = e.employee_id
-                  AND ev.status = 'Approved'
                   AND ev.deleted_at IS NULL
-                ORDER BY ev.approved_date DESC LIMIT 1
-               ) AS latest_score,
+                  AND ev.status NOT IN ('Draft', 'Pending Self-Rating')
+                ORDER BY COALESCE(ev.submitted_date, ev.updated_at, ev.created_at) DESC LIMIT 1
+               ) AS latest_submitted_score,
                (SELECT ev.performance_level
                 FROM evaluations ev
                 WHERE ev.employee_id = e.employee_id
-                  AND ev.status = 'Approved'
                   AND ev.deleted_at IS NULL
-                ORDER BY ev.approved_date DESC LIMIT 1
+                  AND ev.status NOT IN ('Draft', 'Pending Self-Rating')
+                ORDER BY COALESCE(ev.submitted_date, ev.updated_at, ev.created_at) DESC LIMIT 1
                ) AS latest_perf_level
         FROM employees e
         LEFT JOIN departments  d  ON e.department_id      = d.department_id
@@ -123,21 +123,21 @@ if ($filter === 'direct') {
                 FROM evaluations ev
                 WHERE ev.employee_id = e.employee_id
                   AND ev.deleted_at IS NULL
-                ORDER BY ev.created_at DESC LIMIT 1
+                ORDER BY COALESCE(ev.submitted_date, ev.updated_at, ev.created_at) DESC LIMIT 1
                ) AS latest_eval_status,
                (SELECT ev.total_score
                 FROM evaluations ev
                 WHERE ev.employee_id = e.employee_id
-                  AND ev.status = 'Approved'
                   AND ev.deleted_at IS NULL
-                ORDER BY ev.approved_date DESC LIMIT 1
-               ) AS latest_score,
+                  AND ev.status NOT IN ('Draft', 'Pending Self-Rating')
+                ORDER BY COALESCE(ev.submitted_date, ev.updated_at, ev.created_at) DESC LIMIT 1
+               ) AS latest_submitted_score,
                (SELECT ev.performance_level
                 FROM evaluations ev
                 WHERE ev.employee_id = e.employee_id
-                  AND ev.status = 'Approved'
                   AND ev.deleted_at IS NULL
-                ORDER BY ev.approved_date DESC LIMIT 1
+                  AND ev.status NOT IN ('Draft', 'Pending Self-Rating')
+                ORDER BY COALESCE(ev.submitted_date, ev.updated_at, ev.created_at) DESC LIMIT 1
                ) AS latest_perf_level
         FROM employees e
         LEFT JOIN departments  d  ON e.department_id      = d.department_id
@@ -536,7 +536,7 @@ foreach ($team as $member):
     $is_direct    = ((int)$member['reports_to'] === $employee_id);
 
     $eval_status  = $member['latest_eval_status'] ?? null;
-    $score        = $member['latest_score']        ?? null;
+    $score        = $member['latest_submitted_score'] ?? null;
     $perf_level   = $member['latest_perf_level']   ?? null;
 
     // Employment status badge color
@@ -640,20 +640,28 @@ foreach ($team as $member):
 
         <!-- Score -->
         <div class="member-eval-block">
-            <?php if ($score !== null): ?>
-                <div class="score-circle">
-                    <?php echo number_format((float)$score, 2); ?>
-                </div>
-                <div style="font-size:.62rem;color:var(--text-muted);white-space:nowrap;">
-                    <?php echo e($perf_level ?? ''); ?>
-                </div>
+            <?php if ($score !== null && $score !== ''): ?>
+                <?php if ($eval_status === 'Approved'): ?>
+                    <div class="score-circle score-circle--approved" title="Approved Final Rating: <?php echo number_format((float)$score, 2); ?>">
+                        <?php echo number_format((float)$score, 2); ?>
+                    </div>
+                    <div style="font-size:.68rem;color:#16A34A;font-weight:700;white-space:nowrap;">
+                        <?php echo e($perf_level ?: 'Approved'); ?>
+                    </div>
+                <?php else: ?>
+                    <div class="score-circle score-circle--submitted" title="Submitted Self-Rating (In Review): <?php echo number_format((float)$score, 2); ?>">
+                        <?php echo number_format((float)$score, 2); ?>
+                    </div>
+                    <div style="font-size:.68rem;color:#8C6D0D;font-weight:700;white-space:nowrap;" title="Self-rating submitted and currently in review">
+                        Self-Rating
+                    </div>
+                <?php endif; ?>
             <?php else: ?>
-                <div class="score-circle no-score">
+                <div class="score-circle no-score" title="No self-rating submitted yet">
                     N/A
                 </div>
-                <div style="font-size:.6rem;color:var(--text-muted);white-space:nowrap;">No score</div>
+                <div style="font-size:.65rem;color:var(--text-muted);white-space:nowrap;">No score</div>
             <?php endif; ?>
-
         </div>
     </div>
 <?php endforeach; ?>

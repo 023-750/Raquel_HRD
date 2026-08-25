@@ -7,12 +7,32 @@ ensureOrganizationEvaluationPackageSchema($conn);
 $user_id = (int) ($_SESSION['user_id'] ?? 0);
 $package_id = (int) ($_GET['package_id'] ?? 0);
 $evaluation_id = (int) ($_GET['evaluation_id'] ?? 0);
-if ($package_id <= 0 || $evaluation_id <= 0) redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'danger', 'Choose a package member to view.');
+if ($package_id <= 0 || $evaluation_id <= 0) {
+    redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'danger', 'Choose a package member to view.');
+}
 
-$access_stmt = $conn->prepare('SELECT 1 FROM evaluation_package_route_steps WHERE package_id = ? AND reviewer_user_id = ? LIMIT 1');
-$access_stmt->bind_param('ii', $package_id, $user_id); $access_stmt->execute();
-$has_access = $access_stmt->get_result()->fetch_assoc(); $access_stmt->close();
-if (!$has_access) redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'danger', 'You are not a reviewer for this package.');
+// Sequential turn-based check: A reviewer can view member details ONLY if:
+// 1. Their step is currently Pending
+// 2. They already acted on it (Approved/Returned)
+// 3. The package is finalized (Approved and Applied)
+$reviewer_match = organizationPackageReviewerMatchSql('rs');
+$access_stmt = $conn->prepare("SELECT rs.action_status, ep.status AS package_status
+    FROM evaluation_package_route_steps rs
+    JOIN evaluation_packages ep ON ep.package_id = rs.package_id
+    WHERE rs.package_id = ? AND $reviewer_match
+    LIMIT 1");
+$access_stmt->bind_param('iii', $package_id, $user_id, $user_id);
+$access_stmt->execute();
+$access_row = $access_stmt->get_result()->fetch_assoc();
+$access_stmt->close();
+
+if (!$access_row) {
+    redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'danger', 'You are not a designated reviewer for this package.');
+}
+
+if ($access_row['action_status'] === 'Waiting' && $access_row['package_status'] !== 'Approved and Applied') {
+    redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'warning', 'This package is currently with prior evaluators and has not reached your review stage yet.');
+}
 
 $evaluation_stmt = $conn->prepare("SELECT ev.*, emp.first_name, emp.last_name, emp.job_title, et.template_name, ep.shared_behavior_score, ep.status AS package_status
     FROM evaluations ev
@@ -21,24 +41,177 @@ $evaluation_stmt = $conn->prepare("SELECT ev.*, emp.first_name, emp.last_name, e
     JOIN employees emp ON emp.employee_id = ev.employee_id
     JOIN evaluation_templates et ON et.template_id = ev.template_id
     WHERE pm.package_id = ? AND ev.evaluation_id = ? AND ev.deleted_at IS NULL LIMIT 1");
-$evaluation_stmt->bind_param('ii', $package_id, $evaluation_id); $evaluation_stmt->execute();
-$evaluation = $evaluation_stmt->get_result()->fetch_assoc(); $evaluation_stmt->close();
-if (!$evaluation) redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'danger', 'That package member evaluation is unavailable.');
+$evaluation_stmt->bind_param('ii', $package_id, $evaluation_id);
+$evaluation_stmt->execute();
+$evaluation = $evaluation_stmt->get_result()->fetch_assoc();
+$evaluation_stmt->close();
 
-$criteria_stmt = $conn->prepare("SELECT ec.section, ec.criterion_name, ec.description, es.score_value,
-        COALESCE(es.manager_override_score, es.supervisor_override_score, es.dept_manager_override_score, es.score_value) AS reviewed_score
-    FROM evaluation_scores es JOIN evaluation_criteria ec ON ec.criterion_id = es.criterion_id
-    WHERE es.evaluation_id = ? ORDER BY ec.section, ec.sort_order");
-$criteria_stmt->bind_param('i', $evaluation_id); $criteria_stmt->execute();
-$criteria = $criteria_stmt->get_result()->fetch_all(MYSQLI_ASSOC); $criteria_stmt->close();
+if (!$evaluation) {
+    redirectWith(BASE_URL . '/employee/team-evaluation-packages.php', 'danger', 'That package member evaluation is unavailable.');
+}
+
+$criteria_stmt = $conn->prepare("SELECT ec.section, ec.criterion_name, ec.description, ec.weight, es.score_value,
+        COALESCE(es.supervisor_override_score, es.dept_manager_override_score, es.manager_override_score, es.score_value) AS reviewed_score
+    FROM evaluation_scores es
+    JOIN evaluation_criteria ec ON ec.criterion_id = es.criterion_id
+    WHERE es.evaluation_id = ?
+    ORDER BY ec.section, ec.sort_order");
+$criteria_stmt->bind_param('i', $evaluation_id);
+$criteria_stmt->execute();
+$criteria = $criteria_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$criteria_stmt->close();
+
 $kra = array_values(array_filter($criteria, static fn($criterion) => $criterion['section'] === 'KRA'));
 $behavior = array_values(array_filter($criteria, static fn($criterion) => $criterion['section'] !== 'KRA'));
 
 require_once '../includes/header.php';
 ?>
 <main class="evaluation-packages container-fluid py-4">
-    <section class="package-hero"><a class="history-back-link" href="<?php echo BASE_URL; ?>/employee/team-evaluation-packages.php"><i class="fas fa-arrow-left me-1"></i>Back to packages</a><p class="mb-1 small">Read-only team member evaluation</p><h1 class="h4 mb-2"><?php echo e($evaluation['first_name'] . ' ' . $evaluation['last_name']); ?></h1><p class="mb-0"><?php echo e($evaluation['job_title']); ?> · <?php echo e($evaluation['template_name']); ?> · <?php echo e($evaluation['evaluation_period_start']); ?> to <?php echo e($evaluation['evaluation_period_end']); ?></p></section>
-    <section class="package-card"><div class="package-card__body"><div class="row g-3"><div class="col-sm-3 package-stat"><strong><?php echo number_format((float) $evaluation['kra_subtotal'], 2); ?></strong>KRA subtotal</div><div class="col-sm-3 package-stat"><strong><?php echo number_format((float) $evaluation['behavior_average'], 2); ?></strong>Behavior average</div><div class="col-sm-3 package-stat"><strong><?php echo number_format((float) $evaluation['total_score'], 2); ?></strong>Overall score</div><div class="col-sm-3 package-stat"><strong><?php echo e($evaluation['status']); ?></strong>Evaluation status</div></div><div class="package-note mt-4"><i class="fas fa-users me-1"></i>Current shared Core Behaviors &amp; Values score: <strong><?php echo $evaluation['shared_behavior_score'] !== null ? number_format((float) $evaluation['shared_behavior_score'], 2) : 'Pending'; ?></strong>.</div></div></section>
-    <?php foreach (['KRA' => $kra, 'Core Behaviors & Values' => $behavior] as $section_name => $section_criteria): ?><?php if ($section_criteria): ?><section class="package-card"><header class="package-card__header"><h2 class="h5 mb-0"><?php echo e($section_name); ?></h2></header><div class="package-card__body"><div class="table-responsive"><table class="table package-table align-middle mb-0"><thead><tr><th>Criterion</th><th>Description</th><th class="text-end">Self-rating</th><th class="text-end">Reviewed rating</th></tr></thead><tbody><?php foreach ($section_criteria as $criterion): ?><?php $adjusted = abs((float) $criterion['reviewed_score'] - (float) $criterion['score_value']) > 0.001; ?><tr><td><strong><?php echo e($criterion['criterion_name']); ?></strong><?php if ($adjusted): ?><div class="history-adjusted"><i class="fas fa-pen me-1"></i>Adjusted during review</div><?php endif; ?></td><td class="small text-muted"><?php echo e($criterion['description']); ?></td><td class="text-end tabular-nums"><?php echo number_format((float) $criterion['score_value'], 2); ?></td><td class="text-end tabular-nums fw-semibold"><?php echo number_format((float) $criterion['reviewed_score'], 2); ?></td></tr><?php endforeach; ?></tbody></table></div></div></section><?php endif; ?><?php endforeach; ?>
+    <section class="package-hero">
+        <a class="history-back-link" href="<?php echo BASE_URL; ?>/employee/team-evaluation-packages.php">
+            <i class="fas fa-arrow-left"></i> Back to packages
+        </a>
+        <p class="mb-1 text-uppercase fw-bold" style="letter-spacing:1px; color:var(--rp-primary-gold-light); font-size:0.85rem;">
+            Read-Only Member Review
+        </p>
+        <h1 class="h3 mb-2 fw-bold"><?php echo e($evaluation['first_name'] . ' ' . $evaluation['last_name']); ?></h1>
+        <p class="mb-0">
+            <strong><?php echo e($evaluation['job_title']); ?></strong> &bull; Template: <?php echo e($evaluation['template_name']); ?> &bull; Period: <?php echo e($evaluation['evaluation_period_start']); ?> to <?php echo e($evaluation['evaluation_period_end']); ?>
+        </p>
+    </section>
+
+    <section class="package-card" aria-label="Score Summary Card">
+        <div class="package-card__body">
+            <div class="row g-3 mb-3">
+                <div class="col-sm-3">
+                    <div class="package-stat">
+                        <strong class="tabular-nums"><?php echo number_format((float) $evaluation['kra_subtotal'], 2); ?></strong>
+                        Individual KRA Subtotal
+                    </div>
+                </div>
+                <div class="col-sm-3">
+                    <div class="package-stat">
+                        <strong class="tabular-nums"><?php echo number_format((float) $evaluation['behavior_average'], 2); ?></strong>
+                        Individual Behavior Rating
+                    </div>
+                </div>
+                <div class="col-sm-3">
+                    <div class="package-stat">
+                        <strong class="tabular-nums text-success"><?php echo $evaluation['shared_behavior_score'] !== null ? number_format((float) $evaluation['shared_behavior_score'], 2) : 'Pending'; ?></strong>
+                        Shared Department Behavior
+                    </div>
+                </div>
+                <div class="col-sm-3">
+                    <div class="package-stat">
+                        <strong class="tabular-nums text-dark"><?php echo number_format((float) $evaluation['total_score'], 2); ?></strong>
+                        Overall Total Score
+                    </div>
+                </div>
+            </div>
+
+            <div class="shared-behavior-banner d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div>
+                    <i class="fas fa-users me-2"></i>Current Shared Core Behaviors &amp; Values Score:
+                    <strong><?php echo $evaluation['shared_behavior_score'] !== null ? number_format((float) $evaluation['shared_behavior_score'], 2) : 'Pending'; ?></strong>
+                </div>
+                <div>
+                    <?php echo renderOrganizationPipelineBadge($conn, (int)$package_id); ?>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <?php foreach (['KRA' => ['title' => 'Key Result Areas (KRA)', 'items' => $kra], 'Behavior' => ['title' => 'Core Behaviors & Values', 'items' => $behavior]] as $sec_key => $sec_data): ?>
+        <?php if (!empty($sec_data['items'])): ?>
+            <section class="package-card" role="region" aria-label="<?php echo e($sec_data['title']); ?>">
+                <header class="package-card__header">
+                    <h2 class="h5 mb-0 fw-bold"><i class="fas <?php echo $sec_key === 'KRA' ? 'fa-chart-pie' : 'fa-users'; ?> me-2"></i><?php echo e($sec_data['title']); ?></h2>
+                </header>
+                <div class="package-card__body">
+                    <div class="table-responsive">
+                        <table class="package-table table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 45%;">Criterion</th>
+                                    <?php if ($sec_key === 'KRA'): ?>
+                                        <th class="text-end" style="width: 12%;">Weight</th>
+                                    <?php endif; ?>
+                                    <th class="text-end" style="width: 20%;">Employee Self-Rating</th>
+                                    <th class="text-end" style="width: 23%;">Reviewed / Adjusted Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($sec_data['items'] as $criterion): ?>
+                                    <?php $adjusted = abs((float) $criterion['reviewed_score'] - (float) $criterion['score_value']) > 0.001; ?>
+                                    <tr>
+                                        <td>
+                                            <div class="fw-bold text-dark" style="font-size:1.05rem;"><?php echo e($criterion['criterion_name']); ?></div>
+                                            <?php if (!empty($criterion['description'])): ?>
+                                                <div class="small text-muted mt-1"><?php echo e($criterion['description']); ?></div>
+                                            <?php endif; ?>
+                                            <?php if ($adjusted): ?>
+                                                <span class="audit-chip audit-chip--adjusted">
+                                                    <i class="fas fa-edit me-1"></i>Adjusted during evaluation
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <?php if ($sec_key === 'KRA'): ?>
+                                            <td class="text-end tabular-nums fw-bold text-muted"><?php echo number_format((float) $criterion['weight'], 2); ?>%</td>
+                                        <?php endif; ?>
+                                        <td class="text-end tabular-nums fw-semibold" style="font-size:1.05rem;">
+                                            <?php echo number_format((float) $criterion['score_value'], 2); ?>
+                                        </td>
+                                        <td class="text-end tabular-nums fw-bold text-dark" style="font-size:1.1rem;">
+                                            <?php echo number_format((float) $criterion['reviewed_score'], 2); ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        <?php endif; ?>
+    <?php endforeach; ?>
+
+    <!-- Developmental Plan Section -->
+    <?php
+    $dev_plan_stmt = $conn->prepare("SELECT * FROM evaluation_dev_plans WHERE evaluation_id = ? ORDER BY sort_order");
+    $dev_plan_stmt->bind_param('i', $evaluation_id);
+    $dev_plan_stmt->execute();
+    $view_dev_plans = $dev_plan_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $dev_plan_stmt->close();
+    ?>
+    <section class="package-card" role="region" aria-label="Developmental Plan">
+        <header class="package-card__header">
+            <h2 class="h5 mb-0 fw-bold"><i class="fas fa-seedling me-2"></i>Developmental Plan &amp; Recommendations</h2>
+        </header>
+        <div class="package-card__body">
+            <?php if (empty($view_dev_plans)): ?>
+                <div class="text-muted small py-2">No developmental plan items specified for this evaluation cycle.</div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Area for Improvement / Development</th>
+                                <th>Support Needed / Action Plan</th>
+                                <th>Target Time Frame</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($view_dev_plans as $dp): ?>
+                                <tr>
+                                    <td class="fw-semibold text-dark"><?php echo e($dp['improvement_area'] ?: '—'); ?></td>
+                                    <td><?php echo e($dp['support_needed'] ?: '—'); ?></td>
+                                    <td><span class="badge bg-light text-dark border"><?php echo e($dp['time_frame'] ?: '—'); ?></span></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </section>
 </main>
 <?php require_once '../includes/footer.php'; ?>

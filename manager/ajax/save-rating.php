@@ -37,6 +37,11 @@ $eval = $eval_q->fetch_assoc();
 $employee_id = (int)$eval['employee_id'];
 $employee_name = $eval['employee_name'];
 
+if (isEvaluationInLockedOrganizationPackage($conn, $evaluation_id)) {
+    echo json_encode(['success' => false, 'message' => 'This evaluation belongs to a locked organization package and can no longer be edited.']);
+    exit;
+}
+
 // Check if the evaluation is in Approved, Rejected, Returned, Pending Manager, or Pending HR Consolidation state
 if (!in_array($eval['status'], ['Approved', 'Rejected', 'Returned', 'Pending Manager', 'Pending HR Consolidation'])) {
     echo json_encode(['success' => false, 'message' => 'Evaluation scores can only be edited for approved, rejected, returned, pending manager, or pending HR consolidation records.']);

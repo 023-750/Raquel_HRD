@@ -7,7 +7,8 @@ require_once '../includes/header.php';
 
 // Fetch evaluation history
 $history = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as employee_name, e.job_title, e.rank_category_id, e.profile_picture, d.department_name,
-    u.full_name as submitted_by_name, u2.full_name as endorsed_by_name, u3.full_name as approved_by_name, et.template_name
+    u.full_name as submitted_by_name, u2.full_name as endorsed_by_name, u3.full_name as approved_by_name, et.template_name,
+    ep.package_id, ep.status AS package_status
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN departments d ON e.department_id = d.department_id
@@ -15,6 +16,8 @@ $history = $conn->query("SELECT ev.*, CONCAT(e.first_name, ' ', e.last_name) as 
     LEFT JOIN users u2 ON ev.endorsed_by = u2.user_id
     LEFT JOIN users u3 ON ev.approved_by = u3.user_id
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
+    LEFT JOIN evaluation_package_members pm ON pm.evaluation_id = ev.evaluation_id
+    LEFT JOIN evaluation_packages ep ON ep.package_id = pm.package_id
     WHERE ev.status IN ('Approved', 'Rejected', 'Returned')
     AND ev.employee_id NOT IN (SELECT employee_id FROM users WHERE role = 'Admin' AND employee_id IS NOT NULL)
     ORDER BY ev.updated_at DESC");
@@ -300,9 +303,13 @@ while ($row = $history->fetch_assoc()) {
             </div>
             <!-- Status -->
             <div class="hist-status-col">
-                <span class="hist-status-badge <?php echo $status_lc; ?>">
-                    <i class="fas <?php echo $status_icon; ?>"></i><?php echo e($row['status']); ?>
-                </span>
+                <?php if (!empty($row['package_id'])): ?>
+                    <?php echo renderOrganizationPipelineBadge($conn, (int)$row['package_id']); ?>
+                <?php else: ?>
+                    <span class="hist-status-badge <?php echo $status_lc; ?>">
+                        <i class="fas <?php echo $status_icon; ?>"></i><?php echo e($row['status']); ?>
+                    </span>
+                <?php endif; ?>
             </div>
             <!-- Action -->
             <div class="hist-card-action">

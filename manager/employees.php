@@ -546,7 +546,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                             data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                             data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                             data-status="<?php echo e($emp['employment_status']); ?>"
-                            data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
+                            data-search="<?php echo e($emp['employee_id'] . ' ' . ($emp['employee_code'] ?? '') . ' ' . getEmployeeDisplayId($emp) . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                             data-active="<?php echo $emp['is_active'] ? '1' : '0'; ?>"
                             style="display: none;">
                             <td data-label="#"><strong><?php echo $count++; ?></strong></td>
@@ -554,7 +554,10 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                                 <div class="d-flex align-items-center">
                                     <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile"
                                         class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
-                                    <strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong>
+                                    <div>
+                                        <strong><?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?></strong>
+                                        <div class="text-muted small">ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span></div>
+                                    </div>
                                 </div>
                             </td>
                             <td data-label="Job Title">
@@ -629,7 +632,7 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                      data-department="<?php echo e($emp['department_name'] ?? 'N/A'); ?>"
                      data-branch="<?php echo e($emp['branch_name'] ?? 'N/A'); ?>"
                      data-status="<?php echo e($emp['employment_status']); ?>"
-                     data-search="<?php echo e($emp['employee_id'] . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
+                     data-search="<?php echo e($emp['employee_id'] . ' ' . ($emp['employee_code'] ?? '') . ' ' . getEmployeeDisplayId($emp) . ' ' . $emp['first_name'] . ' ' . $emp['last_name'] . ' ' . $emp['last_name'] . ' ' . $emp['first_name'] . ' ' . ($emp['job_title'] ?? '') . ' ' . ($emp['department_name'] ?? '') . ' ' . ($emp['branch_name'] ?? '') . ' ' . ($emp['employment_status'] ?? '')); ?>"
                      style="display: none; flex-direction: column; align-items: stretch; width: 100%; box-sizing: border-box;">
 
                     <!-- Top Header Bar: Status Badge on left + Actions Menu Button on right -->
@@ -690,9 +693,10 @@ $selected_branch = $_GET['branch'] ?? $user_assigned_branch_name;
                         <img src="<?php echo getEmployeeAvatar($emp['profile_picture']); ?>" alt="Profile"
                              class="rounded-circle border flex-shrink-0" style="width: 48px; height: 48px; object-fit: cover;">
                         <div style="flex:1; min-width:0;">
-                            <h6 class="fw-bold mb-1 text-truncate" style="font-size: 0.95rem; color: #1c271b;">
+                            <h6 class="fw-bold mb-0 text-truncate" style="font-size: 0.95rem; color: #1c271b;">
                                 <?php echo e($emp['last_name'] . ', ' . $emp['first_name']); ?>
                             </h6>
+                            <div class="text-muted small mb-1">ID: <span class="company-id-value"><?php echo e(getEmployeeDisplayId($emp)); ?></span></div>
                             <div class="d-flex align-items-center gap-1 flex-wrap">
                                 <?php
                                     $rankIdMob = (int)($emp['rank_category_id'] ?? 0);

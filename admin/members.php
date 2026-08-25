@@ -23,6 +23,7 @@ $per_page = 10;
 $current_page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $offset = ($current_page - 1) * $per_page;
 $selected_department = isset($_GET['department']) && $_GET['department'] !== '' ? max(0, (int)$_GET['department']) : 0;
+$search = trim($_GET['search'] ?? '');
 
 $department_options = $conn->query("
     SELECT department_id, department_name
@@ -37,6 +38,11 @@ $member_where = "
 
 if ($selected_department > 0) {
     $member_where .= " AND e.department_id = $selected_department";
+}
+
+if ($search !== '') {
+    $search_safe = $conn->real_escape_string($search);
+    $member_where .= " AND (e.first_name LIKE '%$search_safe%' OR e.last_name LIKE '%$search_safe%' OR CONCAT(e.first_name, ' ', e.last_name) LIKE '%$search_safe%' OR CONCAT(e.last_name, ', ', e.first_name) LIKE '%$search_safe%' OR e.employee_id LIKE '%$search_safe%' OR e.employee_code LIKE '%$search_safe%' OR e.job_title LIKE '%$search_safe%')";
 }
 
 // Count all employees (excluding strictly Admin accounts)
@@ -131,7 +137,7 @@ $employees = $conn->query("
     <div class="card-header">
         <h5><i class="fas fa-id-card me-2"></i>Employee Members</h5>
         <div class="admin-member-toolbar">
-            <form method="GET" class="d-flex align-items-center gap-2">
+            <form method="GET" class="d-flex align-items-center gap-2 flex-wrap">
                 <select name="department" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Filter members by department">
                     <option value="">All Departments</option>
                     <?php while ($department = $department_options->fetch_assoc()): ?>
@@ -140,11 +146,11 @@ $employees = $conn->query("
                         </option>
                     <?php endwhile; ?>
                 </select>
+                <div class="search-box">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="search" name="search" class="form-control form-control-sm" id="searchMembers" value="<?php echo e($search); ?>" placeholder="Search by name, ID, position..." onkeyup="filterTable('searchMembers', 'membersTable')">
+                </div>
             </form>
-            <div class="search-box">
-                <i class="fas fa-search search-icon"></i>
-                <input type="text" class="form-control form-control-sm" id="searchMembers" placeholder="Search members..." onkeyup="filterTable('searchMembers', 'membersTable')">
-            </div>
         </div>
     </div>
     <div class="card-body p-0">

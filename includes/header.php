@@ -75,6 +75,7 @@ switch ($effective_role) {
                    OR (request_source = 'Employee Portal' AND portal_workflow_stage = 'Pending_HR_Manager')");
             if ($r) $_mgr_career_pending = (int)($r->fetch_assoc()['c'] ?? 0);
         } catch (Exception $e) {}
+        $_mgr_pkg_pending = countPendingOrganizationPackagesForUser($conn, (int)($_SESSION['user_id'] ?? 0));
 
         $sidebar_menus = [
             'MAIN' => [
@@ -93,7 +94,8 @@ switch ($effective_role) {
             ],
             'EVALUATIONS' => [
                 ['icon' => 'fas fa-file-alt', 'label' => 'Templates', 'url' => BASE_URL . '/manager/templates.php', 'page' => 'templates.php'],
-                ['icon' => 'fas fa-layer-group', 'label' => 'Team Evaluation Packages', 'url' => BASE_URL . '/employee/team-evaluation-packages.php', 'page' => 'team-evaluation-packages.php'],
+                ['icon' => 'fas fa-layer-group', 'label' => 'Team Evaluation Packages', 'url' => BASE_URL . '/employee/team-evaluation-packages.php', 'page' => 'team-evaluation-packages.php',
+                 'badge' => $_mgr_pkg_pending ?: null, 'badge_class' => 'bg-warning text-dark'],
                 ['icon' => 'fas fa-check-double', 'label' => 'Pending Approvals', 'url' => BASE_URL . '/manager/pending-approvals.php', 'page' => 'pending-approvals.php',
                  'badge' => (function() use ($conn) {
                      try { $r = $conn->query("SELECT COUNT(*) as c FROM employee_change_requests WHERE status='Pending'"); return $r ? (int)($r->fetch_assoc()['c'] ?? 0) : 0; } catch(Exception $e){ return 0; }
@@ -123,6 +125,7 @@ switch ($effective_role) {
                    OR (request_source = 'Employee Portal' AND portal_workflow_stage = 'Pending_HR_Supervisor')");
             if ($r) $_sup_career_pending = (int)($r->fetch_assoc()['c'] ?? 0);
         } catch (Exception $e) {}
+        $_sup_pkg_pending = countPendingOrganizationPackagesForUser($conn, (int)($_SESSION['user_id'] ?? 0));
 
         $sidebar_menus = [
             'MAIN' => [
@@ -133,6 +136,8 @@ switch ($effective_role) {
                 ['icon' => 'fas fa-user-plus', 'label' => 'Add Employee', 'url' => BASE_URL . '/supervisor/add-employee.php', 'page' => 'add-employee.php'],
             ],
             'EVALUATIONS' => [
+                ['icon' => 'fas fa-layer-group', 'label' => 'Team Evaluation Packages', 'url' => BASE_URL . '/employee/team-evaluation-packages.php', 'page' => 'team-evaluation-packages.php',
+                 'badge' => $_sup_pkg_pending ?: null, 'badge_class' => 'bg-warning text-dark'],
                 ['icon' => 'fas fa-clipboard-check', 'label' => 'Pending Validations', 'url' => BASE_URL . '/supervisor/pending-endorsements.php', 'page' => 'pending-endorsements.php'],
                 ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/supervisor/evaluation-history.php', 'page' => 'evaluation-history.php'],
             ],
@@ -291,12 +296,6 @@ switch ($effective_role) {
 
                 $_hdr_active_reports_to_cache = [];
                 foreach ($_hdr_confirm_rows as $_hdr_confirm_row) {
-                    if (getEmployeeHRRole($conn, (int) $_hdr_confirm_row['employee_id']) !== null
-                        || isMainOfficeHumanResourcesEmployee($conn, (int) $_hdr_confirm_row['employee_id'])
-                    ) {
-                        continue;
-                    }
-
                     if (isSupervisorOfEmployee($conn, (int)$_SESSION['user_id'], (int)$_hdr_confirm_row['employee_id'])) {
                         $m_confirm_rating_count++;
                     }
@@ -307,25 +306,33 @@ switch ($effective_role) {
             $_hdr_viewer_hr_role = getEmployeeHRRole($conn, $_hdr_emp_id);
         }
 
-        $self_service_menu = [
+        // ── Section 1: My Profile ───────────────────────────────────────────
+        $menu_my_profile = [
             ['icon' => 'fas fa-briefcase', 'label' => 'My Employment', 'url' => BASE_URL . '/employee/my-employment.php', 'page' => 'my-employment.php'],
-            ['icon' => 'fas fa-star', 'label' => 'Self Rating', 'url' => BASE_URL . '/employee/self-rating.php', 'page' => 'self-rating.php', 'badge' => $m_pending_template_count],
-            ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status', 'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php', 'badge' => $m_eval_status_count],
-            ['icon' => 'fas fa-history', 'label' => 'Evaluation History', 'url' => BASE_URL . '/employee/evaluation-history.php', 'page' => 'evaluation-history.php'],
-            ['icon' => 'fas fa-chart-line', 'label' => 'My Performance', 'url' => BASE_URL . '/employee/my-performance.php', 'page' => 'my-performance.php'],
         ];
 
-        // Add My Team link for supervisors/managers — excluding Human Resources department
-        if ($is_supervisor_menu && $hdr_sup_dept_name !== 'Human Resources') {
-            $self_service_menu[] = ['icon' => 'fas fa-users', 'label' => 'My Team', 'url' => BASE_URL . '/employee/team-list.php', 'page' => 'team-list.php'];
-            $self_service_menu[] = ['icon' => 'fas fa-layer-group', 'label' => 'Team Evaluation Packages', 'url' => BASE_URL . '/employee/team-evaluation-packages.php', 'page' => 'team-evaluation-packages.php'];
-            $self_service_menu[] = ['icon' => 'fas fa-history', 'label' => 'Team Evaluation History', 'url' => BASE_URL . '/employee/team-evaluation-history.php', 'page' => 'team-evaluation-history.php'];
+        // ── Section 2: Evaluations ──────────────────────────────────────────
+        $menu_evaluations = [
+            ['icon' => 'fas fa-star',            'label' => 'Self Rating',        'url' => BASE_URL . '/employee/self-rating.php',      'page' => 'self-rating.php',      'badge' => $m_pending_template_count],
+            ['icon' => 'fas fa-clipboard-check', 'label' => 'Evaluation Status',  'url' => BASE_URL . '/employee/completed-ratings.php', 'page' => 'completed-ratings.php', 'badge' => $m_eval_status_count],
+            ['icon' => 'fas fa-history',         'label' => 'Evaluation History', 'url' => BASE_URL . '/employee/evaluation-history.php', 'page' => 'evaluation-history.php'],
+            ['icon' => 'fas fa-chart-line',      'label' => 'My Performance',     'url' => BASE_URL . '/employee/my-performance.php',   'page' => 'my-performance.php'],
+        ];
+
+        // ── Section 3: My Team (supervisors/managers & assigned package reviewers) ──
+        $m_pending_pkg_count = countPendingOrganizationPackagesForUser($conn, (int)($_SESSION['user_id'] ?? 0));
+        $menu_my_team = [];
+        if ($is_supervisor_menu || $m_pending_pkg_count > 0) {
+            $menu_my_team[] = ['icon' => 'fas fa-users',       'label' => 'My Team',                  'url' => BASE_URL . '/employee/team-list.php',              'page' => 'team-list.php'];
+            $menu_my_team[] = ['icon' => 'fas fa-layer-group', 'label' => 'Team Evaluation Packages', 'url' => BASE_URL . '/employee/team-evaluation-packages.php', 'page' => 'team-evaluation-packages.php', 'badge' => $m_pending_pkg_count ?: null, 'badge_class' => 'bg-warning text-dark'];
+            $menu_my_team[] = ['icon' => 'fas fa-history',     'label' => 'Team Evaluation History',  'url' => BASE_URL . '/employee/team-evaluation-history.php', 'page' => 'team-evaluation-history.php'];
         }
 
-        // Career movement links based on rank
+        // ── Section 4: Career (rank-based) ─────────────────────────────────
+        $menu_career = [];
         // Branch Supervisor (rank 4): can submit Transfer requests
         if ($_hdr_emp_rank === 4) {
-            $self_service_menu[] = ['icon' => 'fas fa-route', 'label' => 'Career Movement Request', 'url' => BASE_URL . '/employee/career-movement-request.php', 'page' => 'career-movement-request.php'];
+            $menu_career[] = ['icon' => 'fas fa-route', 'label' => 'Career Movement Request', 'url' => BASE_URL . '/employee/career-movement-request.php', 'page' => 'career-movement-request.php'];
         }
         // Branch Manager (rank 3): can approve/reject Transfer requests from their branch
         if ($_hdr_emp_rank === 3) {
@@ -347,21 +354,34 @@ switch ($effective_role) {
                     $_hdr_bm_pending = 0;
                 }
             }
-            $self_service_menu[] = ['icon' => 'fas fa-clipboard-check', 'label' => 'Transfer Approvals', 'url' => BASE_URL . '/employee/branch-manager-approvals.php', 'page' => 'branch-manager-approvals.php', 'badge' => $_hdr_bm_pending];
+            $menu_career[] = ['icon' => 'fas fa-clipboard-check', 'label' => 'Transfer Approvals', 'url' => BASE_URL . '/employee/branch-manager-approvals.php', 'page' => 'branch-manager-approvals.php', 'badge' => $_hdr_bm_pending];
         }
 
-        $self_service_menu[] = ['icon' => 'fas fa-bell', 'label' => 'Notifications', 'url' => BASE_URL . '/employee/notifications.php', 'page' => 'notifications.php'];
-
+        // ── Build sidebar with grouped sections ─────────────────────────────
         $sidebar_menus = [
             'MAIN' => [
                 ['icon' => 'fas fa-tachometer-alt', 'label' => 'Dashboard', 'url' => BASE_URL . '/employee/dashboard.php', 'page' => 'dashboard.php'],
             ],
-            'SELF SERVICE' => $self_service_menu,
-            'SETTINGS' => [
-                ['icon' => 'fas fa-user-cog', 'label' => 'Change Password', 'url' => BASE_URL . '/employee/profile-settings.php', 'page' => 'profile-settings.php'],
-            ],
+            'MY PROFILE' => $menu_my_profile,
+            'EVALUATIONS' => $menu_evaluations,
+        ];
+
+        // Only add MY TEAM section when there are items to show
+        if (!empty($menu_my_team)) {
+            $sidebar_menus['MY TEAM'] = $menu_my_team;
+        }
+
+        // Only add CAREER section when there are items to show
+        if (!empty($menu_career)) {
+            $sidebar_menus['CAREER'] = $menu_career;
+        }
+
+        $sidebar_menus['ACCOUNT'] = [
+            ['icon' => 'fas fa-bell',     'label' => 'Notifications', 'url' => BASE_URL . '/employee/notifications.php',   'page' => 'notifications.php'],
+            ['icon' => 'fas fa-user-cog', 'label' => 'Change Password', 'url' => BASE_URL . '/employee/profile-settings.php', 'page' => 'profile-settings.php'],
         ];
         break;
+
 }
 ?>
 <!DOCTYPE html>
@@ -722,7 +742,7 @@ switch ($effective_role) {
                                 }
                             }
                         }
-                        if ($_g_is_sup && !$_g_is_dept_mgr && $_g_dept_name !== 'Human Resources'):
+                        if ($_g_is_sup && !$_g_is_dept_mgr):
                             $_g_confirm_pending = $m_confirm_rating_count ?? 0;
                             if (!isset($m_confirm_rating_count) && $conn) {
                                 $_g_c_stmt = $conn->prepare("
@@ -755,8 +775,8 @@ switch ($effective_role) {
                             </a>
                         </li>
                         <?php
-                        // My Team & Movement Requests — for supervisors/managers excluding Human Resources dept
-                        if ($_g_is_sup && $_g_dept_name !== 'Human Resources'):
+                        // My Team & Movement Requests — for supervisors/managers
+                        if ($_g_is_sup):
                         ?>
                             <li>
                                 <a class="dropdown-item d-flex align-items-center" href="<?php echo BASE_URL; ?>/employee/team-list.php" style="font-size:0.82rem; padding: 6px 10px;">

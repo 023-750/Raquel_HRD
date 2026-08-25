@@ -2075,6 +2075,8 @@ function ensureOrganizationEvaluationPackageSchema($conn)
     static $ensured = false;
     if ($ensured) return true;
 
+    ensureEvaluationWorkflowSchema($conn);
+
     try {
         $conn->query("CREATE TABLE IF NOT EXISTS evaluation_governance_approvers (
             governance_approver_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -2095,7 +2097,7 @@ function ensureOrganizationEvaluationPackageSchema($conn)
             consolidator_employee_id INT NULL,
             shared_behavior_score DECIMAL(5,2) NULL,
             current_step_order INT NULL,
-            status ENUM('Pending Self-Ratings','Pending Consolidation','Pending Review','Pending Board Approval','Approved and Applied','Returned','Cancelled') NOT NULL DEFAULT 'Pending Self-Ratings',
+            status ENUM('Pending Self-Ratings','Pending Consolidation','Pending Review','Pending Audit Approval','Pending Board Approval','Approved and Applied','Returned','Cancelled') NOT NULL DEFAULT 'Pending Self-Ratings',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY uq_evaluation_package (department_id, template_id, period_start, period_end),
@@ -2104,6 +2106,12 @@ function ensureOrganizationEvaluationPackageSchema($conn)
             CONSTRAINT fk_package_template FOREIGN KEY (template_id) REFERENCES evaluation_templates(template_id),
             CONSTRAINT fk_package_consolidator FOREIGN KEY (consolidator_employee_id) REFERENCES employees(employee_id) ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        // Existing installs may predate Pending Audit Approval.
+        try {
+            $conn->query("ALTER TABLE evaluation_packages MODIFY status ENUM('Pending Self-Ratings','Pending Consolidation','Pending Review','Pending Audit Approval','Pending Board Approval','Approved and Applied','Returned','Cancelled') NOT NULL DEFAULT 'Pending Self-Ratings'");
+        } catch (mysqli_sql_exception $e) {
+            // Ignore when the column is already aligned or the table is unavailable.
+        }
         $conn->query("CREATE TABLE IF NOT EXISTS evaluation_package_members (
             package_id INT NOT NULL,
             evaluation_id INT NOT NULL,
@@ -2180,6 +2188,262 @@ function getOrganizationPackageConsolidator($conn, $department_id)
     return $row ?: null;
 }
 
+/**
+ * Append one governance step (Audit or Board) to a package route.
+ * Returns the next step_order after a successful insert.
+ */
+function appendOrganizationGovernanceRouteStep($conn, $package_id, $order, $governance_type, $step_label)
+{
+    $package_id = (int) $package_id;
+    $order = (int) $order;
+    $stmt = $conn->prepare("SELECT ega.user_id, u.employee_id
+        FROM evaluation_governance_approvers ega
+        JOIN users u ON u.user_id = ega.user_id AND u.is_active = 1
+        WHERE ega.governance_type = ? AND ega.is_active = 1
+        ORDER BY ega.governance_approver_id LIMIT 1");
+    $stmt->bind_param('s', $governance_type);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        return $order;
+    }
+
+    $route = $conn->prepare("INSERT INTO evaluation_package_route_steps
+        (package_id, step_order, reviewer_employee_id, reviewer_user_id, step_label, step_type, action_status)
+        VALUES (?, ?, ?, ?, ?, 'Governance', 'Waiting')");
+    $reviewer_employee_id = !empty($row['employee_id']) ? (int) $row['employee_id'] : null;
+    $reviewer_user_id = (int) $row['user_id'];
+    $route->bind_param('iiiis', $package_id, $order, $reviewer_employee_id, $reviewer_user_id, $step_label);
+    $route->execute();
+    $route->close();
+    return $order + 1;
+}
+
+/**
+ * Map a route step to the package status shown while that step is active.
+ */
+function getOrganizationPackageStatusForStep(array $step)
+{
+    $type = $step['step_type'] ?? '';
+    $label = $step['step_label'] ?? '';
+    if ($type === 'Consolidation') {
+        return 'Pending Consolidation';
+    }
+    if ($type === 'Governance') {
+        if (stripos($label, 'Audit') !== false) {
+            return 'Pending Audit Approval';
+        }
+        return 'Pending Board Approval';
+    }
+    return 'Pending Review';
+}
+
+function isOrganizationPackageLocked($conn, $package_id)
+{
+    $package_id = (int) $package_id;
+    if ($package_id <= 0) {
+        return false;
+    }
+    $stmt = $conn->prepare("SELECT status FROM evaluation_packages WHERE package_id = ? LIMIT 1");
+    $stmt->bind_param('i', $package_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return ($row['status'] ?? '') === 'Approved and Applied';
+}
+
+/** SQL fragment: current user owns a route step via user_id or shared employee_id (HRIS + portal dual login). */
+function organizationPackageReviewerMatchSql($alias = 'rs')
+{
+    return "({$alias}.reviewer_user_id = ? OR ({$alias}.reviewer_employee_id IS NOT NULL AND {$alias}.reviewer_employee_id = (SELECT employee_id FROM users WHERE user_id = ? LIMIT 1)))";
+}
+
+function getOrganizationPackageReviewerDisplayName($conn, $user_id = 0, $employee_id = 0)
+{
+    $user_id = (int) $user_id;
+    $employee_id = (int) $employee_id;
+    if ($employee_id > 0) {
+        $stmt = $conn->prepare("SELECT TRIM(CONCAT_WS(' ', first_name, last_name)) AS full_name, job_title FROM employees WHERE employee_id = ? LIMIT 1");
+        $stmt->bind_param('i', $employee_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($row && trim((string) $row['full_name']) !== '') {
+            $title = trim((string) ($row['job_title'] ?? ''));
+            return $title !== '' ? $row['full_name'] . ' (' . $title . ')' : $row['full_name'];
+        }
+    }
+    if ($user_id > 0) {
+        $stmt = $conn->prepare('SELECT full_name FROM users WHERE user_id = ? LIMIT 1');
+        $stmt->bind_param('i', $user_id);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if (!empty($row['full_name'])) {
+            return $row['full_name'];
+        }
+    }
+    return 'the next reviewer';
+}
+
+function notifyUsersForEmployee($conn, $employee_id, $title, $message, $link)
+{
+    $employee_id = (int) $employee_id;
+    if ($employee_id <= 0) {
+        return 0;
+    }
+    $stmt = $conn->prepare('SELECT user_id FROM users WHERE employee_id = ? AND is_active = 1');
+    $stmt->bind_param('i', $employee_id);
+    $stmt->execute();
+    $users = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    foreach ($users as $user) {
+        createNotification($conn, (int) $user['user_id'], $title, $message, $link);
+    }
+    return count($users);
+}
+
+function notifyOrganizationPackageStepAssignees($conn, $package_id, $step_order, $title, $message)
+{
+    $package_id = (int) $package_id;
+    $step_order = (int) $step_order;
+    $stmt = $conn->prepare('SELECT reviewer_user_id, reviewer_employee_id FROM evaluation_package_route_steps WHERE package_id = ? AND step_order = ? LIMIT 1');
+    $stmt->bind_param('ii', $package_id, $step_order);
+    $stmt->execute();
+    $step = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$step) {
+        return 0;
+    }
+    $link = BASE_URL . '/employee/team-evaluation-packages.php';
+    $sent = 0;
+    if (!empty($step['reviewer_employee_id'])) {
+        $sent = notifyUsersForEmployee($conn, (int) $step['reviewer_employee_id'], $title, $message, $link);
+    }
+    if ($sent === 0 && !empty($step['reviewer_user_id'])) {
+        createNotification($conn, (int) $step['reviewer_user_id'], $title, $message, $link);
+        $sent = 1;
+    }
+    return $sent;
+}
+
+function getOrganizationPackagePipelineLabel($conn, $package_id)
+{
+    $package_id = (int) $package_id;
+    $stmt = $conn->prepare("SELECT ep.status, ep.current_step_order, rs.step_label, rs.step_type, rs.action_status, rs.reviewer_user_id, rs.reviewer_employee_id
+        FROM evaluation_packages ep
+        LEFT JOIN evaluation_package_route_steps rs ON rs.package_id = ep.package_id
+            AND rs.step_order = ep.current_step_order
+        WHERE ep.package_id = ?
+        LIMIT 1");
+    $stmt->bind_param('i', $package_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        return 'Unknown';
+    }
+    if (($row['status'] ?? '') === 'Approved and Applied') {
+        return 'Approved & Locked';
+    }
+    if (($row['status'] ?? '') === 'Pending Self-Ratings' || empty($row['current_step_order'])) {
+        $s1_stmt = $conn->prepare("SELECT reviewer_user_id, reviewer_employee_id, step_label FROM evaluation_package_route_steps WHERE package_id = ? AND step_order = 1 LIMIT 1");
+        $s1_stmt->bind_param('i', $package_id);
+        $s1_stmt->execute();
+        $s1 = $s1_stmt->get_result()->fetch_assoc();
+        $s1_stmt->close();
+        $s1_name = $s1 ? getOrganizationPackageReviewerDisplayName($conn, (int)($s1['reviewer_user_id'] ?? 0), (int)($s1['reviewer_employee_id'] ?? 0)) : '';
+        return 'Waiting for team self-ratings' . ($s1_name ? ' (Consolidator: ' . $s1_name . ')' : '');
+    }
+    if (($row['status'] ?? '') === 'Returned') {
+        $name = getOrganizationPackageReviewerDisplayName($conn, (int) ($row['reviewer_user_id'] ?? 0), (int) ($row['reviewer_employee_id'] ?? 0));
+        return 'Returned for revision — ' . $name;
+    }
+    $name = getOrganizationPackageReviewerDisplayName($conn, (int) ($row['reviewer_user_id'] ?? 0), (int) ($row['reviewer_employee_id'] ?? 0));
+    $label = trim((string) ($row['step_label'] ?? 'Review'));
+    return 'Pending ' . $label . ' — ' . $name;
+}
+
+function renderOrganizationPipelineBadge($conn, $package_id, $extra_classes = '')
+{
+    $package_id = (int) $package_id;
+    if ($package_id <= 0) return '';
+    $stmt = $conn->prepare("SELECT ep.status, ep.current_step_order, rs.step_label, rs.step_type, rs.action_status, rs.reviewer_user_id, rs.reviewer_employee_id
+        FROM evaluation_packages ep
+        LEFT JOIN evaluation_package_route_steps rs ON rs.package_id = ep.package_id
+            AND rs.step_order = ep.current_step_order
+        WHERE ep.package_id = ?
+        LIMIT 1");
+    $stmt->bind_param('i', $package_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) return '';
+    
+    $status = $row['status'] ?? '';
+    if ($status === 'Approved and Applied') {
+        return '<span class="pipeline-badge pipeline-badge--approved ' . e($extra_classes) . '"><i class="fas fa-lock me-1"></i>Approved &amp; Locked</span>';
+    }
+    if ($status === 'Pending Self-Ratings' || empty($row['current_step_order'])) {
+        $s1_stmt = $conn->prepare("SELECT reviewer_user_id, reviewer_employee_id, step_label FROM evaluation_package_route_steps WHERE package_id = ? AND step_order = 1 LIMIT 1");
+        $s1_stmt->bind_param('i', $package_id);
+        $s1_stmt->execute();
+        $s1 = $s1_stmt->get_result()->fetch_assoc();
+        $s1_stmt->close();
+        $s1_name = $s1 ? getOrganizationPackageReviewerDisplayName($conn, (int)($s1['reviewer_user_id'] ?? 0), (int)($s1['reviewer_employee_id'] ?? 0)) : '';
+        return '<span class="pipeline-badge pipeline-badge--waiting ' . e($extra_classes) . '"><i class="fas fa-user-clock me-1"></i>Waiting for team self-ratings' . ($s1_name ? ' <span class="pipeline-reviewer">(' . e($s1_name) . ')</span>' : '') . '</span>';
+    }
+    if ($status === 'Returned') {
+        $name = getOrganizationPackageReviewerDisplayName($conn, (int) ($row['reviewer_user_id'] ?? 0), (int) ($row['reviewer_employee_id'] ?? 0));
+        return '<span class="pipeline-badge pipeline-badge--returned ' . e($extra_classes) . '"><i class="fas fa-undo me-1"></i>Returned for Revision &mdash; ' . e($name) . '</span>';
+    }
+    $name = getOrganizationPackageReviewerDisplayName($conn, (int) ($row['reviewer_user_id'] ?? 0), (int) ($row['reviewer_employee_id'] ?? 0));
+    $label = trim((string) ($row['step_label'] ?? 'Review'));
+    return '<span class="pipeline-badge pipeline-badge--pending ' . e($extra_classes) . '"><i class="fas fa-hourglass-half me-1"></i>Pending ' . e($label) . ' &mdash; <strong>' . e($name) . '</strong></span>';
+}
+
+function countPendingOrganizationPackagesForUser($conn, $user_id)
+{
+    $user_id = (int) $user_id;
+    if ($user_id <= 0 || !ensureOrganizationEvaluationPackageSchema($conn)) {
+        return 0;
+    }
+    $match = organizationPackageReviewerMatchSql('rs');
+    $stmt = $conn->prepare("SELECT COUNT(DISTINCT ep.package_id) AS total
+        FROM evaluation_packages ep
+        JOIN evaluation_package_route_steps rs ON rs.package_id = ep.package_id
+        WHERE $match
+          AND (
+              (rs.step_order = 1 AND rs.action_status IN ('Pending', 'Waiting'))
+              OR (rs.step_order > 1 AND rs.action_status = 'Pending')
+          )
+          AND ep.status <> 'Approved and Applied'");
+    $stmt->bind_param('ii', $user_id, $user_id);
+    $stmt->execute();
+    $total = (int) ($stmt->get_result()->fetch_assoc()['total'] ?? 0);
+    $stmt->close();
+    return $total;
+}
+
+function isEvaluationInLockedOrganizationPackage($conn, $evaluation_id)
+{
+    $evaluation_id = (int) $evaluation_id;
+    if ($evaluation_id <= 0 || !ensureOrganizationEvaluationPackageSchema($conn)) {
+        return false;
+    }
+    $stmt = $conn->prepare("SELECT ep.status
+        FROM evaluation_package_members pm
+        JOIN evaluation_packages ep ON ep.package_id = pm.package_id
+        WHERE pm.evaluation_id = ? AND ep.status = 'Approved and Applied'
+        LIMIT 1");
+    $stmt->bind_param('i', $evaluation_id);
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    return !empty($row);
+}
+
 function createOrganizationPackageRoute($conn, $package_id, $consolidator_employee_id)
 {
     $package_id = (int) $package_id;
@@ -2188,34 +2452,50 @@ function createOrganizationPackageRoute($conn, $package_id, $consolidator_employ
     $seen = [];
     while ($employee_id > 0 && !isset($seen[$employee_id]) && $order <= 12) {
         $seen[$employee_id] = true;
-        $stmt = $conn->prepare("SELECT e.employee_id, e.reports_to, e.job_title, u.user_id
+        $stmt = $conn->prepare("SELECT e.employee_id, e.reports_to, e.job_title, e.rank_category_id, e.department_id, u.user_id
             FROM employees e LEFT JOIN users u ON u.employee_id = e.employee_id AND u.is_active = 1
             WHERE e.employee_id = ? AND e.is_active = 1 AND e.deleted_at IS NULL LIMIT 1");
         $stmt->bind_param('i', $employee_id);
         $stmt->execute();
         $person = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if (!$person || empty($person['user_id'])) break;
+        if (!$person) break;
+
+        $user_id = !empty($person['user_id']) ? (int) $person['user_id'] : 0;
+        if ($user_id <= 0) {
+            $u_stmt = $conn->prepare("SELECT user_id FROM users WHERE employee_id = ? AND is_active = 1 LIMIT 1");
+            $u_stmt->bind_param('i', $employee_id);
+            $u_stmt->execute();
+            $u_row = $u_stmt->get_result()->fetch_assoc();
+            $u_stmt->close();
+            if ($u_row) $user_id = (int)$u_row['user_id'];
+        }
+
         $type = $order === 1 ? 'Consolidation' : 'Review';
-        $state = $order === 1 ? 'Waiting' : 'Waiting';
+        $state = 'Waiting';
         $route = $conn->prepare('INSERT INTO evaluation_package_route_steps (package_id, step_order, reviewer_employee_id, reviewer_user_id, step_label, step_type, action_status) VALUES (?, ?, ?, ?, ?, ?, ?)');
-        $user_id = (int) $person['user_id'];
         $label = $order === 1 ? 'Team consolidation — ' . $person['job_title'] : 'Review — ' . $person['job_title'];
         $route->bind_param('iiiisss', $package_id, $order, $employee_id, $user_id, $label, $type, $state);
         $route->execute();
         $route->close();
-        $employee_id = !empty($person['reports_to']) ? (int) $person['reports_to'] : 0;
+
+        $next_employee_id = !empty($person['reports_to']) ? (int) $person['reports_to'] : 0;
+        if ($next_employee_id <= 0 && (int)$person['rank_category_id'] === 4) {
+            $mgr = $conn->prepare("SELECT employee_id FROM employees WHERE department_id = ? AND rank_category_id = 3 AND is_active = 1 AND deleted_at IS NULL LIMIT 1");
+            $mgr->bind_param('i', $person['department_id']);
+            $mgr->execute();
+            $mgr_row = $mgr->get_result()->fetch_assoc();
+            $mgr->close();
+            if ($mgr_row && (int)$mgr_row['employee_id'] !== $employee_id) {
+                $next_employee_id = (int)$mgr_row['employee_id'];
+            }
+        }
+        $employee_id = $next_employee_id;
         $order++;
     }
-    $board = $conn->query("SELECT ega.user_id, u.employee_id FROM evaluation_governance_approvers ega JOIN users u ON u.user_id = ega.user_id AND u.is_active = 1 WHERE ega.governance_type = 'Board of Directors' AND ega.is_active = 1 ORDER BY ega.governance_approver_id LIMIT 1");
-    if ($board && ($row = $board->fetch_assoc())) {
-        $route = $conn->prepare("INSERT INTO evaluation_package_route_steps (package_id, step_order, reviewer_employee_id, reviewer_user_id, step_label, step_type, action_status) VALUES (?, ?, ?, ?, 'Board of Directors approval', 'Governance', 'Waiting')");
-        $board_emp = $row['employee_id'] ? (int) $row['employee_id'] : null;
-        $board_user = (int) $row['user_id'];
-        $route->bind_param('iiii', $package_id, $order, $board_emp, $board_user);
-        $route->execute();
-        $route->close();
-    }
+    // Audit (optional) comes before Board so Board remains the final lock/apply step.
+    $order = appendOrganizationGovernanceRouteStep($conn, $package_id, $order, 'Audit Committee', 'Audit Committee approval');
+    appendOrganizationGovernanceRouteStep($conn, $package_id, $order, 'Board of Directors', 'Board of Directors approval');
 }
 
 /**
@@ -2251,8 +2531,13 @@ function isEmployeeInOrganizationReviewHierarchy($conn, $employee_id)
 function syncEvaluationToOrganizationPackage($conn, $evaluation_id)
 {
     if (!ensureOrganizationEvaluationPackageSchema($conn)) return null;
-    $stmt = $conn->prepare("SELECT ev.evaluation_id, ev.template_id, ev.evaluation_type, ev.evaluation_period_start, ev.evaluation_period_end, e.department_id
-        FROM evaluations ev JOIN employees e ON e.employee_id = ev.employee_id WHERE ev.evaluation_id = ? LIMIT 1");
+    $stmt = $conn->prepare("SELECT ev.evaluation_id, ev.template_id, ev.evaluation_type, ev.evaluation_period_start, ev.evaluation_period_end,
+            e.department_id, e.employee_id, e.first_name, e.last_name, e.job_title, et.template_name, d.department_name
+        FROM evaluations ev
+        JOIN employees e ON e.employee_id = ev.employee_id
+        JOIN evaluation_templates et ON et.template_id = ev.template_id
+        LEFT JOIN departments d ON d.department_id = e.department_id
+        WHERE ev.evaluation_id = ? LIMIT 1");
     $stmt->bind_param('i', $evaluation_id);
     $stmt->execute();
     $evaluation = $stmt->get_result()->fetch_assoc();
@@ -2261,7 +2546,7 @@ function syncEvaluationToOrganizationPackage($conn, $evaluation_id)
     $department_id = (int) $evaluation['department_id'];
     $template_id = (int) $evaluation['template_id'];
     $type = $evaluation['evaluation_type']; $start = $evaluation['evaluation_period_start']; $end = $evaluation['evaluation_period_end'];
-    $find = $conn->prepare('SELECT package_id FROM evaluation_packages WHERE department_id = ? AND template_id = ? AND period_start = ? AND period_end = ? LIMIT 1');
+    $find = $conn->prepare('SELECT package_id, consolidator_employee_id FROM evaluation_packages WHERE department_id = ? AND template_id = ? AND period_start = ? AND period_end = ? LIMIT 1');
     $find->bind_param('iiss', $department_id, $template_id, $start, $end); $find->execute();
     $package = $find->get_result()->fetch_assoc(); $find->close();
     if (!$package) {
@@ -2273,10 +2558,26 @@ function syncEvaluationToOrganizationPackage($conn, $evaluation_id)
         if ($consolidator_id) createOrganizationPackageRoute($conn, $package_id, $consolidator_id);
         $audit = $conn->prepare("INSERT INTO evaluation_package_audit (package_id, action, remarks) VALUES (?, 'CREATED', 'Created from first submitted self-rating.')");
         $audit->bind_param('i', $package_id); $audit->execute(); $audit->close();
-    } else { $package_id = (int) $package['package_id']; }
+    } else {
+        $package_id = (int) $package['package_id'];
+        $consolidator_id = !empty($package['consolidator_employee_id']) ? (int)$package['consolidator_employee_id'] : 0;
+    }
     $member = $conn->prepare('INSERT IGNORE INTO evaluation_package_members (package_id, evaluation_id) VALUES (?, ?)');
     $member->bind_param('ii', $package_id, $evaluation_id); $member->execute(); $member->close();
     recalculateOrganizationPackageBehaviorScore($conn, $package_id);
+
+    // Trigger notification bell to the package consolidator upon member self-rating completion
+    $emp_fullname = trim(($evaluation['first_name'] ?? '') . ' ' . ($evaluation['last_name'] ?? ''));
+    $emp_job_title = $evaluation['job_title'] ?? '';
+    $tmpl_name = $evaluation['template_name'] ?? 'Evaluation';
+    $notif_title = 'Team Member Self-Rating Submitted';
+    $notif_body = $emp_fullname . ($emp_job_title ? ' (' . $emp_job_title . ')' : '') . ' submitted their self-evaluation for ' . $tmpl_name . '.';
+    $notif_link = BASE_URL . '/employee/team-evaluation-packages.php';
+
+    if ($consolidator_id > 0) {
+        notifyUsersForEmployee($conn, $consolidator_id, $notif_title, $notif_body, $notif_link);
+    }
+
     // Open the consolidation step only after every active department member has
     // submitted the same template and period.
     $expected = $conn->prepare('SELECT COUNT(DISTINCT e.employee_id) AS total FROM employees e JOIN users u ON u.employee_id = e.employee_id AND u.is_active = 1 WHERE e.department_id = ? AND e.is_active = 1 AND e.deleted_at IS NULL');
@@ -2288,6 +2589,10 @@ function syncEvaluationToOrganizationPackage($conn, $evaluation_id)
         $open->bind_param('i', $package_id); $open->execute(); $open->close();
         $status = $conn->prepare("UPDATE evaluation_packages SET status = 'Pending Consolidation', current_step_order = 1 WHERE package_id = ? AND status = 'Pending Self-Ratings'");
         $status->bind_param('i', $package_id); $status->execute(); $status->close();
+
+        // Notify consolidator that the complete team package is unlocked and ready for consolidation
+        $dept_name = $evaluation['department_name'] ?? 'Department';
+        notifyOrganizationPackageStepAssignees($conn, $package_id, 1, 'Team Package Ready for Consolidation', "All required members of $dept_name have submitted their self-ratings. The evaluation package is now ready for your consolidation.");
     }
     return $package_id;
 }
@@ -2323,11 +2628,16 @@ function recalculateOrganizationPackageBehaviorScore($conn, $package_id)
 
 function applyOrganizationPackageResults($conn, $package_id)
 {
-    $stmt = $conn->prepare("SELECT ep.shared_behavior_score, et.kra_weight, et.behavior_weight
+    $package_id = (int) $package_id;
+    $stmt = $conn->prepare("SELECT ep.status, ep.shared_behavior_score, et.kra_weight, et.behavior_weight
         FROM evaluation_packages ep JOIN evaluation_templates et ON et.template_id = ep.template_id
         WHERE ep.package_id = ? LIMIT 1");
     $stmt->bind_param('i', $package_id); $stmt->execute(); $package = $stmt->get_result()->fetch_assoc(); $stmt->close();
     if (!$package || $package['shared_behavior_score'] === null) return false;
+    // Idempotent lock: never re-apply or mutate an already finalized package.
+    if (($package['status'] ?? '') === 'Approved and Applied') {
+        return true;
+    }
     $score = (float) $package['shared_behavior_score'];
     $kra_weight = (float) $package['kra_weight']; $behavior_weight = (float) $package['behavior_weight'];
     $members = $conn->prepare('SELECT e.evaluation_id, e.kra_subtotal FROM evaluation_package_members pm JOIN evaluations e ON e.evaluation_id = pm.evaluation_id WHERE pm.package_id = ?');
@@ -2343,50 +2653,80 @@ function applyOrganizationPackageResults($conn, $package_id)
 }
 
 /**
- * Keep unacted Board approval steps aligned with the currently active
- * Board of Directors authorized user. A package that has already been
- * approved or returned is intentionally left unchanged for audit safety.
+ * Keep unacted governance steps aligned with the currently active
+ * Board / Audit authorized users. Already acted steps are left unchanged.
  */
-function syncPendingOrganizationPackageBoardApprover($conn)
+function syncPendingOrganizationPackageGovernanceApprovers($conn)
 {
     if (!ensureOrganizationEvaluationPackageSchema($conn)) return 0;
 
-    $board_stmt = $conn->prepare("SELECT ega.user_id, u.employee_id
-        FROM evaluation_governance_approvers ega
-        JOIN users u ON u.user_id = ega.user_id AND u.is_active = 1
-        WHERE ega.governance_type = 'Board of Directors' AND ega.is_active = 1
-        ORDER BY ega.governance_approver_id LIMIT 1");
-    $board_stmt->execute();
-    $board = $board_stmt->get_result()->fetch_assoc();
-    $board_stmt->close();
-    if (!$board) return 0;
+    $updated = 0;
+    $groups = [
+        'Board of Directors' => [
+            'label_match' => 'Board of Directors approval',
+            'notify_title' => 'Board approval assignment updated',
+            'notify_body' => 'You are now the Board approver for a team evaluation package.',
+        ],
+        'Audit Committee' => [
+            'label_match' => 'Audit Committee approval',
+            'notify_title' => 'Audit approval assignment updated',
+            'notify_body' => 'You are now the Audit Committee approver for a team evaluation package.',
+        ],
+    ];
 
-    $board_user_id = (int) $board['user_id'];
-    $board_employee_id = !empty($board['employee_id']) ? (int) $board['employee_id'] : null;
-    $steps_stmt = $conn->prepare("SELECT rs.package_route_step_id, rs.package_id
-        FROM evaluation_package_route_steps rs
-        JOIN evaluation_packages ep ON ep.package_id = rs.package_id
-        WHERE rs.step_type = 'Governance'
-          AND rs.action_status IN ('Waiting', 'Pending')
-          AND ep.status <> 'Approved and Applied'
-          AND rs.reviewer_user_id <> ?");
-    $steps_stmt->bind_param('i', $board_user_id);
-    $steps_stmt->execute();
-    $steps = $steps_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
-    $steps_stmt->close();
-    if (!$steps) return 0;
-
-    $update = $conn->prepare('UPDATE evaluation_package_route_steps SET reviewer_user_id = ?, reviewer_employee_id = ? WHERE package_route_step_id = ?');
-    foreach ($steps as $step) {
-        $step_id = (int) $step['package_route_step_id'];
-        $update->bind_param('iii', $board_user_id, $board_employee_id, $step_id);
-        $update->execute();
-        if ($update->affected_rows > 0 && $step['package_id']) {
-            createNotification($conn, $board_user_id, 'Board approval assignment updated', 'You are now the Board approver for a team evaluation package.', BASE_URL . '/employee/team-evaluation-packages.php');
+    foreach ($groups as $governance_type => $meta) {
+        $approver_stmt = $conn->prepare("SELECT ega.user_id, u.employee_id
+            FROM evaluation_governance_approvers ega
+            JOIN users u ON u.user_id = ega.user_id AND u.is_active = 1
+            WHERE ega.governance_type = ? AND ega.is_active = 1
+            ORDER BY ega.governance_approver_id LIMIT 1");
+        $approver_stmt->bind_param('s', $governance_type);
+        $approver_stmt->execute();
+        $approver = $approver_stmt->get_result()->fetch_assoc();
+        $approver_stmt->close();
+        if (!$approver) {
+            continue;
         }
+
+        $user_id = (int) $approver['user_id'];
+        $employee_id = !empty($approver['employee_id']) ? (int) $approver['employee_id'] : null;
+        $label = $meta['label_match'];
+        $steps_stmt = $conn->prepare("SELECT rs.package_route_step_id, rs.package_id
+            FROM evaluation_package_route_steps rs
+            JOIN evaluation_packages ep ON ep.package_id = rs.package_id
+            WHERE rs.step_type = 'Governance'
+              AND rs.step_label = ?
+              AND rs.action_status IN ('Waiting', 'Pending')
+              AND ep.status <> 'Approved and Applied'
+              AND rs.reviewer_user_id <> ?");
+        $steps_stmt->bind_param('si', $label, $user_id);
+        $steps_stmt->execute();
+        $steps = $steps_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $steps_stmt->close();
+        if (!$steps) {
+            continue;
+        }
+
+        $update = $conn->prepare('UPDATE evaluation_package_route_steps SET reviewer_user_id = ?, reviewer_employee_id = ? WHERE package_route_step_id = ?');
+        foreach ($steps as $step) {
+            $step_id = (int) $step['package_route_step_id'];
+            $update->bind_param('iii', $user_id, $employee_id, $step_id);
+            $update->execute();
+            if ($update->affected_rows > 0) {
+                $updated++;
+                createNotification($conn, $user_id, $meta['notify_title'], $meta['notify_body'], BASE_URL . '/employee/team-evaluation-packages.php');
+            }
+        }
+        $update->close();
     }
-    $update->close();
-    return count($steps);
+
+    return $updated;
+}
+
+/** @deprecated Use syncPendingOrganizationPackageGovernanceApprovers() */
+function syncPendingOrganizationPackageBoardApprover($conn)
+{
+    return syncPendingOrganizationPackageGovernanceApprovers($conn);
 }
 
 

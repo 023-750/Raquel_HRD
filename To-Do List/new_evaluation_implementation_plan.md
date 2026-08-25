@@ -1,6 +1,6 @@
-# New Organization-Driven Evaluation Flow — Draft Implementation Plan
+# New Organization-Driven Evaluation Flow — Implementation Plan
 
-Status: Draft for review; no implementation has started.
+Status: **In progress** (team packages, governance, shared Behavior, and Board lock/apply are implemented). Remaining: client org-chart confirmations, HRD+AP pilot polish, schema freeze into versioned SQL.
 
 ## 1. Purpose
 
@@ -15,28 +15,30 @@ Replace the current hard-coded HR and branch evaluation routes with an organizat
 - A supervisor cannot submit a team package until every required member has submitted the assigned self-rating.
 - Higher reviewers can review, revise, return, or submit the package through the approved reporting route.
 - Board of Directors approval automatically locks, applies, records, and notifies; no manual HR release is required.
+- When an Audit Committee approver is configured, new packages insert Audit **before** Board; Board remains the final lock/apply step.
 - Annual, Quarterly, Initial, and Final determine evaluation eligibility and scheduling; they do not change the approval route.
 
 ## 3. Current System Baseline
 
-The current system already includes:
+### Implemented
 
-- Department, job-title, and employee records.
-- A job-title `reports_to` relationship.
-- An employee-level `reports_to` relationship for direct supervisors.
-- Individual evaluations, self-ratings, score overrides, notifications, and audit logging.
-- Department and Position Management screens for HR Managers.
+- Department, job-title, and employee records with cross-department `reports_to` and cycle checks.
+- Team evaluation packages, membership, shared Behavior score, and complete-team consolidation gate.
+- Dynamic multi-level routes through the employee reporting hierarchy.
+- Governance assignment UI for Board of Directors and Audit Committee (`manager/evaluation-governance.php`).
+- Board (and optional Audit) steps on new package routes; Board approval locks and applies results.
+- Server-side lock: locked packages reject further route actions and score adjustments.
+- Notifications and package audit history (`LOCKED_AND_APPLIED`, approvals, returns, score adjustments).
 
-The current system does not yet include:
+### Still open / client-dependent
 
-- Cross-department position reporting in the Position Management UI.
-- Team evaluation packages and package membership.
-- A shared final Behavior score per team package.
-- A complete-team submission gate.
-- Dynamic multi-level routes through VPs, President, and Board.
-- Governance approval entities for Board of Directors and Audit Committee.
+- Signed-off org chart mappings (see §4 and §12).
+- Full VP/President-specific workspace polish beyond the shared package review page.
+- Versioned SQL migrations for package tables (currently also created via `ensureOrganizationEvaluationPackageSchema`).
+- HRD + AP pilot sign-off.
 
 ## 4. Organizational Structure Work
+
 
 ### 4.1 Client confirmation required
 
@@ -252,12 +254,13 @@ Use the project’s existing Bootstrap visual language and accessible form/table
 ## 12. Open Client Decisions
 
 1. Confirm the official organization chart, including all missing/mapped positions.
-2. Confirm whether Audit and Compliance follow Board-only routes as shown.
+2. ~~Confirm whether Audit enters the approval route.~~ **Working rule (implemented):** if an Audit Committee approver is assigned, new packages insert Audit before Board; Board still locks and applies. Confirm with client whether any departments should skip Audit.
 3. Confirm who can act for an unavailable reviewer and for how long.
 4. Confirm whether the team Behavior score includes supervisors/managers or only their direct team members.
 5. Confirm whether peer/subordinate 360 ratings are in scope; this plan currently covers self-rating plus hierarchical consolidation.
 6. Confirm the evaluation-date reference for Annual, Quarterly, Initial, and Final types.
 7. Confirm the transition rule from Probationary to Regular status.
+8. Confirm unlock policy: today, Board-applied packages cannot be unlocked from the portal.
 
 ## 13. Decision Log
 
@@ -269,5 +272,6 @@ Use the project’s existing Bootstrap visual language and accessible form/table
 | Consolidate Behavior at team-package level | This is the stated client requirement for Core Behaviors & Values. |
 | Freeze approval routes at package creation | Protects in-progress evaluations from later organization changes. |
 | Automate release after Board approval | Avoids manual HR release, including conflict for HRD evaluations. |
+| Audit before Board when configured | Keeps Board as the single lock/apply step while making the Audit governance assignment useful. |
 | Pilot with HRD and AP | These departments make the new hierarchy and consolidation rules easy to validate first. |
 

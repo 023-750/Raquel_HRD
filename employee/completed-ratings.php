@@ -1,5 +1,5 @@
 <?php
-$page_title = 'Current Evaluation Status';
+$page_title = 'Finalized Performance Archive';
 require_once '../includes/session-check.php';
 checkRole(['Employee']);
 require_once '../includes/functions.php';
@@ -430,8 +430,8 @@ require_once '../includes/header.php';
 <div class="page-hero fadeup">
     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-3">
         <div>
-            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">Employee Portal · Evaluation Status</div>
-            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-clipboard-check me-2" style="color:var(--primary-light);"></i>Current Evaluation Status</h4>
+            <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);">Employee Portal · Official Records</div>
+            <h4 class="text-white fw-bold mb-0 mt-1"><i class="fas fa-archive me-2" style="color:var(--primary-light);"></i>Finalized Performance Archive</h4>
         </div>
         <div class="d-none d-md-block text-end">
             <a href="<?php echo BASE_URL; ?>/employee/dashboard.php" class="btn btn-outline-light btn-sm rounded-pill px-3 mb-1">
@@ -439,7 +439,7 @@ require_once '../includes/header.php';
             </a>
         </div>
     </div>
-    <p class="text-white-50 small mb-0 d-none d-md-block"><i class="fas fa-info-circle me-1"></i>Track each evaluation and where it stands in the review process.</p>
+    <p class="text-white-50 small mb-0 d-none d-md-block"><i class="fas fa-info-circle me-1"></i>Official appraisal records for fully approved and locked performance evaluations.</p>
 </div>
 
 <!-- Mobile-only section -->
@@ -449,7 +449,7 @@ require_once '../includes/header.php';
     </a>
     <div class="alert alert-light border-0 shadow-sm py-2 px-3 mb-0" style="border-radius: 10px; font-size: 0.85rem; background: #fff;">
         <i class="fas fa-info-circle me-2 text-primary"></i>
-        <span class="text-muted fw-500">Track your evaluation status.</span>
+        <span class="text-muted fw-500">Official Performance Archive.</span>
     </div>
 </div>
 
@@ -458,9 +458,9 @@ require_once '../includes/header.php';
         <div class="content-card">
             <div class="card-header d-block">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Current Evaluation Status</h5>
+                    <h5 class="mb-0"><i class="fas fa-certificate me-2 text-success"></i>Finalized Performance Archive</h5>
                     <?php if (!empty($evaluation_rows)): ?>
-                        <span class="badge bg-light text-muted border"><?php echo count($evaluation_rows); ?> total</span>
+                        <span class="badge bg-light text-muted border"><?php echo count($evaluation_rows); ?> records</span>
                     <?php endif; ?>
                 </div>
 
