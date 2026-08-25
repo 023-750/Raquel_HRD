@@ -125,6 +125,7 @@ $dev_plan_stmt->close();
 
 $kra_w = (float)($evaluation['kra_weight'] ?? 80);
 $beh_w = (float)($evaluation['behavior_weight'] ?? 20);
+$shared_beh = $evaluation['shared_behavior_score'] !== null ? (float)$evaluation['shared_behavior_score'] : (float)$evaluation['behavior_average'];
 $beh_val = (float)$evaluation['behavior_average'];
 $est_final_score = calculateEvalTotal((float)$evaluation['kra_subtotal'], $beh_val, $kra_w, $beh_w);
 $est_perf_level = getPerformanceLevel($est_final_score);
