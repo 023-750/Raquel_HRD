@@ -1374,7 +1374,7 @@ require_once '../includes/header.php';
                             <?php if (!empty($view_eval['evaluator_comments'])): ?>
                                 <div class="col-md-6">
                                     <div class="p-3 bg-light rounded-3 border-start border-primary border-4 shadow-sm">
-                                        <div class="fw-bold text-primary small mb-1">
+                                           <div class="fw-bold text-primary small mb-1">
                                             <i class="fas fa-user-tie me-1"></i>HR Supervisor Remarks
                                         </div>
                                         <p class="mb-0 small text-dark" style="white-space: pre-wrap;"><?php echo e($view_eval['evaluator_comments']); ?></p>
@@ -1508,7 +1508,77 @@ require_once '../includes/header.php';
                             </div>
                         <?php endif; ?>
 
-                        <!-- Template metadata display -->
+                        <!-- 1. Primary Action: Template Selection at TOP -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-primary" style="font-size: 0.95rem;">
+                                    <i class="fas fa-file-signature me-2"></i>Select Evaluation Template
+                                </label>
+                                <?php if ($is_assigned_edit && $selected_template): ?>
+                                    <input type="hidden" name="template_id"
+                                        value="<?php echo (int) $selected_template['template_id']; ?>">
+                                    <input type="text" class="form-control form-control-lg fw-semibold bg-light"
+                                        value="<?php echo e($selected_template['template_name']); ?>" readonly>
+                                    <small class="text-muted mt-1 d-block"><i class="fas fa-lock me-1"></i>This template was
+                                        assigned by your Head and cannot be changed.</small>
+                                <?php elseif ($edit_eval && $selected_template): ?>
+                                    <input type="hidden" name="template_id" value="<?php echo (int) $selected_template['template_id']; ?>">
+                                    <input type="text" class="form-control form-control-lg fw-semibold bg-light" value="<?php echo e($selected_template['template_name']); ?>" readonly>
+                                    <small class="text-muted mt-1 d-block"><i class="fas fa-lock me-1"></i>Template is locked for this draft.</small>
+                                <?php else: ?>
+                                    <select class="form-select form-select-lg border-primary shadow-sm" name="template_id" id="templateSelect" autocomplete="off"
+                                        onchange="if(this.value){ window.location='?template=' + this.value; } else { window.location='self-rating.php'; }"
+                                        required>
+                                        <option value="" disabled <?php echo $selected_template_id <= 0 ? 'selected' : ''; ?>>-- Choose an Active Template --</option>
+                                        <?php while ($template = $templates->fetch_assoc()): ?>
+                                            <?php
+                                            $template_label = $template['template_name'] . ' (' . (float) $template['kra_weight'] . '% KRA / ' . (float) $template['behavior_weight'] . '% Behavior)';
+                                            $opt_display = str_replace(['All Departments', 'Template'], ['All Depts', 'Temp'], $template['template_name']);
+                                            $opt_display .= ' (' . (int)$template['kra_weight'] . '/' . (int)$template['behavior_weight'] . ')';
+                                            ?>
+                                            <option value="<?php echo (int) $template['template_id']; ?>" title="<?php echo e($template_label); ?>" data-title="<?php echo e($template_label); ?>" <?php echo $selected_template_id === (int) $template['template_id'] ? 'selected' : ''; ?>>
+                                                <?php echo e($opt_display); ?>
+                                            </option>
+                                        <?php endwhile; ?>
+                                    </select>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- 2. Employee Info & Evaluation Type -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Employee</label>
+                                <input type="text" class="form-control"
+                                    value="<?php echo e(trim(($employee['first_name'] ?? '') . ' ' . ($employee['last_name'] ?? ''))); ?>"
+                                    readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Position</label>
+                                <input type="text" class="form-control"
+                                    value="<?php echo e($employee['job_title'] ?? '—'); ?>" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Evaluation Type</label>
+                                <?php
+                                if ($edit_eval) {
+                                    $display_eval_type = $edit_eval['evaluation_type'] ?? 'Annual';
+                                } elseif ($selected_template) {
+                                    $display_eval_type = $selected_template['evaluation_type'] ?? 'Annual';
+                                } else {
+                                    $display_eval_type = '—';
+                                }
+                                ?>
+                                <input type="text" class="form-control fw-bold text-success" value="<?php echo e($display_eval_type); ?>"
+                                    readonly>
+                                <?php if ($edit_eval): ?>
+                                    <input type="hidden" name="evaluation_type"
+                                        value="<?php echo e($edit_eval['evaluation_type'] ?? 'Annual'); ?>">
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- 3. Template Metadata Details -->
                         <?php
                         $disp_form_code = $edit_eval['form_code'] ?? ($selected_template['form_code'] ?? '—');
                         $disp_rev_date = $edit_eval['revision_date'] ?? ($selected_template['revision_date'] ?? '');
@@ -1537,71 +1607,6 @@ require_once '../includes/header.php';
                                     <div class="fw-bold">
                                         <?php echo !empty($disp_eff_date) ? formatDate($disp_eff_date) : '—'; ?></div>
                                 </div>
-                            </div>
-                        </div>
-
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label">Employee</label>
-                                <input type="text" class="form-control"
-                                    value="<?php echo e(trim(($employee['first_name'] ?? '') . ' ' . ($employee['last_name'] ?? ''))); ?>"
-                                    readonly>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Position</label>
-                                <input type="text" class="form-control"
-                                    value="<?php echo e($employee['job_title'] ?? '—'); ?>" readonly>
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-label">Evaluation Type</label>
-                                <?php
-                                // Determine evaluation type: from existing evaluation, selected template, or default
-                                if ($edit_eval) {
-                                    $display_eval_type = $edit_eval['evaluation_type'] ?? 'Annual';
-                                } elseif ($selected_template) {
-                                    $display_eval_type = $selected_template['evaluation_type'] ?? 'Annual';
-                                } else {
-                                    $display_eval_type = '—';
-                                }
-                                ?>
-                                <input type="text" class="form-control" value="<?php echo e($display_eval_type); ?>"
-                                    readonly>
-                                <?php if ($edit_eval): ?>
-                                    <input type="hidden" name="evaluation_type"
-                                        value="<?php echo e($edit_eval['evaluation_type'] ?? 'Annual'); ?>">
-                                <?php endif; ?>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Template</label>
-                                <?php if ($is_assigned_edit && $selected_template): ?>
-                                    <input type="hidden" name="template_id"
-                                        value="<?php echo (int) $selected_template['template_id']; ?>">
-                                    <input type="text" class="form-control"
-                                        value="<?php echo e($selected_template['template_name']); ?>" readonly>
-                                    <small class="text-muted mt-1 d-block"><i class="fas fa-lock me-1"></i>This template was
-                                        assigned by your Head and cannot be changed.</small>
-                                <?php elseif ($edit_eval && $selected_template): ?>
-                                    <?php /* Editing an existing draft: lock template to avoid dropdown excluding the already-used template */ ?>
-                                    <input type="hidden" name="template_id" value="<?php echo (int) $selected_template['template_id']; ?>">
-                                    <input type="text" class="form-control" value="<?php echo e($selected_template['template_name']); ?>" readonly>
-                                    <small class="text-muted mt-1 d-block"><i class="fas fa-lock me-1"></i>Template is locked for this draft.</small>
-                                <?php else: ?>
-                                    <select class="form-select" name="template_id" id="templateSelect" autocomplete="off"
-                                        onchange="if(this.value){ window.location='?template=' + this.value; } else { window.location='self-rating.php'; }"
-                                        required>
-                                        <option value="" disabled <?php echo $selected_template_id <= 0 ? 'selected' : ''; ?>>Select Template</option>
-                                        <?php while ($template = $templates->fetch_assoc()): ?>
-                                            <?php
-                                            $template_label = $template['template_name'] . ' (' . (float) $template['kra_weight'] . '% KRA / ' . (float) $template['behavior_weight'] . '% Behavior)';
-                                            $opt_display = str_replace(['All Departments', 'Template'], ['All Depts', 'Temp'], $template['template_name']);
-                                            $opt_display .= ' (' . (int)$template['kra_weight'] . '/' . (int)$template['behavior_weight'] . ')';
-                                            ?>
-                                            <option value="<?php echo (int) $template['template_id']; ?>" title="<?php echo e($template_label); ?>" data-title="<?php echo e($template_label); ?>" <?php echo $selected_template_id === (int) $template['template_id'] ? 'selected' : ''; ?>>
-                                                <?php echo e($opt_display); ?>
-                                            </option>
-                                        <?php endwhile; ?>
-                                    </select>
-                                <?php endif; ?>
                             </div>
                         </div>
 
