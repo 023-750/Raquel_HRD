@@ -101,7 +101,7 @@ CREATE TABLE employees (
     name_extension VARCHAR(10) NULL,
     date_of_birth DATE NULL,
     place_of_birth VARCHAR(255) NULL,
-    gender ENUM('Male', 'Female', 'Other') NULL,
+    gender ENUM('Male', 'Female', 'Other', 'Preferred not to say') NULL,
     civil_status ENUM('Single', 'Married', 'Widowed', 'Separated', 'Other') NULL,
     
     -- Employment Metadata

@@ -104,6 +104,7 @@ $rankCategories = $rankCategories ?? [
                 <option value="Male" <?php echo $sel('gender', 'Male'); ?>>Male</option>
                 <option value="Female" <?php echo $sel('gender', 'Female'); ?>>Female</option>
                 <option value="Other" <?php echo $sel('gender', 'Other'); ?>>Other</option>
+                <option value="Preferred not to say" <?php echo $sel('gender', 'Preferred not to say'); ?>>Preferred not to say</option>
             </select>
         </div>
         <div class="col-md-3 mb-3">
