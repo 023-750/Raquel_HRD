@@ -50,7 +50,7 @@ if (isset($_GET['discard']) && is_numeric($_GET['discard'])) {
 
 $employee_stmt = $conn->prepare("
     SELECT e.employee_id, e.employee_code, e.first_name, e.last_name, e.job_title, e.department_id, e.branch_id,
-           e.rank_category_id, e.hire_date,
+           e.rank_category_id, e.hire_date, e.employment_status,
            d.department_name, b.branch_name
     FROM employees e
     LEFT JOIN departments d ON e.department_id = d.department_id
@@ -663,15 +663,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirectWith(BASE_URL . '/employee/self-rating.php?edit=' . $eval_id, 'success', 'Your self-rating draft was saved.');
 }
 
-// Get employee's department name for template filtering
+// Get employee's department name and employment status for template filtering
 $employee_dept = $employee['department_name'] ?? '';
+$emp_status = $employee['employment_status'] ?? 'Regular';
 
-// Filter templates: show if matches employee's department (with 'All' fallbacks)
+// Determine allowed evaluation types based on employment status
+$is_non_regular = in_array($emp_status, ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Trainee'], true);
+$allowed_eval_types = $is_non_regular ? ['Initial', 'Final'] : ['Annual', 'Quarterly', 'Final'];
+$in_clause = "'" . implode("','", $allowed_eval_types) . "'";
+
+// Filter templates: show if matches employee's department (with 'All' fallbacks) and matches allowed evaluation types
 $templates_stmt = $conn->prepare("
     SELECT template_id, template_name, kra_weight, behavior_weight, evaluation_type, target_department
     FROM evaluation_templates et
     WHERE et.status = 'Active' 
       AND (target_department IS NULL OR target_department = '' OR target_department = 'All Departments' OR target_department = ?)
+      AND et.evaluation_type IN ($in_clause)
       AND NOT EXISTS (
           SELECT 1
           FROM evaluations ev
@@ -705,6 +712,7 @@ if ($selected_template_id > 0) {
             FROM evaluation_templates 
             WHERE template_id = ? 
               AND (target_department IS NULL OR target_department = '' OR target_department = 'All Departments' OR target_department = ?)
+              AND evaluation_type IN ($in_clause)
             LIMIT 1
         ");
         $sel_template_stmt->bind_param("is", $selected_template_id, $employee_dept);

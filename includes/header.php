@@ -199,7 +199,7 @@ switch ($effective_role) {
         if (isset($_SESSION['employee_id']) && $conn) {
             $_hdr_emp_id = (int) $_SESSION['employee_id'];
             $_hdr_dept_stmt = $conn->prepare("
-                SELECT d.department_name, e.branch_id, e.rank_category_id 
+                SELECT d.department_name, e.branch_id, e.rank_category_id, e.employment_status
                 FROM employees e 
                 LEFT JOIN departments d ON e.department_id = d.department_id 
                 WHERE e.employee_id = ? 
@@ -211,7 +211,12 @@ switch ($effective_role) {
             $_hdr_emp_dept = $_hdr_dept_row['department_name'] ?? '';
             $_hdr_emp_branch_id = $_hdr_dept_row ? (int)$_hdr_dept_row['branch_id'] : 0;
             $_hdr_emp_rank = $_hdr_dept_row ? (int)$_hdr_dept_row['rank_category_id'] : 0;
+            $_hdr_emp_status = $_hdr_dept_row['employment_status'] ?? 'Regular';
             $_hdr_dept_stmt->close();
+
+            $_hdr_is_non_regular = in_array($_hdr_emp_status, ['OJT', 'Probationary', 'Project Based', 'Project-Based', 'Trainee'], true);
+            $_hdr_allowed_eval_types = $_hdr_is_non_regular ? ['Initial', 'Final'] : ['Annual', 'Quarterly', 'Final'];
+            $_hdr_in_clause = "'" . implode("','", $_hdr_allowed_eval_types) . "'";
 
             $_hdr_pt_stmt = $conn->prepare("
                 SELECT COUNT(*) AS total
@@ -219,6 +224,7 @@ switch ($effective_role) {
                 WHERE et.status = 'Active'
                   AND et.deleted_at IS NULL
                   AND (et.target_department IS NULL OR et.target_department = '' OR et.target_department = 'All Departments' OR et.target_department = ?)
+                  AND et.evaluation_type IN ($_hdr_in_clause)
                   AND NOT EXISTS (
                       SELECT 1
                       FROM evaluations ev
