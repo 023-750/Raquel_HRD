@@ -155,6 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $kra_scores = $_POST['kra_scores'] ?? [];
     $beh_scores = $_POST['beh_scores'] ?? [];
     $editing_id = (int) ($_POST['edit_id'] ?? 0);
+    $employee_consent_agreed = isset($_POST['employee_consent_agreed']) ? 1 : 0;
+    $employee_signature_data = trim($_POST['employee_signature_data'] ?? '');
     $editable_eval = null;
     $is_assigned_submission = false;
 
@@ -229,6 +231,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($existing_eval_check && $editing_id !== (int)$existing_eval_check['evaluation_id']) {
             $errors[] = 'You have already submitted a self-rating for this template (Status: ' . $existing_eval_check['status'] . '). Duplicate submissions are not allowed.';
+        }
+    }
+
+    if ($action === 'submit') {
+        if (!$employee_consent_agreed) {
+            $errors[] = 'You must read and agree to the declaration consent before submitting your self-rating.';
+        }
+        if (empty($employee_signature_data)) {
+            $errors[] = 'Please provide your digital signature before submitting your self-rating.';
         }
     }
 
@@ -426,47 +437,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $submitted_date = ($action === 'submit') ? date('Y-m-d H:i:s') : null;
 
-    if ($editing_id > 0) {
-        $stmt = $conn->prepare("
-            UPDATE evaluations
-            SET template_id=?, evaluation_type=?, evaluation_period_start=?, evaluation_period_end=?,
-                status=?, total_score=?, kra_subtotal=?, behavior_average=?, performance_level=?,
-                submitted_by=?, submitted_date=?, staff_comments=?, current_position=?, months_in_position=?,
-                desired_position=?, target_date=?, career_growth_suited=?, career_growth_details=?
-            WHERE evaluation_id=? AND employee_id=?
-        ");
-        $current_position = (string) ($employee['job_title'] ?? '');
-        $months_in_position = 0;
-        $desired_position = '';
-        $target_date = null;
-        $career_growth_suited = 0;
-        $career_growth_details = '';
-        $stmt->bind_param("issssdddsssssissisii", $template_id, $evaluation_type, $period_start, $period_end, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $user_id_safe, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details, $editing_id, $employee_id);
-        $stmt->execute();
-        $stmt->close();
+        $employee_signed_at = !empty($employee_signature_data) ? date('Y-m-d H:i:s') : null;
 
-        $conn->query("DELETE FROM evaluation_scores WHERE evaluation_id = $editing_id");
-        $eval_id = $editing_id;
-    } else {
-        $stmt = $conn->prepare("
-            INSERT INTO evaluations (
-                employee_id, template_id, evaluation_type, evaluation_period_start, evaluation_period_end,
-                submitted_by, status, total_score, kra_subtotal, behavior_average, performance_level,
-                submitted_date, staff_comments, current_position, months_in_position,
-                desired_position, target_date, career_growth_suited, career_growth_details
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $current_position = (string) ($employee['job_title'] ?? '');
-        $months_in_position = 0;
-        $desired_position = '';
-        $target_date = null;
-        $career_growth_suited = 0;
-        $career_growth_details = '';
-        $stmt->bind_param("iisssisdddssssissis", $employee_id, $template_id, $evaluation_type, $period_start, $period_end, $user_id_safe, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details);
-        $stmt->execute();
-        $eval_id = (int) $stmt->insert_id;
-        $stmt->close();
-    }
+        if ($editing_id > 0) {
+            $stmt = $conn->prepare("
+                UPDATE evaluations
+                SET template_id=?, evaluation_type=?, evaluation_period_start=?, evaluation_period_end=?,
+                    status=?, total_score=?, kra_subtotal=?, behavior_average=?, performance_level=?,
+                    submitted_by=?, submitted_date=?, staff_comments=?, current_position=?, months_in_position=?,
+                    desired_position=?, target_date=?, career_growth_suited=?, career_growth_details=?,
+                    employee_consent_agreed=?, employee_signature_data=?, employee_signed_at=?
+                WHERE evaluation_id=? AND employee_id=?
+            ");
+            $current_position = (string) ($employee['job_title'] ?? '');
+            $months_in_position = 0;
+            $desired_position = '';
+            $target_date = null;
+            $career_growth_suited = 0;
+            $career_growth_details = '';
+            $stmt->bind_param("issssdddsssssissisissii", $template_id, $evaluation_type, $period_start, $period_end, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $user_id_safe, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details, $employee_consent_agreed, $employee_signature_data, $employee_signed_at, $editing_id, $employee_id);
+            $stmt->execute();
+            $stmt->close();
+
+            $conn->query("DELETE FROM evaluation_scores WHERE evaluation_id = $editing_id");
+            $eval_id = $editing_id;
+        } else {
+            $stmt = $conn->prepare("
+                INSERT INTO evaluations (
+                    employee_id, template_id, evaluation_type, evaluation_period_start, evaluation_period_end,
+                    submitted_by, status, total_score, kra_subtotal, behavior_average, performance_level,
+                    submitted_date, staff_comments, current_position, months_in_position,
+                    desired_position, target_date, career_growth_suited, career_growth_details,
+                    employee_consent_agreed, employee_signature_data, employee_signed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $current_position = (string) ($employee['job_title'] ?? '');
+            $months_in_position = 0;
+            $desired_position = '';
+            $target_date = null;
+            $career_growth_suited = 0;
+            $career_growth_details = '';
+            $stmt->bind_param("iisssisdddssssissisiss", $employee_id, $template_id, $evaluation_type, $period_start, $period_end, $user_id_safe, $status, $total_score, $kra_subtotal, $behavior_average, $performance_level, $submitted_date, $self_comments, $current_position, $months_in_position, $desired_position, $target_date, $career_growth_suited, $career_growth_details, $employee_consent_agreed, $employee_signature_data, $employee_signed_at);
+            $stmt->execute();
+            $eval_id = (int) $stmt->insert_id;
+            $stmt->close();
+        }
 
     $score_stmt = $conn->prepare("INSERT INTO evaluation_scores (evaluation_id, criterion_id, score_value, weighted_score) VALUES (?, ?, ?, ?)");
     foreach (array_merge($kra_score_data, $beh_score_data) as $score_data) {
@@ -1768,10 +1783,50 @@ require_once '../includes/header.php';
                                 <?php endforeach; ?>
                             </div><!-- /.rating-section (Behavior) -->
 
-                            <div class="mb-3">
-                                <label class="form-label">Self Comments</label>
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Self Comments</label>
                                 <textarea class="form-control" name="self_comments" rows="4"
                                     placeholder="Share any notes about your self-rating..."><?php echo e($edit_eval['staff_comments'] ?? ''); ?></textarea>
+                            </div>
+
+                            <!-- Declaration Consent & HTML5 Digital Signature Pad -->
+                            <div class="card border border-primary border-opacity-25 rounded-3 mb-4 shadow-sm" style="background: #f8faf6;">
+                                <div class="card-header bg-primary bg-opacity-10 fw-bold text-primary py-2" style="font-size:0.9rem;">
+                                    <i class="fas fa-file-contract me-2"></i>Declaration Consent & Digital Signature
+                                </div>
+                                <div class="card-body p-3">
+                                    <!-- Consent Disclaimer Text -->
+                                    <div class="p-3 bg-white rounded border mb-3 small text-secondary shadow-sm" style="line-height: 1.6;">
+                                        <i class="fas fa-quote-left text-primary opacity-50 me-2"></i>
+                                        I hereby declare and certify that the scores, self-assessment ratings, and comments provided in this form are accurate, complete, and submitted voluntarily. I understand that this submission forms an official component of my employee performance appraisal record.
+                                    </div>
+                                    
+                                    <!-- Mandatory Consent Checkbox -->
+                                    <div class="form-check mb-4">
+                                        <input class="form-check-input" type="checkbox" name="employee_consent_agreed" id="employee_consent_agreed" value="1" <?php echo !empty($edit_eval['employee_consent_agreed']) ? 'checked' : ''; ?> required>
+                                        <label class="form-check-label fw-bold text-dark small" for="employee_consent_agreed">
+                                            I have read, understood, and agree to the declaration statement above.
+                                        </label>
+                                    </div>
+
+                                    <!-- Digital Signature Canvas Pad -->
+                                    <div class="mb-2">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <label class="form-label fw-semibold small text-dark mb-0">
+                                                <i class="fas fa-pen-nib me-1 text-primary"></i>Employee Digital Signature
+                                            </label>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:0.75rem;" onclick="clearSignatureCanvas()">
+                                                <i class="fas fa-eraser me-1"></i>Clear Signature
+                                            </button>
+                                        </div>
+                                        
+                                        <div class="signature-canvas-wrapper border rounded bg-white shadow-sm position-relative text-center" style="touch-action: none;">
+                                            <canvas id="signatureCanvas" width="500" height="150" style="width: 100%; height: 150px; cursor: crosshair; display: block;"></canvas>
+                                            <input type="hidden" name="employee_signature_data" id="employee_signature_data" value="<?php echo e($edit_eval['employee_signature_data'] ?? ''); ?>">
+                                        </div>
+                                        <div class="form-text small text-muted"><i class="fas fa-info-circle me-1"></i>Use your mouse or finger (on touchscreens) to draw your signature inside the box above.</div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="d-flex flex-wrap justify-content-end gap-2 self-rating-actions">
@@ -2229,9 +2284,29 @@ document.addEventListener('change', function (e) {
     }
 });
 
+function validateConsentAndSignature() {
+    const consent = document.getElementById('employee_consent_agreed');
+    const signature = document.getElementById('employee_signature_data');
+    if (consent && !consent.checked) {
+        consent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        consent.classList.add('is-invalid');
+        const msg = 'Please read and check the declaration consent before submitting.';
+        if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+        return false;
+    }
+    if (signature && (!signature.value || signature.value.trim() === '')) {
+        const canvas = document.getElementById('signatureCanvas');
+        if (canvas) canvas.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const msg = 'Please draw your digital signature before submitting.';
+        if (typeof showToast === 'function') showToast(msg, 'error'); else alert(msg);
+        return false;
+    }
+    return true;
+}
+
 function showReviewModal() {
-    // Guard: do not open if any rating is missing
-    if (!validateAllRatings()) return;
+    // Guard: do not open if any rating is missing or consent/signature is invalid
+    if (!validateAllRatings() || !validateConsentAndSignature()) return;
 
     const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
     const reviewContent = document.getElementById('reviewContent');
@@ -2377,4 +2452,82 @@ document.addEventListener('change', function (e) {
         window.addEventListener('pageshow', resetTemplateSelect);
     }
 })();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('signatureCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const hiddenInput = document.getElementById('employee_signature_data');
+    let isDrawing = false;
+    let hasSignature = false;
+
+    // Load existing signature if present
+    if (hiddenInput && hiddenInput.value) {
+        const img = new Image();
+        img.onload = function() {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            hasSignature = true;
+        };
+        img.src = hiddenInput.value;
+    }
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+
+    function startDrawing(e) {
+        isDrawing = true;
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        ctx.strokeStyle = '#1C271B';
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        if (e.type === 'touchstart') e.preventDefault();
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        const pos = getPos(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+        hasSignature = true;
+        if (e.type === 'touchmove') e.preventDefault();
+    }
+
+    function stopDrawing() {
+        if (isDrawing) {
+            isDrawing = false;
+            if (hasSignature && hiddenInput) {
+                hiddenInput.value = canvas.toDataURL('image/png');
+            }
+        }
+    }
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
+
+    canvas.addEventListener('touchstart', startDrawing, {passive: false});
+    canvas.addEventListener('touchmove', draw, {passive: false});
+    canvas.addEventListener('touchend', stopDrawing);
+
+    window.clearSignatureCanvas = function() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hasSignature = false;
+        if (hiddenInput) hiddenInput.value = '';
+    };
+});
 </script>

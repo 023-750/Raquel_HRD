@@ -298,5 +298,35 @@ require_once '../includes/header.php';
             </div>
         </section>
     <?php endif; ?>
+    <!-- Digital Signature & Declaration Audit -->
+    <?php if (!empty($evaluation['employee_signature_data']) || !empty($evaluation['employee_consent_agreed'])): ?>
+        <section class="package-card" aria-label="Digital Signature & Declaration">
+            <header class="package-card__header">
+                <h2 class="h5 mb-0 fw-bold"><i class="fas fa-file-signature me-2"></i>Employee Declaration & Digital Signature</h2>
+            </header>
+            <div class="package-card__body">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded border">
+                            <span class="badge bg-success mb-2"><i class="fas fa-check-circle me-1"></i>Declaration Verified</span>
+                            <div class="small text-secondary mb-0">
+                                <em>"I hereby declare and certify that the scores, self-assessment ratings, and comments provided in this form are accurate, complete, and submitted voluntarily."</em>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-center">
+                        <div class="p-3 bg-white rounded border d-inline-block text-center shadow-sm">
+                            <div class="small text-muted mb-1 fw-bold text-uppercase" style="font-size:0.65rem;">Employee Signature</div>
+                            <?php if (!empty($evaluation['employee_signature_data'])): ?>
+                                <img src="<?php echo e($evaluation['employee_signature_data']); ?>" alt="Employee Digital Signature" style="max-height: 70px; max-width: 250px; display: block; margin: 0 auto 5px;">
+                            <?php endif; ?>
+                            <div class="fw-bold small text-dark border-top pt-1"><?php echo e($evaluation['employee_name']); ?></div>
+                            <div class="small text-muted" style="font-size:0.75rem;">Signed on: <?php echo !empty($evaluation['employee_signed_at']) ? formatDateTime($evaluation['employee_signed_at']) : formatDateTime($evaluation['submitted_date']); ?></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    <?php endif; ?>
 </main>
 <?php require_once '../includes/footer.php'; ?>

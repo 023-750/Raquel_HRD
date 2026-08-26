@@ -15,7 +15,9 @@ $query = "SELECT ev.*,
     et.template_name, et.form_code, et.revision_date, et.effective_date_form,
     et.kra_weight AS tpl_kra_weight, et.behavior_weight AS tpl_behavior_weight,
     ds.full_name AS dept_supervisor_confirmed_by_name,
-    dm.full_name AS dept_manager_endorsed_by_name
+    dm.full_name AS dept_manager_endorsed_by_name,
+    CONCAT(ce.first_name, ' ', ce.last_name) AS consolidator_name,
+    ep.updated_at AS consolidated_at
     FROM evaluations ev
     LEFT JOIN employees e ON ev.employee_id = e.employee_id
     LEFT JOIN departments d ON e.department_id = d.department_id
@@ -25,6 +27,9 @@ $query = "SELECT ev.*,
     LEFT JOIN users ds ON ev.dept_supervisor_confirmed_by = ds.user_id
     LEFT JOIN users dm ON ev.dept_manager_endorsed_by = dm.user_id
     LEFT JOIN evaluation_templates et ON ev.template_id = et.template_id
+    LEFT JOIN evaluation_package_members epm ON epm.evaluation_id = ev.evaluation_id
+    LEFT JOIN evaluation_packages ep ON ep.package_id = epm.package_id
+    LEFT JOIN employees ce ON ep.consolidator_employee_id = ce.employee_id
     WHERE ev.evaluation_id = $id";
 
 $result = $conn->query($query);
@@ -406,10 +411,15 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
               <?php echo $row['kra_subtotal']; ?>
             </td>
             <td rowspan="3"
-              style="border:1px solid #000; padding:6px; text-align:center; font-size:9px; vertical-align:middle;">
-              <div style="border-bottom:1px solid #000; margin:0 8px 2px; height:30px;"></div>
-              <div style="font-style:italic; margin-bottom:16px;">Employee</div>
-              <div style="border-bottom:1px solid #000; margin:0 8px 2px; height:12px;"></div>
+              style="border:1px solid #000; padding:4px 6px; text-align:center; font-size:9px; vertical-align:middle; width:110px;">
+              <div style="margin:0 auto 2px; text-align:center; min-height:28px; display:flex; align-items:flex-end; justify-content:center;">
+                <?php if (!empty($row['employee_signature_data'])): ?>
+                  <img src="<?php echo e($row['employee_signature_data']); ?>" alt="Employee Signature" style="max-height:30px; max-width:95px; object-fit:contain; display:block; margin:0 auto;">
+                <?php endif; ?>
+              </div>
+              <div style="border-bottom:1px solid #000; margin:0 4px 2px;"></div>
+              <div style="font-style:italic; margin-bottom:12px;">Employee</div>
+              <div style="border-bottom:1px solid #000; margin:0 4px 2px; height:12px;"></div>
               <div style="font-style:italic;">Rater</div>
             </td>
           </tr>
@@ -595,30 +605,27 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
       <div class="label">Employee's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['staff_comments'])); ?></div>
       <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
-        <div
-          style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
+        <div style="font-weight:bold; font-size:11px;">
           <?php echo strtoupper(e($row['employee_name'] ?? '')); ?>
         </div>
-        <br>
-        <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
       </div>
     </div>
 
-    <!-- Department Supervisor's Comments -->
-    <?php if (!empty($row['supervisor_comments'])): ?>
+    <!-- Immediate Supervisor / Package Consolidator Comments -->
+    <?php 
+    $supervisor_name = !empty($row['dept_supervisor_confirmed_by_name']) 
+      ? $row['dept_supervisor_confirmed_by_name'] 
+      : (!empty($row['consolidator_name']) ? $row['consolidator_name'] : 'IMMEDIATE HEAD / CONSOLIDATOR');
+    ?>
     <div class="comment-box">
-      <div class="label">Immediate Supervisor's Comments:</div>
-      <div class="content"><?php echo nl2br(e($row['supervisor_comments'])); ?></div>
+      <div class="label">Immediate Supervisor / Package Consolidator Comments:</div>
+      <div class="content"><?php echo !empty($row['supervisor_comments']) ? nl2br(e($row['supervisor_comments'])) : '<em>Reviewed & Consolidated</em>'; ?></div>
       <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
-        <div
-          style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
-          <?php echo strtoupper(e($row['dept_supervisor_confirmed_by_name'] ?? 'IMMEDIATE HEAD')); ?>
+        <div style="font-weight:bold; font-size:11px;">
+          <?php echo strtoupper(e($supervisor_name)); ?>
         </div>
-        <br>
-        <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
       </div>
     </div>
-    <?php endif; ?>
 
     <!-- Department Manager's Comments -->
     <?php if (!empty($row['dept_manager_comments'])): ?>
@@ -626,12 +633,9 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
       <div class="label">Department Manager's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['dept_manager_comments'])); ?></div>
       <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
-        <div
-          style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
+        <div style="font-weight:bold; font-size:11px;">
           <?php echo strtoupper(e($row['dept_manager_endorsed_by_name'] ?? 'DEPT MANAGER')); ?>
         </div>
-        <br>
-        <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
       </div>
     </div>
     <?php endif; ?>
@@ -642,12 +646,9 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
       <div class="label">HR Supervisor's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['evaluator_comments'])); ?></div>
       <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
-        <div
-          style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
+        <div style="font-weight:bold; font-size:11px;">
           <?php echo strtoupper(e($row['endorsed_by_name'] ?? '')); ?>
         </div>
-        <br>
-        <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
       </div>
     </div>
     <?php endif; ?>
@@ -657,12 +658,9 @@ if ((float)($row['total_score'] ?? 0) > 0 && (empty($pl) || $pl === '0')) {
       <div class="label">HR Manager's Comments:</div>
       <div class="content"><?php echo nl2br(e($row['manager_comments'])); ?></div>
       <div style="text-align:center; padding-bottom:3px; margin-top:8px;">
-        <div
-          style="display:inline-block; border-bottom:1px solid #000; width:200px; margin-bottom:2px; font-weight:bold; font-size:11px;">
+        <div style="font-weight:bold; font-size:11px;">
           <?php echo strtoupper(e($row['approved_by_name'] ?? '')); ?>
         </div>
-        <br>
-        <div style="display:inline-block; font-style:italic; font-size:9px;">Signature over Printed Name</div>
       </div>
     </div>
 

@@ -31,8 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $stmt = $conn->prepare('INSERT INTO evaluation_governance_approvers (governance_type, user_id, is_active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE is_active = 1');
     $stmt->bind_param('si', $type, $reviewer_user_id); $stmt->execute(); $stmt->close();
+    syncPendingOrganizationPackageGovernanceApprovers($conn);
     logAudit($conn, (int) $_SESSION['user_id'], 'CREATE', 'Evaluation Governance', $reviewer_user_id, "Assigned $type approver");
-    redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'success', 'Governance approver assigned. New packages include Audit (if configured) before Board; Board remains the final lock and apply step.');
+    redirectWith(BASE_URL . '/manager/evaluation-governance.php', 'success', 'Governance approver assigned and active packages synced.');
 }
 
 if (isset($_GET['disable']) && is_numeric($_GET['disable'])) {

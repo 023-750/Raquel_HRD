@@ -1945,6 +1945,12 @@ function ensureEvaluationWorkflowSchema($conn)
 
             'manager_lock_expires' => "ALTER TABLE evaluations ADD COLUMN manager_lock_expires DATETIME NULL AFTER manager_lock_user_id",
 
+            'employee_consent_agreed' => "ALTER TABLE evaluations ADD COLUMN employee_consent_agreed TINYINT(1) DEFAULT 0 AFTER staff_comments",
+
+            'employee_signature_data' => "ALTER TABLE evaluations ADD COLUMN employee_signature_data LONGTEXT NULL AFTER employee_consent_agreed",
+
+            'employee_signed_at' => "ALTER TABLE evaluations ADD COLUMN employee_signed_at DATETIME NULL AFTER employee_signature_data",
+
         ];
 
 
@@ -2675,9 +2681,61 @@ function applyOrganizationPackageResults($conn, $package_id)
  * Keep unacted governance steps aligned with the currently active
  * Board / Audit authorized users. Already acted steps are left unchanged.
  */
+function ensureOrganizationPackageGovernanceSteps($conn, $package_id)
+{
+    $package_id = (int) $package_id;
+    if ($package_id <= 0) return false;
+
+    // 1. Get current max step_order
+    $res = $conn->query("SELECT MAX(step_order) AS max_order FROM evaluation_package_route_steps WHERE package_id = $package_id");
+    $max_order = (int)($res->fetch_assoc()['max_order'] ?? 0);
+
+    // 2. Append Audit Committee step if missing
+    $has_audit = (int)($conn->query("SELECT COUNT(*) AS c FROM evaluation_package_route_steps WHERE package_id = $package_id AND step_label LIKE '%Audit%'")->fetch_assoc()['c'] ?? 0);
+    if (!$has_audit) {
+        $max_order++;
+        $max_order = appendOrganizationGovernanceRouteStep($conn, $package_id, $max_order, 'Audit Committee', 'Audit Committee approval');
+        $max_order--;
+    }
+
+    // 3. Append Board of Directors step if missing
+    $has_board = (int)($conn->query("SELECT COUNT(*) AS c FROM evaluation_package_route_steps WHERE package_id = $package_id AND step_label LIKE '%Board%'")->fetch_assoc()['c'] ?? 0);
+    if (!$has_board) {
+        $max_order++;
+        appendOrganizationGovernanceRouteStep($conn, $package_id, $max_order, 'Board of Directors', 'Board of Directors approval');
+    }
+
+    // 4. Advance step if previous step was approved but next step was stuck in Waiting
+    $current_pkg = $conn->query("SELECT current_step_order, status FROM evaluation_packages WHERE package_id = $package_id")->fetch_assoc();
+    if ($current_pkg) {
+        $curr_order = (int)($current_pkg['current_step_order'] ?? 0);
+        if ($curr_order > 0) {
+            $curr_step = $conn->query("SELECT action_status FROM evaluation_package_route_steps WHERE package_id = $package_id AND step_order = $curr_order")->fetch_assoc();
+            if ($curr_step && $curr_step['action_status'] === 'Approved') {
+                $next_order = $curr_order + 1;
+                $next_step = $conn->query("SELECT package_route_step_id, step_label, step_type, action_status FROM evaluation_package_route_steps WHERE package_id = $package_id AND step_order = $next_order")->fetch_assoc();
+                if ($next_step && $next_step['action_status'] === 'Waiting') {
+                    $conn->query("UPDATE evaluation_package_route_steps SET action_status = 'Pending' WHERE package_route_step_id = " . (int)$next_step['package_route_step_id']);
+                    $new_status = getOrganizationPackageStatusForStep($next_step);
+                    $conn->query("UPDATE evaluation_packages SET current_step_order = $next_order, status = '$new_status' WHERE package_id = $package_id");
+                }
+            }
+        }
+    }
+    return true;
+}
+
 function syncPendingOrganizationPackageGovernanceApprovers($conn)
 {
     if (!ensureOrganizationEvaluationPackageSchema($conn)) return 0;
+
+    // Automatically append missing governance route steps for all active packages
+    $active_pkgs = $conn->query("SELECT package_id FROM evaluation_packages WHERE status NOT IN ('Approved and Applied', 'Cancelled')");
+    if ($active_pkgs) {
+        while ($pkg = $active_pkgs->fetch_assoc()) {
+            ensureOrganizationPackageGovernanceSteps($conn, (int)$pkg['package_id']);
+        }
+    }
 
     $updated = 0;
     $groups = [
