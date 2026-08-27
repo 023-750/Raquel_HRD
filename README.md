@@ -1,4 +1,4 @@
-database/1st_schema_tables.sql
+ database/1st_schema_tables.sql
  database/2nd_seed_organization.sql
  database/3rd_seed_HR_accounts_.sql
  sample_db_seeds/01_test_employees.sql
